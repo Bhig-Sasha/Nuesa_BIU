@@ -8,7 +8,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
+const fs = require('fs').promises;
+const fsSync = require('fs');
 const { createClient } = require('@supabase/supabase-js');
 const rateLimit = require('express-rate-limit');
 const compression = require('compression');
@@ -17,6 +18,7 @@ const xss = require('xss-clean');
 const hpp = require('hpp');
 const morgan = require('morgan');
 const timeout = require('connect-timeout');
+const mime = require('mime-types');
 
 // ==================== CONFIGURATION ====================
 const app = express();
@@ -53,160 +55,260 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
     },
     global: {
         headers: {
-            'x-application-name': 'nuesa-biu-api'
+            'x-application-name': 'nuesa-biu-api',
+            'x-version': '1.0.0'
         }
     }
 });
 
-console.log('✅ Supabase connected successfully');
-
-// ==================== SUPABASE QUERY HELPER ====================
-const executeQuery = async (operation, table, data = null, filters = {}) => {
-    try {
-        let query = supabase.from(table);
-        
-        // Apply filters
-        if (filters.where) {
-            Object.entries(filters.where).forEach(([key, value]) => {
-                if (value !== undefined && value !== null) {
-                    query = query.eq(key, value);
-                }
-            });
-        }
-        
-        if (filters.order) {
-            query = query.order(filters.order.column, { 
-                ascending: filters.order.ascending !== false,
-                nullsFirst: filters.order.nullsFirst || false
-            });
-        }
-        
-        if (filters.limit) {
-            query = query.limit(filters.limit);
-        }
-        
-        if (filters.offset) {
-            query = query.range(filters.offset, filters.offset + (filters.limit || 1) - 1);
-        }
-        
-        if (filters.select) {
-            query = query.select(filters.select);
-        }
-        
-        let result;
-        switch(operation) {
-            case 'select':
-                result = await query;
-                break;
-            case 'insert':
-                result = await query.insert(data).select();
-                break;
-            case 'update':
-                if (filters.where) {
-                    result = await query.update(data).match(filters.where).select();
-                } else {
-                    throw new Error('WHERE clause required for update');
-                }
-                break;
-            case 'delete':
-                if (filters.where) {
-                    result = await query.delete().match(filters.where).select();
-                } else {
-                    throw new Error('WHERE clause required for delete');
-                }
-                break;
-            case 'count':
-                result = await query.select('*', { count: 'exact', head: true });
-                break;
-            case 'increment':
-                if (!filters.where || !filters.column) {
-                    throw new Error('WHERE clause and column required for increment');
-                }
-                const currentResult = await query.select(filters.column).single();
-                if (currentResult.error) throw currentResult.error;
-                const currentValue = currentResult.data[filters.column] || 0;
-                const newValue = currentValue + (filters.incrementBy || 1);
-                result = await query.update({ [filters.column]: newValue }).match(filters.where).select();
-                break;
-            default:
-                throw new Error(`Unknown operation: ${operation}`);
-        }
-        
-        if (result.error) {
-            console.error('Supabase error:', result.error);
-            throw result.error;
-        }
-        
-        return {
-            rows: result.data || [],
-            rowCount: result.data?.length || 0,
-            count: result.count
-        };
-    } catch (error) {
-        console.error(`Database ${operation} error on table ${table}:`, error.message);
-        throw error;
+// ==================== ENHANCED QUERY HELPER ====================
+class DatabaseService {
+    constructor(supabase) {
+        this.supabase = supabase;
     }
-};
 
-// ==================== LOGGING SETUP ====================
+    async query(operation, table, options = {}) {
+        try {
+            const {
+                data = null,
+                select = '*',
+                where = {},
+                order = {},
+                limit = null,
+                offset = 0,
+                count = false
+            } = options;
+
+            let query;
+
+            switch (operation) {
+                case 'select':
+                    query = this.supabase.from(table).select(select, count ? { count: 'exact' } : {});
+                    break;
+                case 'insert':
+                    query = this.supabase.from(table).insert(data).select(select);
+                    break;
+                case 'update':
+                    query = this.supabase.from(table).update(data).select(select);
+                    break;
+                case 'upsert':
+                    query = this.supabase.from(table).upsert(data).select(select);
+                    break;
+                case 'delete':
+                    query = this.supabase.from(table).delete().select(select);
+                    break;
+                default:
+                    throw new Error(`Unknown operation: ${operation}`);
+            }
+
+            // Apply filters
+            if (where && Object.keys(where).length > 0) {
+                for (const [key, value] of Object.entries(where)) {
+                    if (Array.isArray(value)) {
+                        query = query.in(key, value);
+                    } else if (typeof value === 'object' && value.operator) {
+                        switch (value.operator) {
+                            case 'like':
+                                query = query.like(key, value.value);
+                                break;
+                            case 'ilike':
+                                query = query.ilike(key, value.value);
+                                break;
+                            case 'gt':
+                                query = query.gt(key, value.value);
+                                break;
+                            case 'lt':
+                                query = query.lt(key, value.value);
+                                break;
+                            case 'gte':
+                                query = query.gte(key, value.value);
+                                break;
+                            case 'lte':
+                                query = query.lte(key, value.value);
+                                break;
+                            case 'neq':
+                                query = query.neq(key, value.value);
+                                break;
+                            default:
+                                query = query.eq(key, value.value);
+                        }
+                    } else if (value !== undefined && value !== null) {
+                        query = query.eq(key, value);
+                    }
+                }
+            }
+
+            // Apply ordering
+            if (order.column) {
+                query = query.order(order.column, {
+                    ascending: order.ascending !== false,
+                    nullsFirst: order.nullsFirst || false
+                });
+            }
+
+            // Apply pagination
+            if (limit && operation === 'select') {
+                query = query.range(offset, offset + limit - 1);
+            }
+
+            const result = await query;
+
+            if (result.error) {
+                throw new DatabaseError(result.error.message, result.error.code, table, operation);
+            }
+
+            return {
+                data: result.data || [],
+                count: result.count,
+                status: 'success'
+            };
+        } catch (error) {
+            console.error(`Database ${operation} error on table ${table}:`, error);
+            throw error;
+        }
+    }
+}
+
+class DatabaseError extends Error {
+    constructor(message, code, table, operation) {
+        super(message);
+        this.name = 'DatabaseError';
+        this.code = code;
+        this.table = table;
+        this.operation = operation;
+        this.timestamp = new Date();
+    }
+}
+
+const db = new DatabaseService(supabase);
+
+// ==================== ENHANCED LOGGING SETUP ====================
+const logDir = 'logs';
+if (!fsSync.existsSync(logDir)) {
+    fsSync.mkdirSync(logDir, { recursive: true });
+}
+
 const logger = winston.createLogger({
     level: isProduction ? 'info' : 'debug',
     format: winston.format.combine(
-        winston.format.timestamp(),
+        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
         winston.format.errors({ stack: true }),
         winston.format.json()
     ),
-    defaultMeta: { service: 'nuesa-biu-api' },
+    defaultMeta: { service: 'nuesa-biu-api', environment: NODE_ENV },
     transports: [
-        new winston.transports.File({ 
-            filename: 'logs/error.log', 
+        new winston.transports.File({
+            filename: `${logDir}/error.log`,
             level: 'error',
-            maxsize: 5242880,
-            maxFiles: 5
+            maxsize: 10 * 1024 * 1024, // 10MB
+            maxFiles: 10,
+            tailable: true
         }),
-        new winston.transports.File({ 
-            filename: 'logs/combined.log',
-            maxsize: 5242880,
-            maxFiles: 5
+        new winston.transports.File({
+            filename: `${logDir}/combined.log`,
+            maxsize: 20 * 1024 * 1024, // 20MB
+            maxFiles: 10,
+            tailable: true
+        }),
+        new winston.transports.File({
+            filename: `${logDir}/audit.log`,
+            level: 'info',
+            maxsize: 10 * 1024 * 1024,
+            maxFiles: 5,
+            format: winston.format.combine(
+                winston.format.timestamp(),
+                winston.format.printf(({ timestamp, level, message, ...meta }) => {
+                    return JSON.stringify({
+                        timestamp,
+                        level,
+                        message,
+                        ...meta
+                    });
+                })
+            )
         })
     ]
 });
 
+// Console transport for development
 if (!isProduction) {
     logger.add(new winston.transports.Console({
         format: winston.format.combine(
             winston.format.colorize(),
-            winston.format.simple()
+            winston.format.timestamp(),
+            winston.format.printf(({ timestamp, level, message, ...meta }) => {
+                const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : '';
+                return `${timestamp} ${level}: ${message}${metaStr}`;
+            })
         )
     }));
 }
 
-// ==================== CACHE SETUP ====================
+// ==================== ENHANCED CACHE SYSTEM ====================
+class CacheManager {
+    constructor() {
+        this.caches = new Map();
+    }
+
+    getCache(name, options = {}) {
+        if (!this.caches.has(name)) {
+            this.caches.set(name, new LRUCache(options.maxSize || 100, options.ttl || 300000));
+        }
+        return this.caches.get(name);
+    }
+
+    clearAll() {
+        this.caches.forEach(cache => cache.clear());
+    }
+
+    invalidate(pattern) {
+        this.caches.forEach((cache, cacheName) => {
+            if (cacheName.match(pattern)) {
+                cache.clear();
+            }
+        });
+    }
+}
+
 class LRUCache {
     constructor(maxSize = 100, ttl = 300000) {
         this.cache = new Map();
         this.maxSize = maxSize;
         this.ttl = ttl;
+        this.hits = 0;
+        this.misses = 0;
     }
 
     set(key, value, customTTL = null) {
+        // Check size and remove oldest if needed
         if (this.cache.size >= this.maxSize) {
             const firstKey = this.cache.keys().next().value;
             this.cache.delete(firstKey);
         }
+
         this.cache.set(key, {
             value,
-            expiry: Date.now() + (customTTL || this.ttl)
+            expiry: Date.now() + (customTTL || this.ttl),
+            accessed: Date.now()
         });
     }
 
     get(key) {
         const item = this.cache.get(key);
-        if (!item) return null;
-        if (Date.now() > item.expiry) {
-            this.cache.delete(key);
+        if (!item) {
+            this.misses++;
             return null;
         }
+
+        if (Date.now() > item.expiry) {
+            this.cache.delete(key);
+            this.misses++;
+            return null;
+        }
+
+        // Update access time
+        item.accessed = Date.now();
+        this.hits++;
         return item.value;
     }
 
@@ -216,13 +318,30 @@ class LRUCache {
 
     clear() {
         this.cache.clear();
+        this.hits = 0;
+        this.misses = 0;
+    }
+
+    getStats() {
+        const hitRate = this.hits + this.misses > 0 ? this.hits / (this.hits + this.misses) : 0;
+        return {
+            size: this.cache.size,
+            maxSize: this.maxSize,
+            hits: this.hits,
+            misses: this.misses,
+            hitRate: Math.round(hitRate * 100) + '%',
+            ttl: this.ttl
+        };
     }
 }
 
-const userCache = new LRUCache(200, 300000);
-const dataCache = new LRUCache(100, 60000);
+const cacheManager = new CacheManager();
+const userCache = cacheManager.getCache('users', { maxSize: 200, ttl: 300000 });
+const dataCache = cacheManager.getCache('data', { maxSize: 100, ttl: 60000 });
 
-// ==================== MIDDLEWARE SETUP ====================
+// ==================== ENHANCED MIDDLEWARE ====================
+app.set('trust proxy', 1);
+
 // Compression
 app.use(compression({
     level: 6,
@@ -233,28 +352,25 @@ app.use(compression({
     }
 }));
 
-// Security headers
+// Security headers with enhanced CSP
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
             scriptSrc: ["'self'", "'unsafe-inline'"],
-            imgSrc: ["'self'", "data:", "https:"],
-            connectSrc: ["'self'", supabaseUrl, process.env.FRONTEND_URL],
-            fontSrc: ["'self'"],
+            imgSrc: ["'self'", "data:", "https:", "blob:"],
+            connectSrc: ["'self'", supabaseUrl, process.env.FRONTEND_URL || '', "https://*.supabase.co"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com"],
             objectSrc: ["'none'"],
             mediaSrc: ["'self'"],
-            frameSrc: ["'none'"]
+            frameSrc: ["'none'"],
+            baseUri: ["'self'"],
+            formAction: ["'self'"],
+            frameAncestors: ["'none'"],
+            upgradeInsecureRequests: isProduction ? [] : null
         }
     },
-    hsts: {
-        maxAge: 31536000,
-        includeSubDomains: true,
-        preload: true
-    },
-    frameguard: { action: 'deny' },
-    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
@@ -263,59 +379,87 @@ app.use(helmet({
 app.use(xss());
 
 // Parameter pollution protection
-app.use(hpp());
+app.use(hpp({
+    whitelist: ['page', 'limit', 'sort', 'fields']
+}));
 
-// CORS configuration
+// Enhanced CORS configuration
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(origin => origin.length > 0);
+
+if (process.env.FRONTEND_URL && !allowedOrigins.includes(process.env.FRONTEND_URL)) {
+    allowedOrigins.push(process.env.FRONTEND_URL);
+}
+
 const corsOptions = {
     origin: function (origin, callback) {
         // Allow requests with no origin (like mobile apps, curl, postman)
         if (!origin) {
             return callback(null, true);
         }
-        
-        // Get allowed origins from environment
-        const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
-            .split(',')
-            .map(origin => origin.trim())
-            .filter(origin => origin.length > 0);
-        
-        // Add FRONTEND_URL if set
-        if (process.env.FRONTEND_URL) {
-            allowedOrigins.push(process.env.FRONTEND_URL);
-        }
-        
+
         // In development, allow all origins
         if (!isProduction) {
             return callback(null, true);
         }
-        
+
         // In production, check against allowed origins
-        if (allowedOrigins.includes(origin)) {
+        if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
-            logger.warn(`Blocked by CORS: ${origin}. Allowed: ${allowedOrigins.join(', ')}`);
+            logger.warn(`Blocked by CORS: ${origin}`, { allowedOrigins });
             callback(new Error('Not allowed by CORS'));
         }
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
-    exposedHeaders: ['X-Total-Count', 'X-Page-Count'],
-    maxAge: 86400
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+    allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'Accept',
+        'Origin',
+        'X-Requested-With',
+        'X-API-Key',
+        'X-Total-Count',
+        'X-Page-Count'
+    ],
+    exposedHeaders: [
+        'X-Total-Count',
+        'X-Page-Count',
+        'X-RateLimit-Limit',
+        'X-RateLimit-Remaining',
+        'X-RateLimit-Reset'
+    ],
+    maxAge: 86400,
+    preflightContinue: false,
+    optionsSuccessStatus: 204
 };
 
 app.use(cors(corsOptions));
 
-// Request parsing
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Enhanced request parsing
+app.use(express.json({
+    limit: process.env.MAX_REQUEST_SIZE || '10mb',
+    verify: (req, res, buf, encoding) => {
+        req.rawBody = buf;
+    }
+}));
 
-// Request logging
+app.use(express.urlencoded({
+    extended: true,
+    limit: process.env.MAX_REQUEST_SIZE || '10mb',
+    parameterLimit: 100
+}));
+
+// Enhanced request logging
 const morganFormat = isProduction ? 'combined' : 'dev';
 app.use(morgan(morganFormat, {
     stream: {
-        write: (message) => logger.info(message.trim())
-    }
+        write: (message) => logger.http(message.trim())
+    },
+    skip: (req, res) => req.path === '/api/health' && req.method === 'GET'
 }));
 
 // Request timeout
@@ -324,81 +468,151 @@ app.use(haltOnTimedout);
 
 function haltOnTimedout(req, res, next) {
     if (req.timedout) {
-        logger.error('Request timeout for:', req.url);
+        logger.error('Request timeout', {
+            url: req.url,
+            method: req.method,
+            ip: req.ip,
+            userId: req.user?.id
+        });
         res.status(503).json({
             status: 'error',
-            message: 'Request timeout'
+            code: 'TIMEOUT',
+            message: 'Request timeout. Please try again.'
         });
     } else {
         next();
     }
 }
 
-// Rate limiting
+// Enhanced rate limiting
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 100,
+    max: (req) => {
+        // Allow more requests for authenticated users
+        return req.headers.authorization ? 200 : 100;
+    },
     message: {
         status: 'error',
+        code: 'TOO_MANY_REQUESTS',
         message: 'Too many requests from this IP, please try again later.'
     },
     standardHeaders: true,
     legacyHeaders: false,
-    skipSuccessfulRequests: false
+    skipSuccessfulRequests: false,
+    keyGenerator: (req) => {
+        return req.headers['x-forwarded-for'] || req.ip;
+    },
+    handler: (req, res) => {
+        logger.warn('Rate limit exceeded', {
+            ip: req.ip,
+            url: req.url,
+            method: req.method
+        });
+        res.status(429).json({
+            status: 'error',
+            code: 'TOO_MANY_REQUESTS',
+            message: 'Too many requests from this IP, please try again later.'
+        });
+    }
 });
 
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 10,
+    skipSuccessfulRequests: false,
     message: {
         status: 'error',
+        code: 'TOO_MANY_LOGIN_ATTEMPTS',
         message: 'Too many login attempts, please try again later.'
     }
 });
 
+// Apply rate limiting
 app.use('/api/auth/login', authLimiter);
 app.use('/api/', apiLimiter);
 
-// Cache headers middleware
-const setCacheHeaders = (req, res, next) => {
-    if (req.headers.authorization) {
-        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-        res.setHeader('Pragma', 'no-cache');
-        res.setHeader('Expires', '0');
-    } else if (req.method === 'GET') {
-        res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=30');
-    }
-    next();
-};
-app.use(setCacheHeaders);
+// Cache middleware
+const cacheMiddleware = (duration = 60) => {
+    return (req, res, next) => {
+        if (req.method !== 'GET' || req.headers.authorization) {
+            return next();
+        }
 
-// ==================== FILE UPLOAD ====================
+        const key = req.originalUrl || req.url;
+        const cachedResponse = dataCache.get(key);
+
+        if (cachedResponse) {
+            return res.json(cachedResponse);
+        }
+
+        const originalSend = res.json;
+        res.json = function (body) {
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+                dataCache.set(key, body, duration * 1000);
+            }
+            originalSend.call(this, body);
+        };
+
+        next();
+    };
+};
+
+// Response time middleware
+app.use((req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        logger.info('Request completed', {
+            method: req.method,
+            url: req.url,
+            status: res.statusCode,
+            duration: `${duration}ms`,
+            userId: req.user?.id
+        });
+    });
+    next();
+});
+
+// ==================== ENHANCED FILE UPLOAD ====================
 const uploadDirs = {
     images: './uploads/images',
     resources: './uploads/resources',
-    profiles: './uploads/profiles'
+    profiles: './uploads/profiles',
+    temp: './uploads/temp'
 };
 
 // Create upload directories
 Object.values(uploadDirs).forEach(dir => {
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
+    if (!fsSync.existsSync(dir)) {
+        fsSync.mkdirSync(dir, { recursive: true });
         logger.info(`Created upload directory: ${dir}`);
     }
 });
 
+// Enhanced storage configuration
 const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        if (file.fieldname === 'file' || file.fieldname === 'resourceFile') {
-            cb(null, uploadDirs.resources);
-        } else if (file.fieldname.match(/(profilePicture|memberPhoto|eventImage|articleImage)/)) {
-            cb(null, uploadDirs.images);
-        } else {
-            cb(null, uploadDirs.resources);
+    destination: async function (req, file, cb) {
+        try {
+            const type = file.fieldname;
+            let subDir = '';
+
+            if (type.includes('profile') || type.includes('avatar')) {
+                subDir = 'profiles';
+            } else if (type.includes('image') || /\.(jpg|jpeg|png|gif|webp)$/i.test(file.originalname)) {
+                subDir = 'images';
+            } else {
+                subDir = 'resources';
+            }
+
+            const destDir = path.join(uploadDirs[subDir], new Date().toISOString().split('T')[0]);
+            await fs.mkdir(destDir, { recursive: true });
+            cb(null, destDir);
+        } catch (error) {
+            cb(error);
         }
     },
     filename: function (req, file, cb) {
-        const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
+        const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
         const ext = path.extname(file.originalname).toLowerCase();
         const safeName = path.basename(file.originalname, ext)
             .replace(/[^a-zA-Z0-9_-]/g, '_')
@@ -407,163 +621,298 @@ const storage = multer.diskStorage({
     }
 });
 
+// File filter with enhanced validation
+const fileFilter = (req, file, cb) => {
+    const allowedMimeTypes = {
+        'image/jpeg': ['.jpg', '.jpeg'],
+        'image/png': ['.png'],
+        'image/gif': ['.gif'],
+        'image/webp': ['.webp'],
+        'application/pdf': ['.pdf'],
+        'application/msword': ['.doc'],
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
+        'text/plain': ['.txt'],
+        'application/zip': ['.zip'],
+        'application/x-rar-compressed': ['.rar']
+    };
+
+    const allowedExts = Object.values(allowedMimeTypes).flat();
+    const ext = path.extname(file.originalname).toLowerCase();
+
+    if (!allowedMimeTypes[file.mimetype] || !allowedExts.includes(ext)) {
+        return cb(new Error(`File type ${file.mimetype} with extension ${ext} is not allowed`), false);
+    }
+
+    cb(null, true);
+};
+
 const upload = multer({
     storage: storage,
     limits: {
-        fileSize: parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024,
-        files: 1
+        fileSize: parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024, // 10MB
+        files: 5
     },
-    fileFilter: (req, file, cb) => {
-        const allowedTypes = [
-            'image/jpeg',
-            'image/jpg',
-            'image/png',
-            'image/gif',
-            'image/webp',
-            'application/pdf',
-            'application/msword',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-            'text/plain',
-            'application/zip',
-            'application/x-rar-compressed',
-            'application/x-zip-compressed'
-        ];
-        
-        if (!allowedTypes.includes(file.mimetype)) {
-            return cb(new Error(`File type ${file.mimetype} is not allowed`), false);
-        }
-        
-        const ext = path.extname(file.originalname).toLowerCase();
-        const allowedExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.doc', '.docx', '.xlsx', '.pptx', '.txt', '.zip', '.rar'];
-        
-        if (!allowedExts.includes(ext)) {
-            return cb(new Error(`File extension ${ext} is not allowed`), false);
-        }
-        
-        cb(null, true);
-    }
+    fileFilter: fileFilter
 });
 
-// ==================== AUTHENTICATION MIDDLEWARE ====================
+// ==================== ENHANCED AUTHENTICATION ====================
+class AuthService {
+    constructor() {
+        this.secret = JWT_SECRET;
+        this.expire = JWT_EXPIRE;
+    }
+
+    generateToken(payload) {
+        return jwt.sign(payload, this.secret, {
+            expiresIn: this.expire,
+            issuer: 'nuesa-biu-api',
+            audience: 'nuesa-biu-client'
+        });
+    }
+
+    verifyToken(token) {
+        try {
+            return jwt.verify(token, this.secret, {
+                issuer: 'nuesa-biu-api',
+                audience: 'nuesa-biu-client'
+            });
+        } catch (error) {
+            throw new AuthError('Invalid token', error.name);
+        }
+    }
+
+    async authenticateUser(email, password) {
+        try {
+            const result = await db.query('select', 'users', {
+                where: { email: email.toLowerCase().trim() },
+                select: 'id, email, password_hash, full_name, role, department, is_active, created_at, last_login'
+            });
+
+            if (result.data.length === 0) {
+                throw new AuthError('Invalid credentials');
+            }
+
+            const user = result.data[0];
+
+            if (!user.is_active) {
+                throw new AuthError('Account is deactivated');
+            }
+
+            const validPassword = await bcrypt.compare(password, user.password_hash);
+            if (!validPassword) {
+                throw new AuthError('Invalid credentials');
+            }
+
+            // Update last login
+            await db.query('update', 'users', {
+                data: { last_login: new Date() },
+                where: { id: user.id }
+            });
+
+            return this.createUserResponse(user);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    createUserResponse(user) {
+        return {
+            id: user.id,
+            email: user.email,
+            fullName: user.full_name,
+            role: user.role,
+            department: user.department,
+            isActive: user.is_active,
+            createdAt: user.created_at,
+            lastLogin: user.last_login
+        };
+    }
+
+    createTokenPayload(user) {
+        return {
+            userId: user.id,
+            email: user.email,
+            role: user.role,
+            fullName: user.full_name
+        };
+    }
+}
+
+class AuthError extends Error {
+    constructor(message, code = 'AUTH_ERROR') {
+        super(message);
+        this.name = 'AuthError';
+        this.code = code;
+        this.statusCode = 401;
+    }
+}
+
+const authService = new AuthService();
+
+// Middleware
 const verifyToken = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
-        
+
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({ 
-                status: 'error', 
-                message: 'Access token required'
-            });
+            throw new AuthError('Access token required', 'TOKEN_REQUIRED');
         }
-        
+
         const token = authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, JWT_SECRET);
-        
+        const decoded = authService.verifyToken(token);
+
         const cacheKey = `user:${decoded.userId}`;
         const cachedUser = userCache.get(cacheKey);
-        
+
         if (cachedUser) {
             req.user = cachedUser;
+            req.token = token;
             return next();
         }
-        
-        const userResult = await executeQuery('select', 'users', null, {
+
+        const result = await db.query('select', 'users', {
             where: { id: decoded.userId },
-            select: 'id, email, full_name, role, department, is_active, created_at'
+            select: 'id, email, full_name, role, department, is_active, created_at, last_login'
         });
-        
-        if (userResult.rows.length === 0) {
-            return res.status(401).json({ status: 'error', message: 'User not found' });
+
+        if (result.data.length === 0) {
+            throw new AuthError('User not found', 'USER_NOT_FOUND');
         }
-        
-        if (!userResult.rows[0].is_active) {
-            return res.status(403).json({ status: 'error', message: 'Account deactivated' });
+
+        const user = authService.createUserResponse(result.data[0]);
+
+        if (!user.isActive) {
+            throw new AuthError('Account deactivated', 'ACCOUNT_DEACTIVATED');
         }
-        
-        const userData = {
-            id: userResult.rows[0].id,
-            email: userResult.rows[0].email,
-            fullName: userResult.rows[0].full_name,
-            role: userResult.rows[0].role,
-            department: userResult.rows[0].department,
-            createdAt: userResult.rows[0].created_at
-        };
-        
-        userCache.set(cacheKey, userData, 300000);
-        req.user = userData;
-        
+
+        userCache.set(cacheKey, user, 300000);
+        req.user = user;
+        req.token = token;
+
         next();
     } catch (error) {
         if (error.name === 'TokenExpiredError') {
-            return res.status(401).json({ status: 'error', message: 'Token expired' });
+            return res.status(401).json({
+                status: 'error',
+                code: 'TOKEN_EXPIRED',
+                message: 'Token expired'
+            });
         }
+
         if (error.name === 'JsonWebTokenError') {
-            return res.status(401).json({ status: 'error', message: 'Invalid token' });
+            return res.status(401).json({
+                status: 'error',
+                code: 'INVALID_TOKEN',
+                message: 'Invalid token'
+            });
         }
-        logger.error('Token verification error:', error);
-        res.status(500).json({ status: 'error', message: 'Authentication failed' });
+
+        logger.error('Authentication error:', error);
+        res.status(error.statusCode || 401).json({
+            status: 'error',
+            code: error.code || 'AUTH_FAILED',
+            message: error.message || 'Authentication failed'
+        });
     }
 };
 
-const isAdmin = (req, res, next) => {
-    if (req.user.role !== 'admin') {
-        return res.status(403).json({ 
-            status: 'error', 
-            message: 'Admin access required' 
-        });
-    }
-    next();
+const requireRole = (...roles) => {
+    return (req, res, next) => {
+        if (!req.user) {
+            return res.status(401).json({
+                status: 'error',
+                message: 'Authentication required'
+            });
+        }
+
+        if (!roles.includes(req.user.role)) {
+            return res.status(403).json({
+                status: 'error',
+                code: 'INSUFFICIENT_PERMISSIONS',
+                message: `Required roles: ${roles.join(', ')}`
+            });
+        }
+
+        next();
+    };
 };
 
-const isAdminOrEditor = (req, res, next) => {
-    const allowedRoles = ['admin', 'editor'];
-    if (!allowedRoles.includes(req.user.role)) {
-        return res.status(403).json({ 
-            status: 'error', 
-            message: 'Insufficient permissions' 
-        });
-    }
-    next();
+const requirePermission = (permission) => {
+    const permissions = {
+        admin: ['manage_users', 'manage_content', 'manage_settings'],
+        editor: ['manage_content'],
+        member: ['view_content']
+    };
+
+    return (req, res, next) => {
+        if (!req.user) {
+            return res.status(401).json({
+                status: 'error',
+                message: 'Authentication required'
+            });
+        }
+
+        const userPermissions = permissions[req.user.role] || [];
+        if (!userPermissions.includes(permission)) {
+            return res.status(403).json({
+                status: 'error',
+                code: 'INSUFFICIENT_PERMISSIONS',
+                message: `Required permission: ${permission}`
+            });
+        }
+
+        next();
+    };
 };
 
 // ==================== DATABASE INITIALIZATION ====================
 async function initializeDatabase() {
     try {
-        const { data, error } = await supabase.from('users').select('count', { 
-            count: 'exact', 
-            head: true 
-        });
-        
+        // Test database connection
+        const { error } = await supabase.from('users').select('count').limit(1);
+
         if (error) {
-            logger.error('Supabase connection error:', error);
-            throw error;
+            throw new Error(`Database connection failed: ${error.message}`);
         }
-        
-        logger.info('✅ Database connected successfully');
-        
+
+        logger.info('Database connected successfully');
+
         await createDefaultAdmin();
-        
-        logger.info('✅ Database initialization complete');
+        await createDefaultTables();
+
+        logger.info('Database initialization complete');
     } catch (error) {
-        logger.error('❌ Database initialization failed:', error);
-        process.exit(1);
+        logger.error('Database initialization failed:', error);
+        throw error;
     }
 }
 
 async function createDefaultAdmin() {
     try {
-        const adminEmail = process.env.ADMIN_EMAIL || 'admin@nuesabiu.org';
-        
-        const adminCheck = await executeQuery('select', 'users', null, {
-            where: { email: adminEmail }
+        const adminEmail = process.env.ADMIN_EMAIL;
+
+        if (!adminEmail) {
+            logger.warn('ADMIN_EMAIL not set, skipping admin creation');
+            return;
+        }
+
+        const result = await db.query('select', 'users', {
+            where: { email: adminEmail },
+            select: 'id'
         });
-        
-        if (adminCheck.rows.length === 0) {
-            const adminPassword = process.env.ADMIN_PASSWORD || 'Saint@2468..';
+
+        if (result.data.length === 0) {
+            const adminPassword = process.env.ADMIN_PASSWORD;
+
+            if (!adminPassword) {
+                logger.warn('ADMIN_PASSWORD not set, skipping admin creation');
+                return;
+            }
+
             const hashedPassword = await bcrypt.hash(adminPassword, 12);
-            
+
             const adminData = {
                 email: adminEmail,
                 password_hash: hashedPassword,
@@ -575,162 +924,154 @@ async function createDefaultAdmin() {
                 created_at: new Date(),
                 updated_at: new Date()
             };
-            
-            await executeQuery('insert', 'users', adminData);
-            logger.info(`👑 Admin user created: ${adminEmail}`);
-            logger.info(`🔑 Admin password: ${adminPassword}`);
+
+            await db.query('insert', 'users', { data: adminData });
+            logger.info(`Admin user created: ${adminEmail}`);
         } else {
-            logger.info('✅ Admin user already exists');
+            logger.info('Admin user already exists');
         }
     } catch (error) {
-        logger.error('⚠️ Could not create admin user:', error);
+        logger.error('Could not create admin user:', error);
     }
 }
 
-// ==================== AUTH ROUTES ====================
-app.post('/api/auth/login', async (req, res) => {
+async function createDefaultTables() {
+    const tables = [
+        {
+            name: 'users',
+            columns: [
+                'id UUID PRIMARY KEY DEFAULT gen_random_uuid()',
+                'email VARCHAR(255) UNIQUE NOT NULL',
+                'password_hash VARCHAR(255) NOT NULL',
+                'full_name VARCHAR(255) NOT NULL',
+                'username VARCHAR(100) UNIQUE',
+                'role VARCHAR(50) DEFAULT \'member\'',
+                'department VARCHAR(100)',
+                'is_active BOOLEAN DEFAULT true',
+                'profile_picture VARCHAR(500)',
+                'last_login TIMESTAMPTZ',
+                'created_at TIMESTAMPTZ DEFAULT NOW()',
+                'updated_at TIMESTAMPTZ DEFAULT NOW()'
+            ]
+        },
+        {
+            name: 'executive_members',
+            columns: [
+                'id UUID PRIMARY KEY DEFAULT gen_random_uuid()',
+                'full_name VARCHAR(255) NOT NULL',
+                'position VARCHAR(100) NOT NULL',
+                'department VARCHAR(100)',
+                'level VARCHAR(50)',
+                'email VARCHAR(255)',
+                'phone VARCHAR(50)',
+                'bio TEXT',
+                'committee VARCHAR(100)',
+                'display_order INTEGER DEFAULT 0',
+                'status VARCHAR(50) DEFAULT \'active\'',
+                'social_links JSONB DEFAULT \'{}\'',
+                'profile_image VARCHAR(500)',
+                'created_at TIMESTAMPTZ DEFAULT NOW()',
+                'updated_at TIMESTAMPTZ DEFAULT NOW()'
+            ]
+        }
+    ];
+
+    for (const table of tables) {
+        try {
+            // Note: In Supabase, tables are created via SQL or Dashboard
+            // This is just a placeholder for schema validation
+            logger.info(`Checking table: ${table.name}`);
+        } catch (error) {
+            logger.warn(`Table ${table.name} may not exist: ${error.message}`);
+        }
+    }
+}
+
+// ==================== ENHANCED AUTH ROUTES ====================
+const authRouter = express.Router();
+
+authRouter.post('/login', async (req, res) => {
     try {
-        const { email, password } = req.body;
-        
+        const { email, password, rememberMe } = req.body;
+
         if (!email || !password) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'Email and password are required' 
+            return res.status(400).json({
+                status: 'error',
+                code: 'VALIDATION_ERROR',
+                message: 'Email and password are required'
             });
         }
-        
-        if (!email.includes('@')) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'Invalid email format' 
-            });
-        }
-        
-        const result = await executeQuery('select', 'users', null, {
-            where: { email: email.toLowerCase().trim() },
-            select: 'id, email, password_hash, full_name, role, department, is_active, created_at'
-        });
-        
-        if (result.rows.length === 0) {
-            return res.status(401).json({ 
-                status: 'error', 
-                message: 'Invalid credentials' 
-            });
-        }
-        
-        const user = result.rows[0];
-        
-        if (!user.is_active) {
-            return res.status(403).json({ 
-                status: 'error', 
-                message: 'Account is deactivated. Please contact administrator.' 
-            });
-        }
-        
-        const validPassword = await bcrypt.compare(password, user.password_hash);
-        
-        if (!validPassword) {
-            return res.status(401).json({ 
-                status: 'error', 
-                message: 'Invalid credentials' 
-            });
-        }
-        
-        const tokenPayload = {
-            userId: user.id,
-            email: user.email,
-            role: user.role,
-            fullName: user.full_name
-        };
-        
-        const token = jwt.sign(tokenPayload, JWT_SECRET, { 
-            expiresIn: JWT_EXPIRE 
-        });
-        
-        const userResponse = {
-            id: user.id,
-            email: user.email,
-            fullName: user.full_name,
-            role: user.role,
-            department: user.department,
-            createdAt: user.created_at
-        };
-        
-        userCache.set(`user:${user.id}`, userResponse, 300000);
-        
+
+        const user = await authService.authenticateUser(email, password);
+        const tokenPayload = authService.createTokenPayload(user);
+        const token = authService.generateToken(tokenPayload);
+
+        userCache.set(`user:${user.id}`, user, rememberMe ? 604800000 : 300000); // 7 days or 5 minutes
+
+        // Set secure cookie
         res.cookie('auth_token', token, {
             httpOnly: true,
             secure: isProduction,
             sameSite: 'strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000
+            maxAge: rememberMe ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000,
+            path: '/',
+            domain: isProduction ? new URL(process.env.FRONTEND_URL || '').hostname : undefined
         });
-        
+
         res.json({
             status: 'success',
             data: {
-                user: userResponse,
+                user,
                 token,
                 expiresIn: JWT_EXPIRE
             },
             message: 'Login successful'
         });
-        
     } catch (error) {
-        logger.error('Login error:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Login failed. Please try again.' 
+        logger.error('Login failed:', { email: req.body.email, error: error.message });
+
+        res.status(error.statusCode || 500).json({
+            status: 'error',
+            code: error.code || 'LOGIN_FAILED',
+            message: error.message || 'Login failed'
         });
     }
 });
 
-app.post('/api/auth/logout', verifyToken, async (req, res) => {
+authRouter.post('/logout', verifyToken, async (req, res) => {
     try {
         userCache.delete(`user:${req.user.id}`);
-        
+        dataCache.clear();
+
         res.clearCookie('auth_token');
-        
+
         res.json({
             status: 'success',
             message: 'Logged out successfully'
         });
     } catch (error) {
         logger.error('Logout error:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Logout failed' 
-        });
-    }
-});
-
-app.get('/api/auth/verify', verifyToken, async (req, res) => {
-    try {
-        res.json({
-            status: 'success',
-            data: req.user,
-            message: 'Token is valid'
-        });
-    } catch (error) {
-        res.status(401).json({
+        res.status(500).json({
             status: 'error',
-            message: 'Token verification failed'
+            message: 'Logout failed'
         });
     }
 });
 
-app.post('/api/auth/refresh', verifyToken, async (req, res) => {
+authRouter.get('/verify', verifyToken, async (req, res) => {
+    res.json({
+        status: 'success',
+        data: req.user,
+        message: 'Token is valid'
+    });
+});
+
+authRouter.post('/refresh', verifyToken, async (req, res) => {
     try {
-        const newToken = jwt.sign(
-            {
-                userId: req.user.id,
-                email: req.user.email,
-                role: req.user.role,
-                fullName: req.user.fullName
-            },
-            JWT_SECRET,
-            { expiresIn: JWT_EXPIRE }
+        const newToken = authService.generateToken(
+            authService.createTokenPayload(req.user)
         );
-        
+
         res.json({
             status: 'success',
             data: {
@@ -748,298 +1089,363 @@ app.post('/api/auth/refresh', verifyToken, async (req, res) => {
     }
 });
 
-// ==================== USER MANAGEMENT (ADMIN ONLY) ====================
-app.get('/api/users', verifyToken, isAdmin, async (req, res) => {
+// Password reset endpoints
+authRouter.post('/forgot-password', async (req, res) => {
     try {
-        const { page = 1, limit = 20, role, department } = req.query;
-        const offset = (page - 1) * limit;
-        
-        let filters = {
-            order: { column: 'created_at', ascending: false },
-            limit: parseInt(limit),
-            offset: parseInt(offset),
-            select: 'id, email, full_name, role, department, is_active, created_at, updated_at'
-        };
-        
-        if (role && role !== 'all') {
-            filters.where = { ...filters.where, role };
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Email is required'
+            });
         }
-        
-        if (department && department !== 'all') {
-            filters.where = { ...filters.where, department };
-        }
-        
-        const [usersResult, totalResult] = await Promise.all([
-            executeQuery('select', 'users', null, filters),
-            executeQuery('count', 'users', null, filters.where ? { where: filters.where } : {})
-        ]);
-        
-        res.setHeader('X-Total-Count', totalResult.count || 0);
-        res.setHeader('X-Page-Count', Math.ceil((totalResult.count || 0) / limit));
-        
+
+        // In production, send reset email
+        // For now, just return success
         res.json({
             status: 'success',
-            data: usersResult.rows,
+            message: 'If an account exists with this email, you will receive a reset link'
+        });
+    } catch (error) {
+        logger.error('Forgot password error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to process request'
+        });
+    }
+});
+
+// Mount auth router
+app.use('/api/auth', authRouter);
+
+// ==================== ENHANCED USER MANAGEMENT ====================
+const userRouter = express.Router();
+
+userRouter.get('/', verifyToken, requireRole('admin'), async (req, res) => {
+    try {
+        const {
+            page = 1,
+            limit = 20,
+            role,
+            department,
+            search,
+            sort = 'created_at',
+            order = 'desc'
+        } = req.query;
+
+        const offset = (page - 1) * limit;
+
+        let where = {};
+        if (role && role !== 'all') where.role = role;
+        if (department && department !== 'all') where.department = department;
+        if (search) {
+            where = {
+                ...where,
+                full_name: { operator: 'ilike', value: `%${search}%` }
+            };
+        }
+
+        const [usersResult, totalResult] = await Promise.all([
+            db.query('select', 'users', {
+                where,
+                select: 'id, email, full_name, role, department, is_active, created_at, updated_at, last_login',
+                order: { column: sort, ascending: order === 'asc' },
+                limit: parseInt(limit),
+                offset: parseInt(offset)
+            }),
+            db.query('select', 'users', {
+                where,
+                count: true
+            })
+        ]);
+
+        res.setHeader('X-Total-Count', totalResult.count || 0);
+        res.setHeader('X-Page-Count', Math.ceil((totalResult.count || 0) / limit));
+
+        res.json({
+            status: 'success',
+            data: usersResult.data,
             pagination: {
                 page: parseInt(page),
                 limit: parseInt(limit),
                 total: totalResult.count || 0,
-                pages: Math.ceil((totalResult.count || 0) / limit)
+                pages: Math.ceil((totalResult.count || 0) / limit),
+                hasMore: (parseInt(page) * parseInt(limit)) < (totalResult.count || 0)
             }
         });
     } catch (error) {
         logger.error('Error fetching users:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to fetch users' 
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch users'
         });
     }
 });
 
-app.post('/api/users', verifyToken, isAdmin, async (req, res) => {
+userRouter.post('/', verifyToken, requireRole('admin'), async (req, res) => {
     try {
-        const { 
-            email, 
-            password, 
-            full_name, 
-            department, 
-            role, 
-            is_active = true 
+        const {
+            email,
+            password,
+            full_name,
+            department,
+            role = 'member',
+            is_active = true
         } = req.body;
-        
-        if (!email || !password || !full_name || !role) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'Email, password, full name, and role are required' 
+
+        // Validation
+        if (!email || !password || !full_name) {
+            return res.status(400).json({
+                status: 'error',
+                code: 'VALIDATION_ERROR',
+                message: 'Email, password, and full name are required'
             });
         }
-        
-        if (!email.includes('@')) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'Invalid email format' 
+
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Invalid email format'
             });
         }
-        
-        if (password.length < 6) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'Password must be at least 6 characters long' 
+
+        if (password.length < 8) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Password must be at least 8 characters long'
             });
         }
-        
-        const existingUser = await executeQuery('select', 'users', null, {
-            where: { email: email.toLowerCase().trim() }
+
+        // Check existing user
+        const existing = await db.query('select', 'users', {
+            where: { email: email.toLowerCase() },
+            select: 'id'
         });
-        
-        if (existingUser.rows.length > 0) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'User with this email already exists' 
+
+        if (existing.data.length > 0) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'User with this email already exists'
             });
         }
-        
+
+        // Create user
         const hashedPassword = await bcrypt.hash(password, 12);
-        
+        const username = email.split('@')[0].toLowerCase();
+
         const userData = {
-            email: email.toLowerCase().trim(),
+            email: email.toLowerCase(),
             password_hash: hashedPassword,
             full_name: full_name.trim(),
+            username,
             department: department || null,
-            username: email.split('@')[0].toLowerCase(),
-            role: role,
-            is_active: is_active,
+            role,
+            is_active,
             created_at: new Date(),
             updated_at: new Date()
         };
-        
-        const result = await executeQuery('insert', 'users', userData);
-        
-        const user = result.rows[0];
-        const userResponse = {
-            id: user.id,
-            email: user.email,
-            fullName: user.full_name,
-            role: user.role,
-            department: user.department,
-            isActive: user.is_active,
-            createdAt: user.created_at
-        };
-        
+
+        const result = await db.query('insert', 'users', { data: userData });
+
+        const user = authService.createUserResponse(result.data[0]);
+
         res.status(201).json({
             status: 'success',
-            data: userResponse,
+            data: user,
             message: 'User created successfully'
         });
     } catch (error) {
         logger.error('Error creating user:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to create user' 
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to create user'
         });
     }
 });
 
-app.put('/api/users/:id', verifyToken, isAdmin, async (req, res) => {
+userRouter.get('/:id', verifyToken, async (req, res) => {
     try {
-        const { 
-            full_name, 
-            department, 
-            role, 
+        // Users can view their own profile, admins can view any
+        if (req.user.role !== 'admin' && req.user.id !== req.params.id) {
+            return res.status(403).json({
+                status: 'error',
+                message: 'Access denied'
+            });
+        }
+
+        const result = await db.query('select', 'users', {
+            where: { id: req.params.id },
+            select: 'id, email, full_name, role, department, is_active, created_at, updated_at, last_login, profile_picture'
+        });
+
+        if (result.data.length === 0) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'User not found'
+            });
+        }
+
+        res.json({
+            status: 'success',
+            data: authService.createUserResponse(result.data[0])
+        });
+    } catch (error) {
+        logger.error('Error fetching user:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch user'
+        });
+    }
+});
+
+userRouter.put('/:id', verifyToken, async (req, res) => {
+    try {
+        // Check permissions
+        if (req.user.role !== 'admin' && req.user.id !== req.params.id) {
+            return res.status(403).json({
+                status: 'error',
+                message: 'Access denied'
+            });
+        }
+
+        const {
+            full_name,
+            department,
+            role,
             is_active,
-            password 
+            password
         } = req.body;
-        
+
+        // Admins can update role and status
         const updateData = {
             full_name: full_name ? full_name.trim() : undefined,
-            department: department || undefined,
-            role: role || undefined,
-            is_active: is_active !== undefined ? is_active : undefined,
+            department: department !== undefined ? department : undefined,
             updated_at: new Date()
         };
-        
-        if (password && password.length >= 6) {
+
+        if (req.user.role === 'admin') {
+            if (role !== undefined) updateData.role = role;
+            if (is_active !== undefined) updateData.is_active = is_active;
+        }
+
+        if (password) {
+            if (password.length < 8) {
+                return res.status(400).json({
+                    status: 'error',
+                    message: 'Password must be at least 8 characters long'
+                });
+            }
             updateData.password_hash = await bcrypt.hash(password, 12);
         }
-        
+
         const cleanUpdateData = Object.fromEntries(
             Object.entries(updateData).filter(([_, v]) => v !== undefined)
         );
-        
-        if (Object.keys(cleanUpdateData).length === 0) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'No valid fields to update' 
-            });
-        }
-        
-        const result = await executeQuery('update', 'users', cleanUpdateData, {
+
+        const result = await db.query('update', 'users', {
+            data: cleanUpdateData,
             where: { id: req.params.id }
         });
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({ 
-                status: 'error', 
-                message: 'User not found' 
+
+        if (result.data.length === 0) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'User not found'
             });
         }
-        
+
+        // Clear caches
         userCache.delete(`user:${req.params.id}`);
-        
-        const user = result.rows[0];
-        const userResponse = {
-            id: user.id,
-            email: user.email,
-            fullName: user.full_name,
-            role: user.role,
-            department: user.department,
-            isActive: user.is_active,
-            createdAt: user.created_at
-        };
-        
+        if (req.user.id === req.params.id) {
+            req.user = authService.createUserResponse(result.data[0]);
+        }
+
         res.json({
             status: 'success',
-            data: userResponse,
+            data: authService.createUserResponse(result.data[0]),
             message: 'User updated successfully'
         });
     } catch (error) {
         logger.error('Error updating user:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to update user' 
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to update user'
         });
     }
 });
 
-app.delete('/api/users/:id', verifyToken, isAdmin, async (req, res) => {
+userRouter.delete('/:id', verifyToken, requireRole('admin'), async (req, res) => {
     try {
         if (req.params.id === req.user.id) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'Cannot delete your own account' 
+            return res.status(400).json({
+                status: 'error',
+                message: 'Cannot delete your own account'
             });
         }
-        
-        const result = await executeQuery('delete', 'users', null, {
+
+        const result = await db.query('delete', 'users', {
             where: { id: req.params.id }
         });
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({ 
-                status: 'error', 
-                message: 'User not found' 
+
+        if (result.data.length === 0) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'User not found'
             });
         }
-        
+
         userCache.delete(`user:${req.params.id}`);
-        
+
         res.json({
             status: 'success',
             message: 'User deleted successfully'
         });
     } catch (error) {
         logger.error('Error deleting user:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to delete user' 
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to delete user'
         });
     }
 });
 
+app.use('/api/users', userRouter);
+
 // ==================== PROFILE ROUTES ====================
 app.get('/api/profile', verifyToken, async (req, res) => {
-    try {
-        res.json({
-            status: 'success',
-            data: req.user
-        });
-    } catch (error) {
-        logger.error('Error fetching profile:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to fetch profile' 
-        });
-    }
+    res.json({
+        status: 'success',
+        data: req.user
+    });
 });
 
 app.put('/api/profile', verifyToken, async (req, res) => {
     try {
         const { full_name, department } = req.body;
-        
+
         if (!full_name) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'Full name is required' 
+            return res.status(400).json({
+                status: 'error',
+                message: 'Full name is required'
             });
         }
-        
+
         const updateData = {
             full_name: full_name.trim(),
-            department: department || undefined,
+            department: department || null,
             updated_at: new Date()
         };
-        
-        const result = await executeQuery('update', 'users', updateData, {
+
+        const result = await db.query('update', 'users', {
+            data: updateData,
             where: { id: req.user.id }
         });
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({ 
-                status: 'error', 
-                message: 'User not found' 
-            });
-        }
-        
-        userCache.delete(`user:${req.user.id}`);
-        
-        const updatedUser = {
-            ...req.user,
-            fullName: full_name.trim(),
-            department: department
-        };
-        
+
+        const updatedUser = authService.createUserResponse(result.data[0]);
         userCache.set(`user:${req.user.id}`, updatedUser, 300000);
-        
+        req.user = updatedUser;
+
         res.json({
             status: 'success',
             data: updatedUser,
@@ -1047,9 +1453,9 @@ app.put('/api/profile', verifyToken, async (req, res) => {
         });
     } catch (error) {
         logger.error('Error updating profile:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to update profile' 
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to update profile'
         });
     }
 });
@@ -1057,152 +1463,124 @@ app.put('/api/profile', verifyToken, async (req, res) => {
 app.put('/api/profile/password', verifyToken, async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
-        
+
         if (!currentPassword || !newPassword) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'Current password and new password are required' 
+            return res.status(400).json({
+                status: 'error',
+                message: 'Current password and new password are required'
             });
         }
-        
-        if (newPassword.length < 6) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'New password must be at least 6 characters long' 
+
+        if (newPassword.length < 8) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'New password must be at least 8 characters long'
             });
         }
-        
-        const userResult = await executeQuery('select', 'users', null, {
+
+        // Verify current password
+        const result = await db.query('select', 'users', {
             where: { id: req.user.id },
             select: 'password_hash'
         });
-        
-        if (userResult.rows.length === 0) {
-            return res.status(404).json({ 
-                status: 'error', 
-                message: 'User not found' 
-            });
-        }
-        
-        const validPassword = await bcrypt.compare(currentPassword, userResult.rows[0].password_hash);
-        
+
+        const validPassword = await bcrypt.compare(currentPassword, result.data[0].password_hash);
         if (!validPassword) {
-            return res.status(401).json({ 
-                status: 'error', 
-                message: 'Current password is incorrect' 
+            return res.status(401).json({
+                status: 'error',
+                message: 'Current password is incorrect'
             });
         }
-        
+
+        // Update password
         const hashedPassword = await bcrypt.hash(newPassword, 12);
-        
-        await executeQuery('update', 'users', {
-            password_hash: hashedPassword,
-            updated_at: new Date()
-        }, {
+        await db.query('update', 'users', {
+            data: { password_hash: hashedPassword, updated_at: new Date() },
             where: { id: req.user.id }
         });
-        
+
         res.json({
             status: 'success',
             message: 'Password updated successfully'
         });
     } catch (error) {
         logger.error('Error updating password:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to update password' 
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to update password'
         });
     }
 });
 
-// ==================== MEMBERS ROUTES ====================
-app.get('/api/members', async (req, res) => {
+// ==================== ENHANCED MEMBERS ROUTES ====================
+const memberRouter = express.Router();
+
+memberRouter.get('/', cacheMiddleware(120), async (req, res) => {
     try {
-        const cacheKey = 'members:all';
-        const cachedData = dataCache.get(cacheKey);
-        
-        if (cachedData) {
-            return res.json({
-                status: 'success',
-                data: cachedData,
-                cached: true
-            });
-        }
-        
-        const result = await executeQuery('select', 'executive_members', null, {
-            where: { status: 'active' },
-            order: { column: 'display_order', ascending: true }
+        const { committee, status = 'active', sort = 'display_order', order = 'asc' } = req.query;
+
+        let where = { status };
+        if (committee && committee !== 'all') where.committee = committee;
+
+        const result = await db.query('select', 'executive_members', {
+            where,
+            order: { column: sort, ascending: order === 'asc' }
         });
-        
-        dataCache.set(cacheKey, result.rows, 120000);
-        
+
         res.json({
             status: 'success',
-            data: result.rows,
-            count: result.rowCount
+            data: result.data,
+            count: result.data.length
         });
     } catch (error) {
         logger.error('Error fetching members:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to fetch members' 
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch members'
         });
     }
 });
 
-app.get('/api/members/:id', async (req, res) => {
+memberRouter.get('/:id', cacheMiddleware(300), async (req, res) => {
     try {
-        const cacheKey = `member:${req.params.id}`;
-        const cachedData = dataCache.get(cacheKey);
-        
-        if (cachedData) {
-            return res.json({
-                status: 'success',
-                data: cachedData,
-                cached: true
-            });
-        }
-        
-        const result = await executeQuery('select', 'executive_members', null, {
+        const result = await db.query('select', 'executive_members', {
             where: { id: req.params.id }
         });
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({ 
-                status: 'error', 
-                message: 'Member not found' 
+
+        if (result.data.length === 0) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Member not found'
             });
         }
-        
-        dataCache.set(cacheKey, result.rows[0], 300000);
-        
+
         res.json({
             status: 'success',
-            data: result.rows[0]
+            data: result.data[0]
         });
     } catch (error) {
         logger.error('Error fetching member:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to fetch member' 
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch member'
         });
     }
 });
 
-app.post('/api/members', verifyToken, isAdminOrEditor, async (req, res) => {
+memberRouter.post('/', verifyToken, requireRole('admin', 'editor'), upload.single('profile_image'), async (req, res) => {
     try {
         const {
             full_name, position, department, level, email, phone,
             bio, committee, display_order, status, social_links
         } = req.body;
-        
+
         if (!full_name || !position) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'Full name and position are required' 
+            return res.status(400).json({
+                status: 'error',
+                message: 'Full name and position are required'
             });
         }
-        
+
         const memberData = {
             full_name: full_name.trim(),
             position: position.trim(),
@@ -1214,1270 +1592,451 @@ app.post('/api/members', verifyToken, isAdminOrEditor, async (req, res) => {
             committee: committee ? committee.trim() : null,
             display_order: display_order || 0,
             status: status || 'active',
-            social_links: social_links || {},
+            social_links: social_links ? JSON.parse(social_links) : {},
             created_at: new Date(),
             updated_at: new Date()
         };
-        
-        const result = await executeQuery('insert', 'executive_members', memberData);
-        
-        dataCache.clear();
-        
+
+        if (req.file) {
+            memberData.profile_image = `/uploads/${req.file.filename}`;
+        }
+
+        const result = await db.query('insert', 'executive_members', { data: memberData });
+
+        cacheManager.invalidate(/members/);
+
         res.status(201).json({
             status: 'success',
-            data: result.rows[0],
+            data: result.data[0],
             message: 'Member created successfully'
         });
     } catch (error) {
         logger.error('Error creating member:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to create member' 
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to create member'
         });
     }
 });
 
-app.put('/api/members/:id', verifyToken, isAdminOrEditor, async (req, res) => {
+memberRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), upload.single('profile_image'), async (req, res) => {
     try {
-        const {
-            full_name, position, department, level, email, phone,
-            bio, committee, display_order, status, social_links
-        } = req.body;
-        
-        const memberData = {
-            full_name: full_name ? full_name.trim() : undefined,
-            position: position ? position.trim() : undefined,
-            department: department !== undefined ? (department ? department.trim() : null) : undefined,
-            level: level !== undefined ? (level ? level.trim() : null) : undefined,
-            email: email !== undefined ? (email ? email.toLowerCase().trim() : null) : undefined,
-            phone: phone !== undefined ? (phone ? phone.trim() : null) : undefined,
-            bio: bio !== undefined ? (bio ? bio.trim() : null) : undefined,
-            committee: committee !== undefined ? (committee ? committee.trim() : null) : undefined,
-            display_order: display_order !== undefined ? display_order : undefined,
-            status: status !== undefined ? status : undefined,
-            social_links: social_links !== undefined ? social_links : undefined,
-            updated_at: new Date()
-        };
-        
-        const cleanMemberData = Object.fromEntries(
-            Object.entries(memberData).filter(([_, v]) => v !== undefined)
-        );
-        
-        if (Object.keys(cleanMemberData).length === 0) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'No valid fields to update' 
-            });
+        const memberData = {};
+        const fields = ['full_name', 'position', 'department', 'level', 'email', 'phone', 'bio', 'committee', 'display_order', 'status'];
+
+        fields.forEach(field => {
+            if (req.body[field] !== undefined) {
+                if (typeof req.body[field] === 'string') {
+                    memberData[field] = req.body[field].trim();
+                } else {
+                    memberData[field] = req.body[field];
+                }
+            }
+        });
+
+        if (req.body.social_links) {
+            memberData.social_links = JSON.parse(req.body.social_links);
         }
-        
-        const result = await executeQuery('update', 'executive_members', cleanMemberData, {
+
+        if (req.file) {
+            memberData.profile_image = `/uploads/${req.file.filename}`;
+        }
+
+        memberData.updated_at = new Date();
+
+        const result = await db.query('update', 'executive_members', {
+            data: memberData,
             where: { id: req.params.id }
         });
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({ 
-                status: 'error', 
-                message: 'Member not found' 
+
+        if (result.data.length === 0) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Member not found'
             });
         }
-        
-        dataCache.delete(`member:${req.params.id}`);
-        dataCache.delete('members:all');
-        
+
+        cacheManager.invalidate(/members/);
+
         res.json({
             status: 'success',
-            data: result.rows[0],
+            data: result.data[0],
             message: 'Member updated successfully'
         });
     } catch (error) {
         logger.error('Error updating member:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to update member' 
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to update member'
         });
     }
 });
 
-app.delete('/api/members/:id', verifyToken, isAdminOrEditor, async (req, res) => {
+memberRouter.delete('/:id', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
     try {
-        const result = await executeQuery('delete', 'executive_members', null, {
+        const result = await db.query('delete', 'executive_members', {
             where: { id: req.params.id }
         });
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({ 
-                status: 'error', 
-                message: 'Member not found' 
+
+        if (result.data.length === 0) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Member not found'
             });
         }
-        
-        dataCache.delete(`member:${req.params.id}`);
-        dataCache.delete('members:all');
-        
+
+        cacheManager.invalidate(/members/);
+
         res.json({
             status: 'success',
             message: 'Member deleted successfully'
         });
     } catch (error) {
         logger.error('Error deleting member:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to delete member' 
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to delete member'
         });
     }
 });
 
-// ==================== EVENTS ROUTES ====================
-app.get('/api/events', async (req, res) => {
-    try {
-        const { category, status, upcoming, limit = 50 } = req.query;
-        
-        const cacheKey = `events:${category || 'all'}:${status || 'all'}:${upcoming || 'all'}:${limit}`;
-        const cachedData = dataCache.get(cacheKey);
-        
-        if (cachedData) {
-            return res.json({
-                status: 'success',
-                data: cachedData,
-                cached: true
-            });
-        }
-        
-        let filters = {
-            order: { column: 'date', ascending: true },
-            limit: parseInt(limit)
-        };
-        
-        if (category && category !== 'all') {
-            filters.where = { ...filters.where, category };
-        }
-        
-        if (status && status !== 'all') {
-            filters.where = { ...filters.where, status };
-        }
-        
-        const result = await executeQuery('select', 'events', null, filters);
-        
-        let events = result.rows;
-        
-        if (upcoming === 'true') {
-            const now = new Date();
-            events = events.filter(event => new Date(event.date) >= now);
-        }
-        
-        dataCache.set(cacheKey, events, 60000);
-        
-        res.json({
-            status: 'success',
-            data: events,
-            count: events.length
-        });
-    } catch (error) {
-        logger.error('Error fetching events:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to fetch events' 
-        });
-    }
-});
+app.use('/api/members', memberRouter);
 
-app.get('/api/events/upcoming', async (req, res) => {
+// ==================== FILE MANAGEMENT ROUTES ====================
+app.post('/api/upload', verifyToken, requireRole('admin', 'editor'), upload.single('file'), async (req, res) => {
     try {
-        const cacheKey = 'events:upcoming';
-        const cachedData = dataCache.get(cacheKey);
-        
-        if (cachedData) {
-            return res.json({
-                status: 'success',
-                data: cachedData,
-                cached: true
-            });
-        }
-        
-        const result = await executeQuery('select', 'events', null, {
-            order: { column: 'date', ascending: true },
-            limit: 10
-        });
-        
-        const now = new Date();
-        const upcomingEvents = result.rows
-            .filter(event => new Date(event.date) >= now && event.status === 'upcoming')
-            .slice(0, 5);
-        
-        dataCache.set(cacheKey, upcomingEvents, 60000);
-        
-        res.json({
-            status: 'success',
-            data: upcomingEvents,
-            count: upcomingEvents.length
-        });
-    } catch (error) {
-        logger.error('Error fetching upcoming events:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to fetch upcoming events' 
-        });
-    }
-});
-
-app.get('/api/events/:id', async (req, res) => {
-    try {
-        const cacheKey = `event:${req.params.id}`;
-        const cachedData = dataCache.get(cacheKey);
-        
-        if (cachedData) {
-            return res.json({
-                status: 'success',
-                data: cachedData,
-                cached: true
-            });
-        }
-        
-        const result = await executeQuery('select', 'events', null, {
-            where: { id: req.params.id }
-        });
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({ 
-                status: 'error', 
-                message: 'Event not found' 
-            });
-        }
-        
-        dataCache.set(cacheKey, result.rows[0], 300000);
-        
-        res.json({
-            status: 'success',
-            data: result.rows[0]
-        });
-    } catch (error) {
-        logger.error('Error fetching event:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to fetch event' 
-        });
-    }
-});
-
-app.post('/api/events', verifyToken, isAdminOrEditor, async (req, res) => {
-    try {
-        const {
-            title, description, category, date, start_time, end_time,
-            location, organizer, max_participants, status
-        } = req.body;
-        
-        if (!title || !category || !date) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'Title, category, and date are required' 
-            });
-        }
-        
-        const eventData = {
-            title: title.trim(),
-            description: description ? description.trim() : null,
-            category: category.trim(),
-            date: new Date(date),
-            start_time: start_time || null,
-            end_time: end_time || null,
-            location: location ? location.trim() : null,
-            organizer: organizer ? organizer.trim() : null,
-            max_participants: max_participants ? parseInt(max_participants) : null,
-            status: status || 'upcoming',
-            created_at: new Date(),
-            updated_at: new Date()
-        };
-        
-        const result = await executeQuery('insert', 'events', eventData);
-        
-        dataCache.clear();
-        
-        res.status(201).json({
-            status: 'success',
-            data: result.rows[0],
-            message: 'Event created successfully'
-        });
-    } catch (error) {
-        logger.error('Error creating event:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to create event' 
-        });
-    }
-});
-
-app.put('/api/events/:id', verifyToken, isAdminOrEditor, async (req, res) => {
-    try {
-        const {
-            title, description, category, date, start_time, end_time,
-            location, organizer, max_participants, status
-        } = req.body;
-        
-        const eventData = {
-            title: title ? title.trim() : undefined,
-            description: description !== undefined ? (description ? description.trim() : null) : undefined,
-            category: category ? category.trim() : undefined,
-            date: date ? new Date(date) : undefined,
-            start_time: start_time !== undefined ? start_time : undefined,
-            end_time: end_time !== undefined ? end_time : undefined,
-            location: location !== undefined ? (location ? location.trim() : null) : undefined,
-            organizer: organizer !== undefined ? (organizer ? organizer.trim() : null) : undefined,
-            max_participants: max_participants !== undefined ? (max_participants ? parseInt(max_participants) : null) : undefined,
-            status: status !== undefined ? status : undefined,
-            updated_at: new Date()
-        };
-        
-        const cleanEventData = Object.fromEntries(
-            Object.entries(eventData).filter(([_, v]) => v !== undefined)
-        );
-        
-        if (Object.keys(cleanEventData).length === 0) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'No valid fields to update' 
-            });
-        }
-        
-        const result = await executeQuery('update', 'events', cleanEventData, {
-            where: { id: req.params.id }
-        });
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({ 
-                status: 'error', 
-                message: 'Event not found' 
-            });
-        }
-        
-        dataCache.delete(`event:${req.params.id}`);
-        dataCache.delete('events:upcoming');
-        
-        res.json({
-            status: 'success',
-            data: result.rows[0],
-            message: 'Event updated successfully'
-        });
-    } catch (error) {
-        logger.error('Error updating event:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to update event' 
-        });
-    }
-});
-
-app.delete('/api/events/:id', verifyToken, isAdminOrEditor, async (req, res) => {
-    try {
-        const result = await executeQuery('delete', 'events', null, {
-            where: { id: req.params.id }
-        });
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({ 
-                status: 'error', 
-                message: 'Event not found' 
-            });
-        }
-        
-        dataCache.delete(`event:${req.params.id}`);
-        dataCache.delete('events:upcoming');
-        
-        res.json({
-            status: 'success',
-            message: 'Event deleted successfully'
-        });
-    } catch (error) {
-        logger.error('Error deleting event:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to delete event' 
-        });
-    }
-});
-
-// ==================== ARTICLES ROUTES ====================
-app.get('/api/articles', async (req, res) => {
-    try {
-        const { category, status, page = 1, limit = 20 } = req.query;
-        const offset = (page - 1) * limit;
-        
-        const cacheKey = `articles:${category || 'all'}:${status || 'all'}:${page}:${limit}`;
-        const cachedData = dataCache.get(cacheKey);
-        
-        if (cachedData) {
-            return res.json({
-                status: 'success',
-                data: cachedData.data,
-                pagination: cachedData.pagination,
-                cached: true
-            });
-        }
-        
-        let filters = {
-            order: { column: 'created_at', ascending: false },
-            limit: parseInt(limit),
-            offset: parseInt(offset)
-        };
-        
-        if (category && category !== 'all') {
-            filters.where = { ...filters.where, category };
-        }
-        
-        if (status === 'published') {
-            filters.where = { ...filters.where, is_published: true };
-        } else if (status === 'draft') {
-            filters.where = { ...filters.where, is_published: false };
-        } else if (status && status !== 'all') {
-            filters.where = { ...filters.where, status };
-        }
-        
-        const [articlesResult, totalResult] = await Promise.all([
-            executeQuery('select', 'articles', null, filters),
-            executeQuery('count', 'articles', null, filters.where ? { where: filters.where } : {})
-        ]);
-        
-        const responseData = {
-            data: articlesResult.rows,
-            pagination: {
-                page: parseInt(page),
-                limit: parseInt(limit),
-                total: totalResult.count || 0,
-                pages: Math.ceil((totalResult.count || 0) / limit)
-            }
-        };
-        
-        dataCache.set(cacheKey, responseData, 60000);
-        
-        res.setHeader('X-Total-Count', totalResult.count || 0);
-        res.setHeader('X-Page-Count', Math.ceil((totalResult.count || 0) / limit));
-        
-        res.json({
-            status: 'success',
-            ...responseData
-        });
-    } catch (error) {
-        logger.error('Error fetching articles:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to fetch articles' 
-        });
-    }
-});
-
-app.get('/api/articles/:id', async (req, res) => {
-    try {
-        const cacheKey = `article:${req.params.id}`;
-        const cachedData = dataCache.get(cacheKey);
-        
-        if (cachedData) {
-            return res.json({
-                status: 'success',
-                data: cachedData,
-                cached: true
-            });
-        }
-        
-        const result = await executeQuery('select', 'articles', null, {
-            where: { id: req.params.id }
-        });
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({ 
-                status: 'error', 
-                message: 'Article not found' 
-            });
-        }
-        
-        dataCache.set(cacheKey, result.rows[0], 300000);
-        
-        res.json({
-            status: 'success',
-            data: result.rows[0]
-        });
-    } catch (error) {
-        logger.error('Error fetching article:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to fetch article' 
-        });
-    }
-});
-
-app.post('/api/articles', verifyToken, isAdminOrEditor, async (req, res) => {
-    try {
-        const {
-            title, excerpt, content, author, category,
-            tags, status
-        } = req.body;
-        
-        if (!title || !content) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'Title and content are required' 
-            });
-        }
-        
-        const slug = title.toLowerCase()
-            .replace(/[^a-zA-Z0-9\s]/g, '')
-            .replace(/\s+/g, '-')
-            .substring(0, 200);
-        
-        const isPublished = status === 'published';
-        
-        const articleData = {
-            title: title.trim(),
-            slug,
-            excerpt: excerpt ? excerpt.trim() : null,
-            content: content.trim(),
-            author: author ? author.trim() : null,
-            category: category ? category.trim() : null,
-            tags: tags || [],
-            status: status || 'draft',
-            published_at: isPublished ? new Date() : null,
-            is_published: isPublished,
-            created_at: new Date(),
-            updated_at: new Date()
-        };
-        
-        const result = await executeQuery('insert', 'articles', articleData);
-        
-        dataCache.clear();
-        
-        res.status(201).json({
-            status: 'success',
-            data: result.rows[0],
-            message: 'Article created successfully'
-        });
-    } catch (error) {
-        logger.error('Error creating article:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to create article' 
-        });
-    }
-});
-
-app.put('/api/articles/:id', verifyToken, isAdminOrEditor, async (req, res) => {
-    try {
-        const {
-            title, excerpt, content, author, category,
-            tags, status
-        } = req.body;
-        
-        const isPublished = status === 'published';
-        
-        const articleData = {
-            title: title ? title.trim() : undefined,
-            excerpt: excerpt !== undefined ? (excerpt ? excerpt.trim() : null) : undefined,
-            content: content ? content.trim() : undefined,
-            author: author !== undefined ? (author ? author.trim() : null) : undefined,
-            category: category !== undefined ? (category ? category.trim() : null) : undefined,
-            tags: tags !== undefined ? tags : undefined,
-            status: status !== undefined ? status : undefined,
-            published_at: isPublished ? new Date() : undefined,
-            is_published: isPublished !== undefined ? isPublished : undefined,
-            updated_at: new Date()
-        };
-        
-        const cleanArticleData = Object.fromEntries(
-            Object.entries(articleData).filter(([_, v]) => v !== undefined)
-        );
-        
-        if (Object.keys(cleanArticleData).length === 0) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'No valid fields to update' 
-            });
-        }
-        
-        const result = await executeQuery('update', 'articles', cleanArticleData, {
-            where: { id: req.params.id }
-        });
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({ 
-                status: 'error', 
-                message: 'Article not found' 
-            });
-        }
-        
-        dataCache.delete(`article:${req.params.id}`);
-        
-        res.json({
-            status: 'success',
-            data: result.rows[0],
-            message: 'Article updated successfully'
-        });
-    } catch (error) {
-        logger.error('Error updating article:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to update article' 
-        });
-    }
-});
-
-app.delete('/api/articles/:id', verifyToken, isAdminOrEditor, async (req, res) => {
-    try {
-        const result = await executeQuery('delete', 'articles', null, {
-            where: { id: req.params.id }
-        });
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({ 
-                status: 'error', 
-                message: 'Article not found' 
-            });
-        }
-        
-        dataCache.delete(`article:${req.params.id}`);
-        
-        res.json({
-            status: 'success',
-            message: 'Article deleted successfully'
-        });
-    } catch (error) {
-        logger.error('Error deleting article:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to delete article' 
-        });
-    }
-});
-
-// ==================== RESOURCES ROUTES ====================
-app.get('/api/resources', async (req, res) => {
-    try {
-        const { category, department, page = 1, limit = 20 } = req.query;
-        const offset = (page - 1) * limit;
-        
-        const cacheKey = `resources:${category || 'all'}:${department || 'all'}:${page}:${limit}`;
-        const cachedData = dataCache.get(cacheKey);
-        
-        if (cachedData) {
-            return res.json({
-                status: 'success',
-                data: cachedData.data,
-                pagination: cachedData.pagination,
-                cached: true
-            });
-        }
-        
-        let filters = {
-            order: { column: 'created_at', ascending: false },
-            limit: parseInt(limit),
-            offset: parseInt(offset)
-        };
-        
-        if (category && category !== 'all') {
-            filters.where = { ...filters.where, category };
-        }
-        
-        if (department && department !== 'all') {
-            filters.where = { ...filters.where, department };
-        }
-        
-        const [resourcesResult, totalResult] = await Promise.all([
-            executeQuery('select', 'resources', null, filters),
-            executeQuery('count', 'resources', null, filters.where ? { where: filters.where } : {})
-        ]);
-        
-        const responseData = {
-            data: resourcesResult.rows,
-            pagination: {
-                page: parseInt(page),
-                limit: parseInt(limit),
-                total: totalResult.count || 0,
-                pages: Math.ceil((totalResult.count || 0) / limit)
-            }
-        };
-        
-        dataCache.set(cacheKey, responseData, 120000);
-        
-        res.setHeader('X-Total-Count', totalResult.count || 0);
-        res.setHeader('X-Page-Count', Math.ceil((totalResult.count || 0) / limit));
-        
-        res.json({
-            status: 'success',
-            ...responseData
-        });
-    } catch (error) {
-        logger.error('Error fetching resources:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to fetch resources' 
-        });
-    }
-});
-
-app.post('/api/resources/upload', verifyToken, isAdminOrEditor, upload.single('file'), async (req, res) => {
-    try {
-        const {
-            title, description, category, department,
-            level, course_code, course_title, year, semester
-        } = req.body;
-        
         if (!req.file) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'No file uploaded' 
+            return res.status(400).json({
+                status: 'error',
+                message: 'No file uploaded'
             });
         }
-        
-        if (!title || !category) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'Title and category are required' 
-            });
-        }
-        
-        const fileUrl = `/uploads/resources/${req.file.filename}`;
-        
-        let fileType = req.file.mimetype.split('/')[1];
-        if (fileType === 'vnd.openxmlformats-officedocument.wordprocessingml.document') {
-            fileType = 'docx';
-        } else if (fileType === 'vnd.openxmlformats-officedocument.presentationml.presentation') {
-            fileType = 'pptx';
-        } else if (fileType === 'vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
-            fileType = 'xlsx';
-        }
-        
-        let processedYear = year;
-        if (year && year.includes('/')) {
-            processedYear = year.split('/')[0];
-        }
-        
-        const resourceData = {
-            title: title.trim(),
-            description: description ? description.trim() : null,
-            category: category.trim(),
-            department: department ? department.trim() : null,
-            level: level ? parseInt(level) : null,
-            course_code: course_code ? course_code.trim() : null,
-            course_title: course_title ? course_title.trim() : null,
-            year: processedYear || null,
-            semester: semester || '1',
-            file_url: fileUrl,
-            file_type: fileType,
-            file_size: req.file.size,
-            uploaded_by: req.user.id,
-            download_count: 0,
-            created_at: new Date()
+
+        const fileInfo = {
+            filename: req.file.filename,
+            originalname: req.file.originalname,
+            mimetype: req.file.mimetype,
+            size: req.file.size,
+            path: `/uploads/${req.file.filename}`,
+            url: `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`,
+            uploadedBy: req.user.id,
+            uploadedAt: new Date()
         };
-        
-        const result = await executeQuery('insert', 'resources', resourceData);
-        
-        dataCache.clear();
-        
-        res.status(201).json({
-            status: 'success',
-            data: result.rows[0],
-            message: 'Resource uploaded successfully'
-        });
-    } catch (error) {
-        logger.error('Error uploading resource:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to upload resource' 
-        });
-    }
-});
 
-app.get('/api/resources/:id/download', async (req, res) => {
-    try {
-        const result = await executeQuery('select', 'resources', null, {
-            where: { id: req.params.id },
-            select: 'file_url, title, download_count'
-        });
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({ 
-                status: 'error', 
-                message: 'Resource not found' 
-            });
-        }
-        
-        const resource = result.rows[0];
-        
-        await executeQuery('increment', 'resources', null, {
-            where: { id: req.params.id },
-            column: 'download_count'
-        });
-        
-        const filePath = path.join(__dirname, resource.file_url);
-        
-        if (!fs.existsSync(filePath)) {
-            return res.status(404).json({ 
-                status: 'error', 
-                message: 'File not found' 
-            });
-        }
-        
-        const safeFilename = resource.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-        const ext = path.extname(resource.file_url);
-        
-        res.download(filePath, `${safeFilename}${ext}`);
-    } catch (error) {
-        logger.error('Error downloading resource:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to download resource' 
-        });
-    }
-});
-
-app.delete('/api/resources/:id', verifyToken, isAdminOrEditor, async (req, res) => {
-    try {
-        const resourceResult = await executeQuery('select', 'resources', null, {
-            where: { id: req.params.id },
-            select: 'file_url'
-        });
-        
-        if (resourceResult.rows.length === 0) {
-            return res.status(404).json({ 
-                status: 'error', 
-                message: 'Resource not found' 
-            });
-        }
-        
-        const result = await executeQuery('delete', 'resources', null, {
-            where: { id: req.params.id }
-        });
-        
-        const filePath = path.join(__dirname, resourceResult.rows[0].file_url);
-        try {
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-            }
-        } catch (fsError) {
-            logger.warn('Could not delete file:', fsError.message);
-        }
-        
-        dataCache.clear();
-        
         res.json({
             status: 'success',
-            message: 'Resource deleted successfully'
+            data: fileInfo,
+            message: 'File uploaded successfully'
         });
     } catch (error) {
-        logger.error('Error deleting resource:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to delete resource' 
+        logger.error('Error uploading file:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to upload file'
         });
     }
 });
 
-// ==================== CONTACT/MESSAGES ROUTES ====================
-app.post('/api/contact', async (req, res) => {
+app.delete('/api/upload/:filename', verifyToken, requireRole('admin'), async (req, res) => {
     try {
-        const { name, email, subject, message, department } = req.body;
-        
-        if (!name || !email || !subject || !message) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'All fields are required' 
-            });
-        }
-        
-        if (!email.includes('@')) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'Invalid email format' 
-            });
-        }
-        
-        const messageData = {
-            name: name.trim(),
-            email: email.toLowerCase().trim(),
-            subject: subject.trim(),
-            message: message.trim(),
-            department: department ? department.trim() : null,
-            status: 'new',
-            created_at: new Date()
-        };
-        
-        const result = await executeQuery('insert', 'messages', messageData);
-        
-        res.status(201).json({
-            status: 'success',
-            data: result.rows[0],
-            message: 'Message sent successfully'
-        });
-    } catch (error) {
-        logger.error('Error sending message:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to send message' 
-        });
-    }
-});
+        const filePath = path.join(__dirname, 'uploads', req.params.filename);
 
-app.get('/api/messages', verifyToken, isAdmin, async (req, res) => {
-    try {
-        const { status, page = 1, limit = 20 } = req.query;
-        const offset = (page - 1) * limit;
-        
-        let filters = {
-            order: { column: 'created_at', ascending: false },
-            limit: parseInt(limit),
-            offset: parseInt(offset)
-        };
-        
-        if (status && status !== 'all') {
-            filters.where = { ...filters.where, status };
-        }
-        
-        const [messagesResult, totalResult] = await Promise.all([
-            executeQuery('select', 'messages', null, filters),
-            executeQuery('count', 'messages', null, filters.where ? { where: filters.where } : {})
-        ]);
-        
-        res.setHeader('X-Total-Count', totalResult.count || 0);
-        res.setHeader('X-Page-Count', Math.ceil((totalResult.count || 0) / limit));
-        
+        await fs.access(filePath);
+        await fs.unlink(filePath);
+
         res.json({
             status: 'success',
-            data: messagesResult.rows,
-            pagination: {
-                page: parseInt(page),
-                limit: parseInt(limit),
-                total: totalResult.count || 0,
-                pages: Math.ceil((totalResult.count || 0) / limit)
-            }
+            message: 'File deleted successfully'
         });
     } catch (error) {
-        logger.error('Error fetching messages:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to fetch messages' 
-        });
-    }
-});
-
-app.get('/api/messages/:id', verifyToken, isAdmin, async (req, res) => {
-    try {
-        const result = await executeQuery('select', 'messages', null, {
-            where: { id: req.params.id }
-        });
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({ 
-                status: 'error', 
-                message: 'Message not found' 
+        logger.error('Error deleting file:', error);
+        if (error.code === 'ENOENT') {
+            return res.status(404).json({
+                status: 'error',
+                message: 'File not found'
             });
         }
-        
-        res.json({
-            status: 'success',
-            data: result.rows[0]
-        });
-    } catch (error) {
-        logger.error('Error fetching message:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to fetch message' 
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to delete file'
         });
     }
 });
 
-app.put('/api/messages/:id/read', verifyToken, isAdmin, async (req, res) => {
-    try {
-        const result = await executeQuery('update', 'messages', {
-            status: 'read'
-        }, {
-            where: { id: req.params.id }
-        });
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({ 
-                status: 'error', 
-                message: 'Message not found' 
-            });
-        }
-        
-        res.json({
-            status: 'success',
-            data: result.rows[0],
-            message: 'Message marked as read'
-        });
-    } catch (error) {
-        logger.error('Error marking message as read:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to update message' 
-        });
-    }
-});
-
-app.delete('/api/messages/:id', verifyToken, isAdmin, async (req, res) => {
-    try {
-        const result = await executeQuery('delete', 'messages', null, {
-            where: { id: req.params.id }
-        });
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({ 
-                status: 'error', 
-                message: 'Message not found' 
-            });
-        }
-        
-        res.json({
-            status: 'success',
-            message: 'Message deleted successfully'
-        });
-    } catch (error) {
-        logger.error('Error deleting message:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to delete message' 
-        });
-    }
-});
-
-// ==================== ANALYTICS ROUTES ====================
-app.get('/api/analytics', verifyToken, isAdmin, async (req, res) => {
-    try {
-        const [
-            usersResult,
-            membersResult,
-            eventsResult,
-            articlesResult,
-            resourcesResult,
-            messagesResult
-        ] = await Promise.all([
-            executeQuery('count', 'users'),
-            executeQuery('count', 'executive_members', null, { where: { status: 'active' } }),
-            executeQuery('count', 'events', null, { where: { status: 'upcoming' } }),
-            executeQuery('count', 'articles', null, { where: { is_published: true } }),
-            executeQuery('count', 'resources'),
-            executeQuery('count', 'messages', null, { where: { status: 'new' } })
-        ]);
-        
-        const totalDownloads = await supabase
-            .from('resources')
-            .select('download_count')
-            .then(({ data, error }) => {
-                if (error) throw error;
-                return data.reduce((sum, item) => sum + (item.download_count || 0), 0);
-            });
-        
-        res.json({
-            status: 'success',
-            data: {
-                total_users: usersResult.count || 0,
-                active_members: membersResult.count || 0,
-                upcoming_events: eventsResult.count || 0,
-                published_articles: articlesResult.count || 0,
-                total_resources: resourcesResult.count || 0,
-                unread_messages: messagesResult.count || 0,
-                total_downloads: totalDownloads,
-                storage_used: 0 // You can implement this if storing file sizes
-            }
-        });
-    } catch (error) {
-        logger.error('Error fetching analytics:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to fetch analytics' 
-        });
-    }
-});
-
-// ==================== SETTINGS ROUTES ====================
-app.get('/api/settings', async (req, res) => {
-    try {
-        const cacheKey = 'site_settings';
-        const cachedData = dataCache.get(cacheKey);
-        
-        if (cachedData) {
-            return res.json({
-                status: 'success',
-                data: cachedData,
-                cached: true
-            });
-        }
-        
-        const result = await executeQuery('select', 'site_settings');
-        
-        const settings = {};
-        result.rows.forEach(setting => {
-            settings[setting.setting_key] = setting.setting_value;
-        });
-        
-        dataCache.set(cacheKey, settings, 300000);
-        
-        res.json({
-            status: 'success',
-            data: settings
-        });
-    } catch (error) {
-        logger.error('Error fetching settings:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to fetch settings' 
-        });
-    }
-});
-
-app.put('/api/settings', verifyToken, isAdmin, async (req, res) => {
-    try {
-        const settings = req.body;
-        
-        for (const [key, value] of Object.entries(settings)) {
-            const existing = await executeQuery('select', 'site_settings', null, {
-                where: { setting_key: key }
-            });
-            
-            if (existing.rows.length > 0) {
-                await executeQuery('update', 'site_settings', {
-                    setting_value: value,
-                    updated_at: new Date()
-                }, {
-                    where: { setting_key: key }
-                });
-            } else {
-                await executeQuery('insert', 'site_settings', {
-                    setting_key: key,
-                    setting_value: value,
-                    updated_at: new Date()
-                });
-            }
-        }
-        
-        dataCache.delete('site_settings');
-        
-        res.json({
-            status: 'success',
-            message: 'Settings updated successfully'
-        });
-    } catch (error) {
-        logger.error('Error updating settings:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to update settings' 
-        });
-    }
-});
-
-// ==================== HEALTH ENDPOINTS ====================
+// ==================== SYSTEM ENDPOINTS ====================
 app.get('/api/health', async (req, res) => {
     try {
-        await executeQuery('select', 'users', null, { limit: 1 });
-        res.json({
-            status: 'success',
-            message: 'API is running',
+        const health = {
+            status: 'healthy',
             timestamp: new Date().toISOString(),
-            database: 'connected',
-            environment: NODE_ENV,
-            uptime: process.uptime()
+            uptime: process.uptime(),
+            memory: process.memoryUsage(),
+            database: 'unknown',
+            cache: {
+                users: userCache.getStats(),
+                data: dataCache.getStats()
+            }
+        };
+
+        try {
+            await db.query('select', 'users', { limit: 1 });
+            health.database = 'connected';
+        } catch (error) {
+            health.database = 'disconnected';
+            health.databaseError = error.message;
+        }
+
+        const status = health.database === 'connected' ? 200 : 503;
+
+        res.status(status).json({
+            status: health.status,
+            ...health
         });
     } catch (error) {
         res.status(503).json({
-            status: 'error',
-            message: 'Database disconnected',
-            error: error.message
+            status: 'unhealthy',
+            error: error.message,
+            timestamp: new Date().toISOString()
         });
     }
 });
 
 app.get('/api/ping', (req, res) => {
-    res.json({ 
-        status: 'success', 
-        message: 'pong', 
-        timestamp: new Date().toISOString() 
+    res.json({
+        status: 'success',
+        message: 'pong',
+        timestamp: new Date().toISOString(),
+        version: '1.0.0'
     });
+});
+
+app.get('/api/stats', verifyToken, requireRole('admin'), async (req, res) => {
+    try {
+        const [users, members, cacheStats] = await Promise.all([
+            db.query('select', 'users', { count: true }),
+            db.query('select', 'executive_members', { count: true }),
+            Promise.resolve({
+                users: userCache.getStats(),
+                data: dataCache.getStats()
+            })
+        ]);
+
+        res.json({
+            status: 'success',
+            data: {
+                users: users.count || 0,
+                members: members.count || 0,
+                cache: cacheStats,
+                uptime: process.uptime(),
+                environment: NODE_ENV
+            }
+        });
+    } catch (error) {
+        logger.error('Error fetching stats:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch statistics'
+        });
+    }
 });
 
 // ==================== STATIC FILES ====================
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
     maxAge: isProduction ? '30d' : '0',
     setHeaders: (res, filePath) => {
-        if (filePath.endsWith('.pdf') || filePath.endsWith('.docx') || filePath.endsWith('.xlsx') || filePath.endsWith('.pptx')) {
+        const ext = path.extname(filePath).toLowerCase();
+        const mimeType = mime.lookup(ext) || 'application/octet-stream';
+
+        // Security headers for files
+        if (ext.match(/\.(jpg|jpeg|png|gif|webp|svg)$/)) {
+            res.setHeader('Content-Disposition', 'inline');
+        } else {
+            res.setHeader('Content-Disposition', 'attachment');
+        }
+
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Content-Type', mimeType);
+
+        // Cache control
+        if (ext.match(/\.(jpg|jpeg|png|gif|webp|svg)$/)) {
+            res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+        } else if (ext.match(/\.(pdf|docx|xlsx|pptx)$/)) {
             res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-        } else if (filePath.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
-            res.setHeader('Cache-Control', 'public, max-age=86400');
         }
     }
 }));
 
-// ==================== ROOT ENDPOINT ====================
+// ==================== ROOT ENDPOINTS ====================
 app.get('/', (req, res) => {
     res.json({
         message: 'NUESA BIU API Server',
         version: '1.0.0',
         environment: NODE_ENV,
-        database: 'Supabase',
         status: 'operational',
         timestamp: new Date().toISOString(),
-        documentation: 'Contact administrator for API documentation'
+        documentation: `${req.protocol}://${req.get('host')}/api/docs`,
+        endpoints: {
+            auth: '/api/auth',
+            users: '/api/users',
+            members: '/api/members',
+            profile: '/api/profile',
+            health: '/api/health',
+            stats: '/api/stats'
+        }
+    });
+});
+
+app.get('/api/docs', (req, res) => {
+    res.json({
+        title: 'API Documentation',
+        description: 'NUESA BIU API Server Documentation',
+        version: '1.0.0',
+        endpoints: [
+            {
+                path: '/api/auth/login',
+                method: 'POST',
+                description: 'User authentication',
+                body: 'email, password'
+            },
+            {
+                path: '/api/members',
+                method: 'GET',
+                description: 'Get all executive members',
+                query: '?committee=tech&status=active'
+            },
+            {
+                path: '/api/users',
+                method: 'GET',
+                description: 'Get users (admin only)',
+                auth: 'Bearer token required'
+            }
+        ]
     });
 });
 
 // ==================== ERROR HANDLERS ====================
 app.use((req, res) => {
-    res.status(404).json({ 
-        status: 'error', 
-        message: 'Route not found',
-        path: req.url 
+    res.status(404).json({
+        status: 'error',
+        code: 'ROUTE_NOT_FOUND',
+        message: `Route ${req.method} ${req.url} not found`,
+        timestamp: new Date().toISOString()
     });
 });
 
 app.use((err, req, res, next) => {
-    logger.error({
+    logger.error('Unhandled error:', {
         error: err.message,
         stack: err.stack,
         url: req.url,
         method: req.method,
         ip: req.ip,
-        user: req.user?.id
+        userId: req.user?.id,
+        body: req.body
     });
-    
+
+    // Multer errors
     if (err instanceof multer.MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') {
             return res.status(400).json({
                 status: 'error',
-                message: 'File size too large. Maximum size is 10MB.'
+                code: 'FILE_TOO_LARGE',
+                message: `File size too large. Maximum size is ${process.env.MAX_FILE_SIZE || '10MB'}.`
             });
         }
         return res.status(400).json({
             status: 'error',
-            message: 'File upload error: ' + err.message
+            code: 'UPLOAD_ERROR',
+            message: `File upload error: ${err.message}`
         });
     }
-    
+
+    // Database errors
+    if (err instanceof DatabaseError) {
+        return res.status(400).json({
+            status: 'error',
+            code: 'DATABASE_ERROR',
+            message: `Database error: ${err.message}`
+        });
+    }
+
+    // Authentication errors
+    if (err instanceof AuthError) {
+        return res.status(err.statusCode || 401).json({
+            status: 'error',
+            code: err.code,
+            message: err.message
+        });
+    }
+
+    // Validation errors
+    if (err.name === 'ValidationError') {
+        return res.status(400).json({
+            status: 'error',
+            code: 'VALIDATION_ERROR',
+            message: err.message,
+            errors: err.errors
+        });
+    }
+
+    // Default error response
     const message = isProduction ? 'Internal server error' : err.message;
     const statusCode = err.statusCode || 500;
-    
+
     res.status(statusCode).json({
         status: 'error',
+        code: 'INTERNAL_ERROR',
         message: message,
-        ...(!isProduction && { stack: err.stack })
+        ...(!isProduction && { stack: err.stack, details: err.message })
     });
 });
 
-// ==================== UNHANDLED ERROR HANDLERS ====================
+// ==================== PROCESS EVENT HANDLERS ====================
 process.on('unhandledRejection', (reason, promise) => {
-    logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    logger.error('Unhandled Rejection:', {
+        reason: reason.message || reason,
+        stack: reason.stack,
+        promise: promise
+    });
+
     if (isProduction) {
-        process.exit(1);
+        // In production, we might want to restart the process
+        // or send an alert instead of exiting immediately
+        logger.error('Unhandled rejection in production, continuing...');
     }
 });
 
 process.on('uncaughtException', (error) => {
-    logger.error('Uncaught Exception:', error);
+    logger.error('Uncaught Exception:', {
+        error: error.message,
+        stack: error.stack
+    });
+
     if (isProduction) {
-        process.exit(1);
+        // Give time for logs to be written
+        setTimeout(() => {
+            process.exit(1);
+        }, 1000);
     }
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    logger.info('SIGTERM received, starting graceful shutdown');
+    process.exit(0);
+});
+
+process.on('SIGINT', () => {
+    logger.info('SIGINT received, starting graceful shutdown');
+    process.exit(0);
 });
 
 // ==================== SERVER STARTUP ====================
 async function startServer() {
     try {
         await initializeDatabase();
-        
-        app.listen(PORT, () => {
+
+        app.listen(PORT, '0.0.0.0', () => {
             console.log(`
 ╔═══════════════════════════════════════════════════════════╗
 ║     🚀 NUESA BIU API Server Started Successfully!       ║
@@ -2485,28 +2044,17 @@ async function startServer() {
 ║ 📡 Port: ${PORT}                                         ║
 ║ 🌍 Environment: ${NODE_ENV}                              ║
 ║ 🗄️  Database: Supabase                                   ║
-║ 🔗 API URL: http://localhost:${PORT}/api                  ║
-║ 🌐 Frontend: ${process.env.FRONTEND_URL || 'Not set'}     ║
-║ 🔒 JWT Secret: ${JWT_SECRET ? 'Set ✓' : 'Missing ✗'}     ║
-║ 👑 Admin: ${process.env.ADMIN_EMAIL || 'admin@nuesabiu.org'} ║
+║ 🔗 API URL: http://localhost:${PORT}                     ║
+║ 🌐 Frontend: ${process.env.FRONTEND_URL || 'Not set'}    ║
+║ 🔒 JWT: ${JWT_SECRET ? 'Set ✓' : 'Missing ✗'}           ║
+║ 👑 Admin: ${process.env.ADMIN_EMAIL || 'Not configured'} ║
 ╚═══════════════════════════════════════════════════════════╝
             `);
-            
-            console.log('\n📋 Available Endpoints:');
-            console.log('├── /api/auth/login');
-            console.log('├── /api/auth/logout');
-            console.log('├── /api/auth/verify');
-            console.log('├── /api/members');
-            console.log('├── /api/events');
-            console.log('├── /api/articles');
-            console.log('├── /api/resources');
-            console.log('├── /api/analytics');
-            console.log('├── /api/settings');
-            console.log('├── /api/health');
-            console.log('└── /api/contact');
+
+            logger.info(`Server started on port ${PORT} in ${NODE_ENV} mode`);
         });
     } catch (error) {
-        console.error('❌ Failed to start server:', error);
+        logger.error('Failed to start server:', error);
         process.exit(1);
     }
 }
