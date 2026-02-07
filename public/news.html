@@ -1195,604 +1195,940 @@
     </footer>
 
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Constants - FIXED: Correct API URL
-        const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
+document.addEventListener('DOMContentLoaded', function() {
+    // Constants - Updated API URL
+    const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
+    const ARTICLES_PER_PAGE = 6;
+    
+    // DOM Elements
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const mobileNav = document.getElementById('mobileNav');
+    const articlesGrid = document.getElementById('articlesGrid');
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+    const logoBtn = document.getElementById('logoBtn');
+    
+    // State
+    let currentPage = 1;
+    let isLoading = false;
+    let hasMoreArticles = true;
+    let allArticles = [];
+    let filteredArticles = [];
+    let currentFilter = 'all';
+    
+    // Initialize the page
+    init();
+    
+    function init() {
+        // Initialize mobile menu
+        initMobileMenu();
         
-        // DOM Elements
-        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-        const mobileNav = document.getElementById('mobileNav');
-        const articlesGrid = document.getElementById('articlesGrid');
-        const loadMoreBtn = document.getElementById('loadMoreBtn');
+        // Load initial articles
+        loadArticles();
         
-        // State
-        let currentPage = 1;
-        let isLoading = false;
-        let hasMoreArticles = true;
-        let allArticles = [];
-        
-        // Initialize the page
-        init();
-        
-        function init() {
-            // Initialize mobile menu
-            initMobileMenu();
-            
-            // Load initial articles
-            loadArticles();
-            
-            // Attach event listeners
-            if (loadMoreBtn) {
-                loadMoreBtn.addEventListener('click', loadMoreArticles);
-            }
+        // Attach event listeners
+        if (loadMoreBtn) {
+            loadMoreBtn.addEventListener('click', loadMoreArticles);
         }
         
-        function initMobileMenu() {
-            if (!mobileMenuBtn || !mobileNav) return;
+        // Logo click handler
+        if (logoBtn) {
+            logoBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                window.location.href = 'index.html';
+            });
+        }
+        
+        // Highlight active nav link
+        highlightActiveNav();
+        
+        // Add header animation
+        addHeaderAnimation();
+    }
+    
+    function initMobileMenu() {
+        if (!mobileMenuBtn || !mobileNav) return;
+        
+        mobileMenuBtn.addEventListener('click', function() {
+            const isExpanded = this.getAttribute('aria-expanded') === 'true';
+            this.setAttribute('aria-expanded', !isExpanded);
+            mobileNav.classList.toggle('open');
             
-            mobileMenuBtn.addEventListener('click', function() {
-                const isExpanded = this.getAttribute('aria-expanded') === 'true';
-                this.setAttribute('aria-expanded', !isExpanded);
-                mobileNav.classList.toggle('open');
-                
-                const icon = this.querySelector('i');
+            const icon = this.querySelector('i');
+            if (icon) {
+                icon.classList.toggle('fa-bars');
+                icon.classList.toggle('fa-times');
+            }
+        });
+        
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!mobileNav.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
+                mobileNav.classList.remove('open');
+                mobileMenuBtn.setAttribute('aria-expanded', 'false');
+                const icon = mobileMenuBtn.querySelector('i');
                 if (icon) {
-                    icon.classList.toggle('fa-bars');
-                    icon.classList.toggle('fa-times');
+                    icon.classList.remove('fa-times');
+                    icon.classList.add('fa-bars');
                 }
+            }
+        });
+        
+        // Close mobile menu when clicking a link
+        document.querySelectorAll('.mobile-nav-link').forEach(link => {
+            link.addEventListener('click', () => {
+                mobileNav.classList.remove('open');
+                mobileMenuBtn.setAttribute('aria-expanded', 'false');
+                mobileMenuBtn.querySelector('i').classList.remove('fa-times');
+                mobileMenuBtn.querySelector('i').classList.add('fa-bars');
             });
-            
-            // Close mobile menu when clicking outside
-            document.addEventListener('click', function(e) {
-                if (!mobileNav.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
-                    mobileNav.classList.remove('open');
-                    mobileMenuBtn.setAttribute('aria-expanded', 'false');
-                    const icon = mobileMenuBtn.querySelector('i');
-                    if (icon) {
-                        icon.classList.remove('fa-times');
-                        icon.classList.add('fa-bars');
-                    }
-                }
-            });
+        });
+    }
+    
+    async function loadArticles(page = 1, append = false) {
+        if (isLoading) return;
+        
+        isLoading = true;
+        
+        if (!append) {
+            showLoadingState();
+        } else {
+            showLoadMoreLoading();
         }
         
-        async function loadArticles(page = 1, append = false) {
-            if (isLoading) return;
+        try {
+            // Fetch articles from API
+            const apiArticles = await fetchArticlesFromAPI();
             
-            isLoading = true;
-            
-            if (!append) {
-                showLoadingState();
-            } else {
-                showLoadMoreLoading();
-            }
-            
-            try {
-                // Fetch articles from real API
-                const apiArticles = await fetchArticlesFromAPI();
+            if (apiArticles && apiArticles.length > 0) {
+                allArticles = apiArticles;
+                filteredArticles = [...allArticles];
                 
-                if (apiArticles && apiArticles.length > 0) {
-                    allArticles = apiArticles;
-                    
-                    // For pagination, get articles for current page
-                    const articlesPerPage = 6;
-                    const startIndex = (page - 1) * articlesPerPage;
-                    const endIndex = startIndex + articlesPerPage;
-                    const pageArticles = allArticles.slice(startIndex, endIndex);
-                    
-                    if (append) {
-                        renderArticles(pageArticles, true);
-                    } else {
-                        renderArticles(pageArticles);
-                    }
-                    
-                    // Check if there are more articles
-                    hasMoreArticles = endIndex < allArticles.length;
+                // For pagination, get articles for current page
+                const startIndex = (page - 1) * ARTICLES_PER_PAGE;
+                const endIndex = startIndex + ARTICLES_PER_PAGE;
+                const pageArticles = filteredArticles.slice(startIndex, endIndex);
+                
+                if (append) {
+                    renderArticles(pageArticles, true);
                 } else {
-                    // If no articles from API, show empty state
-                    showNoArticlesMessage();
-                    hasMoreArticles = false;
+                    renderArticles(pageArticles);
                 }
                 
-                // Update load more button
-                updateLoadMoreButton();
-                
-            } catch (error) {
-                console.error('Error loading articles:', error);
-                showErrorState();
-            } finally {
-                isLoading = false;
-                hideLoadingState();
+                // Check if there are more articles
+                hasMoreArticles = endIndex < filteredArticles.length;
+            } else {
+                // If no articles from API, show empty state
+                showNoArticlesMessage();
+                hasMoreArticles = false;
             }
+            
+            // Update load more button
+            updateLoadMoreButton();
+            
+        } catch (error) {
+            console.error('Error loading articles:', error);
+            showErrorState('Failed to load articles. Please check your connection.');
+        } finally {
+            isLoading = false;
+            hideLoadingState();
         }
-        
-        async function fetchArticlesFromAPI() {
-            try {
-                console.log('Fetching articles from:', `${API_BASE_URL}/articles`);
-                const response = await fetch(`${API_BASE_URL}/articles`);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                console.log('Articles data received:', data);
-                
-                if (data.status === 'success' && data.data) {
-                    // Filter only published articles
-                    const publishedArticles = data.data.filter(article => 
-                        article.status === 'published' || article.is_published === true
-                    );
-                    
-                    // Sort by date (newest first)
-                    return publishedArticles.sort((a, b) => {
-                        const dateA = new Date(a.published_at || a.created_at);
-                        const dateB = new Date(b.published_at || b.created_at);
-                        return dateB - dateA;
+    }
+    
+    async function fetchArticlesFromAPI() {
+        try {
+            console.log('Fetching articles from API...');
+            
+            // Try multiple endpoints since we're not sure about the exact structure
+            const endpoints = [
+                `${API_BASE_URL}/api/news`,
+                `${API_BASE_URL}/api/articles`,
+                `${API_BASE_URL}/news`,
+                `${API_BASE_URL}/articles`
+            ];
+            
+            let articles = [];
+            
+            for (const endpoint of endpoints) {
+                try {
+                    console.log(`Trying endpoint: ${endpoint}`);
+                    const response = await fetch(endpoint, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        mode: 'cors'
                     });
-                }
-                return [];
-            } catch (error) {
-                console.warn('API fetch failed:', error.message);
-                throw error;
-            }
-        }
-        
-        function renderArticles(articles, append = false) {
-            if (!articlesGrid) return;
-            
-            if (!append) {
-                articlesGrid.innerHTML = '';
-            }
-            
-            if (!articles || articles.length === 0) {
-                if (!append) {
-                    showNoArticlesMessage();
-                }
-                return;
-            }
-            
-            articles.forEach(article => {
-                const articleCard = createArticleCard(article);
-                articlesGrid.appendChild(articleCard);
-            });
-            
-            // Reattach event listeners to new cards
-            attachArticleEventListeners();
-        }
-        
-        function createArticleCard(article) {
-            const articleCard = document.createElement('article');
-            articleCard.className = 'article-card';
-            articleCard.dataset.articleId = article.id;
-            
-            // Format date
-            const publishedDate = article.published_at || article.created_at;
-            const formattedDate = formatDate(publishedDate);
-            
-            // Get tags (convert array to string if needed)
-            let tags = [];
-            if (article.tags && Array.isArray(article.tags)) {
-                tags = article.tags;
-            } else if (article.category) {
-                tags = [article.category];
-            } else {
-                tags = ['General'];
-            }
-            
-            // Limit tags to 2 for display
-            const displayTags = tags.slice(0, 2);
-            
-            articleCard.innerHTML = `
-                <div class="article-image">
-                    ${article.image_url || article.featured_image ? 
-                        `<img src="${article.image_url || article.featured_image}" 
-                              alt="${article.title || 'Article Image'}"
-                              style="width:100%;height:100%;object-fit:cover;">` :
-                        `<span class="article-image-text">
-                            Article Image
-                        </span>`
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log(`Success from ${endpoint}:`, data);
+                        
+                        // Parse different response formats
+                        if (data.status === 'success' && data.data) {
+                            articles = data.data;
+                            break;
+                        } else if (Array.isArray(data)) {
+                            articles = data;
+                            break;
+                        } else if (data.articles && Array.isArray(data.articles)) {
+                            articles = data.articles;
+                            break;
+                        } else if (data.news && Array.isArray(data.news)) {
+                            articles = data.news;
+                            break;
+                        }
                     }
-                    <div class="article-image-overlay"></div>
-                </div>
-                <div class="article-content">
-                    <div class="article-tags">
-                        ${displayTags.map(tag => 
-                            `<span class="article-tag" data-tag="${tag}">${tag}</span>`
-                        ).join('')}
-                    </div>
-                    <h2 class="article-title">
-                        ${article.title || 'Untitled Article'}
-                    </h2>
-                    <div class="article-date">
-                        <i class="fas fa-calendar"></i>
-                        ${formattedDate}
-                    </div>
-                    <p class="article-excerpt">
-                        ${article.excerpt || article.description || 'No excerpt available.'}
-                    </p>
-                    <a href="#" class="article-read-more" data-article-id="${article.id}">
-                        Read Full Story <i class="fas fa-arrow-right"></i>
-                    </a>
-                </div>
-            `;
-            
-            return articleCard;
-        }
-        
-        function attachArticleEventListeners() {
-            // Article title click
-            document.querySelectorAll('.article-title').forEach(title => {
-                title.addEventListener('click', function() {
-                    const articleCard = this.closest('.article-card');
-                    const articleId = articleCard.dataset.articleId;
-                    showArticleModal(articleId);
-                });
-            });
-            
-            // Read more link click
-            document.querySelectorAll('.article-read-more').forEach(link => {
-                link.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    const articleId = this.dataset.articleId;
-                    showArticleModal(articleId);
-                });
-            });
-            
-            // Tag click
-            document.querySelectorAll('.article-tag').forEach(tag => {
-                tag.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    const tagText = this.dataset.tag || this.textContent;
-                    filterArticlesByTag(tagText);
-                    
-                    // Visual feedback
-                    this.style.color = 'var(--white)';
-                    this.style.backgroundColor = 'var(--emerald-600)';
-                    this.style.borderColor = 'var(--emerald-600)';
-                    
-                    setTimeout(() => {
-                        this.style.color = '';
-                        this.style.backgroundColor = '';
-                        this.style.borderColor = '';
-                    }, 500);
-                });
-            });
-        }
-        
-        async function showArticleModal(articleId) {
-            try {
-                // Fetch article details from API
-                const response = await fetch(`${API_BASE_URL}/articles/${articleId}`);
-                const data = await response.json();
-                
-                if (data.status === 'success' && data.data) {
-                    const article = data.data;
-                    createAndShowModal(article);
-                } else {
-                    throw new Error('Article not found');
+                } catch (endpointError) {
+                    console.log(`Endpoint ${endpoint} failed:`, endpointError.message);
+                    continue;
                 }
-            } catch (error) {
-                console.error('Error loading article details:', error);
-                showErrorToast('Unable to load article details');
             }
+            
+            if (articles.length === 0) {
+                console.log('No articles found in any endpoint');
+                return [];
+            }
+            
+            // Filter only published articles
+            const publishedArticles = articles.filter(article => {
+                const status = article.status || article.published || article.is_published;
+                return status === 'published' || status === true || status === 1 || !status;
+            });
+            
+            // Sort by date (newest first)
+            const sortedArticles = publishedArticles.sort((a, b) => {
+                const dateA = new Date(a.published_at || a.created_at || a.date || a.timestamp);
+                const dateB = new Date(b.published_at || b.created_at || b.date || b.timestamp);
+                return dateB - dateA;
+            });
+            
+            console.log(`Loaded ${sortedArticles.length} published articles`);
+            return sortedArticles;
+            
+        } catch (error) {
+            console.error('API fetch failed:', error);
+            throw error;
+        }
+    }
+    
+    function renderArticles(articles, append = false) {
+        if (!articlesGrid) return;
+        
+        if (!append) {
+            articlesGrid.innerHTML = '';
         }
         
-        function createAndShowModal(article) {
-            // Format date
-            const publishedDate = article.published_at || article.created_at;
-            const formattedDate = formatDate(publishedDate);
+        if (!articles || articles.length === 0) {
+            if (!append) {
+                showNoArticlesMessage();
+            }
+            return;
+        }
+        
+        articles.forEach(article => {
+            const articleCard = createArticleCard(article);
+            articlesGrid.appendChild(articleCard);
+        });
+        
+        // Reattach event listeners to new cards
+        attachArticleEventListeners();
+        
+        // Animate cards in
+        animateCardsIn();
+    }
+    
+    function createArticleCard(article) {
+        const articleCard = document.createElement('article');
+        articleCard.className = 'article-card';
+        articleCard.dataset.articleId = article.id;
+        
+        // Format date
+        const publishedDate = article.published_at || article.created_at || article.date;
+        const formattedDate = formatDate(publishedDate);
+        
+        // Get tags/categories
+        let tags = [];
+        if (article.tags && Array.isArray(article.tags)) {
+            tags = article.tags;
+        } else if (article.tag && typeof article.tag === 'string') {
+            tags = [article.tag];
+        } else if (article.category) {
+            tags = [article.category];
+        } else if (article.categories && Array.isArray(article.categories)) {
+            tags = article.categories;
+        } else {
+            tags = ['News'];
+        }
+        
+        // Ensure tags are strings
+        tags = tags.map(tag => String(tag));
+        
+        // Limit tags to 2 for display
+        const displayTags = tags.slice(0, 2);
+        
+        // Handle image URL
+        const imageUrl = article.image_url || article.featured_image || article.image || null;
+        
+        // Get excerpt or create from content
+        let excerpt = article.excerpt || article.description || article.short_content;
+        if (!excerpt && article.content) {
+            excerpt = article.content.substring(0, 150) + '...';
+        }
+        if (!excerpt) {
+            excerpt = 'No excerpt available.';
+        }
+        
+        articleCard.innerHTML = `
+            <div class="article-image">
+                ${imageUrl ? 
+                    `<img src="${imageUrl}" 
+                          alt="${article.title || 'Article Image'}"
+                          style="width:100%;height:100%;object-fit:cover;"
+                          onerror="this.onerror=null; this.src=''; this.nextElementSibling.style.display='flex';">` :
+                    `<span class="article-image-text">
+                        Article Image
+                    </span>`
+                }
+                <div class="article-image-overlay"></div>
+            </div>
+            <div class="article-content">
+                <div class="article-tags">
+                    ${displayTags.map(tag => 
+                        `<span class="article-tag" data-tag="${tag}">${tag}</span>`
+                    ).join('')}
+                </div>
+                <h2 class="article-title">
+                    ${article.title || 'Untitled Article'}
+                </h2>
+                <div class="article-date">
+                    <i class="fas fa-calendar"></i>
+                    ${formattedDate}
+                    ${article.author ? `
+                        <span style="margin-left: 1rem;">
+                            <i class="fas fa-user" style="margin-right: 0.5rem;"></i>
+                            ${article.author}
+                        </span>
+                    ` : ''}
+                </div>
+                <p class="article-excerpt line-clamp-3">
+                    ${excerpt}
+                </p>
+                <a href="#" class="article-read-more" data-article-id="${article.id}">
+                    Read Full Story <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+        `;
+        
+        return articleCard;
+    }
+    
+    function attachArticleEventListeners() {
+        // Article title click
+        document.querySelectorAll('.article-title').forEach(title => {
+            title.addEventListener('click', function() {
+                const articleCard = this.closest('.article-card');
+                const articleId = articleCard.dataset.articleId;
+                showArticleModal(articleId);
+            });
+        });
+        
+        // Read more link click
+        document.querySelectorAll('.article-read-more').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const articleId = this.dataset.articleId;
+                showArticleModal(articleId);
+            });
+        });
+        
+        // Tag click
+        document.querySelectorAll('.article-tag').forEach(tag => {
+            tag.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const tagText = this.dataset.tag || this.textContent;
+                filterArticlesByTag(tagText);
+                
+                // Visual feedback
+                const originalColor = this.style.color;
+                const originalBg = this.style.backgroundColor;
+                const originalBorder = this.style.borderColor;
+                
+                this.style.color = 'var(--white)';
+                this.style.backgroundColor = 'var(--emerald-600)';
+                this.style.borderColor = 'var(--emerald-600)';
+                
+                setTimeout(() => {
+                    this.style.color = originalColor;
+                    this.style.backgroundColor = originalBg;
+                    this.style.borderColor = originalBorder;
+                }, 500);
+            });
+        });
+    }
+    
+    async function showArticleModal(articleId) {
+        try {
+            // First try to find article in loaded articles
+            let article = allArticles.find(a => a.id == articleId);
             
-            // Get tags
-            let tags = [];
-            if (article.tags && Array.isArray(article.tags)) {
-                tags = article.tags;
-            } else if (article.category) {
-                tags = [article.category];
+            if (!article) {
+                // If not found, try to fetch from API
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/news/${articleId}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.status === 'success' && data.data) {
+                            article = data.data;
+                        }
+                    }
+                } catch (apiError) {
+                    console.log('Could not fetch article details from API');
+                }
             }
             
-            // Create modal
-            const modal = document.createElement('div');
-            modal.id = 'articleModal';
-            modal.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.5);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 9999;
-                padding: 1rem;
-            `;
+            if (!article) {
+                throw new Error('Article not found');
+            }
             
-            modal.innerHTML = `
-                <div style="
-                    background: white;
-                    padding: 2rem;
-                    border-radius: 0.5rem;
-                    max-width: 800px;
-                    width: 100%;
-                    max-height: 90vh;
-                    overflow-y: auto;
-                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-                    position: relative;
-                ">
-                    <button id="closeModal" style="
-                        position: absolute;
-                        top: 1rem;
-                        right: 1rem;
-                        background: none;
-                        border: none;
-                        font-size: 1.5rem;
-                        color: var(--gray-600);
-                        cursor: pointer;
-                        padding: 0.5rem;
-                    ">&times;</button>
-                    
-                    <div style="margin-bottom: 2rem;">
+            createAndShowModal(article);
+            
+        } catch (error) {
+            console.error('Error loading article details:', error);
+            showErrorToast('Unable to load article details. Please try again.');
+        }
+    }
+    
+    function createAndShowModal(article) {
+        // Format date
+        const publishedDate = article.published_at || article.created_at || article.date;
+        const formattedDate = formatDate(publishedDate);
+        
+        // Get tags/categories
+        let tags = [];
+        if (article.tags && Array.isArray(article.tags)) {
+            tags = article.tags;
+        } else if (article.tag) {
+            tags = [article.tag];
+        } else if (article.category) {
+            tags = [article.category];
+        }
+        
+        // Ensure tags are strings
+        tags = tags.map(tag => String(tag));
+        
+        // Handle image URL
+        const imageUrl = article.image_url || article.featured_image || article.image;
+        
+        // Get full content
+        let content = article.content || article.full_content || article.body || 
+                     article.description || '<p>No content available for this article.</p>';
+        
+        // Create modal
+        const modal = document.createElement('div');
+        modal.className = 'article-modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 1rem;
+            backdrop-filter: blur(4px);
+        `;
+        
+        modal.innerHTML = `
+            <div class="modal-content" style="
+                background: white;
+                padding: 2rem;
+                border-radius: 0.5rem;
+                max-width: 800px;
+                width: 100%;
+                max-height: 90vh;
+                overflow-y: auto;
+                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+                position: relative;
+                border: 2px solid var(--emerald-200);
+            ">
+                <button id="closeModal" style="
+                    position: absolute;
+                    top: 1rem;
+                    right: 1rem;
+                    background: none;
+                    border: none;
+                    font-size: 1.5rem;
+                    color: var(--gray-600);
+                    cursor: pointer;
+                    padding: 0.5rem;
+                    z-index: 1;
+                    transition: color 0.3s;
+                " aria-label="Close modal">&times;</button>
+                
+                <div class="modal-header" style="margin-bottom: 2rem;">
+                    ${imageUrl ? `
                         <div style="
-                            background: ${article.image_url || article.featured_image ? 
-                                `url('${article.image_url || article.featured_image}') center/cover` : 
-                                'linear-gradient(135deg, var(--emerald-100) 0%, var(--blue-100) 100%)'};
+                            background: url('${imageUrl}') center/cover;
                             height: 12rem;
                             border-radius: 0.5rem;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
                             margin-bottom: 1.5rem;
                             position: relative;
                             overflow: hidden;
                         ">
-                            ${!article.image_url && !article.featured_image ? 
-                                `<span style="
-                                    font-family: 'Roboto Mono', monospace;
-                                    font-size: 0.875rem;
-                                    color: var(--gray-600);
-                                    text-transform: uppercase;
-                                    letter-spacing: 0.1em;
-                                    z-index: 1;
-                                ">Article Image</span>` : ''
-                            }
                             <div style="
                                 position: absolute;
                                 inset: 0;
                                 background: rgba(0,0,0,0.05);
                             "></div>
                         </div>
-                        
-                        ${tags.length > 0 ? `
-                            <div style="
-                                display: flex;
-                                gap: 0.5rem;
-                                margin-bottom: 1rem;
-                                flex-wrap: wrap;
-                            ">
-                                ${tags.map(tag => `
-                                    <span style="
-                                        padding: 0.25rem 0.5rem;
-                                        background-color: var(--gray-100);
-                                        border: 1px solid var(--gray-300);
-                                        font-family: 'Roboto Mono', monospace;
-                                        font-size: 0.625rem;
-                                        text-transform: uppercase;
-                                        font-weight: 700;
-                                        color: var(--gray-600);
-                                        border-radius: 2px;
-                                    ">${tag}</span>
-                                `).join('')}
-                            </div>
-                        ` : ''}
-                        
-                        <h2 style="
-                            font-family: 'Inter', sans-serif;
-                            font-size: 1.5rem;
-                            font-weight: 700;
-                            color: var(--gray-800);
-                            margin-bottom: 0.5rem;
-                        ">${article.title || 'Untitled Article'}</h2>
-                        
+                    ` : `
                         <div style="
-                            display: flex;
-                            align-items: center;
-                            color: var(--gray-600);
-                            font-family: 'Roboto Mono', monospace;
-                            font-size: 0.75rem;
+                            background: linear-gradient(135deg, var(--emerald-100) 0%, var(--blue-100) 100%);
+                            height: 8rem;
+                            border-radius: 0.5rem;
                             margin-bottom: 1.5rem;
-                        ">
-                            <i class="fas fa-calendar" style="margin-right: 0.5rem;"></i>
-                            ${formattedDate}
-                            ${article.author ? `
-                                <span style="margin-left: 1rem;">
-                                    <i class="fas fa-user" style="margin-right: 0.5rem;"></i>
-                                    ${article.author}
-                                </span>
-                            ` : ''}
-                        </div>
-                    </div>
-                    
-                    <div style="font-family: 'Inter', sans-serif; line-height: 1.6; color: var(--gray-700);">
-                        ${article.content ? 
-                            article.content.replace(/\n/g, '<br>') : 
-                            '<p>No content available for this article.</p>'
-                        }
-                    </div>
-                    
-                    ${article.views_count !== undefined ? `
-                        <div style="
-                            margin-top: 2rem;
-                            padding-top: 1.5rem;
-                            border-top: 1px solid var(--gray-200);
                             display: flex;
                             align-items: center;
-                            justify-content: space-between;
+                            justify-content: center;
                         ">
                             <span style="
                                 font-family: 'Roboto Mono', monospace;
-                                font-size: 0.75rem;
-                                color: var(--gray-500);
-                            ">
-                                <i class="fas fa-eye" style="margin-right: 0.5rem;"></i>
-                                ${article.views_count || 0} views
-                            </span>
-                            <button id="shareArticle" style="
-                                padding: 0.5rem 1rem;
-                                background-color: var(--emerald-600);
-                                color: white;
-                                border: none;
-                                border-radius: 0.25rem;
-                                font-family: 'Roboto Mono', monospace;
-                                font-size: 0.75rem;
-                                font-weight: 700;
-                                cursor: pointer;
-                                transition: background-color 0.3s;
-                            ">Share Article</button>
-                        </div>
-                    ` : `
-                        <div style="
-                            display: flex;
-                            justify-content: center;
-                            margin-top: 2rem;
-                            padding-top: 1.5rem;
-                            border-top: 1px solid var(--gray-200);
-                        ">
-                            <button id="shareArticle" style="
-                                padding: 0.75rem 1.5rem;
-                                background-color: var(--emerald-600);
-                                color: white;
-                                border: none;
-                                border-radius: 0.375rem;
-                                font-family: 'Roboto Mono', monospace;
-                                font-size: 0.75rem;
-                                font-weight: 700;
+                                font-size: 0.875rem;
+                                color: var(--gray-600);
                                 text-transform: uppercase;
-                                letter-spacing: 0.05em;
-                                cursor: pointer;
-                                transition: background-color 0.3s;
-                            ">Share Article</button>
+                                letter-spacing: 0.1em;
+                            ">Article Image</span>
                         </div>
                     `}
+                    
+                    ${tags.length > 0 ? `
+                        <div class="modal-tags" style="
+                            display: flex;
+                            gap: 0.5rem;
+                            margin-bottom: 1rem;
+                            flex-wrap: wrap;
+                        ">
+                            ${tags.map(tag => `
+                                <span style="
+                                    padding: 0.25rem 0.5rem;
+                                    background-color: var(--gray-100);
+                                    border: 1px solid var(--gray-300);
+                                    font-family: 'Roboto Mono', monospace;
+                                    font-size: 0.625rem;
+                                    text-transform: uppercase;
+                                    font-weight: 700;
+                                    color: var(--gray-600);
+                                    border-radius: 2px;
+                                ">${tag}</span>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                    
+                    <h2 class="modal-title" style="
+                        font-family: 'Inter', sans-serif;
+                        font-size: 1.5rem;
+                        font-weight: 700;
+                        color: var(--gray-800);
+                        margin-bottom: 0.5rem;
+                        line-height: 1.3;
+                    ">${article.title || 'Untitled Article'}</h2>
+                    
+                    <div class="modal-meta" style="
+                        display: flex;
+                        align-items: center;
+                        color: var(--gray-600);
+                        font-family: 'Roboto Mono', monospace;
+                        font-size: 0.75rem;
+                        margin-bottom: 1.5rem;
+                    ">
+                        <i class="fas fa-calendar" style="margin-right: 0.5rem;"></i>
+                        ${formattedDate}
+                        ${article.author ? `
+                            <span style="margin-left: 1rem;">
+                                <i class="fas fa-user" style="margin-right: 0.5rem;"></i>
+                                ${article.author}
+                            </span>
+                        ` : ''}
+                    </div>
                 </div>
-            `;
-            
-            document.body.appendChild(modal);
-            
-            // Add modal event listeners
-            const closeModalBtn = modal.querySelector('#closeModal');
-            const shareBtn = modal.querySelector('#shareArticle');
-            
-            if (closeModalBtn) {
-                closeModalBtn.addEventListener('click', () => modal.remove());
-            }
-            
-            if (shareBtn) {
-                shareBtn.addEventListener('click', () => shareArticle(article.title, article.id));
-            }
-            
-            // Close modal on outside click
-            modal.addEventListener('click', function(e) {
-                if (e.target === this) {
-                    modal.remove();
-                }
-            });
-            
-            // Close modal on escape key
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape') {
-                    modal.remove();
-                }
-            });
-            
-            // Update view count
-            updateViewCount(article.id);
-        }
-        
-        async function updateViewCount(articleId) {
-            try {
-                // This would typically be a POST request to update view count
-                // For now, we'll just log it
-                console.log(`Viewing article ${articleId}`);
-            } catch (error) {
-                console.error('Error updating view count:', error);
-            }
-        }
-        
-        function filterArticlesByTag(tag) {
-            if (!articlesGrid) return;
-            
-            const articleCards = articlesGrid.querySelectorAll('.article-card');
-            let visibleCount = 0;
-            
-            articleCards.forEach(card => {
-                const cardTags = Array.from(card.querySelectorAll('.article-tag'))
-                    .map(t => t.textContent);
                 
-                if (cardTags.includes(tag)) {
-                    card.style.display = 'flex';
-                    visibleCount++;
-                } else {
-                    card.style.display = 'none';
-                }
+                <div class="modal-body" style="
+                    font-family: 'Inter', sans-serif;
+                    line-height: 1.6;
+                    color: var(--gray-700);
+                    margin-bottom: 2rem;
+                ">
+                    ${content.replace(/\n/g, '<br>')}
+                </div>
+                
+                <div class="modal-footer" style="
+                    padding-top: 1.5rem;
+                    border-top: 1px solid var(--gray-200);
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                ">
+                    <button id="shareArticle" style="
+                        padding: 0.75rem 1.5rem;
+                        background-color: var(--emerald-600);
+                        color: white;
+                        border: none;
+                        border-radius: 0.375rem;
+                        font-family: 'Roboto Mono', monospace;
+                        font-size: 0.75rem;
+                        font-weight: 700;
+                        text-transform: uppercase;
+                        letter-spacing: 0.05em;
+                        cursor: pointer;
+                        transition: all 0.3s;
+                        display: flex;
+                        align-items: center;
+                        gap: 0.5rem;
+                    ">
+                        <i class="fas fa-share-alt"></i>
+                        Share Article
+                    </button>
+                    
+                    <button id="closeModalBtn" style="
+                        padding: 0.75rem 1.5rem;
+                        background-color: var(--gray-200);
+                        color: var(--gray-700);
+                        border: none;
+                        border-radius: 0.375rem;
+                        font-family: 'Roboto Mono', monospace;
+                        font-size: 0.75rem;
+                        font-weight: 700;
+                        text-transform: uppercase;
+                        letter-spacing: 0.05em;
+                        cursor: pointer;
+                        transition: all 0.3s;
+                    ">
+                        Close
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Add modal event listeners
+        const closeModalBtn = modal.querySelector('#closeModal');
+        const closeModalBtn2 = modal.querySelector('#closeModalBtn');
+        const shareBtn = modal.querySelector('#shareArticle');
+        
+        const closeModalFunc = () => {
+            document.body.removeChild(modal);
+            document.removeEventListener('keydown', escapeHandler);
+        };
+        
+        const escapeHandler = (e) => {
+            if (e.key === 'Escape') closeModalFunc();
+        };
+        
+        if (closeModalBtn) closeModalBtn.addEventListener('click', closeModalFunc);
+        if (closeModalBtn2) closeModalBtn2.addEventListener('click', closeModalFunc);
+        
+        if (shareBtn) {
+            shareBtn.addEventListener('click', () => {
+                shareArticle(article.title, article.id);
             });
-            
-            if (visibleCount === 0) {
-                showNoArticlesForTagMessage(tag);
-            } else {
-                showFilterActiveMessage(tag);
-            }
         }
         
-        function showFilterActiveMessage(tag) {
-            removeExistingFilterMessages();
+        // Close modal on outside click
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModalFunc();
+            }
+        });
+        
+        // Close modal on escape key
+        document.addEventListener('keydown', escapeHandler);
+        
+        // Add hover effects
+        if (shareBtn) {
+            shareBtn.addEventListener('mouseenter', function() {
+                this.style.backgroundColor = 'var(--emerald-700)';
+                this.style.transform = 'translateY(-2px)';
+                this.style.boxShadow = 'var(--shadow-md)';
+            });
             
-            const filterMsg = document.createElement('div');
-            filterMsg.id = 'filterMessage';
-            filterMsg.style.cssText = `
-                background-color: var(--emerald-100);
+            shareBtn.addEventListener('mouseleave', function() {
+                this.style.backgroundColor = 'var(--emerald-600)';
+                this.style.transform = 'translateY(0)';
+                this.style.boxShadow = 'none';
+            });
+        }
+        
+        // Update view count
+        updateViewCount(article.id);
+    }
+    
+    async function updateViewCount(articleId) {
+        try {
+            // In a real application, you would send a POST request here
+            console.log(`Article ${articleId} viewed`);
+        } catch (error) {
+            console.error('Error updating view count:', error);
+        }
+    }
+    
+    function filterArticlesByTag(tag) {
+        if (!articlesGrid || allArticles.length === 0) return;
+        
+        currentFilter = tag;
+        filteredArticles = allArticles.filter(article => {
+            const tags = article.tags || [article.category] || [];
+            return tags.includes(tag);
+        });
+        
+        // Reset pagination
+        currentPage = 1;
+        hasMoreArticles = true;
+        
+        // Show filtered articles
+        const startIndex = 0;
+        const endIndex = ARTICLES_PER_PAGE;
+        const pageArticles = filteredArticles.slice(startIndex, endIndex);
+        
+        renderArticles(pageArticles);
+        
+        // Check if there are more articles
+        hasMoreArticles = endIndex < filteredArticles.length;
+        
+        // Update load more button
+        updateLoadMoreButton();
+        
+        // Show filter message
+        showFilterActiveMessage(tag);
+    }
+    
+    function showFilterActiveMessage(tag) {
+        removeExistingFilterMessages();
+        
+        const filterMsg = document.createElement('div');
+        filterMsg.id = 'filterMessage';
+        filterMsg.style.cssText = `
+            background-color: var(--emerald-100);
+            border: 1px solid var(--emerald-300);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 2rem;
+            text-align: center;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.875rem;
+            color: var(--emerald-700);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        `;
+        
+        filterMsg.innerHTML = `
+            <i class="fas fa-filter" style="margin-right: 0.5rem;"></i>
+            Showing articles tagged: <strong>${tag}</strong>
+            <button id="clearFilter" style="
+                margin-left: 0.5rem;
+                padding: 0.25rem 0.5rem;
+                background: none;
                 border: 1px solid var(--emerald-300);
-                padding: 1rem;
-                border-radius: 0.5rem;
-                margin-bottom: 2rem;
-                text-align: center;
+                border-radius: 0.25rem;
                 font-family: 'Roboto Mono', monospace;
-                font-size: 0.875rem;
-                color: var(--emerald-700);
-            `;
+                font-size: 0.75rem;
+                color: var(--emerald-600);
+                cursor: pointer;
+                transition: all 0.3s;
+            ">Clear Filter</button>
+        `;
+        
+        // Insert before articles grid
+        articlesGrid.parentNode.insertBefore(filterMsg, articlesGrid);
+        
+        document.getElementById('clearFilter').addEventListener('click', clearFilter);
+        
+        // Add hover effect to clear button
+        const clearBtn = document.getElementById('clearFilter');
+        clearBtn.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = 'var(--emerald-600)';
+            this.style.color = 'var(--white)';
+            this.style.borderColor = 'var(--emerald-600)';
+        });
+        
+        clearBtn.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = '';
+            this.style.color = '';
+            this.style.borderColor = '';
+        });
+    }
+    
+    function clearFilter() {
+        currentFilter = 'all';
+        filteredArticles = [...allArticles];
+        
+        // Reset pagination
+        currentPage = 1;
+        hasMoreArticles = true;
+        
+        // Show all articles
+        const startIndex = 0;
+        const endIndex = ARTICLES_PER_PAGE;
+        const pageArticles = filteredArticles.slice(startIndex, endIndex);
+        
+        renderArticles(pageArticles);
+        
+        // Check if there are more articles
+        hasMoreArticles = endIndex < filteredArticles.length;
+        
+        // Update load more button
+        updateLoadMoreButton();
+        
+        removeExistingFilterMessages();
+    }
+    
+    function removeExistingFilterMessages() {
+        const filterMsg = document.getElementById('filterMessage');
+        if (filterMsg) filterMsg.remove();
+    }
+    
+    async function loadMoreArticles() {
+        if (isLoading || !hasMoreArticles) return;
+        
+        currentPage++;
+        const startIndex = (currentPage - 1) * ARTICLES_PER_PAGE;
+        const endIndex = startIndex + ARTICLES_PER_PAGE;
+        const pageArticles = filteredArticles.slice(startIndex, endIndex);
+        
+        if (pageArticles.length === 0) {
+            hasMoreArticles = false;
+            updateLoadMoreButton();
+            return;
+        }
+        
+        isLoading = true;
+        showLoadMoreLoading();
+        
+        // Simulate loading delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        renderArticles(pageArticles, true);
+        
+        hasMoreArticles = endIndex < filteredArticles.length;
+        updateLoadMoreButton();
+        
+        isLoading = false;
+        hideLoadingState();
+    }
+    
+    function updateLoadMoreButton() {
+        if (!loadMoreBtn) return;
+        
+        if (!hasMoreArticles || filteredArticles.length <= ARTICLES_PER_PAGE) {
+            loadMoreBtn.style.display = 'none';
             
-            filterMsg.innerHTML = `
-                <i class="fas fa-filter" style="margin-right: 0.5rem;"></i>
-                Showing articles tagged: <strong>${tag}</strong>
-                <button id="clearFilter" style="
-                    margin-left: 1rem;
-                    padding: 0.25rem 0.5rem;
-                    background: none;
-                    border: 1px solid var(--emerald-300);
-                    border-radius: 0.25rem;
+            // Only show message if we have articles
+            if (filteredArticles.length > 0) {
+                const allLoadedMsg = document.createElement('div');
+                allLoadedMsg.style.cssText = `
+                    text-align: center;
                     font-family: 'Roboto Mono', monospace;
                     font-size: 0.75rem;
-                    color: var(--emerald-600);
-                    cursor: pointer;
-                ">Clear Filter</button>
-            `;
-            
-            articlesGrid.parentNode.insertBefore(filterMsg, articlesGrid);
-            
-            document.getElementById('clearFilter').addEventListener('click', clearFilter);
-        }
-        
-        function showNoArticlesForTagMessage(tag) {
-            removeExistingFilterMessages();
-            
-            const noArticlesMsg = document.createElement('div');
-            noArticlesMsg.className = 'no-articles';
-            noArticlesMsg.innerHTML = `
-                <i class="fas fa-newspaper"></i>
-                <h3>No Articles Found</h3>
-                <p>No articles found with tag: <strong>${tag}</strong></p>
-                <button id="showAllArticles" style="
+                    color: var(--gray-600);
                     margin-top: 1rem;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 0.5rem;
+                `;
+                allLoadedMsg.innerHTML = `
+                    <i class="fas fa-check-circle" style="color: var(--emerald-600);"></i>
+                    All articles loaded
+                `;
+                
+                loadMoreBtn.parentElement.appendChild(allLoadedMsg);
+            }
+        } else {
+            loadMoreBtn.style.display = 'block';
+        }
+    }
+    
+    function showLoadingState() {
+        if (!articlesGrid) return;
+        
+        articlesGrid.innerHTML = `
+            <div class="loading-state" style="
+                grid-column: 1 / -1;
+                text-align: center;
+                padding: 4rem;
+            ">
+                <div class="spinner" style="
+                    width: 3rem;
+                    height: 3rem;
+                    border: 3px solid var(--emerald-200);
+                    border-top: 3px solid var(--emerald-600);
+                    border-radius: 50%;
+                    animation: spin 1s linear infinite;
+                    margin: 0 auto 1rem;
+                "></div>
+                <p style="
+                    font-family: 'Roboto Mono', monospace;
+                    color: var(--gray-600);
+                ">Loading articles...</p>
+            </div>
+        `;
+    }
+    
+    function showLoadMoreLoading() {
+        if (!loadMoreBtn) return;
+        
+        loadMoreBtn.disabled = true;
+        loadMoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+        loadMoreBtn.style.opacity = '0.7';
+        loadMoreBtn.style.cursor = 'not-allowed';
+    }
+    
+    function hideLoadingState() {
+        if (loadMoreBtn) {
+            loadMoreBtn.disabled = false;
+            loadMoreBtn.innerHTML = 'Load More Articles';
+            loadMoreBtn.style.opacity = '1';
+            loadMoreBtn.style.cursor = 'pointer';
+        }
+    }
+    
+    function showNoArticlesMessage() {
+        if (!articlesGrid) return;
+        
+        articlesGrid.innerHTML = `
+            <div class="no-articles" style="
+                grid-column: 1 / -1;
+                text-align: center;
+                padding: 4rem 2rem;
+                background-color: var(--white);
+                border: 1px dashed var(--gray-300);
+                border-radius: 0.5rem;
+            ">
+                <i class="fas fa-newspaper" style="
+                    font-size: 3rem;
+                    color: var(--gray-300);
+                    margin-bottom: 1rem;
+                "></i>
+                <h3 style="
+                    font-family: 'Inter', sans-serif;
+                    font-size: 1.25rem;
+                    color: var(--gray-700);
+                    margin-bottom: 0.5rem;
+                ">No Articles Available</h3>
+                <p style="
+                    font-family: 'Roboto Mono', monospace;
+                    font-size: 0.875rem;
+                    color: var(--gray-600);
+                    margin-bottom: 1.5rem;
+                ">Check back soon for updates and announcements!</p>
+                <button onclick="window.location.reload()" style="
                     padding: 0.5rem 1rem;
                     background: var(--emerald-600);
                     color: white;
@@ -1801,270 +2137,298 @@
                     font-family: 'Roboto Mono', monospace;
                     font-size: 0.75rem;
                     cursor: pointer;
-                ">Show All Articles</button>
-            `;
-            
-            articlesGrid.parentNode.insertBefore(noArticlesMsg, articlesGrid.nextSibling);
-            
-            document.getElementById('showAllArticles').addEventListener('click', clearFilter);
-        }
+                    transition: background-color 0.3s;
+                ">Refresh Page</button>
+            </div>
+        `;
         
-        function clearFilter() {
-            if (!articlesGrid) return;
-            
-            const articleCards = articlesGrid.querySelectorAll('.article-card');
-            articleCards.forEach(card => {
-                card.style.display = 'flex';
-            });
-            
-            removeExistingFilterMessages();
+        if (loadMoreBtn) {
+            loadMoreBtn.style.display = 'none';
         }
+    }
+    
+    function showErrorState(message) {
+        if (!articlesGrid) return;
         
-        function removeExistingFilterMessages() {
-            const filterMsg = document.getElementById('filterMessage');
-            if (filterMsg) filterMsg.remove();
-            
-            const noArticlesMsg = articlesGrid.nextElementSibling;
-            if (noArticlesMsg && noArticlesMsg.className === 'no-articles') {
-                noArticlesMsg.remove();
-            }
-        }
-        
-        async function loadMoreArticles() {
-            if (isLoading || !hasMoreArticles) return;
-            
-            currentPage++;
-            await loadArticles(currentPage, true);
-        }
-        
-        function updateLoadMoreButton() {
-            if (!loadMoreBtn) return;
-            
-            if (!hasMoreArticles) {
-                loadMoreBtn.style.display = 'none';
-                
-                const allLoadedMsg = document.createElement('div');
-                allLoadedMsg.style.cssText = `
-                    text-align: center;
+        articlesGrid.innerHTML = `
+            <div class="error-state" style="
+                grid-column: 1 / -1;
+                text-align: center;
+                padding: 4rem;
+            ">
+                <i class="fas fa-exclamation-triangle" style="
+                    font-size: 2rem;
+                    color: var(--amber-500);
+                    margin-bottom: 1rem;
+                "></i>
+                <h3 style="
+                    font-family: 'Inter', sans-serif;
+                    font-size: 1.25rem;
+                    color: var(--gray-700);
+                    margin-bottom: 0.5rem;
+                ">Unable to Load Articles</h3>
+                <p style="
+                    font-family: 'Roboto Mono', monospace;
+                    color: var(--gray-600);
+                    margin-bottom: 1rem;
+                ">${message}</p>
+                <button onclick="window.location.reload()" style="
+                    padding: 0.5rem 1rem;
+                    background: var(--emerald-600);
+                    color: white;
+                    border: none;
+                    border-radius: 0.25rem;
                     font-family: 'Roboto Mono', monospace;
                     font-size: 0.75rem;
-                    color: var(--gray-600);
-                    margin-top: 1rem;
-                `;
-                allLoadedMsg.innerHTML = '<i class="fas fa-check-circle" style="margin-right: 0.5rem; color: var(--emerald-600);"></i> All articles loaded';
-                
-                loadMoreBtn.parentElement.appendChild(allLoadedMsg);
-            }
-        }
+                    cursor: pointer;
+                    transition: background-color 0.3s;
+                ">Try Again</button>
+            </div>
+        `;
         
-        function showLoadingState() {
-            if (!articlesGrid) return;
+        if (loadMoreBtn) {
+            loadMoreBtn.style.display = 'none';
+        }
+    }
+    
+    function shareArticle(articleTitle, articleId) {
+        const shareUrl = `${window.location.origin}/news.html#article-${articleId}`;
+        const shareText = `Check out "${articleTitle}" from NUESA BIU`;
+        
+        if (navigator.share) {
+            navigator.share({
+                title: articleTitle,
+                text: shareText,
+                url: shareUrl
+            }).then(() => {
+                console.log('Article shared successfully');
+            }).catch(error => {
+                console.log('Sharing cancelled or failed:', error);
+                // Fallback to clipboard
+                copyToClipboard(shareUrl, articleTitle);
+            });
+        } else {
+            // Fallback for browsers that don't support Web Share API
+            copyToClipboard(shareUrl, articleTitle);
+        }
+    }
+    
+    function copyToClipboard(url, title) {
+        navigator.clipboard.writeText(`${title}\n\n${url}`).then(() => {
+            showSuccessToast('Article link copied to clipboard!');
+        }).catch(() => {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = `${title}\n\n${url}`;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            showSuccessToast('Article link copied to clipboard!');
+        });
+    }
+    
+    function formatDate(dateString) {
+        if (!dateString) return 'Date not available';
+        
+        try {
+            const date = new Date(dateString);
             
-            articlesGrid.innerHTML = `
-                <div class="loading-state" style="
-                    grid-column: 1 / -1;
-                    text-align: center;
-                    padding: 3rem;
-                ">
-                    <div class="spinner"></div>
-                    <p style="
-                        font-family: 'Roboto Mono', monospace;
-                        color: var(--gray-600);
-                        margin-top: 1rem;
-                    ">Loading articles...</p>
-                </div>
-            `;
-        }
-        
-        function showLoadMoreLoading() {
-            if (!loadMoreBtn) return;
-            
-            loadMoreBtn.disabled = true;
-            loadMoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
-        }
-        
-        function hideLoadingState() {
-            if (loadMoreBtn) {
-                loadMoreBtn.disabled = false;
-                loadMoreBtn.textContent = 'Load More Articles';
-            }
-        }
-        
-        function showNoArticlesMessage() {
-            if (!articlesGrid) return;
-            
-            articlesGrid.innerHTML = `
-                <div class="no-articles">
-                    <i class="fas fa-newspaper"></i>
-                    <h3>No Articles Available</h3>
-                    <p>Check back soon for updates!</p>
-                    <button onclick="window.location.reload()" style="
-                        margin-top: 1rem;
-                        padding: 0.5rem 1rem;
-                        background: var(--emerald-600);
-                        color: white;
-                        border: none;
-                        border-radius: 0.25rem;
-                        font-family: 'Roboto Mono', monospace;
-                        font-size: 0.75rem;
-                        cursor: pointer;
-                    ">Refresh Page</button>
-                </div>
-            `;
-        }
-        
-        function showErrorState() {
-            if (!articlesGrid) return;
-            
-            articlesGrid.innerHTML = `
-                <div class="error-state" style="
-                    grid-column: 1 / -1;
-                    text-align: center;
-                    padding: 3rem;
-                ">
-                    <i class="fas fa-exclamation-triangle" style="
-                        font-size: 2rem;
-                        color: var(--amber-500);
-                        margin-bottom: 1rem;
-                    "></i>
-                    <h3 style="
-                        font-family: 'Inter', sans-serif;
-                        font-size: 1.25rem;
-                        color: var(--gray-700);
-                        margin-bottom: 0.5rem;
-                    ">Unable to Load Articles</h3>
-                    <p style="
-                        font-family: 'Roboto Mono', monospace;
-                        color: var(--gray-600);
-                        margin-bottom: 1rem;
-                    ">Please check your connection and try again.</p>
-                    <button onclick="window.location.reload()" style="
-                        padding: 0.5rem 1rem;
-                        background: var(--emerald-600);
-                        color: white;
-                        border: none;
-                        border-radius: 0.25rem;
-                        font-family: 'Roboto Mono', monospace;
-                        font-size: 0.75rem;
-                        cursor: pointer;
-                    ">Try Again</button>
-                </div>
-            `;
-        }
-        
-        function shareArticle(articleTitle, articleId) {
-            const shareUrl = `${window.location.origin}/news.html?article=${articleId}`;
-            
-            if (navigator.share) {
-                navigator.share({
-                    title: articleTitle,
-                    text: 'Check out this article from NUESA BIU',
-                    url: shareUrl
-                }).catch(console.error);
-            } else {
-                // Fallback for browsers that don't support Web Share API
-                navigator.clipboard.writeText(shareUrl).then(() => {
-                    showSuccessToast('Link copied to clipboard!');
-                }).catch(() => {
-                    alert(`Share article: "${articleTitle}"\n\nURL: ${shareUrl}`);
-                });
-            }
-        }
-        
-        function formatDate(dateString) {
-            if (!dateString) return 'Date not available';
-            
-            try {
-                const date = new Date(dateString);
-                return date.toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                });
-            } catch (error) {
-                console.error('Error formatting date:', error);
+            // If date is invalid, return original string
+            if (isNaN(date.getTime())) {
                 return dateString;
             }
-        }
-        
-        function showSuccessToast(message) {
-            const toast = document.createElement('div');
-            toast.style.cssText = `
-                position: fixed;
-                bottom: 1rem;
-                right: 1rem;
-                background: var(--emerald-600);
-                color: white;
-                padding: 1rem;
-                border-radius: 0.5rem;
-                font-family: 'Inter', sans-serif;
-                z-index: 10000;
-                box-shadow: var(--shadow-lg);
-                animation: slideIn 0.3s ease;
-            `;
-            toast.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <i class="fas fa-check-circle"></i>
-                    <span>${message}</span>
-                </div>
-            `;
-            document.body.appendChild(toast);
             
-            setTimeout(() => {
-                toast.remove();
-            }, 3000);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        } catch (error) {
+            console.error('Error formatting date:', error);
+            return dateString;
         }
-        
-        function showErrorToast(message) {
-            const toast = document.createElement('div');
-            toast.style.cssText = `
-                position: fixed;
-                bottom: 1rem;
-                right: 1rem;
-                background: #ef4444;
-                color: white;
-                padding: 1rem;
-                border-radius: 0.5rem;
-                font-family: 'Inter', sans-serif;
-                z-index: 10000;
-                box-shadow: var(--shadow-lg);
-                animation: slideIn 0.3s ease;
-            `;
-            toast.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <span>${message}</span>
-                </div>
-            `;
-            document.body.appendChild(toast);
-            
-            setTimeout(() => {
-                toast.remove();
-            }, 3000);
-        }
-        
-        // Add spinner animation
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes spin {
-                to { transform: rotate(360deg); }
-            }
-            .spinner {
-                width: 3rem;
-                height: 3rem;
-                border: 3px solid var(--emerald-200);
-                border-top: 3px solid var(--emerald-600);
-                border-radius: 50%;
-                animation: spin 1s linear infinite;
-                margin: 0 auto;
-            }
-            @keyframes slideIn {
-                from { transform: translateX(100%); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-            }
+    }
+    
+    function showSuccessToast(message) {
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            background: var(--emerald-600);
+            color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-family: 'Inter', sans-serif;
+            z-index: 10000;
+            box-shadow: var(--shadow-lg);
+            animation: slideIn 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         `;
-        document.head.appendChild(style);
-    });
+        toast.innerHTML = `
+            <i class="fas fa-check-circle"></i>
+            <span>${message}</span>
+        `;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 300);
+        }, 3000);
+    }
+    
+    function showErrorToast(message) {
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            background: #ef4444;
+            color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-family: 'Inter', sans-serif;
+            z-index: 10000;
+            box-shadow: var(--shadow-lg);
+            animation: slideIn 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        `;
+        toast.innerHTML = `
+            <i class="fas fa-exclamation-circle"></i>
+            <span>${message}</span>
+        `;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 300);
+        }, 3000);
+    }
+    
+    function highlightActiveNav() {
+        const currentPage = window.location.pathname.split('/').pop();
+        
+        // Desktop navigation
+        document.querySelectorAll('.nav-link').forEach(link => {
+            const href = link.getAttribute('href');
+            if (href === currentPage) {
+                link.classList.add('active');
+            } else {
+                link.classList.remove('active');
+            }
+        });
+        
+        // Mobile navigation
+        document.querySelectorAll('.mobile-nav-link').forEach(link => {
+            const href = link.getAttribute('href');
+            if (href === currentPage) {
+                link.classList.add('active');
+            } else {
+                link.classList.remove('active');
+            }
+        });
+    }
+    
+    function addHeaderAnimation() {
+        const header = document.querySelector('.news-header');
+        if (header) {
+            header.style.opacity = '0';
+            header.style.transform = 'translateY(-20px)';
+            
+            setTimeout(() => {
+                header.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                header.style.opacity = '1';
+                header.style.transform = 'translateY(0)';
+            }, 100);
+        }
+    }
+    
+    function animateCardsIn() {
+        const cards = articlesGrid.querySelectorAll('.article-card');
+        cards.forEach((card, index) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            
+            setTimeout(() => {
+                card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, index * 100);
+        });
+    }
+    
+    // Add CSS animations
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+        
+        .article-card {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .article-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .load-more-btn {
+            transition: all 0.3s ease;
+        }
+        
+        .load-more-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .load-more-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        #closeModal:hover {
+            color: var(--gray-800);
+        }
+        
+        .modal-content {
+            animation: modalSlideIn 0.3s ease;
+        }
+        
+        @keyframes modalSlideIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    `;
+    document.head.appendChild(style);
+});
 </script>
 </body>
 </html>

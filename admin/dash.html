@@ -1784,7 +1784,7 @@
 <script>
     // ==================== CONFIGURATION ====================
     const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
-    let authToken = localStorage.getItem('authToken');
+    let authToken = localStorage.getItem('authToken') || localStorage.getItem('auth_token');
     let currentUser = null;
     let currentMemberId = null;
     let currentArticleId = null;
@@ -1834,18 +1834,26 @@
     }
     
     function showToast(message, type = 'info', duration = 5000) {
+        // Remove existing toasts
+        document.querySelectorAll('.toast').forEach(toast => toast.remove());
+        
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
-        const icon = type === 'success' ? 'check-circle' : 
-                    type === 'error' ? 'exclamation-circle' : 
-                    type === 'warning' ? 'exclamation-triangle' : 'info-circle';
+        
+        let icon;
+        switch(type) {
+            case 'success': icon = 'check-circle'; break;
+            case 'error': icon = 'exclamation-circle'; break;
+            case 'warning': icon = 'exclamation-triangle'; break;
+            default: icon = 'info-circle';
+        }
         
         toast.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
                 <i class="fas fa-${icon}" style="font-size: 16px;"></i>
                 <span>${message}</span>
             </div>
-            <button class="toast-close">&times;</button>
+            <button class="toast-close" style="background: none; border: none; color: var(--slate-400); cursor: pointer; padding: 4px; margin-left: 12px;">&times;</button>
         `;
         
         document.body.appendChild(toast);
@@ -1868,166 +1876,105 @@
         }, duration);
     }
     
-    function getFileIcon(fileType) {
-        if (!fileType) return 'fas fa-file-alt';
-        
-        if (fileType.includes('pdf')) return 'fas fa-file-pdf';
-        if (fileType.includes('word') || fileType.includes('doc')) return 'fas fa-file-word';
-        if (fileType.includes('excel') || fileType.includes('sheet')) return 'fas fa-file-excel';
-        if (fileType.includes('image')) return 'fas fa-file-image';
-        if (fileType.includes('zip') || fileType.includes('rar')) return 'fas fa-file-archive';
-        if (fileType.includes('text')) return 'fas fa-file-alt';
-        if (fileType.includes('powerpoint') || fileType.includes('presentation')) return 'fas fa-file-powerpoint';
-        
-        return 'fas fa-file-alt';
-    }
-    
-    function getCategoryClass(category) {
-        const classes = {
-            'Past Questions': 'badge-blue',
-            'Lecture Notes': 'badge-green',
-            'Textbooks': 'badge-purple',
-            'Projects': 'badge-yellow',
-            'Tutorials': 'badge-info',
-            'Forms': 'badge-red',
-            'Others': 'badge-info'
-        };
-        return classes[category] || 'badge-info';
-    }
-    
-    function getStatusClass(status) {
-        const classes = {
-            'upcoming': 'badge-success',
-            'ongoing': 'badge-warning',
-            'completed': 'badge-info',
-            'cancelled': 'badge-danger',
-            'draft': 'badge-warning',
-            'published': 'badge-success',
-            'new': 'badge-danger',
-            'read': 'badge-success',
-            'active': 'badge-success',
-            'inactive': 'badge-danger',
-            'alumni': 'badge-info'
-        };
-        return classes[status] || 'badge-info';
-    }
-    
     // ==================== API CLIENT ====================
-    async function request(endpoint, options = {}) {
-        const url = `${API_BASE_URL}${endpoint}`;
+    async function apiRequest(endpoint, options = {}) {
+        const url = `${API_BASE_URL}/api${endpoint}`;
         const config = {
             ...options,
             headers: {
-                'Authorization': `Bearer ${authToken}`,
                 'Content-Type': 'application/json',
                 ...options.headers
             }
         };
         
+        // Add auth token if available
+        if (authToken) {
+            config.headers.Authorization = `Bearer ${authToken}`;
+        }
+        
         try {
             const response = await fetch(url, config);
             
+            // Handle 401 Unauthorized
             if (response.status === 401) {
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('user');
                 showToast('Session expired. Please login again.', 'error');
                 setTimeout(() => {
-                    localStorage.removeItem('authToken');
-                    localStorage.removeItem('user');
-                    window.location.href = 'adlog.html?session=expired';
-                }, 1500);
+                    window.location.href = 'adlog.html';
+                }, 2000);
                 throw new Error('Unauthorized');
             }
             
-            if (!response.ok) {
-                let errorMsg = `HTTP ${response.status}`;
-                try {
-                    const errorData = await response.json();
-                    errorMsg = errorData.message || errorMsg;
-                } catch (e) {}
-                throw new Error(errorMsg);
+            // Try to parse JSON response
+            let data;
+            try {
+                data = await response.json();
+            } catch (e) {
+                throw new Error(`Invalid response from server: ${response.status}`);
             }
             
-            return await response.json();
+            if (!response.ok) {
+                throw new Error(data.message || `HTTP ${response.status}`);
+            }
+            
+            return data;
         } catch (error) {
             if (error.message.includes('Network') || error.message.includes('Failed to fetch')) {
                 console.warn('Network error for', endpoint);
                 throw new Error('Network error. Please check your connection.');
             }
-            console.error('API Error:', error);
             throw error;
         }
     }
     
     async function get(endpoint) {
-        return request(endpoint, { method: 'GET' });
+        return apiRequest(endpoint, { method: 'GET' });
     }
     
     async function post(endpoint, data) {
-        return request(endpoint, {
+        return apiRequest(endpoint, {
             method: 'POST',
             body: JSON.stringify(data)
         });
     }
     
     async function put(endpoint, data) {
-        return request(endpoint, {
+        return apiRequest(endpoint, {
             method: 'PUT',
             body: JSON.stringify(data)
         });
     }
     
     async function del(endpoint) {
-        return request(endpoint, { method: 'DELETE' });
-    }
-    
-    // File upload helper
-    async function uploadFile(endpoint, formData) {
-        const url = `${API_BASE_URL}${endpoint}`;
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${authToken}`
-                    // Don't set Content-Type for FormData - browser sets it automatically
-                },
-                body: formData
-            });
-            
-            if (response.status === 401) {
-                showToast('Session expired. Please login again.', 'error');
-                setTimeout(() => {
-                    localStorage.removeItem('authToken');
-                    localStorage.removeItem('user');
-                    window.location.href = 'adlog.html?session=expired';
-                }, 1500);
-                throw new Error('Unauthorized');
-            }
-            
-            if (!response.ok) {
-                const error = await response.json().catch(() => ({}));
-                throw new Error(error.message || `HTTP ${response.status}`);
-            }
-            
-            return await response.json();
-        } catch (error) {
-            console.error('File upload error:', error);
-            throw error;
-        }
+        return apiRequest(endpoint, { method: 'DELETE' });
     }
     
     // ==================== AUTHENTICATION ====================
     async function checkAuth() {
+        if (!authToken) {
+            window.location.href = 'adlog.html';
+            return false;
+        }
+        
         try {
             const response = await get('/auth/verify');
-            currentUser = response.data || response.user;
             
-            if (!currentUser) {
-                throw new Error('No user data');
+            if (response.status === 'success' && response.data) {
+                currentUser = response.data;
+                
+                // Store user data in localStorage
+                localStorage.setItem('user', JSON.stringify(currentUser));
+                updateUserInfo();
+                return true;
+            } else {
+                throw new Error('Invalid user data');
             }
-            
-            updateUserInfo();
-            return true;
         } catch (error) {
             console.error('Auth check failed:', error);
+            
+            // Try cached user data
             const cachedUser = localStorage.getItem('user');
             if (cachedUser) {
                 try {
@@ -2036,21 +1983,26 @@
                     showToast('Using cached user data', 'warning');
                     return true;
                 } catch (e) {
-                    // If cached user is invalid, redirect to login
-                    window.location.href = 'adlog.html?session=invalid';
-                    return false;
+                    // Cached data is invalid
                 }
-            } else {
-                window.location.href = 'adlog.html?session=invalid';
-                return false;
             }
+            
+            // Redirect to login
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user');
+            window.location.href = 'adlog.html';
+            return false;
         }
     }
     
     function logout() {
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('user');
-        window.location.href = 'adlog.html?session=expired';
+        if (confirm('Are you sure you want to logout?')) {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user');
+            window.location.href = 'adlog.html';
+        }
     }
     
     function updateUserInfo() {
@@ -2086,7 +2038,7 @@
         const modal = document.getElementById(modalId);
         if (modal) {
             modal.classList.remove('active');
-            document.body.style.overflow = '';
+            document.body.style.overflow = 'auto';
         }
     }
     
@@ -2095,8 +2047,8 @@
         showLoading();
         
         if (!authToken) {
-            showToast('No active session found', 'warning');
-            window.location.href = 'adlog.html?session=invalid';
+            showToast('Please login first', 'warning');
+            window.location.href = 'adlog.html';
             return;
         }
         
@@ -2108,7 +2060,6 @@
         
         setupSidebar();
         setupEventListeners();
-        setupNotifications();
         await loadContent('dashboard');
         updateConnectionStatus();
         hideLoading();
@@ -2133,28 +2084,23 @@
                 e.preventDefault();
                 const page = item.getAttribute('data-page');
                 
+                // Update active state
                 document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
                 item.classList.add('active');
                 
+                // Load content
                 loadContent(page);
                 
+                // Close mobile menu
                 sidebar.classList.remove('open');
                 mobileOverlay?.classList.remove('active');
             });
         });
         
-        document.getElementById('logoutBtn')?.addEventListener('click', () => {
-            showModal('logoutModal');
-        });
+        document.getElementById('logoutBtn')?.addEventListener('click', logout);
     }
     
     function setupEventListeners() {
-        // Logout handlers
-        document.getElementById('confirmLogout')?.addEventListener('click', logout);
-        document.getElementById('cancelLogout')?.addEventListener('click', () => {
-            hideModal('logoutModal');
-        });
-        
         // Modal close buttons
         document.querySelectorAll('.modal-close').forEach(closeBtn => {
             closeBtn.addEventListener('click', function() {
@@ -2169,17 +2115,23 @@
                 if (e.target === this) hideModal(this.id);
             });
         });
+        
+        // Logout modal handlers
+        document.getElementById('confirmLogout')?.addEventListener('click', logout);
+        document.getElementById('cancelLogout')?.addEventListener('click', () => {
+            hideModal('logoutModal');
+        });
     }
     
-    function setupNotifications() {
-        const notificationBtn = document.getElementById('notificationBtn');
-        if (notificationBtn) {
-            notificationBtn.addEventListener('click', () => {
-                loadContent('messages');
-            });
+    function updateConnectionStatus() {
+        const statusElement = document.getElementById('connectionStatus');
+        if (statusElement) {
+            statusElement.innerHTML = '<i class="fas fa-wifi"></i> <span>Online</span>';
+            statusElement.className = 'connection-status connection-online';
         }
     }
     
+    // ==================== CONTENT LOADING ====================
     async function loadContent(page) {
         showLoading();
         
@@ -2242,27 +2194,26 @@
     // ==================== DASHBOARD PAGE ====================
     async function loadDashboard() {
         try {
-            const [membersRes, eventsRes, articlesRes, resourcesRes, messagesRes] = await Promise.allSettled([
-                get('/members/executives'),
-                get('/events?upcoming=true'),
-                get('/articles'),
-                get('/resources'),
+            const [membersRes, eventsRes, messagesRes] = await Promise.allSettled([
+                get('/members'),
+                get('/events'),
                 get('/messages')
             ]);
             
-            const members = membersRes.status === 'fulfilled' ? membersRes.value.data || [] : [];
-            const events = eventsRes.status === 'fulfilled' ? eventsRes.value.data || [] : [];
-            const articles = articlesRes.status === 'fulfilled' ? articlesRes.value.data || [] : [];
-            const resources = resourcesRes.status === 'fulfilled' ? resourcesRes.value.data || [] : [];
-            const messages = messagesRes.status === 'fulfilled' ? messagesRes.value.data || [] : [];
+            const members = membersRes.status === 'fulfilled' ? (membersRes.value.data || []) : [];
+            const events = eventsRes.status === 'fulfilled' ? (eventsRes.value.data || []) : [];
+            const messages = messagesRes.status === 'fulfilled' ? (messagesRes.value.data || []) : [];
             
+            // Calculate statistics
+            const activeMembers = members.filter(m => m.status === 'active').length;
+            const upcomingEvents = events.filter(e => e.status === 'upcoming').length;
             const unreadMessages = messages.filter(m => m.status === 'new').length;
             
             // Update notification badge
             const badge = document.getElementById('notificationBadge');
             if (badge) {
                 badge.textContent = unreadMessages;
-                badge.style.display = unreadMessages > 0 ? 'flex' : 'none';
+                badge.style.display = unreadMessages > 0 ? 'block' : 'none';
             }
             
             return `
@@ -2282,7 +2233,7 @@
                         <div class="stat-icon icon-blue">
                             <i class="fas fa-calendar-alt"></i>
                         </div>
-                        <div class="stat-value">${events.length}</div>
+                        <div class="stat-value">${upcomingEvents}</div>
                         <div class="stat-label">Upcoming Events</div>
                     </div>
                     
@@ -2290,7 +2241,7 @@
                         <div class="stat-icon icon-purple">
                             <i class="fas fa-newspaper"></i>
                         </div>
-                        <div class="stat-value">${articles.length}</div>
+                        <div class="stat-value">0</div>
                         <div class="stat-label">Articles</div>
                     </div>
                     
@@ -2304,36 +2255,58 @@
                 </div>
                 
                 <div class="quick-actions-grid">
-                    <div class="quick-action-card" onclick="loadContent('members'); setTimeout(() => document.getElementById('addMemberBtn')?.click(), 300);">
+                    <div class="quick-action-card" onclick="loadContent('members'); setTimeout(() => document.getElementById('addMemberBtn')?.click(), 100);">
                         <div class="quick-action-icon">
                             <i class="fas fa-user-plus"></i>
                         </div>
                         <div style="font-weight: 600; margin-bottom: 4px;">Add Member</div>
                     </div>
                     
-                    <div class="quick-action-card" onclick="loadContent('events'); setTimeout(() => document.getElementById('addEventBtn')?.click(), 300);">
+                    <div class="quick-action-card" onclick="loadContent('events'); setTimeout(() => document.getElementById('addEventBtn')?.click(), 100);">
                         <div class="quick-action-icon">
                             <i class="fas fa-calendar-plus"></i>
                         </div>
                         <div style="font-weight: 600; margin-bottom: 4px;">Create Event</div>
                     </div>
                     
-                    <div class="quick-action-card" onclick="loadContent('articles'); setTimeout(() => document.getElementById('addArticleBtn')?.click(), 300);">
-                        <div class="quick-action-icon">
-                            <i class="fas fa-edit"></i>
-                        </div>
-                        <div style="font-weight: 600; margin-bottom: 4px;">Write Article</div>
-                    </div>
-                    
-                    <div class="quick-action-card" onclick="loadContent('resources'); setTimeout(() => document.getElementById('addResourceBtn')?.click(), 300);">
+                    <div class="quick-action-card" onclick="loadContent('resources'); setTimeout(() => document.getElementById('addResourceBtn')?.click(), 100);">
                         <div class="quick-action-icon">
                             <i class="fas fa-upload"></i>
                         </div>
                         <div style="font-weight: 600; margin-bottom: 4px;">Upload Resource</div>
                     </div>
+                    
+                    <div class="quick-action-card" onclick="loadContent('messages')">
+                        <div class="quick-action-icon">
+                            <i class="fas fa-comments"></i>
+                        </div>
+                        <div style="font-weight: 600; margin-bottom: 4px;">View Messages</div>
+                    </div>
                 </div>
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 32px;">
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h3 class="card-title">Recent Members</h3>
+                            <button class="btn btn-primary btn-sm" onclick="loadContent('members')">
+                                View All
+                            </button>
+                        </div>
+                        ${members.length > 0 ? members.slice(0, 5).map(member => `
+                            <div style="padding: 12px; border-bottom: 1px solid var(--slate-100);">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div class="table-avatar">${member.full_name?.charAt(0) || '?'}</div>
+                                    <div>
+                                        <div style="font-weight: 600; margin-bottom: 2px;">${member.full_name || 'N/A'}</div>
+                                        <div style="font-size: 12px; color: var(--slate-500);">
+                                            ${member.position || ''} ${member.department ? `• ${member.department}` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('') : '<p style="text-align: center; color: var(--slate-500); padding: 24px;">No members found</p>'}
+                    </div>
+                    
                     <div class="content-card">
                         <div class="card-header">
                             <h3 class="card-title">Recent Events</h3>
@@ -2344,9 +2317,9 @@
                         ${events.length > 0 ? events.slice(0, 5).map(event => `
                             <div style="padding: 12px; border-bottom: 1px solid var(--slate-100);">
                                 <div style="font-weight: 600; margin-bottom: 4px; display: flex; justify-content: space-between;">
-                                    <span>${event.title}</span>
-                                    <span class="status-badge ${getStatusClass(event.status)}" style="font-size: 10px;">
-                                        ${event.status || 'upcoming'}
+                                    <span>${event.title || 'Untitled'}</span>
+                                    <span style="font-size: 10px; padding: 2px 8px; background: var(--slate-100); border-radius: 12px;">
+                                        ${event.category || 'General'}
                                     </span>
                                 </div>
                                 <div style="font-size: 12px; color: var(--slate-500);">
@@ -2356,35 +2329,7 @@
                                     ${event.location || 'TBA'}
                                 </div>
                             </div>
-                        `).join('') : '<p style="text-align: center; color: var(--slate-500); padding: 24px;">No upcoming events</p>'}
-                    </div>
-                    
-                    <div class="content-card">
-                        <div class="card-header">
-                            <h3 class="card-title">Recent Messages</h3>
-                            <button class="btn btn-primary btn-sm" onclick="loadContent('messages')">
-                                View All
-                            </button>
-                        </div>
-                        ${messages.length > 0 ? messages.slice(0, 5).map(message => `
-                            <div style="padding: 12px; border-bottom: 1px solid var(--slate-100); ${message.status === 'new' ? 'border-left: 3px solid var(--primary);' : ''}">
-                                <div style="display: flex; justify-content: space-between; align-items: start;">
-                                    <div style="font-weight: 600; margin-bottom: 4px;">${message.name}</div>
-                                    <span style="font-size: 10px; color: var(--slate-500);">
-                                        ${formatDate(message.created_at)}
-                                    </span>
-                                </div>
-                                <div style="font-size: 12px; color: var(--slate-500); margin-bottom: 4px;">
-                                    ${message.subject}
-                                </div>
-                                <div style="font-size: 11px; color: var(--slate-400);">
-                                    ${message.department || 'General'} • 
-                                    <button class="btn-text" onclick="viewMessage(${message.id})" style="background: none; border: none; color: var(--primary); cursor: pointer; font-size: 11px; padding: 0; text-decoration: underline;">
-                                        View Message
-                                    </button>
-                                </div>
-                            </div>
-                        `).join('') : '<p style="text-align: center; color: var(--slate-500); padding: 24px;">No messages</p>'}
+                        `).join('') : '<p style="text-align: center; color: var(--slate-500); padding: 24px;">No events found</p>'}
                     </div>
                 </div>
             `;
@@ -2394,6 +2339,9 @@
                     <i class="fas fa-exclamation-triangle"></i>
                     <h3>Dashboard Unavailable</h3>
                     <p>${error.message || 'Unable to load dashboard data.'}</p>
+                    <button class="btn btn-primary" onclick="loadContent('dashboard')" style="margin-top: 16px;">
+                        Retry
+                    </button>
                 </div>
             `;
         }
@@ -2408,28 +2356,21 @@
             return `
                 <div class="content-card">
                     <div class="card-header">
-                        <h3 class="card-title">Members Management</h3>
+                        <h3 class="card-title">Executive Members Management</h3>
                         <button class="btn btn-primary" id="addMemberBtn">
                             <i class="fas fa-plus"></i> Add Member
                         </button>
                     </div>
                     
                     <div class="search-filter">
-                        <input type="text" class="search-input" id="memberSearch" placeholder="Search members...">
-                        <select class="filter-select" id="memberPositionFilter">
+                        <input type="text" class="search-input" id="memberSearch" placeholder="Search members..." onkeyup="filterMembers()">
+                        <select class="filter-select" id="memberPositionFilter" onchange="filterMembers()">
                             <option value="">All Positions</option>
                             <option value="President">President</option>
                             <option value="Vice President">Vice President</option>
                             <option value="Secretary">Secretary</option>
                             <option value="Treasurer">Treasurer</option>
                             <option value="PRO">PRO</option>
-                        </select>
-                        <select class="filter-select" id="memberDepartmentFilter">
-                            <option value="">All Departments</option>
-                            <option value="Computer Engineering">Computer Engineering</option>
-                            <option value="Electrical/Electronics">Electrical/Electronics</option>
-                            <option value="Mechanical Engineering">Mechanical Engineering</option>
-                            <option value="Civil Engineering">Civil Engineering</option>
                         </select>
                     </div>
                     
@@ -2441,7 +2382,6 @@
                                         <th>Name</th>
                                         <th>Position</th>
                                         <th>Department</th>
-                                        <th>Email</th>
                                         <th>Status</th>
                                         <th>Actions</th>
                                     </tr>
@@ -2456,24 +2396,23 @@
                                                     </div>
                                                     <div>
                                                         <div style="font-weight: 600;">${member.full_name || 'N/A'}</div>
-                                                        <div style="font-size: 12px; color: var(--slate-500);">${member.level ? `Level ${member.level}` : ''}</div>
+                                                        <div style="font-size: 12px; color: var(--slate-500);">${member.email || ''}</div>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td>${member.position || 'N/A'}</td>
                                             <td>${member.department || 'N/A'}</td>
-                                            <td>${member.email || '-'}</td>
                                             <td>
-                                                <span class="status-badge ${getStatusClass(member.status)}">
-                                                    ${member.status || 'active'}
+                                                <span class="status-badge ${member.status === 'active' ? 'badge-success' : 'badge-danger'}">
+                                                    ${member.status || 'inactive'}
                                                 </span>
                                             </td>
                                             <td>
                                                 <div class="action-buttons">
-                                                    <button class="icon-btn icon-btn-primary" onclick="editMember(${member.id})" title="Edit">
+                                                    <button class="icon-btn icon-btn-primary" onclick="editMember('${member.id}')" title="Edit">
                                                         <i class="fas fa-edit"></i>
                                                     </button>
-                                                    <button class="icon-btn icon-btn-danger" onclick="deleteMember(${member.id})" title="Delete">
+                                                    <button class="icon-btn icon-btn-danger" onclick="deleteMember('${member.id}')" title="Delete">
                                                         <i class="fas fa-trash"></i>
                                                     </button>
                                                 </div>
@@ -2487,7 +2426,7 @@
                         <div class="empty-state">
                             <i class="fas fa-users"></i>
                             <h3>No Members Found</h3>
-                            <p>Add your first executive or committee member.</p>
+                            <p>Add your first executive member.</p>
                         </div>
                     `}
                 </div>
@@ -2503,11 +2442,32 @@
         }
     }
     
+    function filterMembers() {
+        const search = document.getElementById('memberSearch').value.toLowerCase();
+        const position = document.getElementById('memberPositionFilter').value;
+        
+        const rows = document.querySelectorAll('#membersTable tbody tr');
+        rows.forEach(row => {
+            const name = row.cells[0].textContent.toLowerCase();
+            const pos = row.cells[1].textContent;
+            const dept = row.cells[2].textContent.toLowerCase();
+            
+            const matchesSearch = name.includes(search) || dept.includes(search);
+            const matchesPosition = !position || pos === position;
+            
+            row.style.display = matchesSearch && matchesPosition ? '' : 'none';
+        });
+    }
+    
     async function editMember(memberId) {
         try {
             showLoading();
             const response = await get(`/members/${memberId}`);
             const member = response.data;
+            
+            if (!member) {
+                throw new Error('Member not found');
+            }
             
             currentMemberId = memberId;
             document.getElementById('memberModalTitle').textContent = 'Edit Member';
@@ -2524,7 +2484,7 @@
             document.getElementById('memberOrder').value = member.display_order || 1;
             document.getElementById('memberStatus').value = member.status || 'active';
             
-            // Set social links
+            // Set social links if they exist
             if (member.social_links) {
                 const social = typeof member.social_links === 'string' ? 
                     JSON.parse(member.social_links) : member.social_links;
@@ -2545,26 +2505,32 @@
     async function saveMember() {
         try {
             const memberData = {
-                full_name: document.getElementById('memberName').value,
+                full_name: document.getElementById('memberName').value.trim(),
                 position: document.getElementById('memberPosition').value,
-                email: document.getElementById('memberEmail').value,
-                phone: document.getElementById('memberPhone').value,
+                email: document.getElementById('memberEmail').value.trim(),
+                phone: document.getElementById('memberPhone').value.trim(),
                 department: document.getElementById('memberDepartment').value,
                 level: document.getElementById('memberLevel').value,
-                bio: document.getElementById('memberBio').value,
+                bio: document.getElementById('memberBio').value.trim(),
                 committee: document.getElementById('memberCommittee').value,
                 display_order: parseInt(document.getElementById('memberOrder').value) || 1,
                 status: document.getElementById('memberStatus').value,
                 social_links: {
-                    linkedin: document.getElementById('memberLinkedIn').value,
-                    twitter: document.getElementById('memberTwitter').value,
-                    github: document.getElementById('memberGitHub').value,
-                    instagram: document.getElementById('memberInstagram').value
+                    linkedin: document.getElementById('memberLinkedIn').value.trim(),
+                    twitter: document.getElementById('memberTwitter').value.trim(),
+                    github: document.getElementById('memberGitHub').value.trim(),
+                    instagram: document.getElementById('memberInstagram').value.trim()
                 }
             };
             
+            // Validation
             if (!memberData.full_name || !memberData.position || !memberData.department) {
                 showToast('Please fill all required fields', 'error');
+                return;
+            }
+            
+            if (memberData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(memberData.email)) {
+                showToast('Please enter a valid email address', 'error');
                 return;
             }
             
@@ -2617,68 +2583,43 @@
                         </button>
                     </div>
                     
-                    <div class="search-filter">
-                        <input type="text" class="search-input" id="eventSearch" placeholder="Search events...">
-                        <select class="filter-select" id="eventCategoryFilter">
-                            <option value="">All Categories</option>
-                            <option value="Workshop">Workshop</option>
-                            <option value="Competition">Competition</option>
-                            <option value="Social">Social</option>
-                            <option value="Career">Career</option>
-                            <option value="Academic">Academic</option>
-                        </select>
-                        <select class="filter-select" id="eventStatusFilter">
-                            <option value="">All Status</option>
-                            <option value="upcoming">Upcoming</option>
-                            <option value="ongoing">Ongoing</option>
-                            <option value="completed">Completed</option>
-                        </select>
-                    </div>
-                    
                     ${events.length > 0 ? `
-                        <div class="table-container">
-                            <table class="data-table" id="eventsTable">
-                                <thead>
-                                    <tr>
-                                        <th>Title</th>
-                                        <th>Category</th>
-                                        <th>Date</th>
-                                        <th>Location</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${events.map(event => `
-                                        <tr>
-                                            <td>
-                                                <div style="font-weight: 600;">${event.title}</div>
-                                                <div style="font-size: 12px; color: var(--slate-500);">
-                                                    ${(event.description || '').substring(0, 60)}${(event.description || '').length > 60 ? '...' : ''}
-                                                </div>
-                                            </td>
-                                            <td>${event.category || 'N/A'}</td>
-                                            <td>${formatDate(event.date)}</td>
-                                            <td>${event.location || 'N/A'}</td>
-                                            <td>
-                                                <span class="status-badge ${getStatusClass(event.status)}">
-                                                    ${event.status || 'upcoming'}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div class="action-buttons">
-                                                    <button class="icon-btn icon-btn-primary" onclick="editEvent(${event.id})" title="Edit">
-                                                        <i class="fas fa-edit"></i>
-                                                    </button>
-                                                    <button class="icon-btn icon-btn-danger" onclick="deleteEvent(${event.id})" title="Delete">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
+                        <div class="card-grid">
+                            ${events.map(event => `
+                                <div class="card-grid-item">
+                                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                                        <span style="font-size: 12px; padding: 4px 8px; background: var(--slate-100); border-radius: 12px;">
+                                            ${event.category || 'General'}
+                                        </span>
+                                        <span style="font-size: 12px; color: var(--slate-500);">
+                                            ${formatDate(event.date)}
+                                        </span>
+                                    </div>
+                                    
+                                    <h4 style="font-size: 16px; font-weight: 600; margin-bottom: 8px; line-height: 1.4;">${event.title || 'Untitled'}</h4>
+                                    
+                                    <p style="font-size: 14px; color: var(--slate-600); margin-bottom: 12px; line-height: 1.5;">
+                                        ${(event.description || '').substring(0, 100)}${(event.description || '').length > 100 ? '...' : ''}
+                                    </p>
+                                    
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px;">
+                                        <div>
+                                            <div style="font-size: 12px; color: var(--slate-500);">
+                                                <i class="fas fa-map-marker-alt" style="margin-right: 4px;"></i>
+                                                ${event.location || 'TBA'}
+                                            </div>
+                                        </div>
+                                        <div class="action-buttons">
+                                            <button class="icon-btn icon-btn-primary" onclick="editEvent('${event.id}')" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="icon-btn icon-btn-danger" onclick="deleteEvent('${event.id}')" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
                         </div>
                     ` : `
                         <div class="empty-state">
@@ -2706,6 +2647,10 @@
             const response = await get(`/events/${eventId}`);
             const event = response.data;
             
+            if (!event) {
+                throw new Error('Event not found');
+            }
+            
             currentEventId = eventId;
             document.getElementById('eventModalTitle').textContent = 'Edit Event';
             
@@ -2720,7 +2665,6 @@
             document.getElementById('eventOrganizer').value = event.organizer || '';
             document.getElementById('eventMaxParticipants').value = event.max_participants || '';
             document.getElementById('eventStatus').value = event.status || 'upcoming';
-            document.getElementById('eventRegistrationDeadline').value = event.registration_deadline || '';
             
             showModal('eventModal');
         } catch (error) {
@@ -2733,20 +2677,20 @@
     async function saveEvent() {
         try {
             const eventData = {
-                title: document.getElementById('eventTitle').value,
-                description: document.getElementById('eventDescription').value,
+                title: document.getElementById('eventTitle').value.trim(),
+                description: document.getElementById('eventDescription').value.trim(),
                 category: document.getElementById('eventCategory').value,
                 date: document.getElementById('eventDate').value,
                 start_time: document.getElementById('eventStartTime').value,
                 end_time: document.getElementById('eventEndTime').value,
-                location: document.getElementById('eventLocation').value,
-                organizer: document.getElementById('eventOrganizer').value,
+                location: document.getElementById('eventLocation').value.trim(),
+                organizer: document.getElementById('eventOrganizer').value.trim(),
                 max_participants: document.getElementById('eventMaxParticipants').value || null,
-                status: document.getElementById('eventStatus').value,
-                registration_deadline: document.getElementById('eventRegistrationDeadline').value || null
+                status: document.getElementById('eventStatus').value
             };
             
-            if (!eventData.title || !eventData.description || !eventData.category || !eventData.date || !eventData.location) {
+            // Validation
+            if (!eventData.title || !eventData.description || !eventData.date || !eventData.location) {
                 showToast('Please fill all required fields', 'error');
                 return;
             }
@@ -2787,204 +2731,22 @@
     
     // ==================== ARTICLES MANAGEMENT ====================
     async function loadArticles() {
-        try {
-            const response = await get('/articles');
-            const articles = response.data || [];
-            
-            return `
-                <div class="content-card">
-                    <div class="card-header">
-                        <h3 class="card-title">Articles Management</h3>
-                        <button class="btn btn-primary" id="addArticleBtn">
-                            <i class="fas fa-plus"></i> Add Article
-                        </button>
-                    </div>
-                    
-                    <div class="search-filter">
-                        <input type="text" class="search-input" id="articleSearch" placeholder="Search articles...">
-                        <select class="filter-select" id="articleCategoryFilter">
-                            <option value="">All Categories</option>
-                            <option value="News">News</option>
-                            <option value="Events">Events</option>
-                            <option value="Academic">Academic</option>
-                            <option value="Technical">Technical</option>
-                            <option value="Announcement">Announcement</option>
-                        </select>
-                        <select class="filter-select" id="articleStatusFilter">
-                            <option value="">All Status</option>
-                            <option value="published">Published</option>
-                            <option value="draft">Draft</option>
-                        </select>
-                    </div>
-                    
-                    ${articles.length > 0 ? `
-                        <div class="card-grid">
-                            ${articles.map(article => `
-                                <div class="card-grid-item">
-                                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
-                                        <span class="status-badge ${article.category === 'News' ? 'badge-blue' : article.category === 'Events' ? 'badge-green' : 'badge-purple'}">
-                                            ${article.category || 'General'}
-                                        </span>
-                                        <span class="status-badge ${getStatusClass(article.status)}">
-                                            ${article.status || 'draft'}
-                                        </span>
-                                    </div>
-                                    
-                                    <h4 style="font-size: 16px; font-weight: 600; margin-bottom: 8px; line-height: 1.4;">${article.title || 'Untitled'}</h4>
-                                    
-                                    <p style="font-size: 14px; color: var(--slate-600); margin-bottom: 12px; line-height: 1.5;">
-                                        ${(article.excerpt || '').substring(0, 100)}${(article.excerpt || '').length > 100 ? '...' : ''}
-                                    </p>
-                                    
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px;">
-                                        <div>
-                                            <div style="font-size: 12px; color: var(--slate-500);">${formatDate(article.created_at)}</div>
-                                            <div style="font-size: 11px; color: var(--slate-400);">By ${article.author || 'Admin'}</div>
-                                        </div>
-                                        <div class="action-buttons">
-                                            <button class="icon-btn icon-btn-primary" onclick="editArticle(${article.id})" title="Edit">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="icon-btn icon-btn-danger" onclick="deleteArticle(${article.id})" title="Delete">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    ` : `
-                        <div class="empty-state">
-                            <i class="far fa-newspaper"></i>
-                            <h3>No Articles Found</h3>
-                            <p>Create your first news article or announcement.</p>
-                        </div>
-                    `}
+        return `
+            <div class="content-card">
+                <div class="card-header">
+                    <h3 class="card-title">Articles Management</h3>
+                    <button class="btn btn-primary" id="addArticleBtn" onclick="showModal('articleModal')">
+                        <i class="fas fa-plus"></i> Add Article
+                    </button>
                 </div>
-            `;
-        } catch (error) {
-            return `
+                
                 <div class="empty-state">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <h3>Unable to Load Articles</h3>
-                    <p>${error.message}</p>
+                    <i class="far fa-newspaper"></i>
+                    <h3>Articles Feature Coming Soon</h3>
+                    <p>This feature is under development. Check back soon!</p>
                 </div>
-            `;
-        }
-    }
-    
-    async function editArticle(articleId) {
-        try {
-            showLoading();
-            const response = await get(`/articles/${articleId}`);
-            const article = response.data;
-            
-            currentArticleId = articleId;
-            document.getElementById('articleModalTitle').textContent = 'Edit Article';
-            
-            // Set form values
-            document.getElementById('articleTitle').value = article.title || '';
-            document.getElementById('articleCategory').value = article.category || '';
-            document.getElementById('articleAuthor').value = article.author || '';
-            document.getElementById('articleFeaturedImage').value = article.featured_image || '';
-            document.getElementById('articleExcerpt').value = article.excerpt || '';
-            document.getElementById('articleContent').innerHTML = article.content || '';
-            document.getElementById('articlePublishDate').value = article.published_at?.substring(0, 16) || '';
-            
-            // Set status toggle
-            document.querySelectorAll('#articleModal .status-toggle-btn').forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.dataset.status === (article.status || 'draft')) {
-                    btn.classList.add('active');
-                }
-            });
-            
-            // Set tags
-            const container = document.getElementById('articleTagsContainer');
-            container.innerHTML = '';
-            if (article.tags) {
-                try {
-                    const tags = typeof article.tags === 'string' ? JSON.parse(article.tags) : article.tags;
-                    if (Array.isArray(tags)) {
-                        tags.forEach(tag => {
-                            addTag(tag, container);
-                        });
-                    }
-                } catch (e) {
-                    console.log('Error parsing tags:', e);
-                }
-            }
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.className = 'tag-input';
-            input.id = 'articleTagInput';
-            input.placeholder = 'Type and press Enter...';
-            container.appendChild(input);
-            
-            showModal('articleModal');
-        } catch (error) {
-            showToast('Failed to load article details: ' + error.message, 'error');
-        } finally {
-            hideLoading();
-        }
-    }
-    
-    async function saveArticle() {
-        try {
-            const status = document.querySelector('#articleModal .status-toggle-btn.active')?.dataset.status || 'draft';
-            const tags = Array.from(document.querySelectorAll('#articleTagsContainer .tag')).map(tag => 
-                tag.textContent.replace('×', '').trim()
-            );
-            
-            const articleData = {
-                title: document.getElementById('articleTitle').value,
-                category: document.getElementById('articleCategory').value,
-                author: document.getElementById('articleAuthor').value,
-                featured_image: document.getElementById('articleFeaturedImage').value,
-                excerpt: document.getElementById('articleExcerpt').value,
-                content: document.getElementById('articleContent').innerHTML,
-                tags: tags,
-                status: status,
-                published_at: status === 'published' ? (document.getElementById('articlePublishDate').value || new Date().toISOString()) : null
-            };
-            
-            if (!articleData.title || !articleData.category || !articleData.excerpt) {
-                showToast('Please fill all required fields', 'error');
-                return;
-            }
-            
-            showLoading();
-            
-            let response;
-            if (currentArticleId) {
-                response = await put(`/articles/${currentArticleId}`, articleData);
-            } else {
-                response = await post('/articles', articleData);
-            }
-            
-            showToast(`Article ${currentArticleId ? 'updated' : 'created'} successfully`, 'success');
-            hideModal('articleModal');
-            await loadContent('articles');
-        } catch (error) {
-            showToast('Failed to save article: ' + error.message, 'error');
-        } finally {
-            hideLoading();
-        }
-    }
-    
-    async function deleteArticle(articleId) {
-        if (!confirm('Are you sure you want to delete this article?')) return;
-        
-        try {
-            showLoading();
-            await del(`/articles/${articleId}`);
-            showToast('Article deleted successfully', 'success');
-            await loadContent('articles');
-        } catch (error) {
-            showToast('Failed to delete article: ' + error.message, 'error');
-        } finally {
-            hideLoading();
-        }
+            </div>
+        `;
     }
     
     // ==================== RESOURCES MANAGEMENT ====================
@@ -3002,79 +2764,39 @@
                         </button>
                     </div>
                     
-                    <div class="search-filter">
-                        <input type="text" class="search-input" id="resourceSearch" placeholder="Search resources...">
-                        <select class="filter-select" id="resourceCategoryFilter">
-                            <option value="">All Categories</option>
-                            <option value="Past Questions">Past Questions</option>
-                            <option value="Lecture Notes">Lecture Notes</option>
-                            <option value="Textbooks">Textbooks</option>
-                            <option value="Projects">Projects</option>
-                            <option value="Tutorials">Tutorials</option>
-                        </select>
-                        <select class="filter-select" id="resourceDepartmentFilter">
-                            <option value="">All Departments</option>
-                            <option value="Computer Engineering">Computer Engineering</option>
-                            <option value="Electrical/Electronics">Electrical/Electronics</option>
-                            <option value="Mechanical Engineering">Mechanical Engineering</option>
-                            <option value="Civil Engineering">Civil Engineering</option>
-                        </select>
-                    </div>
-                    
                     ${resources.length > 0 ? `
-                        <div class="table-container">
-                            <table class="data-table" id="resourcesTable">
-                                <thead>
-                                    <tr>
-                                        <th>File Name</th>
-                                        <th>Category</th>
-                                        <th>Department</th>
-                                        <th>Course</th>
-                                        <th>Downloads</th>
-                                        <th>Size</th>
-                                        <th>Uploaded</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${resources.map(resource => `
-                                        <tr>
-                                            <td>
-                                                <div style="display: flex; align-items: center; gap: 8px;">
-                                                    <i class="${getFileIcon(resource.file_type || '')}" style="color: var(--primary);"></i>
-                                                    <div>
-                                                        <div style="font-weight: 600;">${resource.title}</div>
-                                                        <div style="font-size: 12px; color: var(--slate-500);">${(resource.description || '').substring(0, 50)}${(resource.description || '').length > 50 ? '...' : ''}</div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <span class="status-badge ${getCategoryClass(resource.category)}">
-                                                    ${resource.category || 'Others'}
-                                                </span>
-                                            </td>
-                                            <td>${resource.department || 'All Departments'}</td>
-                                            <td>
-                                                <div>${resource.course_code || '-'}</div>
-                                                <div style="font-size: 12px; color: var(--slate-500);">${resource.level ? `Level ${resource.level}` : 'All Levels'}</div>
-                                            </td>
-                                            <td>${resource.download_count || 0}</td>
-                                            <td>${formatFileSize(resource.file_size || 0)}</td>
-                                            <td>${formatDate(resource.created_at)}</td>
-                                            <td>
-                                                <div class="action-buttons">
-                                                    <button class="icon-btn icon-btn-primary" onclick="downloadResource(${resource.id})" title="Download">
-                                                        <i class="fas fa-download"></i>
-                                                    </button>
-                                                    <button class="icon-btn icon-btn-danger" onclick="deleteResource(${resource.id})" title="Delete">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; margin-top: 24px;">
+                            ${resources.map(resource => `
+                                <div class="content-card" style="margin: 0; padding: 16px;">
+                                    <div style="display: flex; align-items: start; gap: 12px; margin-bottom: 12px;">
+                                        <i class="fas fa-file-alt" style="font-size: 24px; color: var(--primary);"></i>
+                                        <div style="flex: 1;">
+                                            <h4 style="font-size: 16px; font-weight: 600; margin-bottom: 4px;">${resource.title || 'Untitled'}</h4>
+                                            <div style="font-size: 12px; color: var(--slate-500);">
+                                                ${resource.category || 'General'} • ${resource.department || 'All Departments'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <p style="font-size: 14px; color: var(--slate-600); margin-bottom: 16px; line-height: 1.5;">
+                                        ${(resource.description || '').substring(0, 80)}${(resource.description || '').length > 80 ? '...' : ''}
+                                    </p>
+                                    
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div style="font-size: 12px; color: var(--slate-500);">
+                                            ${resource.course_code || ''} ${resource.level ? `• Level ${resource.level}` : ''}
+                                        </div>
+                                        <div class="action-buttons">
+                                            <button class="icon-btn icon-btn-primary" onclick="downloadResource('${resource.id}')" title="Download">
+                                                <i class="fas fa-download"></i>
+                                            </button>
+                                            <button class="icon-btn icon-btn-danger" onclick="deleteResource('${resource.id}')" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
                         </div>
                     ` : `
                         <div class="empty-state">
@@ -3113,7 +2835,7 @@
     
     async function downloadResource(resourceId) {
         try {
-            window.open(`${API_BASE_URL}/resources/${resourceId}/download`, '_blank');
+            window.open(`${API_BASE_URL}/api/resources/${resourceId}/download`, '_blank');
         } catch (error) {
             showToast('Failed to download resource', 'error');
         }
@@ -3146,53 +2868,35 @@
                     </div>
                     
                     ${messages.length > 0 ? `
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Email</th>
-                                        <th>Subject</th>
-                                        <th>Department</th>
-                                        <th>Date</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${messages.map(message => `
-                                        <tr style="${message.status === 'new' ? 'background-color: var(--primary-light);' : ''}">
-                                            <td>
-                                                <div style="font-weight: ${message.status === 'new' ? '600' : '400'};">${message.name}</div>
-                                            </td>
-                                            <td>${message.email}</td>
-                                            <td>
-                                                <div style="font-weight: ${message.status === 'new' ? '600' : '400'};">${message.subject}</div>
-                                                <div style="font-size: 12px; color: var(--slate-500); margin-top: 2px;">
-                                                    ${(message.message || '').substring(0, 60)}${(message.message || '').length > 60 ? '...' : ''}
-                                                </div>
-                                            </td>
-                                            <td>${message.department || 'General'}</td>
-                                            <td>${formatDateTime(message.created_at)}</td>
-                                            <td>
-                                                <span class="status-badge ${getStatusClass(message.status)}">
-                                                    ${message.status || 'new'}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div class="action-buttons">
-                                                    <button class="icon-btn icon-btn-primary" onclick="viewMessage(${message.id})" title="View">
-                                                        <i class="fas fa-eye"></i>
-                                                    </button>
-                                                    <button class="icon-btn icon-btn-danger" onclick="deleteMessage(${message.id})" title="Delete">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
+                        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
+                            ${messages.map(message => `
+                                <div class="content-card" style="margin: 0; padding: 16px; ${message.status === 'new' ? 'border-left: 4px solid var(--primary);' : ''}">
+                                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                                        <div>
+                                            <div style="font-weight: 600; margin-bottom: 2px;">${message.name || 'Anonymous'}</div>
+                                            <div style="font-size: 14px; color: var(--slate-600);">${message.subject || 'No Subject'}</div>
+                                        </div>
+                                        <div style="font-size: 12px; color: var(--slate-500);">
+                                            ${formatDateTime(message.created_at)}
+                                        </div>
+                                    </div>
+                                    
+                                    <p style="font-size: 14px; color: var(--slate-700); margin-bottom: 12px; line-height: 1.5;">
+                                        ${(message.message || '').substring(0, 150)}${(message.message || '').length > 150 ? '...' : ''}
+                                    </p>
+                                    
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div style="font-size: 12px; color: var(--slate-500);">
+                                            ${message.email || ''} ${message.department ? `• ${message.department}` : ''}
+                                        </div>
+                                        <div class="action-buttons">
+                                            <button class="btn btn-secondary btn-sm" onclick="viewMessage('${message.id}')">
+                                                View Message
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
                         </div>
                     ` : `
                         <div class="empty-state">
@@ -3226,25 +2930,17 @@
                 throw new Error('Message not found');
             }
             
+            // Update modal content
             document.getElementById('messageSubject').textContent = message.subject || 'No Subject';
-            document.getElementById('messageSender').textContent = `${message.name} <${message.email}>`;
+            document.getElementById('messageSender').textContent = `${message.name || 'Anonymous'} <${message.email || 'No email'}>`;
             document.getElementById('messageDate').textContent = formatDateTime(message.created_at);
             
             // Format message body with line breaks
             const messageBody = (message.message || '').replace(/\n/g, '<br>');
-            document.getElementById('messageBody').innerHTML = `
-                <div style="padding: 16px; background: var(--slate-50); border-radius: var(--radius);">
-                    <div style="margin-bottom: 8px;">
-                        <strong>Department:</strong> ${message.department || 'Not specified'}
-                    </div>
-                    <hr style="margin: 12px 0; border-color: var(--slate-200);">
-                    ${messageBody}
-                </div>
-            `;
+            document.getElementById('messageBody').innerHTML = messageBody;
             
-            // Set button handlers
-            const markBtn = document.getElementById('markAsReadBtn');
-            markBtn.onclick = async () => {
+            // Update button handlers
+            document.getElementById('markAsReadBtn').onclick = async () => {
                 try {
                     await put(`/messages/${messageId}/read`, {});
                     showToast('Message marked as read', 'success');
@@ -3255,29 +2951,17 @@
                 }
             };
             
-            const replyBtn = document.getElementById('replyToMessageBtn');
-            replyBtn.onclick = () => {
-                window.location.href = `mailto:${message.email}?subject=Re: ${encodeURIComponent(message.subject)}`;
+            document.getElementById('replyToMessageBtn').onclick = () => {
+                if (message.email) {
+                    window.location.href = `mailto:${message.email}?subject=Re: ${encodeURIComponent(message.subject || '')}`;
+                } else {
+                    showToast('No email address to reply to', 'warning');
+                }
             };
             
             showModal('messageModal');
         } catch (error) {
             showToast('Failed to load message: ' + error.message, 'error');
-        } finally {
-            hideLoading();
-        }
-    }
-    
-    async function deleteMessage(messageId) {
-        if (!confirm('Are you sure you want to delete this message?')) return;
-        
-        try {
-            showLoading();
-            await del(`/messages/${messageId}`);
-            showToast('Message deleted successfully', 'success');
-            await loadContent('messages');
-        } catch (error) {
-            showToast('Failed to delete message: ' + error.message, 'error');
         } finally {
             hideLoading();
         }
@@ -3296,7 +2980,7 @@
                 try {
                     await put(`/messages/${message.id}/read`, {});
                 } catch (e) {
-                    // Continue with other messages
+                    console.log('Failed to mark one message as read:', e);
                 }
             }
             
@@ -3312,7 +2996,7 @@
     // ==================== ANALYTICS PAGE ====================
     async function loadAnalytics() {
         try {
-            const response = await get('/analytics');
+            const response = await get('/stats');
             const data = response.data || {};
             
             return `
@@ -3323,84 +3007,52 @@
                     
                     <div class="stats-grid">
                         <div class="stat-card">
-                            <div class="stat-icon icon-blue">
-                                <i class="fas fa-eye"></i>
-                            </div>
-                            <div class="stat-value">${data.page_views || 0}</div>
-                            <div class="stat-label">Page Views</div>
-                        </div>
-                        
-                        <div class="stat-card">
                             <div class="stat-icon icon-green">
                                 <i class="fas fa-users"></i>
                             </div>
-                            <div class="stat-value">${data.unique_visitors || 0}</div>
-                            <div class="stat-label">Unique Visitors</div>
+                            <div class="stat-value">${data.users || 0}</div>
+                            <div class="stat-label">Total Users</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon icon-blue">
+                                <i class="fas fa-users-cog"></i>
+                            </div>
+                            <div class="stat-value">${data.members || 0}</div>
+                            <div class="stat-label">Executive Members</div>
                         </div>
                         
                         <div class="stat-card">
                             <div class="stat-icon icon-purple">
-                                <i class="fas fa-download"></i>
+                                <i class="fas fa-calendar-alt"></i>
                             </div>
-                            <div class="stat-value">${data.downloads || 0}</div>
-                            <div class="stat-label">Resource Downloads</div>
+                            <div class="stat-value">0</div>
+                            <div class="stat-label">Total Events</div>
                         </div>
                         
                         <div class="stat-card">
                             <div class="stat-icon icon-red">
-                                <i class="fas fa-calendar-check"></i>
+                                <i class="fas fa-envelope"></i>
                             </div>
-                            <div class="stat-value">${data.registrations || 0}</div>
-                            <div class="stat-label">Event Registrations</div>
+                            <div class="stat-value">0</div>
+                            <div class="stat-label">Total Messages</div>
                         </div>
                     </div>
                     
-                    <div style="margin-top: 32px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
-                        <div class="content-card">
-                            <div class="card-header">
-                                <h3 class="card-title">Statistics</h3>
+                    <div style="margin-top: 32px; background: white; padding: 20px; border-radius: var(--radius); border: 1px solid var(--slate-200);">
+                        <h4 style="margin-bottom: 16px; color: var(--slate-700);">System Status</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                            <div>
+                                <div style="font-weight: 600; margin-bottom: 4px;">API Connection</div>
+                                <div class="status-badge badge-success">Online</div>
                             </div>
-                            <div style="display: flex; flex-direction: column; gap: 16px;">
-                                <div style="display: flex; justify-content: space-between;">
-                                    <span>Active Members</span>
-                                    <span style="font-weight: 600;">${data.active_members || 0}</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between;">
-                                    <span>Upcoming Events</span>
-                                    <span style="font-weight: 600;">${data.upcoming_events || 0}</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between;">
-                                    <span>Published Articles</span>
-                                    <span style="font-weight: 600;">${data.published_articles || 0}</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between;">
-                                    <span>Total Resources</span>
-                                    <span style="font-weight: 600;">${data.total_resources || 0}</span>
-                                </div>
+                            <div>
+                                <div style="font-weight: 600; margin-bottom: 4px;">Database</div>
+                                <div class="status-badge badge-success">Connected</div>
                             </div>
-                        </div>
-                        
-                        <div class="content-card">
-                            <div class="card-header">
-                                <h3 class="card-title">System Status</h3>
-                            </div>
-                            <div style="display: flex; flex-direction: column; gap: 12px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span>API Connection</span>
-                                    <span class="status-badge badge-success">Online</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span>Database</span>
-                                    <span class="status-badge badge-success">Connected</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span>Unread Messages</span>
-                                    <span class="status-badge badge-danger">${data.unread_messages || 0}</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span>Last Update</span>
-                                    <span style="font-size: 12px; color: var(--slate-500);">Just now</span>
-                                </div>
+                            <div>
+                                <div style="font-weight: 600; margin-bottom: 4px;">Cache Status</div>
+                                <div class="status-badge badge-success">Active</div>
                             </div>
                         </div>
                     </div>
@@ -3421,79 +3073,42 @@
     
     // ==================== SETTINGS PAGE ====================
     async function loadSettings() {
-        try {
-            const response = await get('/settings');
-            const settings = response.data || {};
-            
-            return `
-                <div class="content-card">
-                    <div class="card-header">
-                        <h3 class="card-title">Website Settings</h3>
-                        <button class="btn btn-primary" id="openSettingsModal">
-                            <i class="fas fa-cog"></i> Configure Settings
-                        </button>
-                    </div>
-                    
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px;">
-                        <div>
-                            <h4 style="margin-bottom: 16px; color: var(--slate-700);">General Settings</h4>
-                            <div style="background: white; padding: 20px; border-radius: var(--radius); border: 1px solid var(--slate-200);">
-                                <div style="margin-bottom: 16px;">
-                                    <div style="font-weight: 600; margin-bottom: 4px;">Website Name</div>
-                                    <div style="color: var(--slate-600);">${settings.site_name || 'NUESA BIU'}</div>
-                                </div>
-                                <div style="margin-bottom: 16px;">
-                                    <div style="font-weight: 600; margin-bottom: 4px;">Contact Email</div>
-                                    <div style="color: var(--slate-600);">${settings.contact_email || 'nuesa@biu.edu.ng'}</div>
-                                </div>
-                                <div style="margin-bottom: 16px;">
-                                    <div style="font-weight: 600; margin-bottom: 4px;">Contact Phone</div>
-                                    <div style="color: var(--slate-600);">${settings.contact_phone || '+234 123 456 7890'}</div>
-                                </div>
+        return `
+            <div class="content-card">
+                <div class="card-header">
+                    <h3 class="card-title">Website Settings</h3>
+                    <button class="btn btn-primary" onclick="showModal('settingsModal')">
+                        <i class="fas fa-cog"></i> Configure Settings
+                    </button>
+                </div>
+                
+                <div style="margin-top: 24px;">
+                    <div style="background: white; padding: 24px; border-radius: var(--radius); border: 1px solid var(--slate-200);">
+                        <h4 style="margin-bottom: 16px; color: var(--slate-700);">Current Configuration</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                            <div>
+                                <div style="font-weight: 600; margin-bottom: 8px;">Website Name</div>
+                                <div style="color: var(--slate-600); padding: 8px 12px; background: var(--slate-50); border-radius: var(--radius);">NUESA BIU</div>
                             </div>
-                        </div>
-                        
-                        <div>
-                            <h4 style="margin-bottom: 16px; color: var(--slate-700);">System Information</h4>
-                            <div style="background: white; padding: 20px; border-radius: var(--radius); border: 1px solid var(--slate-200);">
-                                <div style="margin-bottom: 16px;">
-                                    <div style="font-weight: 600; margin-bottom: 4px;">Admin Panel Version</div>
-                                    <div style="color: var(--slate-600);">2.0.0</div>
-                                </div>
-                                <div style="margin-bottom: 16px;">
-                                    <div style="font-weight: 600; margin-bottom: 4px;">Last Updated</div>
-                                    <div style="color: var(--slate-600);">${new Date().toLocaleDateString()}</div>
-                                </div>
-                                <div style="margin-bottom: 16px;">
-                                    <div style="font-weight: 600; margin-bottom: 4px;">Database</div>
-                                    <div style="color: var(--slate-600);">PostgreSQL</div>
-                                </div>
+                            <div>
+                                <div style="font-weight: 600; margin-bottom: 8px;">Contact Email</div>
+                                <div style="color: var(--slate-600); padding: 8px 12px; background: var(--slate-50); border-radius: var(--radius);">nuesa@biu.edu.ng</div>
                             </div>
                         </div>
                     </div>
                 </div>
-            `;
-        } catch (error) {
-            return `
-                <div class="content-card">
-                    <div class="empty-state">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <h3>Settings Unavailable</h3>
-                        <p>${error.message}</p>
-                    </div>
-                </div>
-            `;
-        }
+            </div>
+        `;
     }
     
-    // ==================== HELPER FUNCTIONS ====================
+    // ==================== FILE UPLOAD FUNCTIONS ====================
     function previewMemberImage(input) {
         const preview = document.getElementById('memberImagePreview');
         if (input.files && input.files[0]) {
             const reader = new FileReader();
             reader.onload = function(e) {
-                preview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
-            }
+                preview.innerHTML = `<img src="${e.target.result}" alt="Preview" style="width: 100%; height: 100%; object-fit: cover;">`;
+            };
             reader.readAsDataURL(input.files[0]);
         }
     }
@@ -3503,19 +3118,8 @@
         if (input.files && input.files[0]) {
             const reader = new FileReader();
             reader.onload = function(e) {
-                preview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
-            }
-            reader.readAsDataURL(input.files[0]);
-        }
-    }
-    
-    function previewArticleImage(input) {
-        const preview = document.getElementById('articleImagePreview');
-        if (input.files && input.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                preview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
-            }
+                preview.innerHTML = `<img src="${e.target.result}" alt="Preview" style="width: 100%; height: 100%; object-fit: cover;">`;
+            };
             reader.readAsDataURL(input.files[0]);
         }
     }
@@ -3524,26 +3128,6 @@
         if (input.files && input.files[0]) {
             const file = input.files[0];
             const preview = document.getElementById('resourcePreview');
-            
-            // Validate file type
-            const allowedTypes = [
-                'application/pdf',
-                'application/msword',
-                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                'application/vnd.ms-excel',
-                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                'text/plain',
-                'image/jpeg',
-                'image/png',
-                'application/zip',
-                'application/x-rar-compressed'
-            ];
-            
-            if (!allowedTypes.includes(file.type) && !file.name.match(/\.(pdf|doc|docx|xls|xlsx|txt|jpg|jpeg|png|zip|rar)$/i)) {
-                showToast('Invalid file type. Please upload PDF, Word, Excel, ZIP, or image files only.', 'error');
-                input.value = '';
-                return;
-            }
             
             // Validate file size (max 50MB)
             if (file.size > 50 * 1024 * 1024) {
@@ -3555,81 +3139,32 @@
             document.getElementById('resourceFileName').textContent = file.name;
             document.getElementById('resourceFileSize').textContent = formatFileSize(file.size);
             preview.style.display = 'block';
-            
-            // Enable save button
-            const saveBtn = document.getElementById('saveResource');
-            if (saveBtn) saveBtn.disabled = false;
         }
     }
     
-    function clearResourceFile() {
-        document.getElementById('resourceFile').value = '';
-        document.getElementById('resourcePreview').style.display = 'none';
-        const saveBtn = document.getElementById('saveResource');
-        if (saveBtn) saveBtn.disabled = true;
-    }
-    
-    function addTag(value, container) {
-        const tag = document.createElement('div');
-        tag.className = 'tag';
-        tag.innerHTML = `
-            ${value}
-            <button type="button" class="tag-remove" onclick="this.parentElement.remove()">&times;</button>
-        `;
-        
-        const input = container.querySelector('.tag-input');
-        if (input) {
-            container.insertBefore(tag, input);
-        } else {
-            container.appendChild(tag);
-        }
-    }
-    
-    function formatText(command) {
-        document.execCommand(command, false, null);
-    }
-    
-    function insertLink() {
-        const url = prompt('Enter URL:');
-        if (url) {
-            document.execCommand('createLink', false, url);
-        }
-    }
-    
-    function insertList(type) {
-        document.execCommand(type === 'unordered' ? 'insertUnorderedList' : 'insertOrderedList', false, null);
-    }
-    
-    function updateConnectionStatus() {
-        const statusElement = document.getElementById('connectionStatus');
-        if (statusElement) {
-            statusElement.innerHTML = '<i class="fas fa-wifi" style="color: var(--primary);"></i> <span>Online</span>';
-            statusElement.className = 'connection-status connection-online';
-        }
-    }
-    
-    // ==================== RESOURCES UPLOAD FUNCTION ====================
     async function uploadResource() {
+        const fileInput = document.getElementById('resourceFile');
+        if (!fileInput.files.length) {
+            showToast('Please select a file to upload', 'error');
+            return;
+        }
+        
+        // Validate required fields
+        const title = document.getElementById('resourceTitle').value.trim();
+        const category = document.getElementById('resourceCategory').value;
+        
+        if (!title) {
+            showToast('Please enter a resource title', 'error');
+            return;
+        }
+        
+        if (!category) {
+            showToast('Please select a category', 'error');
+            return;
+        }
+        
         try {
-            const fileInput = document.getElementById('resourceFile');
-            if (!fileInput.files.length) {
-                showToast('Please select a file to upload', 'error');
-                return;
-            }
-            
-            // Validate required fields
-            const title = document.getElementById('resourceTitle').value.trim();
-            const category = document.getElementById('resourceCategory').value;
-            
-            if (!title) {
-                showToast('Please enter a resource title', 'error');
-                return;
-            }
-            
-            if (!category) {
-                showToast('Please select a category', 'error');
-                return;
-            }
+            showLoading();
             
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
@@ -3639,37 +3174,27 @@
             formData.append('department', document.getElementById('resourceDepartment').value);
             formData.append('level', document.getElementById('resourceLevel').value);
             formData.append('course_code', document.getElementById('resourceCourseCode').value);
-            formData.append('course_title', document.getElementById('resourceTitle').value);
-            formData.append('year', document.getElementById('resourceYear').value);
-            formData.append('semester', '1');
             
-            showLoading();
+            const url = `${API_BASE_URL}/api/upload`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
+                },
+                body: formData
+            });
             
-            // Disable save button during upload
-            const saveBtn = document.getElementById('saveResource');
-            if (saveBtn) {
-                saveBtn.disabled = true;
-                saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+            const result = await response.json();
+            
+            if (response.ok && result.status === 'success') {
+                showToast('Resource uploaded successfully', 'success');
+                hideModal('resourceModal');
+                await loadContent('resources');
+            } else {
+                throw new Error(result.message || 'Upload failed');
             }
-            
-            const response = await uploadFile('/resources/upload', formData);
-            const yearValue = document.getElementById('resourceYear').value;
-            // Convert to integer if it's just a number, otherwise keep as string
-            const year = isNaN(yearValue) ? yearValue : parseInt(yearValue);
-
-            formData.append('year', year || new Date().getFullYear());
-
-            showToast('Resource uploaded successfully', 'success');
-            hideModal('resourceModal');
-            await loadContent('resources');
         } catch (error) {
             showToast('Failed to upload resource: ' + error.message, 'error');
-            // Re-enable save button
-            const saveBtn = document.getElementById('saveResource');
-            if (saveBtn) {
-                saveBtn.disabled = false;
-                saveBtn.innerHTML = 'Upload Resource';
-            }
         } finally {
             hideLoading();
         }
@@ -3678,17 +3203,11 @@
     // ==================== INITIALIZE PAGE EVENTS ====================
     function initializePageEvents(page) {
         switch(page) {
-            case 'dashboard':
-                initializeDashboardCharts();
-                break;
             case 'members':
                 initializeMembersPage();
                 break;
             case 'events':
                 initializeEventsPage();
-                break;
-            case 'articles':
-                initializeArticlesPage();
                 break;
             case 'resources':
                 initializeResourcesPage();
@@ -3696,17 +3215,7 @@
             case 'messages':
                 initializeMessagesPage();
                 break;
-            case 'analytics':
-                initializeAnalyticsCharts();
-                break;
-            case 'settings':
-                initializeSettingsPage();
-                break;
         }
-    }
-    
-    function initializeDashboardCharts() {
-        // Charts initialization if needed
     }
     
     function initializeMembersPage() {
@@ -3720,20 +3229,6 @@
         
         document.getElementById('saveMember')?.addEventListener('click', saveMember);
         document.getElementById('cancelMember')?.addEventListener('click', () => hideModal('memberModal'));
-        
-        // Setup search functionality
-        const searchInput = document.getElementById('memberSearch');
-        if (searchInput) {
-            searchInput.addEventListener('input', function() {
-                const search = this.value.toLowerCase();
-                const rows = document.querySelectorAll('#membersTable tbody tr');
-                
-                rows.forEach(row => {
-                    const text = row.textContent.toLowerCase();
-                    row.style.display = text.includes(search) ? '' : 'none';
-                });
-            });
-        }
     }
     
     function initializeEventsPage() {
@@ -3752,62 +3247,12 @@
         document.getElementById('cancelEvent')?.addEventListener('click', () => hideModal('eventModal'));
     }
     
-    function initializeArticlesPage() {
-        document.getElementById('addArticleBtn')?.addEventListener('click', () => {
-            currentArticleId = null;
-            document.getElementById('articleModalTitle').textContent = 'Add New Article';
-            document.getElementById('articleForm').reset();
-            document.getElementById('articleContent').innerHTML = '';
-            document.getElementById('articleImagePreview').innerHTML = '<i class="far fa-newspaper" style="font-size: 48px; color: var(--slate-400);"></i>';
-            document.getElementById('articleTagsContainer').innerHTML = '<input type="text" class="tag-input" id="articleTagInput" placeholder="Type and press Enter...">';
-            document.querySelectorAll('#articleModal .status-toggle-btn').forEach((btn, index) => {
-                btn.classList.remove('active');
-                if (index === 0) btn.classList.add('active');
-            });
-            showModal('articleModal');
-        });
-        
-        document.getElementById('saveArticle')?.addEventListener('click', saveArticle);
-        document.getElementById('cancelArticle')?.addEventListener('click', () => hideModal('articleModal'));
-        
-        // Setup tag input
-        const tagInputContainer = document.getElementById('articleTagsContainer');
-        if (tagInputContainer) {
-            tagInputContainer.addEventListener('keypress', (e) => {
-                if (e.target.classList.contains('tag-input') && e.key === 'Enter') {
-                    e.preventDefault();
-                    const value = e.target.value.trim();
-                    if (value) {
-                        addTag(value, tagInputContainer);
-                        e.target.value = '';
-                    }
-                }
-            });
-        }
-        
-        // Setup status toggle
-        document.querySelectorAll('#articleModal .status-toggle-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                this.parentElement.querySelectorAll('.status-toggle-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-            });
-        });
-    }
-    
     function initializeResourcesPage() {
         document.getElementById('addResourceBtn')?.addEventListener('click', () => {
             currentResourceId = null;
             document.getElementById('resourceModalTitle').textContent = 'Upload New Resource';
             document.getElementById('resourceForm').reset();
             document.getElementById('resourcePreview').style.display = 'none';
-            
-            // Enable the save button
-            const saveBtn = document.getElementById('saveResource');
-            if (saveBtn) {
-                saveBtn.disabled = false;
-                saveBtn.innerHTML = 'Upload Resource';
-            }
-            
             showModal('resourceModal');
         });
         
@@ -3843,43 +3288,27 @@
         // Nothing additional needed for now
     }
     
-    function initializeAnalyticsCharts() {
-        // Charts initialization if needed
-    }
-    
-    function initializeSettingsPage() {
-        document.getElementById('openSettingsModal')?.addEventListener('click', () => {
-            showModal('settingsModal');
-        });
-    }
-    
     // ==================== INITIALIZE ON LOAD ====================
     document.addEventListener('DOMContentLoaded', () => {
         initDashboard();
     });
     
-    // Global functions
+    // Make functions available globally
     window.loadContent = loadContent;
     window.logout = logout;
     window.editMember = editMember;
     window.deleteMember = deleteMember;
     window.editEvent = editEvent;
     window.deleteEvent = deleteEvent;
-    window.editArticle = editArticle;
-    window.deleteArticle = deleteArticle;
     window.deleteResource = deleteResource;
     window.downloadResource = downloadResource;
     window.viewMessage = viewMessage;
-    window.deleteMessage = deleteMessage;
     window.markAllAsRead = markAllAsRead;
+    window.filterMembers = filterMembers;
     window.previewMemberImage = previewMemberImage;
     window.previewEventImage = previewEventImage;
-    window.previewArticleImage = previewArticleImage;
     window.previewResourceFile = previewResourceFile;
-    window.clearResourceFile = clearResourceFile;
-    window.formatText = formatText;
-    window.insertLink = insertLink;
-    window.insertList = insertList;
+    window.uploadResource = uploadResource;
 </script>
 </body>
 </html>

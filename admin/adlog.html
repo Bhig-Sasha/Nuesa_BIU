@@ -543,18 +543,19 @@
     let isDatabaseConnected = false;
     let serverOnline = false;
     
+    // AbortController for timeouts
+    let abortController = null;
+    
     // Initialize
     function init() {
         console.log('NUESA BIU Admin Login Initializing...');
         
+        // Clear any existing auth data
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('auth_token');
+        
         // Check URL parameters for session expiration
         checkSessionStatus();
-        
-        // Check server health
-        checkServerHealth();
-        
-        // Check database connection
-        checkDatabaseConnection();
         
         // Load remembered email
         loadRememberedEmail();
@@ -564,6 +565,12 @@
         
         // Auto-focus email field
         setTimeout(() => emailInput.focus(), 100);
+        
+        // Check server health (but don't block login)
+        setTimeout(() => {
+            checkServerHealth();
+            checkDatabaseConnection();
+        }, 500);
     }
     
     // Check if user was redirected due to session expiration
@@ -601,12 +608,19 @@
         updateServerStatus(null);
         
         try {
-            const response = await fetch(`${API_BASE_URL}/health`, {
+            // Create new abort controller for timeout
+            abortController = new AbortController();
+            const timeoutId = setTimeout(() => abortController.abort(), 5000);
+            
+            const response = await fetch(`${API_BASE_URL}/api/health`, {
                 cache: 'no-cache',
-                signal: AbortSignal.timeout(3000)
+                signal: abortController.signal
             });
             
+            clearTimeout(timeoutId);
+            
             if (response.ok) {
+                const data = await response.json();
                 serverOnline = true;
                 updateServerStatus(true);
                 return true;
@@ -616,9 +630,16 @@
                 return false;
             }
         } catch (error) {
-            console.error('Server health check failed:', error);
+            console.warn('Server health check failed:', error.message);
             serverOnline = false;
-            updateServerStatus(false, 'Server offline');
+            
+            if (error.name === 'AbortError') {
+                updateServerStatus(false, 'Server timeout');
+            } else if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
+                updateServerStatus(false, 'Server offline');
+            } else {
+                updateServerStatus(false, 'Server error');
+            }
             return false;
         }
     }
@@ -628,21 +649,17 @@
         updateDatabaseStatus('checking', 'Checking database...');
         
         try {
-            const response = await fetch(`${API_BASE_URL}/health/db`, {
-                cache: 'no-cache',
-                signal: AbortSignal.timeout(5000)
+            // Use the same health endpoint
+            const response = await fetch(`${API_BASE_URL}/api/health`, {
+                cache: 'no-cache'
             });
             
             if (response.ok) {
                 const data = await response.json();
                 
-                if (data.status === 'success') {
+                if (data.status === 'healthy' || data.status === 'success') {
                     isDatabaseConnected = true;
                     updateDatabaseStatus('connected', 'Database connected');
-                    
-                    if (data.userCount) {
-                        dbDetails.innerHTML = `${data.userCount} user(s) in database`;
-                    }
                     return true;
                 }
             }
@@ -652,6 +669,7 @@
             return false;
             
         } catch (error) {
+            console.warn('Database check failed:', error.message);
             isDatabaseConnected = false;
             updateDatabaseStatus('disconnected', 'Database offline');
             return false;
@@ -660,6 +678,8 @@
     
     // Update database status
     function updateDatabaseStatus(status, message) {
+        if (!dbStatusText || !dbIndicator) return;
+        
         dbStatusText.textContent = message;
         dbIndicator.className = 'db-indicator';
         
@@ -675,11 +695,15 @@
                 break;
         }
         
-        dbStatus.style.display = 'block';
+        if (dbStatus) {
+            dbStatus.style.display = 'block';
+        }
     }
     
     // Update server status
     function updateServerStatus(isOnline, message = '') {
+        if (!serverStatus) return;
+        
         if (isOnline === true) {
             serverStatus.className = 'server-status server-online';
             serverStatus.innerHTML = '<span class="status-dot online-dot"></span><span>Server Online</span>';
@@ -694,29 +718,37 @@
     
     // Setup event listeners
     function setupEventListeners() {
+        if (!loginForm) return;
+        
         loginForm.addEventListener('submit', handleSubmit);
         
-        rememberCheckbox.addEventListener('click', () => {
-            rememberMe = !rememberMe;
-            rememberCheckbox.classList.toggle('checked');
-        });
+        if (rememberCheckbox) {
+            rememberCheckbox.addEventListener('click', () => {
+                rememberMe = !rememberMe;
+                rememberCheckbox.classList.toggle('checked');
+            });
+        }
         
         // Toggle password visibility
-        togglePassword.addEventListener('click', () => {
-            isPasswordVisible = !isPasswordVisible;
-            passwordInput.type = isPasswordVisible ? 'text' : 'password';
-            togglePassword.innerHTML = isPasswordVisible 
-                ? '<i class="fas fa-eye-slash"></i>' 
-                : '<i class="fas fa-eye"></i>';
-        });
+        if (togglePassword) {
+            togglePassword.addEventListener('click', () => {
+                isPasswordVisible = !isPasswordVisible;
+                passwordInput.type = isPasswordVisible ? 'text' : 'password';
+                togglePassword.innerHTML = isPasswordVisible 
+                    ? '<i class="fas fa-eye-slash"></i>' 
+                    : '<i class="fas fa-eye"></i>';
+            });
+        }
         
         // Input validation
-        emailInput.addEventListener('input', () => hideAlert());
-        passwordInput.addEventListener('input', () => hideAlert());
+        emailInput?.addEventListener('input', () => hideAlert());
+        passwordInput?.addEventListener('input', () => hideAlert());
     }
     
     // Show alert message
     function showAlert(message, type = 'error') {
+        if (!alertMessage) return;
+        
         alertMessage.textContent = message;
         alertMessage.className = `alert alert-${type}`;
         alertMessage.style.display = 'block';
@@ -730,17 +762,23 @@
     
     // Hide alert message
     function hideAlert() {
-        alertMessage.style.display = 'none';
+        if (alertMessage) {
+            alertMessage.style.display = 'none';
+        }
     }
     
     // Show loading
     function showLoading() {
-        loadingOverlay.style.display = 'flex';
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'flex';
+        }
     }
     
     // Hide loading
     function hideLoading() {
-        loadingOverlay.style.display = 'none';
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'none';
+        }
     }
     
     // Email validation
@@ -749,7 +787,7 @@
         return re.test(email);
     }
     
-    // Login handler - FIXED VERSION
+    // Login handler - UPDATED VERSION
     async function handleSubmit(e) {
         e.preventDefault();
         
@@ -774,79 +812,102 @@
         isLoading = true;
         loginButton.disabled = true;
         loginText.textContent = 'Authenticating...';
-        arrowIcon.classList.add('hidden');
-        spinnerIcon.classList.remove('hidden');
+        if (arrowIcon) arrowIcon.classList.add('hidden');
+        if (spinnerIcon) spinnerIcon.classList.remove('hidden');
         hideAlert();
         
         try {
             console.log('Admin login attempt:', email);
             
-            // Call login endpoint
-            const response = await fetch(`${API_BASE_URL}/auth/login`, {
+            // Create abort controller for timeout
+            const abortController = new AbortController();
+            const timeoutId = setTimeout(() => abortController.abort(), 10000); // 10 second timeout
+            
+            // Call login endpoint - CORRECTED ENDPOINT
+            const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify({ 
-                    email: email,
+                    email: email.toLowerCase().trim(),
                     password: password
-                })
+                }),
+                signal: abortController.signal
             });
             
-            // First check response status
+            clearTimeout(timeoutId);
+            
+            // Parse response
+            let data;
+            try {
+                data = await response.json();
+            } catch (parseError) {
+                throw new Error(`Server returned invalid JSON: ${response.status}`);
+            }
+            
+            // Check response status
             if (!response.ok) {
-                // Try to get error message from response
-                let errorMessage = 'Login failed';
-                try {
-                    const errorData = await response.json();
-                    errorMessage = errorData.message || errorData.error || `HTTP ${response.status}`;
-                } catch (parseError) {
-                    errorMessage = `HTTP ${response.status}`;
+                let errorMessage = data.message || data.error || `HTTP ${response.status}`;
+                
+                // Specific error messages
+                if (response.status === 401) {
+                    errorMessage = 'Invalid email or password';
+                } else if (response.status === 403) {
+                    errorMessage = 'Access denied. Admin account required.';
+                } else if (response.status === 429) {
+                    errorMessage = 'Too many login attempts. Please try again later.';
+                } else if (response.status >= 500) {
+                    errorMessage = 'Server error. Please try again later.';
                 }
+                
                 throw new Error(errorMessage);
             }
             
-            // Parse successful response
-            const data = await response.json();
-            console.log('Login response:', data);
+            console.log('Login successful:', data);
             
-            // Check different response formats
+            // Check response format and extract token
             let token, user;
             
             if (data.token) {
-                // Format: { token: 'xxx', user: { ... } }
                 token = data.token;
-                user = data.user;
+                user = data.user || data.data;
             } else if (data.data && data.data.token) {
-                // Format: { success: true, data: { token: 'xxx', user: { ... } } }
                 token = data.data.token;
+                user = data.data.user || data.data;
+            } else if (data.data && data.data.user) {
+                token = data.data.token || data.data.access_token;
                 user = data.data.user;
             } else if (data.access_token) {
-                // Format: { access_token: 'xxx', user: { ... } }
                 token = data.access_token;
                 user = data.user;
             } else {
-                throw new Error('Invalid response format from server');
+                throw new Error('No authentication token received');
+            }
+            
+            if (!token) {
+                throw new Error('No authentication token received');
+            }
+            
+            // Create user object if not provided
+            if (!user) {
+                user = {
+                    email: email,
+                    fullName: email.split('@')[0],
+                    role: 'admin'
+                };
             }
             
             // Check if user is admin (if role information is provided)
-            if (user && user.role && user.role !== 'admin') {
+            if (user.role && user.role !== 'admin') {
                 throw new Error('Access denied. Admin account required.');
             }
             
             // Save auth data
             localStorage.setItem('authToken', token);
-            if (user) {
-                localStorage.setItem('user', JSON.stringify(user));
-            } else {
-                // Create basic user object
-                localStorage.setItem('user', JSON.stringify({
-                    email: email,
-                    role: 'admin',
-                    loginTime: new Date().toISOString()
-                }));
-            }
+            localStorage.setItem('auth_token', token); // Store both for compatibility
+            localStorage.setItem('user', JSON.stringify(user));
             
             // Remember email if checked
             if (rememberMe) {
@@ -865,25 +926,30 @@
             // Redirect to dashboard
             setTimeout(() => {
                 window.location.href = 'dash.html';
-            }, 1000);
+            }, 800);
             
         } catch (error) {
             console.error('Login error:', error);
             
             // Clear invalid stored data
             localStorage.removeItem('authToken');
+            localStorage.removeItem('auth_token');
             localStorage.removeItem('user');
             
             let errorMessage = error.message;
             
-            if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-                errorMessage = 'Cannot connect to server. Make sure backend is running on port 5000.';
-                updateServerStatus(false, 'Server offline');
-                serverOnline = false;
-            } else if (error.message.includes('401') || error.message.includes('403')) {
+            // User-friendly error messages
+            if (error.name === 'AbortError') {
+                errorMessage = 'Request timeout. Please check your connection and try again.';
+            } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                errorMessage = 'Cannot connect to server. Please check your internet connection.';
+                if (!serverOnline) updateServerStatus(false, 'Server offline');
+            } else if (error.message.includes('Invalid email or password') || error.message.includes('401')) {
                 errorMessage = 'Invalid email or password. Please check your credentials.';
-            } else if (error.message.includes('Access denied')) {
+            } else if (error.message.includes('Access denied') || error.message.includes('403')) {
                 errorMessage = 'Access denied. Admin account required.';
+            } else if (error.message.includes('Server error') || error.message.includes('500')) {
+                errorMessage = 'Server error. Please try again later.';
             }
             
             showAlert(errorMessage, 'error');
@@ -896,62 +962,83 @@
         isLoading = false;
         loginButton.disabled = false;
         loginText.textContent = 'Login to Dashboard';
-        arrowIcon.classList.remove('hidden');
-        spinnerIcon.classList.add('hidden');
+        if (arrowIcon) arrowIcon.classList.remove('hidden');
+        if (spinnerIcon) spinnerIcon.classList.add('hidden');
     }
     
-    // Test API endpoint (for debugging)
-    async function testApiEndpoint() {
+    // Test admin account creation (for initial setup)
+    async function createDefaultAdmin() {
         try {
-            console.log('Testing API endpoint...');
-            const response = await fetch(`${API_BASE_URL}/auth/login`, {
+            console.log('Checking admin account...');
+            
+            // This is just for testing - you should create admin via your server
+            const testEmail = 'admin@nuesabiu.org';
+            const testPassword = 'Admin@12345';
+            
+            const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    email: 'test@test.com',
-                    password: 'test'
+                    email: testEmail,
+                    password: testPassword
                 })
             });
             
-            console.log('API Test Response Status:', response.status);
-            console.log('API Test Response Headers:', response.headers);
-            
-            const text = await response.text();
-            console.log('API Test Response Text:', text);
-            
-            try {
-                const json = JSON.parse(text);
-                console.log('API Test Response JSON:', json);
-            } catch (e) {
-                console.log('API Test Response is not JSON');
+            if (response.status === 200) {
+                console.log('Default admin account exists');
+                return true;
+            } else {
+                console.log('Default admin account not found or invalid');
+                return false;
             }
-            
         } catch (error) {
-            console.error('API Test Error:', error);
+            console.log('Cannot check admin account:', error.message);
+            return false;
         }
     }
     
-    // Add debugging button (remove in production)
-    function addDebugButton() {
-        const debugBtn = document.createElement('button');
-        debugBtn.textContent = 'Debug API';
-        debugBtn.style.position = 'fixed';
-        debugBtn.style.bottom = '60px';
-        debugBtn.style.right = '20px';
-        debugBtn.style.padding = '5px 10px';
-        debugBtn.style.fontSize = '10px';
-        debugBtn.style.zIndex = '9999';
-        debugBtn.addEventListener('click', testApiEndpoint);
-        document.body.appendChild(debugBtn);
+    // Get server info for debugging
+    async function getServerInfo() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/health`);
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Server info:', data);
+                
+                // Update server status with additional info
+                if (serverStatus && data.uptime) {
+                    serverStatus.innerHTML += ` <small style="opacity: 0.7;">(Uptime: ${Math.floor(data.uptime)}s)</small>`;
+                }
+                return data;
+            }
+        } catch (error) {
+            console.log('Cannot get server info:', error.message);
+        }
     }
     
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', () => {
+        // Clear any previous session on login page
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('auth_token');
+        
         init();
-        // Uncomment for debugging:
-        // addDebugButton();
+        
+        // Get server info after initialization
+        setTimeout(() => {
+            getServerInfo();
+            createDefaultAdmin();
+        }, 1500);
+    });
+    
+    // Handle page visibility change
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && window.location.pathname.includes('adlog.html')) {
+            // Refresh server status when page becomes visible again
+            checkServerHealth();
+        }
     });
 </script>
 </body>

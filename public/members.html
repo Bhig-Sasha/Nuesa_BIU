@@ -1071,8 +1071,8 @@
                 <!-- Desktop Navigation -->
                 <nav class="desktop-nav">
                     <a href="index.html" class="nav-button">Home</a>
-                    <a href="about.html" class="nav-button active">About</a>
-                    <a href="memebers.html" class="nav-button">Members</a>
+                    <a href="about.html" class="nav-button">About</a>
+                    <a href="members.html" class="nav-button active">Members</a>
                     <a href="events.html" class="nav-button">Events</a>
                     <a href="resources.html" class="nav-button">Resources</a>
                     <a href="news.html" class="nav-button">News</a>
@@ -1304,6 +1304,10 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Configuration - FIXED: Correct API URL
     const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
+    const API_ENDPOINTS = {
+        executives: `${API_BASE_URL}/api/members`,
+        memberDetails: (id) => `${API_BASE_URL}/api/members/${id}`
+    };
     
     // State
     let membersData = {
@@ -1368,20 +1372,33 @@ document.addEventListener('DOMContentLoaded', function() {
         
         try {
             // Load executives
-            const executivesData = await fetchData(API_ENDPOINTS.executives);
-            if (executivesData) {
-                // Your backend returns { status: 'success', data: [...] }
-                membersData.executives = executivesData.data || executivesData;
-                renderExecutives();
+            console.log('Loading data from:', API_ENDPOINTS.executives);
+            const response = await fetch(API_ENDPOINTS.executives, {
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log('API Response:', data);
+            
+            if (data && data.status === 'success') {
+                membersData.executives = data.data || [];
+                console.log('Loaded executives:', membersData.executives.length);
                 
-                // Use executives data for committee heads
-                membersData.committeeHeads = membersData.executives.filter(member => 
-                    member.committee && member.committee !== ''
-                );
-                
-                // Group by committee for committee display
-                renderCommitteesFromExecutives();
+                if (membersData.executives.length > 0) {
+                    renderExecutives();
+                    renderCommitteesFromExecutives();
+                } else {
+                    showNoDataMessage();
+                }
             } else {
+                console.log('API returned unexpected format:', data);
                 showNoDataMessage();
             }
             
@@ -1394,42 +1411,35 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    async function fetchData(url) {
-        try {
-            console.log('Fetching data from:', url); // Debug log
-            
-            const response = await fetch(url, {
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            console.log('Data received:', data); // Debug log
-            return data;
-        } catch (error) {
-            console.warn(`Failed to fetch from ${url}:`, error.message);
-            return null;
-        }
-    }
-
     function renderExecutives() {
         const executiveGrid = document.getElementById('executiveGrid');
-        if (!executiveGrid || membersData.executives.length === 0) return;
+        if (!executiveGrid || membersData.executives.length === 0) {
+            console.log('No executive grid found or no executives to render');
+            return;
+        }
         
-        executiveGrid.innerHTML = membersData.executives.map(executive => `
+        console.log('Rendering executives:', membersData.executives.length);
+        
+        executiveGrid.innerHTML = membersData.executives.map(executive => {
+            // Handle profile picture URL
+            let profilePicture = '';
+            if (executive.profile_image) {
+                // Check if it's a full URL or relative path
+                if (executive.profile_image.startsWith('http')) {
+                    profilePicture = executive.profile_image;
+                } else {
+                    profilePicture = `${API_BASE_URL}${executive.profile_image}`;
+                }
+            }
+            
+            return `
             <div class="member-card" data-member-id="${executive.id}">
                 <div class="member-photo">
-                    ${executive.profile_picture_url ? 
-                        `<img src="${executive.profile_picture_url}" 
+                    ${profilePicture ? 
+                        `<img src="${profilePicture}" 
                               alt="${executive.full_name}" 
                               class="member-photo-image"
-                              onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'photo-placeholder\\'><span class=\\'photo-placeholder-text\\'>PHOTO</span><div class=\\'photo-placeholder-icon\\'><span class=\\'font-mono text-xs text-gray-300\\'>IMG</span></div></div>';">` :
+                              onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'photo-placeholder\\'><span class=\\'photo-placeholder-text\\'>PHOTO</span><div class=\\'photo-placeholder-icon\\'><i class=\\"fas fa-user text-gray-300\\" style=\\"font-size: 1.5rem;\\"></i></div></div>';">` :
                         `<div class="photo-placeholder">
                             <span class="photo-placeholder-text">PHOTO</span>
                             <div class="photo-placeholder-icon">
@@ -1464,14 +1474,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
             </div>
-        `).join('');
+        `}).join('');
         
+        console.log('Executives rendered');
         // Attach click handlers to member cards
         attachMemberCardListeners();
     }
 
     function renderCommitteesFromExecutives() {
-        if (membersData.executives.length === 0) return;
+        if (membersData.executives.length === 0) {
+            console.log('No executives to group into committees');
+            return;
+        }
+        
+        console.log('Grouping executives into committees');
         
         // Group executives by committee
         const committeesMap = {};
@@ -1500,10 +1516,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         const committeeGrid = document.querySelector('.committee-grid');
-        if (!committeeGrid) return;
+        if (!committeeGrid) {
+            console.log('No committee grid found');
+            return;
+        }
         
         // Clear existing static content
         committeeGrid.innerHTML = '';
+        
+        console.log('Creating committee cards:', Object.keys(committeesMap));
         
         // Create committee cards from grouped data
         Object.entries(committeesMap).forEach(([committeeName, members]) => {
@@ -1524,7 +1545,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 `<li>• Asst: ${assistant.full_name} ${assistant.department ? `(${assistant.department})` : ''}</li>`
                             ).join('')}
                             ${members.members.length > 0 ? 
-                                `<li>• Members: ${members.members.map(m => m.full_name).join(', ')}</li>` : ''
+                                `<li>• Members: ${members.members.slice(0, 3).map(m => m.full_name).join(', ')}</li>` : ''
                             }
                         </ul>
                     </div>
@@ -1551,28 +1572,36 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function renderSocialLinks(socialLinks) {
         try {
-            // Handle different formats of social_links
             let links;
+            
+            // Parse social_links from string to object if needed
             if (typeof socialLinks === 'string') {
                 try {
                     links = JSON.parse(socialLinks);
                 } catch (e) {
-                    // If it's not valid JSON, try to parse as simple string
-                    if (socialLinks.includes('linkedin')) {
-                        links = { linkedin: socialLinks };
-                    } else if (socialLinks.includes('twitter')) {
-                        links = { twitter: socialLinks };
-                    } else if (socialLinks.includes('github')) {
-                        links = { github: socialLinks };
-                    } else {
-                        return '';
+                    console.log('Social links is not valid JSON, treating as string');
+                    links = {};
+                    
+                    // Try to extract social media from string
+                    if (socialLinks.includes('linkedin.com')) {
+                        links.linkedin = socialLinks;
+                    } else if (socialLinks.includes('twitter.com')) {
+                        links.twitter = socialLinks;
+                    } else if (socialLinks.includes('github.com')) {
+                        links.github = socialLinks;
+                    } else if (socialLinks.includes('instagram.com')) {
+                        links.instagram = socialLinks;
+                    } else if (socialLinks.includes('facebook.com')) {
+                        links.facebook = socialLinks;
                     }
                 }
-            } else {
+            } else if (typeof socialLinks === 'object' && socialLinks !== null) {
                 links = socialLinks;
+            } else {
+                return '';
             }
             
-            if (!links) return '';
+            if (!links || Object.keys(links).length === 0) return '';
             
             let html = '';
             if (links.linkedin) {
@@ -1580,8 +1609,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             <i class="fab fa-linkedin-in"></i>
                          </a>`;
             }
-            if (links.twitter) {
-                html += `<a href="${links.twitter}" class="social-link" title="Twitter" target="_blank">
+            if (links.twitter || links.x) {
+                const twitterUrl = links.twitter || links.x;
+                html += `<a href="${twitterUrl}" class="social-link" title="Twitter" target="_blank">
                             <i class="fab fa-twitter"></i>
                          </a>`;
             }
@@ -1623,9 +1653,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function showMemberDetails(memberId) {
         try {
-            // FIXED: Correct endpoint path
-            const memberData = await fetchData(`${API_BASE_URL}/members/${memberId}`);
-            if (!memberData || !memberData.data) {
+            console.log('Fetching member details for:', memberId);
+            const response = await fetch(API_ENDPOINTS.memberDetails(memberId), {
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log('Member details:', data);
+            
+            if (data && data.status === 'success' && data.data && data.data.length > 0) {
+                const member = data.data[0];
+                showMemberModal(member);
+            } else {
                 // Try to find member in our cached data
                 const cachedMember = membersData.executives.find(m => m.id == memberId);
                 if (cachedMember) {
@@ -1633,11 +1679,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     alert('Member details not available.');
                 }
-                return;
             }
-            
-            const member = memberData.data;
-            showMemberModal(member);
         } catch (error) {
             console.error('Error fetching member details:', error);
             alert('Unable to load member details.');
@@ -1653,15 +1695,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     <div class="member-modal-header">
                         <div class="member-modal-photo">
-                            ${member.profile_picture_url ? 
-                                `<img src="${member.profile_picture_url}" 
+                            ${member.profile_image ? 
+                                `<img src="${member.profile_image.startsWith('http') ? member.profile_image : API_BASE_URL + member.profile_image}" 
                                       alt="${member.full_name}" 
                                       class="member-modal-photo-image">` :
                                 `<i class="fas fa-user member-modal-photo-icon"></i>`
                             }
                         </div>
                         
-                        <h2 class="member-modal-name">${member.full_name}</h2>
+                        <h2 class="member-modal-name">${member.full_name || 'Unknown Member'}</h2>
                         
                         <p class="member-modal-position">${member.position || 'Executive'}</p>
                         
@@ -1941,6 +1983,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function hideLoadingState() {
+        // This would be called when loading is complete
+    }
+
     function showNoDataMessage() {
         const executiveGrid = document.getElementById('executiveGrid');
         if (executiveGrid && membersData.executives.length === 0) {
@@ -1951,7 +1997,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         No Members Found
                     </h3>
                     <p style="font-family: 'Roboto Mono', monospace; color: #64748b;">
-                        Member information will be available soon.
+                        No executive members have been added yet.
                     </p>
                     <button id="retryLoadMembers" style="
                         margin-top: 1rem;
@@ -1963,7 +2009,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         font-family: 'Roboto Mono', monospace;
                         font-size: 0.75rem;
                         cursor: pointer;
-                    ">Retry</button>
+                    ">Try Again</button>
                 </div>
             `;
             
@@ -2024,7 +2070,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 level: '400',
                 email: 'john.doe@nuesa.biu.edu',
                 phone: '+234 801 234 5678',
-                profile_picture_url: '',
+                profile_image: '',
                 committee: 'Executive',
                 bio: 'Leading the association with vision and dedication.'
             },
@@ -2036,7 +2082,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 level: '400',
                 email: 'jane.smith@nuesa.biu.edu',
                 phone: '+234 802 345 6789',
-                profile_picture_url: '',
+                profile_image: '',
                 committee: 'Executive',
                 bio: 'Supporting the president in all association activities.'
             },
@@ -2048,7 +2094,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 level: '300',
                 email: 'mike.johnson@nuesa.biu.edu',
                 phone: '+234 803 456 7890',
-                profile_picture_url: '',
+                profile_image: '',
                 committee: 'Executive',
                 bio: 'Managing association records and communications.'
             },
@@ -2060,57 +2106,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 level: '300',
                 email: 'sarah.williams@nuesa.biu.edu',
                 phone: '+234 804 567 8901',
-                profile_picture_url: '',
+                profile_image: '',
                 committee: 'Financial',
                 bio: 'Overseeing association finances and budgeting.'
-            },
-            {
-                id: 5,
-                full_name: 'David Brown',
-                position: 'Academic Committee Head',
-                department: 'Computer Engineering',
-                level: '400',
-                email: 'david.brown@nuesa.biu.edu',
-                phone: '+234 805 678 9012',
-                profile_picture_url: '',
-                committee: 'Academic',
-                bio: 'Organizing academic activities and tutorials.'
-            },
-            {
-                id: 6,
-                full_name: 'Emily Davis',
-                position: 'Technical Committee Head',
-                department: 'Electrical Engineering',
-                level: '300',
-                email: 'emily.davis@nuesa.biu.edu',
-                phone: '+234 806 789 0123',
-                profile_picture_url: '',
-                committee: 'Technical',
-                bio: 'Leading technical workshops and projects.'
-            },
-            {
-                id: 7,
-                full_name: 'Robert Wilson',
-                position: 'Social Committee Head',
-                department: 'Mechanical Engineering',
-                level: '200',
-                email: 'robert.wilson@nuesa.biu.edu',
-                phone: '+234 807 890 1234',
-                profile_picture_url: '',
-                committee: 'Social',
-                bio: 'Organizing social events and activities.'
-            },
-            {
-                id: 8,
-                full_name: 'Lisa Anderson',
-                position: 'Welfare Committee Head',
-                department: 'Civil Engineering',
-                level: '200',
-                email: 'lisa.anderson@nuesa.biu.edu',
-                phone: '+234 808 901 2345',
-                profile_picture_url: '',
-                committee: 'Welfare',
-                bio: 'Ensuring student welfare and support.'
             }
         ];
         
@@ -2138,7 +2136,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Desktop navigation - FIXED: Correct navigation links
         document.querySelectorAll('.nav-button').forEach(link => {
             const href = link.getAttribute('href');
-            if (href === currentPage || (currentPage === 'members.html' && href === 'memebers.html')) {
+            if (href === currentPage) {
                 link.classList.add('active');
             } else {
                 link.classList.remove('active');

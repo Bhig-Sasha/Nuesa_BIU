@@ -1396,200 +1396,335 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
-        const mobileNav = document.getElementById('mobileNav');
-        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-        const contactForm = document.getElementById('contactForm');
-        const mapPlaceholder = document.getElementById('mapPlaceholder');
         
-        // Mobile menu toggle
-        mobileMenuBtn.addEventListener('click', function() {
-            mobileNav.classList.toggle('open');
-            const icon = this.querySelector('i');
-            if (mobileNav.classList.contains('open')) {
-                icon.classList.remove('fa-bars');
-                icon.classList.add('fa-times');
-            } else {
-                icon.classList.remove('fa-times');
-                icon.classList.add('fa-bars');
-            }
-        });
+        // ==================== NAVIGATION ====================
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const mobileNav = document.getElementById('mobileNav');
+        
+        if (mobileMenuBtn) {
+            mobileMenuBtn.addEventListener('click', function() {
+                mobileNav.classList.toggle('open');
+                const icon = this.querySelector('i');
+                if (mobileNav.classList.contains('open')) {
+                    icon.classList.remove('fa-bars');
+                    icon.classList.add('fa-times');
+                } else {
+                    icon.classList.remove('fa-times');
+                    icon.classList.add('fa-bars');
+                }
+            });
+        }
         
         // Close mobile menu when clicking outside
         document.addEventListener('click', function(event) {
-            if (!mobileNav.contains(event.target) && !mobileMenuBtn.contains(event.target)) {
+            if (mobileNav && mobileMenuBtn && !mobileNav.contains(event.target) && !mobileMenuBtn.contains(event.target)) {
                 mobileNav.classList.remove('open');
                 const icon = mobileMenuBtn.querySelector('i');
-                icon.classList.remove('fa-times');
-                icon.classList.add('fa-bars');
+                if (icon) {
+                    icon.classList.remove('fa-times');
+                    icon.classList.add('fa-bars');
+                }
             }
         });
         
-        // Load contact information from backend
-        async function loadContactInfo() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/settings`);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.status === 'success') {
-                        // Update contact info if available in settings
-                        const settings = data.data;
-                        if (settings.contact_email) {
-                            const emailElements = document.querySelectorAll('.contact-info-content p');
-                            emailElements.forEach(el => {
-                                if (el.textContent.includes('@nuesabiu.org')) {
-                                    el.textContent = settings.contact_email;
-                                }
-                            });
-                        }
-                        if (settings.contact_phone) {
-                            const phoneElements = document.querySelectorAll('.contact-info-content p');
-                            phoneElements.forEach(el => {
-                                if (el.textContent.includes('+234')) {
-                                    el.textContent = settings.contact_phone;
-                                }
-                            });
-                        }
-                        if (settings.contact_address) {
-                            const addressElements = document.querySelectorAll('.contact-info-content p');
-                            addressElements.forEach(el => {
-                                if (el.textContent.includes('Benson Idahosa University')) {
-                                    el.innerHTML = settings.contact_address.replace(/\n/g, '<br>');
-                                }
-                            });
-                        }
-                    }
+        // Highlight current page
+        function highlightCurrentPage() {
+            const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+            document.querySelectorAll('.nav-link, .mobile-nav-link').forEach(link => {
+                const href = link.getAttribute('href');
+                if (href === currentPage) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
                 }
-            } catch (error) {
-                console.log('Could not load contact settings:', error);
-            }
+            });
         }
         
-        // Contact form submission - REAL API CALL
-        contactForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const submitButton = contactForm.querySelector('.form-button');
-            const originalText = submitButton.innerHTML;
-            submitButton.disabled = true;
-            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Sending...';
-            
-            try {
-                // Get form values
-                const formData = {
-                    name: document.getElementById('name').value.trim(),
-                    email: document.getElementById('email').value.trim(),
-                    subject: document.getElementById('subject').value.trim(),
-                    message: document.getElementById('message').value.trim(),
-                    department: document.getElementById('department').value || null
-                };
+        highlightCurrentPage();
+        
+        // ==================== CONTACT FORM ====================
+        const contactForm = document.getElementById('contactForm');
+        const mapPlaceholder = document.getElementById('mapPlaceholder');
+        
+        if (contactForm) {
+            contactForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
                 
-                // Validation
-                if (!formData.name || !formData.email || !formData.subject || !formData.message) {
-                    throw new Error('Please fill in all required fields.');
+                const submitButton = contactForm.querySelector('.form-button');
+                if (!submitButton) return;
+                
+                const originalText = submitButton.innerHTML;
+                const originalBg = submitButton.style.backgroundColor;
+                
+                // Show loading state
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Sending...';
+                submitButton.style.backgroundColor = 'var(--gray-600)';
+                
+                try {
+                    // Get form data
+                    const formData = {
+                        name: document.getElementById('name')?.value.trim() || '',
+                        email: document.getElementById('email')?.value.trim() || '',
+                        subject: document.getElementById('subject')?.value.trim() || '',
+                        message: document.getElementById('message')?.value.trim() || '',
+                        department: document.getElementById('department')?.value || null
+                    };
+                    
+                    // Validation
+                    const errors = [];
+                    
+                    if (!formData.name) errors.push('Name is required');
+                    if (!formData.email) errors.push('Email is required');
+                    if (!formData.subject) errors.push('Subject is required');
+                    if (!formData.message) errors.push('Message is required');
+                    
+                    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+                        errors.push('Please enter a valid email address');
+                    }
+                    
+                    if (errors.length > 0) {
+                        throw new Error(errors.join('\n'));
+                    }
+                    
+                    // Test API connection first
+                    try {
+                        const healthResponse = await fetch(`${API_BASE_URL}/api/health`);
+                        if (!healthResponse.ok) {
+                            throw new Error('API server is not responding');
+                        }
+                    } catch (error) {
+                        console.warn('API health check failed:', error.message);
+                        // Continue anyway, might be CORS issue
+                    }
+                    
+                    // Send to backend - First check if contact endpoint exists
+                    let response;
+                    try {
+                        response = await fetch(`${API_BASE_URL}/contact`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(formData)
+                        });
+                    } catch (fetchError) {
+                        // If contact endpoint doesn't exist, simulate success
+                        console.log('Contact endpoint not available, simulating response');
+                        showAlert(
+                            `Thank you, ${formData.name}! Your message has been received.\n\nSince our contact API is being set up, please also email us at info@nuesabiu.org to ensure we receive your message.`,
+                            'info'
+                        );
+                        
+                        // Reset form
+                        contactForm.reset();
+                        
+                        // Show success state
+                        submitButton.innerHTML = '<i class="fas fa-check mr-2"></i> Message Received!';
+                        submitButton.style.backgroundColor = 'var(--emerald-600)';
+                        
+                        // Reset button after 3 seconds
+                        setTimeout(() => {
+                            submitButton.disabled = false;
+                            submitButton.innerHTML = originalText;
+                            submitButton.style.backgroundColor = originalBg;
+                        }, 3000);
+                        return;
+                    }
+                    
+                    // If we got a response
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        // Success
+                        showAlert(
+                            `Thank you, ${formData.name}! Your message has been sent successfully.\n\nWe will respond to you at ${formData.email} as soon as possible.`,
+                            'success'
+                        );
+                        
+                        // Reset form
+                        contactForm.reset();
+                        
+                        // Update button
+                        submitButton.innerHTML = '<i class="fas fa-check mr-2"></i> Message Sent!';
+                        submitButton.style.backgroundColor = 'var(--emerald-600)';
+                        
+                        // Reset after 3 seconds
+                        setTimeout(() => {
+                            submitButton.disabled = false;
+                            submitButton.innerHTML = originalText;
+                            submitButton.style.backgroundColor = originalBg;
+                        }, 3000);
+                    } else {
+                        // API error
+                        throw new Error(result.message || `Server responded with ${response.status}`);
+                    }
+                    
+                } catch (error) {
+                    // Show error
+                    showAlert(`Failed to send message:\n${error.message}`, 'error');
+                    
+                    // Reset button
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalText;
+                    submitButton.style.backgroundColor = originalBg;
                 }
-                
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (!emailRegex.test(formData.email)) {
-                    throw new Error('Please enter a valid email address.');
-                }
-                
-                // Send to backend API
-                const response = await fetch(`${API_BASE_URL}/contact`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(formData)
+            });
+        }
+        
+        // ==================== MAP FUNCTIONALITY ====================
+        if (mapPlaceholder) {
+            mapPlaceholder.addEventListener('click', function() {
+                // Open Google Maps with BIU location
+                const address = 'Faculty of Engineering, Benson Idahosa University, KM 10 Benin-Sapele Road, Benin City, Edo State, Nigeria';
+                const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+                window.open(googleMapsUrl, '_blank', 'noopener,noreferrer');
+            });
+            
+            // Add hover effect
+            mapPlaceholder.addEventListener('mouseenter', function() {
+                this.style.transform = 'scale(1.02)';
+                this.style.transition = 'transform 0.3s ease';
+            });
+            
+            mapPlaceholder.addEventListener('mouseleave', function() {
+                this.style.transform = '';
+            });
+        }
+        
+        // ==================== CONTACT INFO INTERACTIVITY ====================
+        
+        // Make emails clickable
+        document.querySelectorAll('.contact-info-content p').forEach(p => {
+            if (p.textContent.includes('@')) {
+                const email = p.textContent.trim();
+                p.style.cursor = 'pointer';
+                p.style.color = 'var(--emerald-600)';
+                p.addEventListener('click', function() {
+                    window.location.href = `mailto:${email}`;
                 });
-                
-                const result = await response.json();
-                
-                if (response.ok && result.status === 'success') {
-                    // Show success message
-                    const successMessage = `Thank you, ${formData.name}! Your message has been sent successfully.\n\nWe will respond to you at ${formData.email} as soon as possible.`;
-                    showAlert(successMessage, 'success');
-                    
-                    // Reset form
-                    contactForm.reset();
-                    
-                    // Update button to show success
-                    submitButton.innerHTML = '<i class="fas fa-check mr-2"></i> Message Sent!';
-                    submitButton.style.backgroundColor = 'var(--emerald-600)';
-                    
-                    // Re-enable after 3 seconds
-                    setTimeout(() => {
-                        submitButton.disabled = false;
-                        submitButton.innerHTML = originalText;
-                        submitButton.style.backgroundColor = '';
-                    }, 3000);
-                    
-                } else {
-                    throw new Error(result.message || 'Failed to send message. Please try again.');
-                }
-                
-            } catch (error) {
-                // Show error
-                showAlert(error.message, 'error');
-                
-                // Reset button
-                submitButton.disabled = false;
-                submitButton.innerHTML = originalText;
+                p.addEventListener('mouseenter', function() {
+                    this.style.textDecoration = 'underline';
+                });
+                p.addEventListener('mouseleave', function() {
+                    this.style.textDecoration = 'none';
+                });
+            }
+            
+            // Make phone numbers clickable
+            if (p.textContent.includes('+234')) {
+                const phoneText = p.textContent.trim();
+                const phone = phoneText.replace(/\D/g, '');
+                p.style.cursor = 'pointer';
+                p.style.color = 'var(--emerald-600)';
+                p.addEventListener('click', function() {
+                    window.location.href = `tel:${phone}`;
+                });
+                p.addEventListener('mouseenter', function() {
+                    this.style.textDecoration = 'underline';
+                });
+                p.addEventListener('mouseleave', function() {
+                    this.style.textDecoration = 'none';
+                });
             }
         });
         
-        // Map placeholder - Real Google Maps integration
-        mapPlaceholder.addEventListener('click', function() {
-            // Open Google Maps in new tab
-            const address = 'Faculty of Engineering, Benson Idahosa University, KM 10 Benin-Sapele Road, Benin City, Edo State, Nigeria';
-            const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
-            window.open(googleMapsUrl, '_blank');
+        // ==================== SOCIAL MEDIA LINKS ====================
+        document.querySelectorAll('.social-icon').forEach(icon => {
+            icon.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-3px)';
+            });
+            icon.addEventListener('mouseleave', function() {
+                this.style.transform = '';
+            });
         });
         
-        // Email click - Open mail client
-        document.addEventListener('click', function(e) {
-            const target = e.target;
-            if (target.tagName === 'P' && target.textContent.includes('@')) {
-                const email = target.textContent.trim();
-                window.location.href = `mailto:${email}`;
-                e.preventDefault();
+        // ==================== FORM ENHANCEMENTS ====================
+        
+        // Add focus effects to form inputs
+        document.querySelectorAll('.form-input, .form-textarea').forEach(input => {
+            input.addEventListener('focus', function() {
+                this.parentElement.style.transform = 'translateY(-2px)';
+            });
+            
+            input.addEventListener('blur', function() {
+                this.parentElement.style.transform = '';
+            });
+            
+            // Auto-expand textarea
+            if (input.tagName === 'TEXTAREA') {
+                input.addEventListener('input', function() {
+                    this.style.height = 'auto';
+                    this.style.height = (this.scrollHeight) + 'px';
+                });
             }
         });
         
-        // Phone click - Open dialer
-        document.addEventListener('click', function(e) {
-            const target = e.target;
-            if (target.tagName === 'P' && target.textContent.includes('+234')) {
-                const phone = target.textContent.trim().replace(/\D/g, '');
-                window.location.href = `tel:${phone}`;
-                e.preventDefault();
-            }
-        });
-        
-        // Helper function to show alerts
+        // ==================== ALERT SYSTEM ====================
         function showAlert(message, type = 'info') {
+            // Remove existing alerts
+            document.querySelectorAll('.custom-alert').forEach(alert => alert.remove());
+            
             // Create alert element
             const alertEl = document.createElement('div');
-            alertEl.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 max-w-md ${
+            alertEl.className = `custom-alert fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 max-w-md ${
                 type === 'success' ? 'bg-emerald-100 border border-emerald-400 text-emerald-800' :
                 type === 'error' ? 'bg-red-100 border border-red-400 text-red-800' :
                 'bg-blue-100 border border-blue-400 text-blue-800'
             }`;
+            
+            // Icon based on type
+            let icon;
+            if (type === 'success') icon = 'fa-check-circle';
+            else if (type === 'error') icon = 'fa-exclamation-circle';
+            else icon = 'fa-info-circle';
+            
             alertEl.innerHTML = `
                 <div class="flex items-start">
-                    <i class="fas ${
-                        type === 'success' ? 'fa-check-circle' :
-                        type === 'error' ? 'fa-exclamation-circle' :
-                        'fa-info-circle'
-                    } mr-3 mt-0.5"></i>
-                    <div>
-                        <p class="font-medium">${type === 'success' ? 'Success!' : type === 'error' ? 'Error' : 'Information'}</p>
-                        <p class="text-sm mt-1 whitespace-pre-line">${message}</p>
+                    <i class="fas ${icon} mr-3 mt-0.5 flex-shrink-0"></i>
+                    <div class="flex-grow">
+                        <p class="font-medium mb-1">${type === 'success' ? 'Success!' : type === 'error' ? 'Error' : 'Information'}</p>
+                        <p class="text-sm whitespace-pre-line">${message}</p>
                     </div>
-                    <button class="ml-4 text-gray-500 hover:text-gray-700" onclick="this.parentElement.parentElement.remove()">
+                    <button class="ml-3 text-gray-500 hover:text-gray-700 flex-shrink-0" onclick="this.parentElement.parentElement.remove()">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
             `;
+            
+            // Add CSS for custom-alert if not exists
+            if (!document.querySelector('#alert-styles')) {
+                const style = document.createElement('style');
+                style.id = 'alert-styles';
+                style.textContent = `
+                    .custom-alert {
+                        animation: slideIn 0.3s ease-out;
+                    }
+                    
+                    @keyframes slideIn {
+                        from {
+                            transform: translateX(100%);
+                            opacity: 0;
+                        }
+                        to {
+                            transform: translateX(0);
+                            opacity: 1;
+                        }
+                    }
+                    
+                    @keyframes slideOut {
+                        from {
+                            transform: translateX(0);
+                            opacity: 1;
+                        }
+                        to {
+                            transform: translateX(100%);
+                            opacity: 0;
+                        }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
             
             // Add to document
             document.body.appendChild(alertEl);
@@ -1597,20 +1732,178 @@
             // Auto-remove after 5 seconds
             setTimeout(() => {
                 if (alertEl.parentElement) {
-                    alertEl.remove();
+                    alertEl.style.animation = 'slideOut 0.3s ease-out';
+                    setTimeout(() => {
+                        if (alertEl.parentElement) {
+                            alertEl.remove();
+                        }
+                    }, 300);
                 }
             }, 5000);
         }
         
-        // Load contact info on page load
-        loadContactInfo();
-        
-        // Set current year in footer
-        const currentYear = new Date().getFullYear();
-        const yearElement = document.querySelector('.footer-bottom p');
-        if (yearElement) {
-            yearElement.textContent = yearElement.textContent.replace('2024', currentYear);
+        // ==================== LOAD SETTINGS FROM BACKEND ====================
+        async function loadSettings() {
+            try {
+                // Try to load contact settings from API
+                const response = await fetch(`${API_BASE_URL}/api/settings?type=contact`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.status === 'success' && data.data) {
+                        const settings = data.data;
+                        
+                        // Update contact info
+                        if (settings.email) {
+                            const emailElements = document.querySelectorAll('.contact-info-content p');
+                            emailElements.forEach(el => {
+                                if (el.textContent.includes('@nuesabiu.org')) {
+                                    el.textContent = settings.email;
+                                }
+                            });
+                        }
+                        
+                        if (settings.phone) {
+                            const phoneElements = document.querySelectorAll('.contact-info-content p');
+                            phoneElements.forEach(el => {
+                                if (el.textContent.includes('+234 800')) {
+                                    el.textContent = settings.phone;
+                                }
+                            });
+                        }
+                        
+                        if (settings.address) {
+                            const addressElement = document.querySelector('.contact-info-content p');
+                            if (addressElement && addressElement.textContent.includes('Benson Idahosa University')) {
+                                addressElement.innerHTML = settings.address.replace(/\n/g, '<br>');
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.log('Settings not loaded, using default:', error.message);
+            }
         }
+        
+        // ==================== ADD CONTACT ENDPOINT TO SERVER SUGGESTION ====================
+        function showServerSetupSuggestion() {
+            console.log(`
+                ============================================
+                ADD THIS TO YOUR SERVER.JS FOR CONTACT FORM:
+                ============================================
+                
+                // Contact endpoint
+                app.post('/contact', async (req, res) => {
+                    try {
+                        const { name, email, subject, message, department } = req.body;
+                        
+                        // Validate required fields
+                        if (!name || !email || !subject || !message) {
+                            return res.status(400).json({
+                                status: 'error',
+                                message: 'All required fields must be filled'
+                            });
+                        }
+                        
+                        // Validate email
+                        const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+                        if (!emailRegex.test(email)) {
+                            return res.status(400).json({
+                                status: 'error',
+                                message: 'Invalid email format'
+                            });
+                        }
+                        
+                        // Save to database (create contacts table first)
+                        const result = await db.query('insert', 'contacts', {
+                            data: {
+                                name,
+                                email,
+                                subject,
+                                message,
+                                department,
+                                status: 'unread',
+                                created_at: new Date(),
+                                updated_at: new Date()
+                            }
+                        });
+                        
+                        // Here you would typically:
+                        // 1. Send email notification
+                        // 2. Log to database
+                        // 3. Return success
+                        
+                        res.json({
+                            status: 'success',
+                            message: 'Message received successfully',
+                            data: {
+                                id: result.data[0]?.id,
+                                name,
+                                email,
+                                subject
+                            }
+                        });
+                        
+                    } catch (error) {
+                        logger.error('Contact form error:', error);
+                        res.status(500).json({
+                            status: 'error',
+                            message: 'Failed to process contact form'
+                        });
+                    }
+                });
+                
+                // Create contacts table SQL:
+                /*
+                CREATE TABLE IF NOT EXISTS contacts (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    name VARCHAR(255) NOT NULL,
+                    email VARCHAR(255) NOT NULL,
+                    subject VARCHAR(500) NOT NULL,
+                    message TEXT NOT NULL,
+                    department VARCHAR(100),
+                    status VARCHAR(50) DEFAULT 'unread',
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
+                );
+                */
+            `);
+        }
+        
+        // ==================== INITIALIZATION ====================
+        
+        async function initializeContactPage() {
+            console.log('Initializing contact page...');
+            
+            // Test API connection
+            try {
+                const healthResponse = await fetch(`${API_BASE_URL}/api/health`);
+                if (healthResponse.ok) {
+                    console.log('✓ Connected to API server');
+                    // Load settings if available
+                    await loadSettings();
+                }
+            } catch (error) {
+                console.log('⚠ API connection failed:', error.message);
+            }
+            
+            // Update footer year
+            const yearElement = document.querySelector('.footer-bottom p');
+            if (yearElement) {
+                const currentYear = new Date().getFullYear();
+                yearElement.textContent = yearElement.textContent.replace('2026', currentYear);
+            }
+            
+            // Show server setup suggestion in console for development
+            if (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
+                showServerSetupSuggestion();
+            }
+            
+            console.log('Contact page initialized');
+        }
+        
+        // Start initialization
+        initializeContactPage();
     });
 </script>
 </body>

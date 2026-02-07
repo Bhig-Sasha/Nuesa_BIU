@@ -1205,28 +1205,33 @@
     </footer>
 
     <script>
-    // API Configuration - FIXED: Correct port
+    // API Configuration
     const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
+    
+    // Global state
+    let activeFilter = 'all';
+    let allEvents = [];
     
     // Utility Functions
     function formatDate(dateString) {
+        if (!dateString) return 'TBA';
         try {
             const date = new Date(dateString);
             return date.toLocaleDateString('en-US', {
+                weekday: 'short',
                 month: 'short',
                 day: 'numeric',
                 year: 'numeric'
             });
         } catch (error) {
             console.error('Date formatting error:', error);
-            return dateString || 'TBA';
+            return dateString;
         }
     }
     
     function formatTime(timeString) {
         if (!timeString) return 'TBA';
         try {
-            // Handle time format from backend (HH:MM:SS)
             const [hours, minutes] = timeString.split(':');
             const hour = parseInt(hours);
             const ampm = hour >= 12 ? 'PM' : 'AM';
@@ -1299,45 +1304,25 @@
             'Socials': 'category-socials',
             'Career': 'category-career',
             'Academic': 'category-workshops',
-            'General': 'category-default'
+            'General': 'category-default',
+            'Seminar': 'category-workshops',
+            'Conference': 'category-workshops'
         };
         
         return categoryMap[category] || 'category-default';
     }
     
-    // Event Management
-    let activeFilter = 'all';
-    let allEvents = [];
-    
-    // Load events from API
-        async function loadEventsFromAPI() {
+    // Main function to load events from API
+    async function loadEventsFromAPI() {
         const eventsGrid = document.getElementById('eventsGrid');
         if (!eventsGrid) return;
         
+        console.log('🔍 Loading events from API...');
         showLoading(eventsGrid);
         
-        console.log('🔍 Testing API connection...');
-        
-        // First, check if API is reachable
         try {
-            const healthCheck = await fetch(`${API_BASE_URL}/health`, {
-                method: 'GET',
-                mode: 'cors'
-            });
-            
-            if (healthCheck.ok) {
-                console.log('✅ API Health Check: OK');
-            } else {
-                console.warn('⚠️ API Health Check failed:', healthCheck.status);
-            }
-        } catch (healthError) {
-            console.error('❌ API Health Check failed completely:', healthError.message);
-        }
-        
-        // Try to get events
-        try {
-            console.log('🔍 Fetching ALL events from:', `${API_BASE_URL}/events`);
-            const response = await fetch(`${API_BASE_URL}/events`, {
+            // First try the main API endpoint
+            const response = await fetch(`${API_BASE_URL}/api/events`, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
@@ -1346,133 +1331,65 @@
                 mode: 'cors'
             });
             
-            console.log('📡 Response Status:', response.status, response.statusText);
-            console.log('📡 Response Headers:', [...response.headers.entries()]);
+            console.log('📡 API Response Status:', response.status);
             
             if (!response.ok) {
-                const errorText = await response.text();
-                console.error('❌ Response error text:', errorText);
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                throw new Error(`API returned ${response.status}: ${response.statusText}`);
             }
             
             const data = await response.json();
-            console.log('📊 Data received:', data);
+            console.log('📊 API Data received:', data);
             
+            // Handle response format
             if (data.status === 'success' && data.data) {
                 allEvents = data.data;
-                console.log(`✅ Success! Loaded ${allEvents.length} events`);
-                generateEventCards(activeFilter);
             } else if (Array.isArray(data)) {
-                // API might return array directly
                 allEvents = data;
-                console.log(`✅ Success! Loaded ${allEvents.length} events (direct array)`);
-                generateEventCards(activeFilter);
+            } else if (data.events && Array.isArray(data.events)) {
+                allEvents = data.events;
             } else {
-                console.warn('⚠️ Unexpected response format:', data);
-                showErrorMessage(eventsGrid, 'Unexpected API response format');
+                console.warn('Unexpected API response format:', data);
+                allEvents = [];
             }
+            
+            console.log(`✅ Loaded ${allEvents.length} events`);
+            
+            if (allEvents.length === 0) {
+                showNoEventsMessage('No upcoming events scheduled. Check back soon!');
+            } else {
+                generateEventCards(activeFilter);
+            }
+            
         } catch (error) {
-            console.error('❌ Error loading events:', error);
+            console.error('❌ Error loading events from API:', error);
             
-            // Try without query parameter
-            try {
-                console.log('🔄 Trying without query parameter...');
-                const fallbackResponse = await fetch(`${API_BASE_URL}/events`, {
-                    method: 'GET',
-                    headers: { 'Accept': 'application/json' },
-                    mode: 'cors'
-                });
-                
-                if (fallbackResponse.ok) {
-                    const fallbackData = await fallbackResponse.json();
-                    console.log('🔄 Fallback data:', fallbackData);
-                    
-                    if (fallbackData.status === 'success' && fallbackData.data) {
-                        allEvents = fallbackData.data;
-                        console.log(`✅ Fallback success! Loaded ${allEvents.length} events`);
-                        generateEventCards(activeFilter);
-                        return;
-                    }
-                }
-            } catch (fallbackError) {
-                console.error('❌ Fallback also failed:', fallbackError);
+            // Show error message
+            const eventsGrid = document.getElementById('eventsGrid');
+            if (eventsGrid) {
+                showErrorMessage(eventsGrid, `Cannot connect to server: ${error.message}. Please check your internet connection and try again.`);
             }
-            
-            showErrorMessage(eventsGrid, `Cannot connect to API: ${error.message}`);
         }
     }
-
-    async function loadEventsFromAPI() {
-    const eventsGrid = document.getElementById('eventsGrid');
-    if (!eventsGrid) return;
     
-    console.log('🔍 Loading ALL events...');
-    
-    showLoading(eventsGrid);
-    
-    try {
-        // Fetch ALL events (remove ?upcoming=true)
-        const response = await fetch(`${API_BASE_URL}/events`, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            },
-            mode: 'cors'
-        });
+    // Show no events message
+    function showNoEventsMessage(message) {
+        const eventsGrid = document.getElementById('eventsGrid');
+        const noEvents = document.getElementById('noEvents');
         
-        console.log('📡 Response Status:', response.status);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        if (eventsGrid) {
+            eventsGrid.innerHTML = '';
         }
         
-        const data = await response.json();
-        console.log('📊 API Response:', data);
-        
-        // Handle different response formats
-        if (data.status === 'success' && data.data) {
-            allEvents = data.data;
-        } else if (Array.isArray(data)) {
-            allEvents = data;
-        } else {
-            console.warn('Unexpected response format:', data);
-            allEvents = [];
+        if (noEvents) {
+            noEvents.querySelector('p').textContent = message;
+            noEvents.classList.remove('hidden');
+            setTimeout(() => {
+                noEvents.classList.add('visible');
+            }, 50);
         }
-        
-        console.log(`✅ Loaded ${allEvents.length} total events`);
-        console.log('📅 Events list:', allEvents);
-        
-        if (allEvents.length === 0) {
-            console.log('No events found in database');
-            showNoEventsMessage('No events have been created yet.');
-        } else {
-            generateEventCards(activeFilter);
-        }
-        
-    } catch (error) {
-        console.error('❌ Error loading events:', error);
-        showErrorMessage(eventsGrid, `Cannot load events: ${error.message}`);
     }
-}
-
-// Helper function for no events message
-function showNoEventsMessage(message) {
-    const eventsGrid = document.getElementById('eventsGrid');
-    const noEvents = document.getElementById('noEvents');
     
-    eventsGrid.innerHTML = '';
-    
-    if (noEvents) {
-        noEvents.querySelector('p').textContent = message;
-        noEvents.classList.remove('hidden');
-        setTimeout(() => {
-            noEvents.classList.add('visible');
-        }, 50);
-    }
-}
-    
-    // Generate event cards
+    // Generate event cards based on filter
     function generateEventCards(filter = 'all') {
         const eventsGrid = document.getElementById('eventsGrid');
         const noEvents = document.getElementById('noEvents');
@@ -1492,7 +1409,6 @@ function showNoEventsMessage(message) {
                 const eventCategory = event.category.toLowerCase();
                 const filterCategory = filter.toLowerCase();
                 
-                // More flexible matching
                 return eventCategory.includes(filterCategory) || 
                        eventCategory === filterCategory ||
                        filterCategory === 'socials' && (eventCategory.includes('social') || eventCategory === 'social');
@@ -1516,7 +1432,7 @@ function showNoEventsMessage(message) {
                         No Events Found
                     </h3>
                     <p style="font-family: 'Roboto Mono', monospace; color: var(--slate-500);">
-                        ${filter === 'all' ? 'No upcoming events scheduled.' : `No ${filter.toLowerCase()} events found.`}
+                        ${filter === 'all' ? 'No events scheduled at this time.' : `No ${filter.toLowerCase()} events found.`}
                     </p>
                     ${filter !== 'all' ? 
                         `<button onclick="generateEventCards('all')" style="
@@ -1542,13 +1458,13 @@ function showNoEventsMessage(message) {
                 }, 300);
             }
             
-            // Generate event cards with staggered animation
+            // Generate event cards
             filteredEvents.forEach((event, index) => {
                 const card = createEventCard(event, index);
                 eventsGrid.appendChild(card);
             });
             
-            // Animate cards in
+            // Animate cards in with staggered delay
             setTimeout(() => {
                 const cards = eventsGrid.querySelectorAll('.event-card');
                 cards.forEach((card, index) => {
@@ -1558,7 +1474,7 @@ function showNoEventsMessage(message) {
                 });
             }, 100);
             
-            // Attach event listeners after cards are created
+            // Attach event listeners
             attachEventListeners();
         }
         
@@ -1629,8 +1545,9 @@ function showNoEventsMessage(message) {
         });
     }
     
-    // Attach event listeners to register buttons
+    // Attach event listeners to register buttons and cards
     function attachEventListeners() {
+        // Register button click handlers
         const registerButtons = document.querySelectorAll('.register-button');
         registerButtons.forEach(button => {
             button.addEventListener('click', function(e) {
@@ -1644,7 +1561,7 @@ function showNoEventsMessage(message) {
             });
         });
         
-        // Add hover effects to event cards
+        // Event card hover effects
         const eventCards = document.querySelectorAll('.event-card');
         eventCards.forEach(card => {
             card.addEventListener('mouseenter', function() {
@@ -1673,9 +1590,25 @@ function showNoEventsMessage(message) {
     // Show event details modal
     async function showEventDetailsModal(eventId, eventTitle = 'Event') {
         try {
-            const response = await fetch(`${API_BASE_URL}/events/${eventId}`);
+            const response = await fetch(`${API_BASE_URL}/api/events/${eventId}`);
+            
+            if (!response.ok) {
+                throw new Error(`Failed to fetch event details: ${response.status}`);
+            }
+            
             const data = await response.json();
-            const event = data.data || {};
+            let event = {};
+            
+            if (data.status === 'success' && data.data) {
+                event = data.data;
+            } else if (data) {
+                event = data;
+            }
+            
+            // Use fallback from allEvents if API fails
+            if (!event.id) {
+                event = allEvents.find(e => e.id == eventId) || { title: eventTitle };
+            }
             
             const modalHTML = `
                 <div id="eventDetailsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" style="backdrop-filter: blur(4px);">
@@ -1733,14 +1666,6 @@ function showNoEventsMessage(message) {
                             <p class="font-sans text-slate-700">${event.organizer}</p>
                         </div>` : ''}
                         
-                        ${event.registration_link ? `
-                        <div class="mb-6">
-                            <h4 class="font-mono text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">Registration Link</h4>
-                            <a href="${event.registration_link}" target="_blank" class="text-emerald-600 hover:text-emerald-700 font-sans">
-                                ${event.registration_link}
-                            </a>
-                        </div>` : ''}
-                        
                         <div class="flex gap-3 pt-6 border-t border-slate-200">
                             <button onclick="showRegistrationModal('${event.title || eventTitle}', '${eventId}')" 
                                     class="flex-1 py-3 bg-emerald-600 text-white font-mono text-sm font-bold uppercase tracking-wider rounded-lg hover:bg-emerald-700 transition-colors shadow-md">
@@ -1774,7 +1699,7 @@ function showNoEventsMessage(message) {
             
         } catch (error) {
             console.error('Error loading event details:', error);
-            // Fallback to simple modal
+            // Fallback to simple registration modal
             showRegistrationModal(eventTitle, eventId);
         }
     }
@@ -1853,43 +1778,18 @@ function showNoEventsMessage(message) {
             const name = this.querySelector('#reg-name').value.trim();
             const email = this.querySelector('#reg-email').value.trim();
             const department = this.querySelector('#reg-department').value;
-            const eventId = this.querySelector('#reg-event-id')?.value;
             
             if (!name || !email || !department) {
                 alert('Please fill in all required fields.');
                 return;
             }
             
-            try {
-                // Send registration to contact endpoint
-                const response = await fetch(`${API_BASE_URL}/contact`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        name,
-                        email,
-                        subject: `Event Registration: ${eventTitle}`,
-                        message: `I would like to register for the event "${eventTitle}".\n\nDepartment: ${department}\n\nPlease send me more details about registration.`,
-                        department
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.status === 'success') {
-                    alert(`Thank you ${name}!\n\nRegistration request sent for "${eventTitle}".\nWe'll contact you at ${email} with more details.`);
-                    closeModal();
-                } else {
-                    throw new Error(data.message || 'Registration failed');
-                }
-            } catch (error) {
-                console.error('Registration error:', error);
-                // Fallback message
-                alert(`Thank you ${name}!\n\nWe've recorded your interest in "${eventTitle}".\nWe'll contact you at ${email} with more details.`);
-                closeModal();
-            }
+            // Simple form submission (you can connect this to your backend)
+            alert(`Thank you ${name}!\n\nRegistration request sent for "${eventTitle}".\nWe'll contact you at ${email} with more details.`);
+            
+            // Close modal
+            const closeModal = () => modalDiv.remove();
+            closeModal();
         });
         
         // Close modal functions

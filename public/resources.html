@@ -1424,635 +1424,709 @@
     </footer>
 
     <script>
-    // PostgreSQL Database API Configuration - FIXED: Correct port
-    const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
-    
-    // Application State
-    const appState = {
-        currentTab: 'resources',
-        resources: [],
-        filteredResources: [],
-        filters: {
-            search: '',
-            level: 'All',
-            department: '',
-            year: ''
+// PostgreSQL Database API Configuration
+const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
+
+// Application State
+const appState = {
+    currentTab: 'resources',
+    resources: [],
+    filteredResources: [],
+    filters: {
+        search: '',
+        level: 'All',
+        department: '',
+        year: ''
+    },
+    loading: false,
+    tools: [
+        {
+            name: 'CGPA Calculator',
+            description: 'Calculate your semester and cumulative GPA easily',
+            icon: 'calculator',
+            action: 'showCGPACalculator'
         },
-        loading: false
-    };
+        {
+            name: 'Course Registration Portal',
+            description: 'Quick access to the university portal',
+            icon: 'file-alt',
+            action: () => window.open('https://portal.biu.edu.ng', '_blank', 'noopener,noreferrer')
+        },
+        {
+            name: 'Unit Converter',
+            description: 'Convert between different engineering units',
+            icon: 'exchange-alt',
+            action: 'showUnitConverter'
+        },
+        {
+            name: 'Academic Calendar',
+            description: 'View the current academic calendar',
+            icon: 'calendar-alt',
+            action: 'showAcademicCalendar'
+        }
+    ],
+    helpfulLinks: [
+        {
+            category: 'Professional Bodies',
+            items: [
+                {
+                    title: 'Nigerian Society of Engineers (NSE)',
+                    url: 'https://nse.org.ng',
+                    description: 'Official website of the Nigerian Society of Engineers'
+                },
+                {
+                    title: 'COREN Official Website',
+                    url: 'https://coren.gov.ng',
+                    description: 'Council for the Regulation of Engineering in Nigeria'
+                }
+            ]
+        },
+        {
+            category: 'Research & Learning',
+            items: [
+                {
+                    title: 'IEEE Xplore Digital Library',
+                    url: 'https://ieeeexplore.ieee.org',
+                    description: 'Access to technical literature in engineering'
+                },
+                {
+                    title: 'Coursera for Students',
+                    url: 'https://coursera.org',
+                    description: 'Online courses and specializations'
+                }
+            ]
+        },
+        {
+            category: 'University Resources',
+            items: [
+                {
+                    title: 'BIU Library Portal',
+                    url: 'https://library.biu.edu.ng',
+                    description: 'Access to university library resources'
+                },
+                {
+                    title: 'BIU Student Portal',
+                    url: 'https://portal.biu.edu.ng',
+                    description: 'University student portal'
+                }
+            ]
+        }
+    ]
+};
 
-    // DOM Elements
-    let searchInput, levelFilter, clearFiltersBtn;
-    let resourcesContainer, resultsList;
+// DOM Elements
+let searchInput, levelFilter, clearFiltersBtn;
+let resourcesContainer, resultsList, toolsContainer, linksContainer;
+let tabButtons;
 
-    // Initialize the application
-    document.addEventListener('DOMContentLoaded', function() {
-        initializeDOM();
-        initializeEventListeners();
-        initializeMobileMenu();
-        highlightCurrentPage();
-        
-        // Load initial data
-        loadResources();
+// Initialize the application
+document.addEventListener('DOMContentLoaded', function() {
+    initializeDOM();
+    initializeEventListeners();
+    initializeMobileMenu();
+    highlightCurrentPage();
+    
+    // Load initial data
+    loadResources();
+});
+
+function initializeDOM() {
+    // Get DOM elements
+    searchInput = document.getElementById('searchInput');
+    levelFilter = document.getElementById('levelFilter');
+    clearFiltersBtn = document.getElementById('clearFiltersBtn');
+    resultsList = document.getElementById('resultsList');
+    resourcesContainer = document.getElementById('resources-container');
+    toolsContainer = document.getElementById('tools-container');
+    linksContainer = document.getElementById('links-container');
+    tabButtons = document.querySelectorAll('.tab-button');
+}
+
+function initializeEventListeners() {
+    // Tab switching
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => switchTab(button.dataset.tab));
     });
 
-    function initializeDOM() {
-        searchInput = document.getElementById('searchInput');
-        levelFilter = document.getElementById('levelFilter');
-        clearFiltersBtn = document.getElementById('clearFiltersBtn');
-        resultsList = document.getElementById('resultsList');
-        resourcesContainer = document.getElementById('resources-container');
+    // Search and filter for past questions
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            appState.filters.search = e.target.value;
+            filterResources();
+        });
     }
 
-    function initializeEventListeners() {
-        // Tab switching
-        document.querySelectorAll('.tab-button').forEach(button => {
-            button.addEventListener('click', () => switchTab(button.dataset.tab));
+    if (levelFilter) {
+        levelFilter.addEventListener('change', (e) => {
+            appState.filters.level = e.target.value;
+            filterResources();
         });
+    }
 
-        // Search and filter for past questions
-        if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                appState.filters.search = e.target.value;
-                filterResources();
-            });
+    if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', () => {
+            appState.filters.search = '';
+            appState.filters.level = 'All';
+            if (searchInput) searchInput.value = '';
+            if (levelFilter) levelFilter.value = 'All';
+            filterResources();
+        });
+    }
+
+    // Download buttons (event delegation)
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('.download-button')) {
+            const button = e.target.closest('.download-button');
+            const id = button.dataset.id;
+            handleDownload(id);
         }
+    });
 
-        if (levelFilter) {
-            levelFilter.addEventListener('change', (e) => {
-                appState.filters.level = e.target.value;
-                filterResources();
-            });
-        }
-
-        if (clearFiltersBtn) {
-            clearFiltersBtn.addEventListener('click', () => {
-                appState.filters.search = '';
-                appState.filters.level = 'All';
-                if (searchInput) searchInput.value = '';
-                if (levelFilter) levelFilter.value = 'All';
-                filterResources();
-            });
-        }
-
-        // Download buttons (event delegation)
-        document.addEventListener('click', (e) => {
-            if (e.target.closest('.download-button')) {
-                const button = e.target.closest('.download-button');
-                const id = button.dataset.id;
-                handleDownload(id);
+    // Tool card clicks
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('.tool-card')) {
+            const toolCard = e.target.closest('.tool-card');
+            const toolIndex = parseInt(toolCard.dataset.toolIndex);
+            if (!isNaN(toolIndex) && appState.tools[toolIndex]) {
+                const tool = appState.tools[toolIndex];
+                if (typeof tool.action === 'function') {
+                    tool.action();
+                } else if (typeof window[tool.action] === 'function') {
+                    window[tool.action]();
+                }
             }
-        });
-    }
+        }
+    });
+}
 
-    function initializeMobileMenu() {
-        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-        const mobileNav = document.getElementById('mobileNav');
-        
-        if (!mobileMenuBtn || !mobileNav) return;
-        
-        mobileMenuBtn.addEventListener('click', function() {
-            mobileNav.classList.toggle('open');
-            const icon = this.querySelector('i');
+function initializeMobileMenu() {
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const mobileNav = document.getElementById('mobileNav');
+    
+    if (!mobileMenuBtn || !mobileNav) return;
+    
+    mobileMenuBtn.addEventListener('click', function() {
+        mobileNav.classList.toggle('open');
+        const icon = this.querySelector('i');
+        if (icon) {
+            icon.classList.toggle('fa-bars');
+            icon.classList.toggle('fa-times');
+        }
+    });
+    
+    document.addEventListener('click', function(e) {
+        if (!mobileNav.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
+            mobileNav.classList.remove('open');
+            const icon = mobileMenuBtn.querySelector('i');
             if (icon) {
-                icon.classList.toggle('fa-bars');
-                icon.classList.toggle('fa-times');
+                icon.classList.remove('fa-times');
+                icon.classList.add('fa-bars');
             }
-        });
-        
-        document.addEventListener('click', function(e) {
-            if (!mobileNav.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
-                mobileNav.classList.remove('open');
-                const icon = mobileMenuBtn.querySelector('i');
-                if (icon) {
-                    icon.classList.remove('fa-times');
-                    icon.classList.add('fa-bars');
-                }
-            }
-        });
-    }
-
-    function highlightCurrentPage() {
-        const currentPage = window.location.pathname.split('/').pop();
-        
-        document.querySelectorAll('.nav-link, .mobile-nav-link').forEach(link => {
-            if (link.getAttribute('href') === currentPage) {
-                link.classList.add('active');
-            } else {
-                link.classList.remove('active');
-            }
-        });
-    }
-
-    async function loadResources() {
-        try {
-            showLoadingState();
-            
-            console.log('Fetching resources from:', `${API_BASE_URL}/resources`);
-            const response = await fetch(`${API_BASE_URL}/resources`);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            console.log('Resources data received:', data);
-            
-            if (data.status === 'success' && data.data) {
-                appState.resources = data.data;
-                appState.filteredResources = [...appState.resources];
-                renderResources();
-                
-                // Also populate the "Past Questions" tab with filtered resources
-                if (appState.currentTab === 'past-questions') {
-                    filterResources();
-                }
-            } else {
-                showError('No resources found in the database.');
-            }
-            
-        } catch (error) {
-            console.error('Error loading resources:', error);
-            showError('Failed to load resources. Please check your connection.');
-            
-            // Try to show at least something
-            renderFallbackResources();
-        } finally {
-            hideLoadingState();
         }
-    }
+    });
+}
 
-    function filterResources() {
-        if (appState.resources.length === 0) return;
-        
-        let filtered = [...appState.resources];
-        
-        // Apply search filter
-        if (appState.filters.search) {
-            const searchTerm = appState.filters.search.toLowerCase();
-            filtered = filtered.filter(resource => 
-                (resource.title && resource.title.toLowerCase().includes(searchTerm)) ||
-                (resource.course_code && resource.course_code.toLowerCase().includes(searchTerm)) ||
-                (resource.course_title && resource.course_title.toLowerCase().includes(searchTerm))
-            );
-        }
-        
-        // Apply level filter
-        if (appState.filters.level !== 'All') {
-            filtered = filtered.filter(resource => 
-                resource.level && resource.level.toString() === appState.filters.level
-            );
-        }
-        
-        appState.filteredResources = filtered;
-        
-        // Render based on current tab
-        if (appState.currentTab === 'past-questions') {
-            renderPastQuestions();
+function highlightCurrentPage() {
+    const currentPage = window.location.pathname.split('/').pop();
+    
+    document.querySelectorAll('.nav-link, .mobile-nav-link').forEach(link => {
+        if (link.getAttribute('href') === currentPage) {
+            link.classList.add('active');
         } else {
-            renderResources();
+            link.classList.remove('active');
         }
-    }
+    });
+}
 
-    function renderResources() {
-        if (!resourcesContainer) return;
+async function loadResources() {
+    try {
+        showLoadingState();
         
-        if (appState.filteredResources.length === 0) {
-            resourcesContainer.innerHTML = `
-                <div style="text-align: center; padding: 3rem; color: var(--gray-600);">
-                    <i class="fas fa-file-alt" style="font-size: 3rem; margin-bottom: 1rem;"></i>
-                    <p>No study resources found.</p>
-                </div>
-            `;
+        console.log('Fetching resources from API...');
+        
+        // Try multiple endpoints
+        const endpoints = [
+            `${API_BASE_URL}/api/resources`,
+            `${API_BASE_URL}/resources`,
+            `${API_BASE_URL}/api/past-questions`
+        ];
+        
+        let resources = [];
+        
+        for (const endpoint of endpoints) {
+            try {
+                console.log(`Trying endpoint: ${endpoint}`);
+                const response = await fetch(endpoint, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    mode: 'cors'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log(`Response from ${endpoint}:`, data);
+                    
+                    // Parse different response formats
+                    if (data.status === 'success' && data.data) {
+                        resources = data.data;
+                        break;
+                    } else if (Array.isArray(data)) {
+                        resources = data;
+                        break;
+                    } else if (data.resources && Array.isArray(data.resources)) {
+                        resources = data.resources;
+                        break;
+                    }
+                }
+            } catch (endpointError) {
+                console.log(`Endpoint ${endpoint} failed:`, endpointError.message);
+                continue;
+            }
+        }
+        
+        if (resources.length === 0) {
+            console.log('No resources found in any endpoint');
+            appState.resources = [];
+            appState.filteredResources = [];
+            renderResources();
             return;
         }
         
-        resourcesContainer.innerHTML = appState.filteredResources.map(resource => `
-            <div class="download-item">
-                <div class="download-info">
-                    <i class="fas fa-${getFileIcon(resource.file_type)} download-icon"></i>
-                    <div class="download-details">
-                        <h3>${resource.title || 'Untitled Resource'}</h3>
-                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
-                            <span class="download-meta">
-                                ${resource.file_type ? resource.file_type.toUpperCase() : 'FILE'} • 
-                                ${formatFileSize(resource.file_size)}
+        // Process resources
+        appState.resources = resources.map(resource => ({
+            id: resource.id || resource._id || Math.random().toString(36).substr(2, 9),
+            title: resource.title || resource.name || 'Untitled Resource',
+            description: resource.description || '',
+            file_type: getFileExtension(resource.file_url || resource.url || ''),
+            file_size: resource.file_size || 0,
+            level: resource.level || null,
+            department: resource.department || '',
+            course_code: resource.course_code || '',
+            course_title: resource.course_title || '',
+            year: resource.year || '',
+            semester: resource.semester || '',
+            category: resource.category || resource.type || 'General',
+            download_count: resource.download_count || 0,
+            file_url: resource.file_url || resource.url || '#'
+        }));
+        
+        appState.filteredResources = [...appState.resources];
+        
+        console.log(`Loaded ${appState.resources.length} resources`);
+        renderResources();
+        
+    } catch (error) {
+        console.error('Error loading resources:', error);
+        showError('Failed to load resources. Please check your connection.');
+        
+        // Show fallback content
+        renderFallbackResources();
+    } finally {
+        hideLoadingState();
+    }
+}
+
+function filterResources() {
+    if (appState.resources.length === 0) return;
+    
+    let filtered = [...appState.resources];
+    
+    // Apply search filter
+    if (appState.filters.search) {
+        const searchTerm = appState.filters.search.toLowerCase();
+        filtered = filtered.filter(resource => 
+            (resource.title && resource.title.toLowerCase().includes(searchTerm)) ||
+            (resource.course_code && resource.course_code.toLowerCase().includes(searchTerm)) ||
+            (resource.course_title && resource.course_title.toLowerCase().includes(searchTerm)) ||
+            (resource.description && resource.description.toLowerCase().includes(searchTerm))
+        );
+    }
+    
+    // Apply level filter
+    if (appState.filters.level !== 'All') {
+        filtered = filtered.filter(resource => 
+            resource.level && resource.level.toString() === appState.filters.level
+        );
+    }
+    
+    appState.filteredResources = filtered;
+    
+    // Render based on current tab
+    if (appState.currentTab === 'past-questions') {
+        renderPastQuestions();
+    } else if (appState.currentTab === 'resources') {
+        renderResources();
+    }
+}
+
+function renderResources() {
+    if (!resourcesContainer) return;
+    
+    if (appState.filteredResources.length === 0) {
+        resourcesContainer.innerHTML = `
+            <div style="text-align: center; padding: 3rem; color: var(--gray-600);">
+                <i class="fas fa-file-alt" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                <p>No study resources found.</p>
+                ${appState.filters.search || appState.filters.level !== 'All' ? 
+                    '<button onclick="clearFilters()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: var(--emerald-600); color: white; border: none; border-radius: 0.25rem; cursor: pointer;">Clear Filters</button>' : 
+                    ''
+                }
+            </div>
+        `;
+        return;
+    }
+    
+    resourcesContainer.innerHTML = appState.filteredResources.map(resource => `
+        <div class="download-item">
+            <div class="download-info">
+                <i class="fas fa-${getFileIcon(resource.file_type)} download-icon"></i>
+                <div class="download-details">
+                    <h3>${resource.title}</h3>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
+                        <span class="download-meta">
+                            ${resource.file_type ? resource.file_type.toUpperCase() : 'FILE'} • 
+                            ${formatFileSize(resource.file_size)}
+                        </span>
+                        ${resource.level ? `
+                            <span style="font-family: 'Roboto Mono', monospace; font-size: 0.75rem; 
+                                   background: var(--emerald-100); color: var(--emerald-700); 
+                                   padding: 0.125rem 0.5rem; border-radius: 0.25rem;">
+                                Level ${resource.level}
                             </span>
-                            ${resource.level ? `
-                                <span style="font-family: 'Roboto Mono', monospace; font-size: 0.75rem; 
-                                       background: var(--emerald-100); color: var(--emerald-700); 
-                                       padding: 0.125rem 0.5rem; border-radius: 0.25rem;">
-                                    Level ${resource.level}
-                                </span>
-                            ` : ''}
-                            ${resource.department ? `
-                                <span style="font-family: 'Roboto Mono', monospace; font-size: 0.75rem; 
-                                       background: var(--blue-100); color: var(--blue-700); 
-                                       padding: 0.125rem 0.5rem; border-radius: 0.25rem;">
-                                    ${resource.department}
-                                </span>
-                            ` : ''}
-                        </div>
-                        <p style="font-family: 'Inter', sans-serif; font-size: 0.75rem; 
-                               color: var(--gray-600); margin-top: 0.25rem;">
-                            ${resource.description || 'No description available.'}
-                        </p>
-                        <div style="margin-top: 0.5rem;">
+                        ` : ''}
+                        ${resource.department ? `
+                            <span style="font-family: 'Roboto Mono', monospace; font-size: 0.75rem; 
+                                   background: var(--blue-100); color: var(--blue-700); 
+                                   padding: 0.125rem 0.5rem; border-radius: 0.25rem;">
+                                ${resource.department}
+                            </span>
+                        ` : ''}
+                        ${resource.year ? `
+                            <span style="font-family: 'Roboto Mono', monospace; font-size: 0.75rem; 
+                                   background: var(--amber-100); color: var(--amber-700); 
+                                   padding: 0.125rem 0.5rem; border-radius: 0.25rem;">
+                                ${resource.year}
+                            </span>
+                        ` : ''}
+                    </div>
+                    <p style="font-family: 'Inter', sans-serif; font-size: 0.75rem; 
+                           color: var(--gray-600); margin-top: 0.25rem;">
+                        ${resource.description || 'No description available.'}
+                    </p>
+                    <div style="margin-top: 0.5rem;">
+                        ${resource.course_code ? `
                             <span style="font-family: 'Roboto Mono', monospace; font-size: 0.75rem; 
                                    color: var(--gray-500);">
-                                ${resource.download_count || 0} downloads
+                                ${resource.course_code}
                             </span>
-                            ${resource.category ? `
-                                <span style="margin-left: 0.5rem; font-family: 'Roboto Mono', monospace; 
-                                       font-size: 0.75rem; color: var(--gray-500);">
-                                    • ${resource.category}
-                                </span>
-                            ` : ''}
-                        </div>
+                        ` : ''}
+                        ${resource.category ? `
+                            <span style="margin-left: 0.5rem; font-family: 'Roboto Mono', monospace; 
+                                   font-size: 0.75rem; color: var(--gray-500);">
+                                • ${resource.category}
+                            </span>
+                        ` : ''}
+                        ${resource.download_count ? `
+                            <span style="margin-left: 0.5rem; font-family: 'Roboto Mono', monospace; 
+                                   font-size: 0.75rem; color: var(--gray-500);">
+                                • ${resource.download_count} downloads
+                            </span>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+            <button class="download-button" data-id="${resource.id}">
+                <i class="fas fa-download"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
+function renderPastQuestions() {
+    if (!resultsList) return;
+    
+    // Filter resources to show only past questions
+    const pastQuestions = appState.filteredResources.filter(resource => 
+        resource.category && (
+            resource.category.toLowerCase().includes('past') ||
+            resource.category.toLowerCase().includes('question') ||
+            resource.category.toLowerCase().includes('exam')
+        )
+    );
+    
+    if (pastQuestions.length === 0) {
+        resultsList.style.display = 'none';
+        document.getElementById('noResults').style.display = 'block';
+        return;
+    }
+    
+    resultsList.style.display = 'flex';
+    document.getElementById('noResults').style.display = 'none';
+    
+    resultsList.innerHTML = pastQuestions.map(resource => `
+        <div class="question-card" data-id="${resource.id}">
+            <div class="question-content">
+                <div>
+                    <div class="question-header">
+                        ${resource.course_code ? `
+                            <span class="question-code">${resource.course_code}</span>
+                        ` : ''}
+                        ${resource.year ? `
+                            <span class="question-badge">${resource.year}</span>
+                        ` : ''}
+                        ${resource.level ? `
+                            <span class="question-badge">Level ${resource.level}</span>
+                        ` : ''}
+                        ${resource.semester ? `
+                            <span class="question-badge">Semester ${resource.semester}</span>
+                        ` : ''}
+                    </div>
+                    <h3 class="question-title">${resource.title || resource.course_title || 'Past Question'}</h3>
+                    <div class="question-meta">
+                        ${resource.department ? `${resource.department} • ` : ''}
+                        ${formatFileSize(resource.file_size)}
+                        ${resource.download_count ? ` • ${resource.download_count} downloads` : ''}
                     </div>
                 </div>
                 <button class="download-button" data-id="${resource.id}">
-                    <i class="fas fa-download"></i>
+                    <i class="fas fa-download"></i> Download
                 </button>
             </div>
-        `).join('');
+        </div>
+    `).join('');
+}
+
+function renderTools() {
+    if (!toolsContainer) return;
+    
+    toolsContainer.innerHTML = appState.tools.map((tool, index) => `
+        <div class="tool-card" data-tool-index="${index}">
+            <i class="fas fa-${tool.icon} tool-icon"></i>
+            <h3 class="tool-title">${tool.name}</h3>
+            <p class="tool-description">${tool.description}</p>
+            <span class="tool-link">${typeof tool.action === 'function' ? 'Open Link' : 'Launch Tool'}</span>
+        </div>
+    `).join('');
+}
+
+function renderLinks() {
+    if (!linksContainer) return;
+    
+    let html = '';
+    for (const category of appState.helpfulLinks) {
+        html += `
+            <div style="margin-bottom: 1.5rem;">
+                <h3 style="font-family: 'Roboto Mono', monospace; font-size: 0.875rem; 
+                       font-weight: 700; color: var(--gray-800); margin-bottom: 1rem; 
+                       text-transform: uppercase; letter-spacing: 0.05em;">
+                    ${category.category}
+                </h3>
+                <ul class="links-list">
+                    ${category.items.map(item => `
+                        <li>
+                            <i class="fas fa-external-link-alt link-icon"></i>
+                            <span class="link-text">
+                                <a href="${item.url}" 
+                                   target="_blank" 
+                                   rel="noopener noreferrer"
+                                   style="color: inherit; text-decoration: none;">
+                                    ${item.title}
+                                    <br>
+                                    <span style="font-size: 0.75rem; color: var(--gray-500);">
+                                        ${item.description}
+                                    </span>
+                                </a>
+                            </span>
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+        `;
+    }
+    
+    linksContainer.innerHTML = html;
+}
+
+function switchTab(tabName) {
+    // Update active tab button
+    tabButtons.forEach(button => {
+        button.classList.toggle('active', button.dataset.tab === tabName);
+    });
+
+    // Show selected tab content
+    document.querySelectorAll('.tab-pane').forEach(pane => {
+        pane.style.display = 'none';
+    });
+    
+    const tabElement = document.getElementById(`${tabName}-tab`);
+    if (tabElement) {
+        tabElement.style.display = 'block';
     }
 
-    function renderPastQuestions() {
-        if (!resultsList) return;
-        
-        // Filter resources to show only past questions
-        const pastQuestions = appState.filteredResources.filter(resource => 
-            resource.category && resource.category.toLowerCase().includes('past')
-        );
-        
-        if (pastQuestions.length === 0) {
-            resultsList.style.display = 'none';
-            document.getElementById('noResults').style.display = 'block';
+    // Update app state
+    appState.currentTab = tabName;
+    
+    // Refresh content for the tab
+    if (tabName === 'past-questions') {
+        // If we're switching to past questions, make sure we have data
+        if (appState.resources.length === 0) {
+            loadResources();
+        } else {
+            filterResources();
+        }
+    } else if (tabName === 'resources') {
+        renderResources();
+    } else if (tabName === 'tools') {
+        renderTools();
+    } else if (tabName === 'links') {
+        renderLinks();
+    }
+}
+
+async function handleDownload(id) {
+    try {
+        // Find the resource
+        const resource = appState.resources.find(r => r.id == id);
+        if (!resource) {
+            showError('Resource not found');
             return;
         }
         
-        resultsList.style.display = 'flex';
-        document.getElementById('noResults').style.display = 'none';
+        // Show loading state on button
+        const button = document.querySelector(`[data-id="${id}"]`);
+        const originalHTML = button ? button.innerHTML : '';
         
-        resultsList.innerHTML = pastQuestions.map(resource => `
-            <div class="question-card" data-id="${resource.id}">
-                <div class="question-content">
-                    <div>
-                        <div class="question-header">
-                            ${resource.course_code ? `
-                                <span class="question-code">${resource.course_code}</span>
-                            ` : ''}
-                            ${resource.year ? `
-                                <span class="question-badge">${resource.year}</span>
-                            ` : ''}
-                            ${resource.level ? `
-                                <span class="question-badge">Level ${resource.level}</span>
-                            ` : ''}
-                            ${resource.department ? `
-                                <span class="question-badge">${resource.department}</span>
-                            ` : ''}
-                        </div>
-                        <h3 class="question-title">${resource.title || resource.course_title || 'Past Question'}</h3>
-                        <div class="question-meta">
-                            ${resource.semester ? `Semester ${resource.semester} • ` : ''}
-                            ${formatFileSize(resource.file_size)}
-                            ${resource.download_count ? ` • ${resource.download_count} downloads` : ''}
-                        </div>
-                    </div>
-                    <button class="download-button" data-id="${resource.id}">
-                        <i class="fas fa-download"></i> Download
-                    </button>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    function switchTab(tabName) {
-        // Update active tab button
-        document.querySelectorAll('.tab-button').forEach(button => {
-            button.classList.toggle('active', button.dataset.tab === tabName);
-        });
-
-        // Show selected tab content
-        document.querySelectorAll('.tab-pane').forEach(pane => {
-            pane.style.display = 'none';
-        });
-        
-        const tabElement = document.getElementById(`${tabName}-tab`);
-        if (tabElement) {
-            tabElement.style.display = 'block';
+        if (button) {
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            button.disabled = true;
         }
-
-        // Update app state
-        appState.currentTab = tabName;
         
-        // Refresh content for the tab
-        if (tabName === 'past-questions') {
-            // If we're switching to past questions, make sure we have data
-            if (appState.resources.length === 0) {
-                loadResources();
-            } else {
-                filterResources();
-            }
-        } else if (tabName === 'resources') {
-            renderResources();
-        } else if (tabName === 'tools') {
-            renderTools();
-        } else if (tabName === 'links') {
-            renderLinks();
+        // Handle different types of file URLs
+        let downloadUrl = resource.file_url;
+        
+        if (!downloadUrl || downloadUrl === '#') {
+            // If no direct URL, use the API download endpoint
+            downloadUrl = `${API_BASE_URL}/api/resources/${id}/download`;
+        } else if (downloadUrl.startsWith('/')) {
+            // If relative URL, make it absolute
+            downloadUrl = `${API_BASE_URL}${downloadUrl}`;
         }
-    }
-
-    async function handleDownload(id) {
-        try {
-            // Find the resource
-            const resource = appState.resources.find(r => r.id == id);
-            if (!resource) {
-                showError('Resource not found');
-                return;
-            }
-            
-            // Show loading state
-            const button = document.querySelector(`[data-id="${id}"]`);
+        
+        console.log('Downloading from:', downloadUrl);
+        
+        // Create a temporary anchor element to trigger download
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = `${resource.title.replace(/[^a-z0-9]/gi, '_')}.${resource.file_type || 'pdf'}`;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        
+        // Append to body, click, and remove
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Update download count locally
+        resource.download_count = (resource.download_count || 0) + 1;
+        
+        // Show success message
+        showSuccess(`Downloading: ${resource.title}`);
+        
+        // Reset button after a delay
+        setTimeout(() => {
             if (button) {
-                const originalHTML = button.innerHTML;
-                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                button.disabled = true;
-                
-                // Use the download endpoint from your backend
-                const downloadUrl = `${API_BASE_URL}/resources/${id}/download`;
-                
-                // Open in new tab for download
-                window.open(downloadUrl, '_blank');
-                
-                // Update download count locally
-                resource.download_count = (resource.download_count || 0) + 1;
-                
-                // Reset button after a delay
-                setTimeout(() => {
-                    button.innerHTML = originalHTML;
-                    button.disabled = false;
-                    
-                    // Show success message
-                    showSuccess(`Downloading: ${resource.title || 'resource'}`);
-                }, 1000);
-                
+                button.innerHTML = originalHTML;
+                button.disabled = false;
             }
-        } catch (error) {
-            console.error('Download error:', error);
-            showError('Failed to download. Please try again.');
-            
-            // Fallback: If download endpoint doesn't work, just show the file URL
-            const resource = appState.resources.find(r => r.id == id);
-            if (resource && resource.file_url) {
-                showSuccess(`Opening: ${resource.title}. If download doesn't start, <a href="${resource.file_url}" target="_blank">click here</a>`);
-            }
+        }, 1000);
+        
+    } catch (error) {
+        console.error('Download error:', error);
+        showError('Failed to download. Please try again.');
+        
+        // Reset button
+        const button = document.querySelector(`[data-id="${id}"]`);
+        if (button) {
+            button.innerHTML = '<i class="fas fa-download"></i>';
+            button.disabled = false;
         }
     }
+}
 
-    function renderTools() {
-        const toolsContainer = document.getElementById('tools-container');
-        if (!toolsContainer) return;
-        
-        // Static tools - these don't need API data
-        const tools = [
-            {
-                name: 'CGPA Calculator',
-                description: 'Calculate your semester and cumulative GPA easily',
-                icon: 'calculator',
-                action: () => showCGPACalculator()
-            },
-            {
-                name: 'Course Registration Portal',
-                description: 'Quick access to the university portal',
-                icon: 'file-alt',
-                action: () => window.open('https://portal.biu.edu.ng', '_blank', 'noopener,noreferrer')
-            },
-            {
-                name: 'Unit Converter',
-                description: 'Convert between different engineering units',
-                icon: 'exchange-alt',
-                action: () => showUnitConverter()
-            },
-            {
-                name: 'Academic Calendar',
-                description: 'View the current academic calendar',
-                icon: 'calendar-alt',
-                action: () => showAcademicCalendar()
-            }
-        ];
-        
-        toolsContainer.innerHTML = tools.map(tool => `
-            <div class="tool-card" onclick="${tool.action.toString().replace(/"/g, '&quot;')}">
-                <i class="fas fa-${tool.icon} tool-icon"></i>
-                <h3 class="tool-title">${tool.name}</h3>
-                <p class="tool-description">${tool.description}</p>
-                <span class="tool-link">${tool.action.toString().includes('window.open') ? 'Open Link' : 'Launch Tool'}</span>
-            </div>
-        `).join('');
-    }
-
-    function renderLinks() {
-        const linksContainer = document.getElementById('links-container');
-        if (!linksContainer) return;
-        
-        // Static links - these don't need API data
-        const links = [
-            {
-                category: 'Professional Bodies',
-                items: [
-                    {
-                        title: 'Nigerian Society of Engineers (NSE)',
-                        url: 'https://nse.org.ng',
-                        description: 'Official website of the Nigerian Society of Engineers'
-                    },
-                    {
-                        title: 'COREN Official Website',
-                        url: 'https://coren.gov.ng',
-                        description: 'Council for the Regulation of Engineering in Nigeria'
-                    }
-                ]
-            },
-            {
-                category: 'Research & Learning',
-                items: [
-                    {
-                        title: 'IEEE Xplore Digital Library',
-                        url: 'https://ieeexplore.ieee.org',
-                        description: 'Access to technical literature in engineering'
-                    },
-                    {
-                        title: 'Coursera for Students',
-                        url: 'https://coursera.org',
-                        description: 'Online courses and specializations'
-                    }
-                ]
-            },
-            {
-                category: 'University Resources',
-                items: [
-                    {
-                        title: 'BIU Library Portal',
-                        url: 'https://library.biu.edu.ng',
-                        description: 'Access to university library resources'
-                    },
-                    {
-                        title: 'BIU Student Portal',
-                        url: 'https://portal.biu.edu.ng',
-                        description: 'University student portal'
-                    }
-                ]
-            }
-        ];
-        
-        let html = '';
-        for (const category of links) {
-            html += `
-                <div style="margin-bottom: 1.5rem;">
-                    <h3 style="font-family: 'Roboto Mono', monospace; font-size: 0.875rem; 
-                           font-weight: 700; color: var(--gray-800); margin-bottom: 1rem; 
-                           text-transform: uppercase; letter-spacing: 0.05em;">
-                        ${category.category}
-                    </h3>
-                    <ul class="links-list">
-                        ${category.items.map(item => `
-                            <li>
-                                <i class="fas fa-external-link-alt link-icon"></i>
-                                <span class="link-text">
-                                    <a href="${item.url}" 
-                                       target="_blank" 
-                                       rel="noopener noreferrer"
-                                       style="color: inherit; text-decoration: none;">
-                                        ${item.title}
-                                        <br>
-                                        <span style="font-size: 0.75rem; color: var(--gray-500);">
-                                            ${item.description}
-                                        </span>
-                                    </a>
-                                </span>
-                            </li>
-                        `).join('')}
-                    </ul>
+// Tool functions
+function showCGPACalculator() {
+    const modalHTML = `
+        <div class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>CGPA Calculator</h3>
+                    <button class="close-modal">&times;</button>
                 </div>
-            `;
-        }
-        
-        linksContainer.innerHTML = html;
-    }
-
-    function showCGPACalculator() {
-        const modalHTML = `
-            <div class="modal-overlay">
-                <div class="modal-content">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                        <h3 style="font-family: 'Inter', sans-serif; font-size: 1.5rem; color: var(--gray-800);">
-                            CGPA Calculator
-                        </h3>
-                        <button onclick="closeModal(this)" style="background: none; border: none; font-size: 1.5rem; color: var(--gray-500); cursor: pointer;">
-                            &times;
-                        </button>
+                
+                <div class="modal-body">
+                    <p>Add your courses to calculate your GPA:</p>
+                    
+                    <div class="input-group">
+                        <div class="input-row">
+                            <input type="text" id="courseName" placeholder="Course Name">
+                            <input type="number" id="courseUnits" placeholder="Units" min="1" max="10">
+                            <select id="courseGrade">
+                                <option value="5">A</option>
+                                <option value="4">B</option>
+                                <option value="3">C</option>
+                                <option value="2">D</option>
+                                <option value="1">E</option>
+                                <option value="0">F</option>
+                            </select>
+                        </div>
+                        <button id="addCourseBtn" class="btn-primary">Add Course</button>
                     </div>
                     
-                    <div id="cgpaCalculatorContent">
-                        <p style="color: var(--gray-600); margin-bottom: 1.5rem;">
-                            Add your courses to calculate your GPA:
-                        </p>
-                        
-                        <div style="margin-bottom: 1.5rem;">
-                            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem;">
-                                <input type="text" id="courseName" placeholder="Course Name" style="padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 0.25rem;">
-                                <input type="number" id="courseUnits" placeholder="Units" min="1" max="10" style="padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 0.25rem;">
-                                <select id="courseGrade" style="padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 0.25rem;">
-                                    <option value="5">A</option>
-                                    <option value="4">B</option>
-                                    <option value="3">C</option>
-                                    <option value="2">D</option>
-                                    <option value="1">E</option>
-                                    <option value="0">F</option>
-                                </select>
-                            </div>
-                            <button onclick="addCourse()" style="padding: 0.5rem 1rem; background: var(--emerald-600); color: white; border: none; border-radius: 0.25rem; cursor: pointer;">
-                                Add Course
-                            </button>
-                        </div>
-                        
-                        <div id="coursesList" style="margin-bottom: 1.5rem; max-height: 200px; overflow-y: auto;"></div>
-                        
-                        <div style="text-align: center; padding: 1rem; background: var(--gray-100); border-radius: 0.25rem; margin-bottom: 1.5rem;">
-                            <h4 style="font-family: 'Inter', sans-serif; color: var(--gray-700); margin-bottom: 0.5rem;">
-                                GPA Result
-                            </h4>
-                            <div id="gpaResult" style="font-size: 2rem; font-weight: bold; color: var(--emerald-600);">
-                                0.00
-                            </div>
-                        </div>
-                        
-                        <button onclick="calculateGPA()" style="width: 100%; padding: 0.75rem; background: var(--emerald-600); color: white; border: none; border-radius: 0.25rem; font-weight: bold; cursor: pointer;">
-                            Calculate GPA
-                        </button>
+                    <div id="coursesList" class="courses-list"></div>
+                    
+                    <div class="result-container">
+                        <h4>GPA Result</h4>
+                        <div id="gpaResult" class="gpa-result">0.00</div>
                     </div>
+                    
+                    <button id="calculateGPABtn" class="btn-calculate">Calculate GPA</button>
                 </div>
             </div>
-            
-            <style>
-                .modal-overlay {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: rgba(0,0,0,0.5);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    z-index: 9999;
-                    padding: 1rem;
-                }
-                .modal-content {
-                    background: white;
-                    padding: 2rem;
-                    border-radius: 0.5rem;
-                    max-width: 500px;
-                    width: 100%;
-                    max-height: 80vh;
-                    overflow-y: auto;
-                    box-shadow: var(--shadow-2xl);
-                }
-            </style>
-        `;
-        
-        const modal = document.createElement('div');
-        modal.innerHTML = modalHTML;
-        document.body.appendChild(modal);
-        
-        // Initialize courses array
-        window.calculatorCourses = [];
-    }
+        </div>
+    `;
+    
+    const modal = createModal(modalHTML);
+    document.body.appendChild(modal);
+    
+    // Initialize courses array
+    window.calculatorCourses = [];
+    
+    // Add event listeners for the calculator
+    document.getElementById('addCourseBtn').addEventListener('click', addCourse);
+    document.getElementById('calculateGPABtn').addEventListener('click', calculateGPA);
+    modal.querySelector('.close-modal').addEventListener('click', () => modal.remove());
+}
 
-    function showUnitConverter() {
-        const modalHTML = `
-            <div class="modal-overlay">
-                <div class="modal-content">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                        <h3 style="font-family: 'Inter', sans-serif; font-size: 1.5rem; color: var(--gray-800);">
-                            Unit Converter
-                        </h3>
-                        <button onclick="closeModal(this)" style="background: none; border: none; font-size: 1.5rem; color: var(--gray-500); cursor: pointer;">
-                            &times;
-                        </button>
-                    </div>
+function showUnitConverter() {
+    const modalHTML = `
+        <div class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Unit Converter</h3>
+                    <button class="close-modal">&times;</button>
+                </div>
+                
+                <div class="modal-body">
+                    <p>Convert between different engineering units:</p>
                     
-                    <p style="color: var(--gray-600); margin-bottom: 1.5rem;">
-                        Convert between different engineering units:
-                    </p>
-                    
-                    <div style="margin-bottom: 1rem;">
-                        <input type="number" id="converterValue" placeholder="Enter value" 
-                               style="width: 100%; padding: 0.75rem; border: 1px solid var(--gray-300); border-radius: 0.25rem; margin-bottom: 1rem;">
+                    <div class="converter-inputs">
+                        <input type="number" id="converterValue" placeholder="Enter value" class="value-input">
                         
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <select id="fromUnit" style="padding: 0.75rem; border: 1px solid var(--gray-300); border-radius: 0.25rem;">
+                        <div class="unit-selectors">
+                            <select id="fromUnit" class="unit-select">
                                 <option value="meters">Meters</option>
                                 <option value="feet">Feet</option>
                                 <option value="celsius">°C</option>
@@ -2061,7 +2135,11 @@
                                 <option value="psi">PSI</option>
                             </select>
                             
-                            <select id="toUnit" style="padding: 0.75rem; border: 1px solid var(--gray-300); border-radius: 0.25rem;">
+                            <div class="swap-icon">
+                                <i class="fas fa-exchange-alt"></i>
+                            </div>
+                            
+                            <select id="toUnit" class="unit-select">
                                 <option value="feet">Feet</option>
                                 <option value="meters">Meters</option>
                                 <option value="fahrenheit">°F</option>
@@ -2072,273 +2150,504 @@
                         </div>
                     </div>
                     
-                    <button onclick="convertUnits()" style="width: 100%; padding: 0.75rem; background: var(--emerald-600); color: white; border: none; border-radius: 0.25rem; font-weight: bold; cursor: pointer; margin-bottom: 1rem;">
-                        Convert
-                    </button>
+                    <button id="convertBtn" class="btn-calculate">Convert</button>
                     
-                    <div id="conversionResult" style="text-align: center; padding: 1rem; background: var(--gray-100); border-radius: 0.25rem; font-size: 1.25rem; font-weight: bold; color: var(--emerald-600);">
+                    <div id="conversionResult" class="result-display">
                         Result will appear here
                     </div>
                 </div>
             </div>
-        `;
-        
-        const modal = document.createElement('div');
-        modal.innerHTML = modalHTML;
-        document.body.appendChild(modal);
-    }
+        </div>
+    `;
+    
+    const modal = createModal(modalHTML);
+    document.body.appendChild(modal);
+    
+    // Add event listeners
+    document.getElementById('convertBtn').addEventListener('click', convertUnits);
+    modal.querySelector('.close-modal').addEventListener('click', () => modal.remove());
+}
 
-    function showAcademicCalendar() {
-        const modalHTML = `
-            <div class="modal-overlay">
-                <div class="modal-content">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                        <h3 style="font-family: 'Inter', sans-serif; font-size: 1.5rem; color: var(--gray-800);">
-                            Academic Calendar
-                        </h3>
-                        <button onclick="closeModal(this)" style="background: none; border: none; font-size: 1.5rem; color: var(--gray-500); cursor: pointer;">
-                            &times;
-                        </button>
-                    </div>
+function showAcademicCalendar() {
+    const modalHTML = `
+        <div class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Academic Calendar</h3>
+                    <button class="close-modal">&times;</button>
+                </div>
+                
+                <div class="modal-body">
+                    <p>Academic calendar information will be updated here when available.</p>
                     
-                    <p style="color: var(--gray-600); margin-bottom: 1.5rem;">
-                        Academic calendar information will be updated here when available.
-                    </p>
-                    
-                    <div style="text-align: center; padding: 2rem; background: var(--gray-100); border-radius: 0.25rem;">
-                        <i class="fas fa-calendar-alt" style="font-size: 3rem; color: var(--gray-400); margin-bottom: 1rem;"></i>
-                        <p style="color: var(--gray-600);">
-                            Check the university portal for the latest academic calendar.
-                        </p>
+                    <div class="calendar-placeholder">
+                        <i class="fas fa-calendar-alt"></i>
+                        <p>Check the university portal for the latest academic calendar.</p>
                         <button onclick="window.open('https://portal.biu.edu.ng', '_blank', 'noopener,noreferrer')"
-                                style="margin-top: 1rem; padding: 0.5rem 1rem; background: var(--emerald-600); color: white; border: none; border-radius: 0.25rem; cursor: pointer;">
+                                class="btn-primary">
                             Go to University Portal
                         </button>
                     </div>
                 </div>
             </div>
-        `;
-        
-        const modal = document.createElement('div');
-        modal.innerHTML = modalHTML;
-        document.body.appendChild(modal);
-    }
-
-    // Helper functions for calculator
-    window.addCourse = function() {
-        const name = document.getElementById('courseName').value;
-        const units = parseInt(document.getElementById('courseUnits').value);
-        const grade = parseInt(document.getElementById('courseGrade').value);
-        
-        if (!name || !units || isNaN(units) || units <= 0) {
-            showError('Please enter valid course details');
-            return;
-        }
-        
-        window.calculatorCourses.push({ name, units, grade });
-        
-        // Update courses list
-        const coursesList = document.getElementById('coursesList');
-        const courseItem = document.createElement('div');
-        courseItem.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: var(--gray-50); border-radius: 0.25rem; margin-bottom: 0.5rem;';
-        courseItem.innerHTML = `
-            <span>${name}</span>
-            <span>${units} units • Grade: ${getGradeLetter(grade)}</span>
-        `;
-        coursesList.appendChild(courseItem);
-        
-        // Clear inputs
-        document.getElementById('courseName').value = '';
-        document.getElementById('courseUnits').value = '';
-    };
-    
-    window.calculateGPA = function() {
-        if (window.calculatorCourses.length === 0) {
-            showError('Please add at least one course');
-            return;
-        }
-        
-        let totalPoints = 0;
-        let totalUnits = 0;
-        
-        window.calculatorCourses.forEach(course => {
-            totalPoints += course.units * course.grade;
-            totalUnits += course.units;
-        });
-        
-        const gpa = totalPoints / totalUnits;
-        document.getElementById('gpaResult').textContent = gpa.toFixed(2);
-    };
-    
-    window.convertUnits = function() {
-        const value = parseFloat(document.getElementById('converterValue').value);
-        const fromUnit = document.getElementById('fromUnit').value;
-        const toUnit = document.getElementById('toUnit').value;
-        
-        if (isNaN(value)) {
-            showError('Please enter a valid number');
-            return;
-        }
-        
-        let result;
-        
-        // Conversion logic
-        if (fromUnit === 'meters' && toUnit === 'feet') {
-            result = value * 3.28084;
-        } else if (fromUnit === 'feet' && toUnit === 'meters') {
-            result = value * 0.3048;
-        } else if (fromUnit === 'celsius' && toUnit === 'fahrenheit') {
-            result = (value * 9/5) + 32;
-        } else if (fromUnit === 'fahrenheit' && toUnit === 'celsius') {
-            result = (value - 32) * 5/9;
-        } else if (fromUnit === 'pascals' && toUnit === 'psi') {
-            result = value * 0.000145038;
-        } else if (fromUnit === 'psi' && toUnit === 'pascals') {
-            result = value * 6894.76;
-        } else {
-            result = value; // Same unit
-        }
-        
-        document.getElementById('conversionResult').textContent = 
-            `${value.toFixed(2)} ${fromUnit} = ${result.toFixed(2)} ${toUnit}`;
-    };
-    
-    window.closeModal = function(button) {
-        button.closest('.modal-overlay').remove();
-    };
-    
-    function getGradeLetter(gradeValue) {
-        const grades = {5: 'A', 4: 'B', 3: 'C', 2: 'D', 1: 'E', 0: 'F'};
-        return grades[gradeValue] || 'F';
-    }
-
-    function getFileIcon(fileType) {
-        if (!fileType) return 'file';
-        const iconMap = {
-            'pdf': 'file-pdf',
-            'doc': 'file-word',
-            'docx': 'file-word',
-            'ppt': 'file-powerpoint',
-            'pptx': 'file-powerpoint',
-            'xls': 'file-excel',
-            'xlsx': 'file-excel',
-            'zip': 'file-archive',
-            'rar': 'file-archive',
-            'txt': 'file-alt',
-            'jpg': 'file-image',
-            'jpeg': 'file-image',
-            'png': 'file-image'
-        };
-        return iconMap[fileType.toLowerCase()] || 'file';
-    }
-
-    function formatFileSize(bytes) {
-        if (!bytes) return '0 B';
-        const k = 1024;
-        const sizes = ['B', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-    }
-
-    function showLoadingState() {
-        appState.loading = true;
-        if (resourcesContainer) {
-            resourcesContainer.innerHTML = `
-                <div style="text-align: center; padding: 3rem;">
-                    <div class="spinner"></div>
-                    <p style="margin-top: 1rem; color: var(--gray-600);">Loading resources...</p>
-                </div>
-            `;
-        }
-    }
-
-    function hideLoadingState() {
-        appState.loading = false;
-    }
-
-    function renderFallbackResources() {
-        if (resourcesContainer) {
-            resourcesContainer.innerHTML = `
-                <div style="text-align: center; padding: 3rem; color: var(--gray-600);">
-                    <i class="fas fa-wifi-slash" style="font-size: 3rem; margin-bottom: 1rem;"></i>
-                    <p>Unable to load resources. Please check your connection and try again.</p>
-                    <button onclick="loadResources()" style="margin-top: 1rem; padding: 0.5rem 1rem; 
-                            background: var(--emerald-600); color: white; border: none; 
-                            border-radius: 0.25rem; cursor: pointer;">
-                        Retry
-                    </button>
-                </div>
-            `;
-        }
-    }
-
-    function showSuccess(message) {
-        const toast = document.createElement('div');
-        toast.style.cssText = `
-            position: fixed; top: 1rem; right: 1rem; 
-            background: var(--emerald-600); color: white; 
-            padding: 1rem; border-radius: 0.25rem; 
-            font-family: 'Inter', sans-serif; z-index: 9999;
-            box-shadow: var(--shadow-lg);
-            animation: slideIn 0.3s ease;
-        `;
-        toast.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <i class="fas fa-check-circle"></i>
-                <span>${message}</span>
-            </div>
-        `;
-        document.body.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.remove();
-        }, 3000);
-    }
-
-    function showError(message) {
-        const toast = document.createElement('div');
-        toast.style.cssText = `
-            position: fixed; top: 1rem; right: 1rem; 
-            background: #ef4444; color: white; 
-            padding: 1rem; border-radius: 0.25rem; 
-            font-family: 'Inter', sans-serif; z-index: 9999;
-            box-shadow: var(--shadow-lg);
-            animation: slideIn 0.3s ease;
-        `;
-        toast.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <i class="fas fa-exclamation-circle"></i>
-                <span>${message}</span>
-            </div>
-        `;
-        document.body.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.remove();
-        }, 3000);
-    }
-
-    // Add spinner animation
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .spinner {
-            width: 3rem;
-            height: 3rem;
-            border: 3px solid var(--emerald-200);
-            border-top: 3px solid var(--emerald-600);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto;
-        }
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
+        </div>
     `;
-    document.head.appendChild(style);
+    
+    const modal = createModal(modalHTML);
+    document.body.appendChild(modal);
+    
+    modal.querySelector('.close-modal').addEventListener('click', () => modal.remove());
+}
+
+// Helper functions for calculator (attached to window for modal access)
+window.addCourse = function() {
+    const name = document.getElementById('courseName').value;
+    const units = parseInt(document.getElementById('courseUnits').value);
+    const grade = parseInt(document.getElementById('courseGrade').value);
+    
+    if (!name || !units || isNaN(units) || units <= 0) {
+        showError('Please enter valid course details');
+        return;
+    }
+    
+    if (!window.calculatorCourses) window.calculatorCourses = [];
+    window.calculatorCourses.push({ name, units, grade });
+    
+    // Update courses list
+    const coursesList = document.getElementById('coursesList');
+    const courseItem = document.createElement('div');
+    courseItem.className = 'course-item';
+    courseItem.innerHTML = `
+        <span>${name}</span>
+        <span>${units} units • Grade: ${getGradeLetter(grade)}</span>
+    `;
+    coursesList.appendChild(courseItem);
+    
+    // Clear inputs
+    document.getElementById('courseName').value = '';
+    document.getElementById('courseUnits').value = '';
+};
+
+window.calculateGPA = function() {
+    if (!window.calculatorCourses || window.calculatorCourses.length === 0) {
+        showError('Please add at least one course');
+        return;
+    }
+    
+    let totalPoints = 0;
+    let totalUnits = 0;
+    
+    window.calculatorCourses.forEach(course => {
+        totalPoints += course.units * course.grade;
+        totalUnits += course.units;
+    });
+    
+    const gpa = totalPoints / totalUnits;
+    document.getElementById('gpaResult').textContent = gpa.toFixed(2);
+};
+
+window.convertUnits = function() {
+    const value = parseFloat(document.getElementById('converterValue').value);
+    const fromUnit = document.getElementById('fromUnit').value;
+    const toUnit = document.getElementById('toUnit').value;
+    
+    if (isNaN(value)) {
+        showError('Please enter a valid number');
+        return;
+    }
+    
+    let result;
+    
+    // Conversion logic
+    const conversions = {
+        'meters-feet': value * 3.28084,
+        'feet-meters': value * 0.3048,
+        'celsius-fahrenheit': (value * 9/5) + 32,
+        'fahrenheit-celsius': (value - 32) * 5/9,
+        'pascals-psi': value * 0.000145038,
+        'psi-pascals': value * 6894.76
+    };
+    
+    const conversionKey = `${fromUnit}-${toUnit}`;
+    result = conversions[conversionKey] !== undefined ? conversions[conversionKey] : value;
+    
+    document.getElementById('conversionResult').textContent = 
+        `${value.toFixed(2)} ${fromUnit} = ${result.toFixed(2)} ${toUnit}`;
+};
+
+// Utility functions
+function getFileExtension(filename) {
+    if (!filename) return 'pdf';
+    const parts = filename.split('.');
+    return parts.length > 1 ? parts.pop().toLowerCase() : 'pdf';
+}
+
+function getFileIcon(fileType) {
+    const iconMap = {
+        'pdf': 'file-pdf',
+        'doc': 'file-word',
+        'docx': 'file-word',
+        'ppt': 'file-powerpoint',
+        'pptx': 'file-powerpoint',
+        'xls': 'file-excel',
+        'xlsx': 'file-excel',
+        'zip': 'file-archive',
+        'rar': 'file-archive',
+        'txt': 'file-alt',
+        'jpg': 'file-image',
+        'jpeg': 'file-image',
+        'png': 'file-image',
+        'mp4': 'file-video',
+        'mp3': 'file-audio'
+    };
+    return iconMap[fileType] || 'file';
+}
+
+function formatFileSize(bytes) {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function getGradeLetter(gradeValue) {
+    const grades = {5: 'A', 4: 'B', 3: 'C', 2: 'D', 1: 'E', 0: 'F'};
+    return grades[gradeValue] || 'F';
+}
+
+function clearFilters() {
+    appState.filters.search = '';
+    appState.filters.level = 'All';
+    appState.filteredResources = [...appState.resources];
+    
+    if (searchInput) searchInput.value = '';
+    if (levelFilter) levelFilter.value = 'All';
+    
+    renderResources();
+}
+
+function createModal(html) {
+    const modal = document.createElement('div');
+    modal.innerHTML = html + `
+        <style>
+            .modal-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 9999;
+                padding: 1rem;
+                backdrop-filter: blur(4px);
+            }
+            .modal-content {
+                background: white;
+                padding: 2rem;
+                border-radius: 0.5rem;
+                max-width: 500px;
+                width: 100%;
+                max-height: 80vh;
+                overflow-y: auto;
+                box-shadow: var(--shadow-2xl);
+                border: 2px solid var(--emerald-200);
+            }
+            .modal-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 1.5rem;
+            }
+            .modal-header h3 {
+                font-family: 'Inter', sans-serif;
+                font-size: 1.5rem;
+                color: var(--gray-800);
+                margin: 0;
+            }
+            .close-modal {
+                background: none;
+                border: none;
+                font-size: 1.5rem;
+                color: var(--gray-500);
+                cursor: pointer;
+                padding: 0.5rem;
+            }
+            .close-modal:hover {
+                color: var(--gray-800);
+            }
+            .modal-body {
+                color: var(--gray-600);
+            }
+            .btn-primary {
+                padding: 0.5rem 1rem;
+                background: var(--emerald-600);
+                color: white;
+                border: none;
+                border-radius: 0.25rem;
+                cursor: pointer;
+                transition: background-color 0.3s;
+            }
+            .btn-primary:hover {
+                background: var(--emerald-700);
+            }
+            .btn-calculate {
+                width: 100%;
+                padding: 0.75rem;
+                background: var(--emerald-600);
+                color: white;
+                border: none;
+                border-radius: 0.25rem;
+                font-weight: bold;
+                cursor: pointer;
+                margin-top: 1rem;
+            }
+            .btn-calculate:hover {
+                background: var(--emerald-700);
+            }
+            .input-row {
+                display: grid;
+                grid-template-columns: 2fr 1fr 1fr;
+                gap: 0.5rem;
+                margin-bottom: 1rem;
+            }
+            .input-row input, .input-row select {
+                padding: 0.5rem;
+                border: 1px solid var(--gray-300);
+                border-radius: 0.25rem;
+            }
+            .courses-list {
+                max-height: 200px;
+                overflow-y: auto;
+                margin: 1rem 0;
+            }
+            .course-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 0.5rem;
+                background: var(--gray-50);
+                border-radius: 0.25rem;
+                margin-bottom: 0.5rem;
+            }
+            .result-container {
+                text-align: center;
+                padding: 1rem;
+                background: var(--gray-100);
+                border-radius: 0.25rem;
+                margin: 1rem 0;
+            }
+            .gpa-result {
+                font-size: 2rem;
+                font-weight: bold;
+                color: var(--emerald-600);
+            }
+            .converter-inputs {
+                margin: 1rem 0;
+            }
+            .value-input {
+                width: 100%;
+                padding: 0.75rem;
+                border: 1px solid var(--gray-300);
+                border-radius: 0.25rem;
+                margin-bottom: 1rem;
+            }
+            .unit-selectors {
+                display: grid;
+                grid-template-columns: 1fr auto 1fr;
+                gap: 1rem;
+                align-items: center;
+            }
+            .unit-select {
+                padding: 0.75rem;
+                border: 1px solid var(--gray-300);
+                border-radius: 0.25rem;
+            }
+            .swap-icon {
+                text-align: center;
+                color: var(--gray-500);
+            }
+            .result-display {
+                text-align: center;
+                padding: 1rem;
+                background: var(--gray-100);
+                border-radius: 0.25rem;
+                margin-top: 1rem;
+                font-size: 1.25rem;
+                font-weight: bold;
+                color: var(--emerald-600);
+            }
+            .calendar-placeholder {
+                text-align: center;
+                padding: 2rem;
+                background: var(--gray-100);
+                border-radius: 0.25rem;
+            }
+            .calendar-placeholder i {
+                font-size: 3rem;
+                color: var(--gray-400);
+                margin-bottom: 1rem;
+            }
+        </style>
+    `;
+    
+    // Close modal on outside click
+    modal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.remove();
+        }
+    });
+    
+    // Close modal on escape key
+    const escapeHandler = (e) => {
+        if (e.key === 'Escape' && modal.parentNode) {
+            modal.remove();
+            document.removeEventListener('keydown', escapeHandler);
+        }
+    };
+    document.addEventListener('keydown', escapeHandler);
+    
+    return modal;
+}
+
+function showLoadingState() {
+    appState.loading = true;
+    if (resourcesContainer) {
+        resourcesContainer.innerHTML = `
+            <div style="text-align: center; padding: 3rem;">
+                <div class="spinner"></div>
+                <p style="margin-top: 1rem; color: var(--gray-600);">Loading resources...</p>
+            </div>
+        `;
+    }
+}
+
+function hideLoadingState() {
+    appState.loading = false;
+}
+
+function renderFallbackResources() {
+    if (resourcesContainer) {
+        resourcesContainer.innerHTML = `
+            <div style="text-align: center; padding: 3rem; color: var(--gray-600);">
+                <i class="fas fa-wifi-slash" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                <p>Unable to load resources. Please check your connection and try again.</p>
+                <button onclick="loadResources()" style="margin-top: 1rem; padding: 0.5rem 1rem; 
+                        background: var(--emerald-600); color: white; border: none; 
+                        border-radius: 0.25rem; cursor: pointer;">
+                    Retry
+                </button>
+            </div>
+        `;
+    }
+}
+
+function showSuccess(message) {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed; top: 1rem; right: 1rem; 
+        background: var(--emerald-600); color: white; 
+        padding: 1rem; border-radius: 0.25rem; 
+        font-family: 'Inter', sans-serif; z-index: 10000;
+        box-shadow: var(--shadow-lg);
+        animation: slideIn 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    `;
+    toast.innerHTML = `
+        <i class="fas fa-check-circle"></i>
+        <span>${message}</span>
+    `;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 300);
+    }, 3000);
+}
+
+function showError(message) {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed; top: 1rem; right: 1rem; 
+        background: #ef4444; color: white; 
+        padding: 1rem; border-radius: 0.25rem; 
+        font-family: 'Inter', sans-serif; z-index: 10000;
+        box-shadow: var(--shadow-lg);
+        animation: slideIn 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    `;
+    toast.innerHTML = `
+        <i class="fas fa-exclamation-circle"></i>
+        <span>${message}</span>
+    `;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 300);
+    }, 3000);
+}
+
+// Add spinner and animation styles
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    .spinner {
+        width: 3rem;
+        height: 3rem;
+        border: 3px solid var(--emerald-200);
+        border-top: 3px solid var(--emerald-600);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto;
+    }
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+    }
+    .tool-card {
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .tool-card:hover {
+        transform: translateY(-2px);
+        border-color: var(--gray-800);
+    }
+    .download-button {
+        transition: all 0.3s ease;
+    }
+    .download-button:hover {
+        transform: scale(1.1);
+    }
+    .question-card {
+        transition: all 0.3s ease;
+    }
+    .question-card:hover {
+        transform: translateY(-2px);
+    }
+`;
+document.head.appendChild(style);
 </script>
 </body>
 </html>

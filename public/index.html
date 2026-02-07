@@ -1606,6 +1606,7 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Constants - Updated API URL
         const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
         
         // ==================== NAVIGATION & UI FUNCTIONS ====================
@@ -1614,19 +1615,24 @@
         const mobileMenuBtn = document.getElementById('mobileMenuBtn');
         const mobileNav = document.getElementById('mobileNav');
         
-        mobileMenuBtn.addEventListener('click', function() {
-            mobileNav.classList.toggle('open');
-            const icon = this.querySelector('i');
-            icon.classList.toggle('fa-bars');
-            icon.classList.toggle('fa-times');
-        });
+        if (mobileMenuBtn) {
+            mobileMenuBtn.addEventListener('click', function() {
+                mobileNav.classList.toggle('open');
+                const icon = this.querySelector('i');
+                icon.classList.toggle('fa-bars');
+                icon.classList.toggle('fa-times');
+            });
+        }
         
         // Close mobile menu when clicking outside
         document.addEventListener('click', function(e) {
-            if (!mobileNav.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
+            if (mobileNav && mobileMenuBtn && !mobileNav.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
                 mobileNav.classList.remove('open');
-                mobileMenuBtn.querySelector('i').classList.remove('fa-times');
-                mobileMenuBtn.querySelector('i').classList.add('fa-bars');
+                const icon = mobileMenuBtn.querySelector('i');
+                if (icon) {
+                    icon.classList.remove('fa-times');
+                    icon.classList.add('fa-bars');
+                }
             }
         });
         
@@ -1636,7 +1642,7 @@
             
             document.querySelectorAll('.desktop-nav .nav-link, .mobile-nav-link').forEach(link => {
                 const href = link.getAttribute('href');
-                if (href === currentPage) {
+                if (href === currentPage || (currentPage === '' && href === 'index.html')) {
                     link.classList.add('active');
                 } else {
                     link.classList.remove('active');
@@ -1646,31 +1652,74 @@
         
         highlightCurrentPage();
         
-        // ==================== STATISTICS FUNCTIONS ====================
+        // ==================== API HELPER FUNCTIONS ====================
         
-        async function loadStats() {
+        async function testAPIConnection() {
             try {
-                const response = await fetch(`${API_BASE_URL}/analytics`);
+                console.log('Testing connection to:', API_BASE_URL);
+                const response = await fetch(`${API_BASE_URL}/api/health`);
+                const data = await response.json();
+                console.log('API Health Status:', data);
+                return data.status === 'healthy';
+            } catch (error) {
+                console.error('API Connection Failed:', error.message);
+                return false;
+            }
+        }
+        
+        async function makeAPIRequest(endpoint, options = {}) {
+            try {
+                const url = `${API_BASE_URL}${endpoint}`;
+                const defaultOptions = {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                };
+                
+                const response = await fetch(url, defaultOptions);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 
-                const data = await response.json();
+                return await response.json();
+            } catch (error) {
+                console.error(`API Request Failed (${endpoint}):`, error.message);
+                throw error;
+            }
+        }
+        
+        // ==================== STATISTICS FUNCTIONS ====================
+        
+        async function loadStats() {
+            try {
+                console.log('Loading statistics from API...');
+                
+                // First check if API is healthy
+                const isHealthy = await testAPIConnection();
+                if (!isHealthy) {
+                    throw new Error('API is not healthy');
+                }
+                
+                // Load statistics from your API
+                const data = await makeAPIRequest('/api/stats');
                 
                 if (data.status === 'success') {
+                    console.log('Stats loaded:', data.data);
                     // Update counters with animation
-                    animateCounter('counter1', data.data.active_members || 0, '+');
-                    animateCounter('counter2', data.data.departments || 4);
-                    animateCounter('counter3', data.data.upcoming_events || 0, '+');
+                    animateCounter('counter1', data.data.users || 0, '+');
+                    animateCounter('counter2', 3); // Fixed to 3 departments as per your requirement
+                    animateCounter('counter3', data.data.members || 0, '+');
                 } else {
                     throw new Error(data.message || 'Failed to load statistics');
                 }
             } catch (error) {
                 console.warn('Using fallback statistics:', error.message);
-                // Fallback to default values from your backend
+                // Fallback to default values
                 animateCounter('counter1', 250, '+');
-                animateCounter('counter2', 4);
+                animateCounter('counter2', 3); // Fixed to 3 departments
                 animateCounter('counter3', 12, '+');
             }
         }
@@ -1682,42 +1731,71 @@
             let current = 0;
             const duration = 1500;
             const increment = endValue / (duration / 16);
+            const isAnimated = sessionStorage.getItem(`counter_${elementId}_animated`);
+            
+            // If already animated, just show the final value
+            if (isAnimated) {
+                element.textContent = Math.round(endValue) + suffix;
+                return;
+            }
             
             const timer = setInterval(() => {
                 current += increment;
                 if (current >= endValue) {
                     element.textContent = Math.round(endValue) + suffix;
                     clearInterval(timer);
+                    sessionStorage.setItem(`counter_${elementId}_animated`, 'true');
                 } else {
                     element.textContent = Math.floor(current) + suffix;
                 }
             }, 16);
         }
         
+        // ==================== MEMBERS FUNCTIONS ====================
+        
+        async function loadExecutiveMembers() {
+            try {
+                // This endpoint exists in your server
+                const data = await makeAPIRequest('/api/members');
+                
+                if (data.status === 'success' && data.data.length > 0) {
+                    console.log('Members loaded:', data.data.length);
+                    // You can use this data for the members page
+                    return data.data;
+                }
+                return [];
+            } catch (error) {
+                console.log('Could not load members:', error.message);
+                return [];
+            }
+        }
+        
         // ==================== EVENTS FUNCTIONS ====================
         
         async function loadEvents() {
             try {
-                const response = await fetch(`${API_BASE_URL}/events?upcoming=true`);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                // First check if API is healthy
+                const isHealthy = await testAPIConnection();
+                if (!isHealthy) {
+                    throw new Error('API is not available');
                 }
                 
-                const data = await response.json();
+                // Try to load events from your API
+                // Note: You need to add events endpoint to your server
+                const data = await makeAPIRequest('/api/events?status=upcoming&limit=3');
                 
                 if (data.status === 'success' && data.data.length > 0) {
+                    console.log('Events loaded from API:', data.data.length);
                     // Update the existing event cards with real data
                     updateExistingEventCards(data.data);
+                    return true;
                 } else {
-                    console.log('No events data received, showing fallback events');
-                    // Keep the static event cards as is
-                    setupStaticEventCards();
+                    console.log('No events data received from API');
+                    return false;
                 }
             } catch (error) {
-                console.error('Error loading events:', error);
-                // Keep the static event cards as fallback
-                setupStaticEventCards();
+                console.log('Using static event cards:', error.message);
+                return false;
             }
         }
         
@@ -1745,7 +1823,7 @@
         
         function updateSingleEventCard(card, event) {
             // Format date
-            const eventDate = new Date(event.date);
+            const eventDate = new Date(event.date || event.created_at);
             const formattedDate = eventDate.toLocaleDateString('en-US', {
                 month: 'short',
                 day: 'numeric',
@@ -1757,7 +1835,7 @@
             if (event.start_time) {
                 const timeParts = event.start_time.split(':');
                 const hours = parseInt(timeParts[0]);
-                const minutes = timeParts[1];
+                const minutes = timeParts[1] || '00';
                 const ampm = hours >= 12 ? 'PM' : 'AM';
                 const displayHours = hours % 12 || 12;
                 timeDisplay = `${displayHours}:${minutes} ${ampm}`;
@@ -1808,13 +1886,29 @@
             if (registerBtn) {
                 registerBtn.setAttribute('data-event-title', event.title || 'Event');
                 registerBtn.setAttribute('data-event-id', event.id || '');
-                // Change button text to LEARN MORE since we don't have actual registration
-                registerBtn.querySelector('span').textContent = 'LEARN MORE';
+                // Change button text
+                const span = registerBtn.querySelector('span');
+                if (span) span.textContent = 'LEARN MORE';
             }
         }
         
         function setupStaticEventCards() {
             console.log('Setting up static event cards');
+            
+            // Add click handlers to static event cards
+            const eventCards = document.querySelectorAll('.event-card');
+            eventCards.forEach((card, index) => {
+                const registerBtn = card.querySelector('.register-btn');
+                if (registerBtn) {
+                    const titles = [
+                        'Engineering Career Fair 2024',
+                        'AutoCAD Masterclass',
+                        'Tech Innovation Challenge'
+                    ];
+                    registerBtn.setAttribute('data-event-title', titles[index] || 'Event');
+                }
+            });
+            
             attachEventCardListeners();
         }
         
@@ -1835,17 +1929,16 @@
             // Hover effect for event cards
             const eventCards = document.querySelectorAll('.event-card');
             eventCards.forEach(card => {
-                card.addEventListener('mouseenter', function() {
-                    if (this.style.display !== 'none') {
+                if (card.style.display !== 'none') {
+                    card.addEventListener('mouseenter', function() {
                         this.style.transform = 'translateY(-0.5rem)';
-                    }
-                });
-                
-                card.addEventListener('mouseleave', function() {
-                    if (this.style.display !== 'none') {
+                        this.style.transition = 'transform 0.3s ease';
+                    });
+                    
+                    card.addEventListener('mouseleave', function() {
                         this.style.transform = '';
-                    }
-                });
+                    });
+                }
             });
             
             // Register button functionality
@@ -1855,50 +1948,185 @@
                     const eventTitle = this.getAttribute('data-event-title');
                     const eventId = this.getAttribute('data-event-id');
                     
+                    // For now, just show an alert
                     if (eventId) {
                         // If we have an event ID, redirect to events page
                         window.location.href = `events.html?event=${eventId}`;
                     } else {
-                        // Fallback alert or redirect to events page
-                        alert(`Thank you for your interest in "${eventTitle}"!\n\nVisit our Events page for more details.`);
-                        // Or redirect to events page
-                        // window.location.href = 'events.html';
+                        // Show informative message
+                        alert(`Thank you for your interest in "${eventTitle}"!\n\nThis event is organized by NUESA BIU. More details will be available soon on our Events page.`);
                     }
                 });
             });
         }
         
+        // ==================== AUTHENTICATION CHECK ====================
+        
+        async function checkAuthStatus() {
+            try {
+                const token = localStorage.getItem('auth_token');
+                if (token) {
+                    const data = await makeAPIRequest('/api/auth/verify', {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    
+                    if (data.status === 'success') {
+                        console.log('User is authenticated:', data.data.email);
+                        // You can show user-specific UI here if needed
+                    }
+                }
+            } catch (error) {
+                console.log('Auth check failed:', error.message);
+                // Clear invalid token
+                localStorage.removeItem('auth_token');
+            }
+        }
+        
         // ==================== ANIMATION & EFFECTS ====================
         
-        // Animate stats section on scroll
-        const statsSection = document.querySelector('.bg-gradient-slate');
-        if (statsSection) {
+        function setupScrollAnimations() {
+            const observerOptions = {
+                threshold: 0.1,
+                rootMargin: '0px 0px -50px 0px'
+            };
+            
             const observer = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
                         entry.target.style.opacity = '1';
                         entry.target.style.transform = 'translateY(0)';
-                        loadStats(); // Load stats when section is visible
                     }
                 });
-            }, { threshold: 0.1 });
+            }, observerOptions);
             
-            statsSection.style.opacity = '0';
-            statsSection.style.transform = 'translateY(20px)';
-            statsSection.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-            
-            observer.observe(statsSection);
+            // Observe sections for animation
+            const sections = document.querySelectorAll('section');
+            sections.forEach(section => {
+                section.style.opacity = '0';
+                section.style.transform = 'translateY(20px)';
+                section.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                observer.observe(section);
+            });
+        }
+        
+        // ==================== QUICK FIXES FOR YOUR SERVER ====================
+        
+        // Since your server might not have the events endpoint yet, here's what you can add:
+        function addEventsEndpointToServer() {
+            console.log(`
+                ============================================
+                QUICK FIX FOR YOUR SERVER:
+                ============================================
+                
+                Add this to your server.js to enable events:
+                
+                // Add this with your other routes
+                app.get('/api/events', cacheMiddleware(60), async (req, res) => {
+                    try {
+                        const { 
+                            status = 'upcoming', 
+                            limit = 10, 
+                            page = 1,
+                            category 
+                        } = req.query;
+                        
+                        const offset = (page - 1) * limit;
+                        
+                        let where = {};
+                        
+                        if (status === 'upcoming') {
+                            where.date = { operator: 'gte', value: new Date() };
+                        } else if (status === 'past') {
+                            where.date = { operator: 'lt', value: new Date() };
+                        }
+                        
+                        if (category && category !== 'all') {
+                            where.category = category;
+                        }
+                        
+                        // First, check if events table exists
+                        let result;
+                        try {
+                            result = await db.query('select', 'events', {
+                                where,
+                                order: { column: 'date', ascending: true },
+                                limit: parseInt(limit),
+                                offset: parseInt(offset)
+                            });
+                        } catch (error) {
+                            // If table doesn't exist yet, return empty array
+                            console.log('Events table not available yet');
+                            return res.json({
+                                status: 'success',
+                                data: [],
+                                pagination: {
+                                    page: parseInt(page),
+                                    limit: parseInt(limit),
+                                    total: 0,
+                                    pages: 0
+                                }
+                            });
+                        }
+                        
+                        res.json({
+                            status: 'success',
+                            data: result.data,
+                            pagination: {
+                                page: parseInt(page),
+                                limit: parseInt(limit),
+                                total: result.count || 0,
+                                pages: Math.ceil((result.count || 0) / limit)
+                            }
+                        });
+                    } catch (error) {
+                        logger.error('Error fetching events:', error);
+                        res.status(500).json({
+                            status: 'error',
+                            message: 'Failed to fetch events'
+                        });
+                    }
+                });
+            `);
         }
         
         // ==================== INITIALIZATION ====================
         
         async function initializeDashboard() {
             console.log('Initializing NUESA BIU dashboard...');
+            console.log('Connecting to API:', API_BASE_URL);
             
-            // Load events from API
-            await loadEvents();
+            // Test connection first
+            const isConnected = await testAPIConnection();
+            console.log('API Connection:', isConnected ? 'Successful' : 'Failed');
             
-            // Set up smooth scrolling for "Learn More" button in About section
+            if (isConnected) {
+                // Check authentication status
+                await checkAuthStatus();
+                
+                // Load statistics
+                await loadStats();
+                
+                // Try to load events from API
+                const eventsLoaded = await loadEvents();
+                if (!eventsLoaded) {
+                    // If API events not available, use static cards
+                    setupStaticEventCards();
+                }
+            } else {
+                // If API not connected, use all fallbacks
+                console.log('Using fallback mode - API not connected');
+                animateCounter('counter1', 250, '+');
+                animateCounter('counter2', 3);
+                animateCounter('counter3', 12, '+');
+                setupStaticEventCards();
+            }
+            
+            // Setup animations
+            setupScrollAnimations();
+            
+            // Set up "Learn More" button
             const aboutButton = document.querySelector('.btn-text');
             if (aboutButton) {
                 aboutButton.addEventListener('click', (e) => {
@@ -1907,11 +2135,69 @@
                 });
             }
             
-            console.log('Dashboard initialized successfully');
+            // Set up "Join Us" button
+            const joinButton = document.querySelector('.btn-primary');
+            if (joinButton) {
+                joinButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    // You can redirect to a membership page or show a form
+                    window.location.href = 'members.html';
+                });
+            }
+            
+            // Show server fix suggestion in console
+            if (!isConnected) {
+                console.log(`
+                    ============================================
+                    TROUBLESHOOTING:
+                    ============================================
+                    1. Check if your server is running: ${API_BASE_URL}/api/health
+                    2. Make sure CORS is configured on your server
+                    3. Check browser console for detailed errors
+                    4. Verify your server has the required endpoints
+                `);
+            }
+            
+            console.log('Dashboard initialization complete');
         }
         
         // Start everything
         initializeDashboard();
+        
+        // ==================== ADDITIONAL UI ENHANCEMENTS ====================
+        
+        // Add loading state for buttons
+        document.querySelectorAll('.btn').forEach(button => {
+            button.addEventListener('click', function() {
+                // Add loading animation
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+                this.disabled = true;
+                
+                // Restore after 2 seconds (or after your async operation)
+                setTimeout(() => {
+                    this.innerHTML = originalText;
+                    this.disabled = false;
+                }, 2000);
+            });
+        });
+        
+        // Add smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                if (targetId === '#') return;
+                
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    targetElement.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
     });
 </script>
 </body>
