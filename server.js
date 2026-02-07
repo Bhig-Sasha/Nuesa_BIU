@@ -238,15 +238,14 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
             scriptSrc: ["'self'", "'unsafe-inline'"],
-            imgSrc: ["'self'", "data:", "https:", "blob:"],
+            imgSrc: ["'self'", "data:", "https:"],
             connectSrc: ["'self'", supabaseUrl, process.env.FRONTEND_URL],
-            fontSrc: ["'self'", "https://fonts.gstatic.com"],
+            fontSrc: ["'self'"],
             objectSrc: ["'none'"],
             mediaSrc: ["'self'"],
-            frameSrc: ["'none'"],
-            workerSrc: ["'self'", "blob:"]
+            frameSrc: ["'none'"]
         }
     },
     hsts: {
@@ -267,27 +266,40 @@ app.use(xss());
 app.use(hpp());
 
 // CORS configuration
-const allowedOrigins = [
-    'http://localhost:3000',
-    'http://localhost:5173',
-    process.env.FRONTEND_URL,
-    'https://nuesabiu.netlify.app'
-].filter(Boolean);
-
 const corsOptions = {
     origin: function (origin, callback) {
-        if (!origin) return callback(null, true);
+        // Allow requests with no origin (like mobile apps, curl, postman)
+        if (!origin) {
+            return callback(null, true);
+        }
         
-        if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.netlify.app')) {
+        // Get allowed origins from environment
+        const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+            .split(',')
+            .map(origin => origin.trim())
+            .filter(origin => origin.length > 0);
+        
+        // Add FRONTEND_URL if set
+        if (process.env.FRONTEND_URL) {
+            allowedOrigins.push(process.env.FRONTEND_URL);
+        }
+        
+        // In development, allow all origins
+        if (!isProduction) {
+            return callback(null, true);
+        }
+        
+        // In production, check against allowed origins
+        if (allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
-            logger.warn('Blocked by CORS:', origin);
+            logger.warn(`Blocked by CORS: ${origin}. Allowed: ${allowedOrigins.join(', ')}`);
             callback(new Error('Not allowed by CORS'));
         }
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'X-Refresh-Token'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
     exposedHeaders: ['X-Total-Count', 'X-Page-Count'],
     maxAge: 86400
 };
@@ -2475,6 +2487,7 @@ async function startServer() {
 ║ 🗄️  Database: Supabase                                   ║
 ║ 🔗 API URL: http://localhost:${PORT}/api                  ║
 ║ 🌐 Frontend: ${process.env.FRONTEND_URL || 'Not set'}     ║
+║ 🔒 JWT Secret: ${JWT_SECRET ? 'Set ✓' : 'Missing ✗'}     ║
 ║ 👑 Admin: ${process.env.ADMIN_EMAIL || 'admin@nuesabiu.org'} ║
 ╚═══════════════════════════════════════════════════════════╝
             `);
