@@ -16,7 +16,7 @@ const winston = require('winston');
 const xss = require('xss-clean');
 const hpp = require('hpp');
 const morgan = require('morgan');
-const timeoutHandler = require('express-timeout-handler');
+const timeout = require('connect-timeout');
 
 // ==================== CONFIGURATION ====================
 const app = express();
@@ -307,20 +307,20 @@ app.use(morgan(morganFormat, {
 }));
 
 // Request timeout
-app.use(timeoutHandler.handler({
-    timeout: 30000,
-    onTimeout: function(req, res) {
+app.use(timeout('30s'));
+app.use(haltOnTimedout);
+
+function haltOnTimedout(req, res, next) {
+    if (req.timedout) {
         logger.error('Request timeout for:', req.url);
         res.status(503).json({
             status: 'error',
             message: 'Request timeout'
         });
-    },
-    onDelayedResponse: function(req, method, args, requestTime) {
-        console.warn(`Request exceeded timeout ${requestTime}ms: ${req.method} ${req.url}`);
-    },
-    disable: ['write', 'setHeaders', 'send', 'json', 'end']
-}));
+    } else {
+        next();
+    }
+}
 
 // Rate limiting
 const apiLimiter = rateLimit({
