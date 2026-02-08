@@ -384,14 +384,20 @@ app.use(hpp({
 }));
 
 // Enhanced CORS configuration
+// Update this section in your server.js:
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
     .split(',')
     .map(origin => origin.trim())
     .filter(origin => origin.length > 0);
 
+// Add your Vercel frontend URL
 if (process.env.FRONTEND_URL && !allowedOrigins.includes(process.env.FRONTEND_URL)) {
     allowedOrigins.push(process.env.FRONTEND_URL);
 }
+
+// ALSO add the specific Vercel URL directly:
+allowedOrigins.push('https://nuesa-biu.vercel.app');
+allowedOrigins.push('https://www.nuesa-biu.vercel.app');
 
 const corsOptions = {
     origin: function (origin, callback) {
