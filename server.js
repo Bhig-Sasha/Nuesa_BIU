@@ -19,6 +19,8 @@ const hpp = require('hpp');
 const morgan = require('morgan');
 const timeout = require('connect-timeout');
 const mime = require('mime-types');
+const cookieParser = require('cookie-parser');
+const crypto = require('crypto'); // Added for obfuscation
 
 // ==================== CONFIGURATION ====================
 const app = express();
@@ -384,7 +386,6 @@ app.use(hpp({
 }));
 
 // Enhanced CORS configuration
-// Update this section in your server.js:
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
     .split(',')
     .map(origin => origin.trim())
@@ -444,6 +445,9 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+
+// Cookie parser middleware
+app.use(cookieParser());
 
 // Enhanced request parsing
 app.use(express.json({
@@ -533,8 +537,21 @@ const authLimiter = rateLimit({
     }
 });
 
+// Rate limiter for contact form submissions to prevent abuse
+const contactFormLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    skipSuccessfulRequests: false,
+    message: {
+        status: 'error',
+        code: 'TOO_MANY_CONTACT_REQUESTS',
+        message: 'Too many contact form submissions, please try again later.'
+    }
+});
+
 // Apply rate limiting
 app.use('/api/auth/login', authLimiter);
+app.use('/api/admin/login', authLimiter);
 app.use('/api/', apiLimiter);
 
 // Cache middleware
@@ -757,7 +774,94 @@ class AuthError extends Error {
 
 const authService = new AuthService();
 
-// Middleware
+// ==================== ENHANCED ADMIN AUTH MIDDLEWARE ====================
+const checkAdminSessionEnhanced = async (req, res, next) => {
+    try {
+        // Check multiple token sources
+        const token = req.cookies?.admin_session || 
+                     req.cookies?.auth_token ||
+                     req.headers['x-access-token'] ||
+                     req.headers['authorization']?.replace('Bearer ', '');
+        
+        if (!token) {
+            req.isAdmin = false;
+            req.admin = null;
+            return next();
+        }
+        
+        let decoded;
+        try {
+            // Try to verify as admin token first
+            decoded = jwt.verify(token, JWT_SECRET, {
+                issuer: 'nuesa-biu-system',
+                audience: 'nuesa-biu-admin'
+            });
+        } catch (e) {
+            // If not admin token, try regular token
+            try {
+                decoded = jwt.verify(token, JWT_SECRET);
+            } catch (e2) {
+                req.isAdmin = false;
+                req.admin = null;
+                return next();
+            }
+        }
+        
+        // Get user from database
+        const result = await db.query('select', 'users', {
+            where: { id: decoded.userId },
+            select: 'id, email, full_name, role, is_active, last_login'
+        });
+        
+        if (result.data.length === 0 || !result.data[0].is_active) {
+            // Clear cookies safely
+            const clearAdminCookie = () => {
+                const cookieOptions = {
+                    path: '/'
+                };
+                
+                if (isProduction && process.env.FRONTEND_URL) {
+                    try {
+                        const frontendUrl = new URL(process.env.FRONTEND_URL);
+                        cookieOptions.domain = frontendUrl.hostname;
+                    } catch (error) {
+                        logger.warn('Invalid FRONTEND_URL for cookie clearing:', error);
+                    }
+                }
+                
+                res.clearCookie('admin_token', cookieOptions);
+                res.clearCookie('admin_session', cookieOptions);
+            };
+            
+            clearAdminCookie();
+            req.isAdmin = false;
+            req.admin = null;
+            return next();
+        }
+        
+        const user = result.data[0];
+        
+        // Check if user has admin role
+        if (user.role === 'admin') {
+            req.admin = user;
+            req.isAdmin = true;
+        } else {
+            req.isAdmin = false;
+            req.admin = null;
+        }
+        
+        next();
+    } catch (error) {
+        req.isAdmin = false;
+        req.admin = null;
+        next();
+    }
+};
+
+// Apply enhanced session check to all routes
+app.use(checkAdminSessionEnhanced);
+
+// Middleware for regular authentication
 const verifyToken = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
@@ -1124,6 +1228,301 @@ authRouter.post('/forgot-password', async (req, res) => {
 
 // Mount auth router
 app.use('/api/auth', authRouter);
+
+// ==================== ADMIN AUTH ROUTES ====================
+// Reusable admin login handler
+async function adminLoginHandler(req, res) {
+    try {
+        const { email, password, rememberMe } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({
+                status: 'error',
+                code: 'VALIDATION_ERROR',
+                message: 'Email and password are required'
+            });
+        }
+
+        // Get user from database
+        const result = await db.query('select', 'users', {
+            where: { email: email.toLowerCase().trim() },
+            select: 'id, email, full_name, role, department, is_active, password_hash, created_at, last_login'
+        });
+
+        if (result.data.length === 0) {
+            // Use generic error message to prevent user enumeration
+            return res.status(401).json({
+                status: 'error',
+                code: 'AUTH_FAILED',
+                message: 'Invalid credentials'
+            });
+        }
+
+        const user = result.data[0];
+
+        // Check if account is active
+        if (!user.is_active) {
+            return res.status(401).json({
+                status: 'error',
+                code: 'ACCOUNT_DEACTIVATED',
+                message: 'Account is deactivated'
+            });
+        }
+
+        // Check if user has admin role
+        if (user.role !== 'admin') {
+            return res.status(401).json({
+                status: 'error',
+                code: 'AUTH_FAILED',
+                message: 'Invalid credentials'
+            });
+        }
+
+        // Verify password
+        const validPassword = await bcrypt.compare(password, user.password_hash);
+        if (!validPassword) {
+            // Log failed login attempt
+            logger.warn('Failed admin login attempt', { email: email.toLowerCase() });
+            
+            return res.status(401).json({
+                status: 'error',
+                code: 'AUTH_FAILED',
+                message: 'Invalid credentials'
+            });
+        }
+
+        // Update last login
+        await db.query('update', 'users', {
+            data: { last_login: new Date() },
+            where: { id: user.id }
+        });
+
+        // Create token payload
+        const tokenPayload = {
+            userId: user.id,
+            email: user.email,
+            role: user.role,
+            fullName: user.full_name,
+            sessionType: 'admin_panel',
+            loginTime: Date.now()
+        };
+
+        // Generate admin session token with shorter expiry
+        const token = jwt.sign(tokenPayload, JWT_SECRET, {
+            expiresIn: '8h',
+            issuer: 'nuesa-biu-system',
+            audience: 'nuesa-biu-admin'
+        });
+
+        // Safely set cookie domain
+        let cookieDomain;
+        if (isProduction && process.env.FRONTEND_URL) {
+            try {
+                const frontendUrl = new URL(process.env.FRONTEND_URL);
+                cookieDomain = frontendUrl.hostname;
+            } catch (error) {
+                logger.error('Invalid FRONTEND_URL in environment:', error);
+                cookieDomain = undefined;
+            }
+        }
+
+        // Set secure cookie
+        const cookieOptions = {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: 'strict',
+            maxAge: 8 * 60 * 60 * 1000, // 8 hours
+            path: '/'
+        };
+
+        if (cookieDomain) {
+            cookieOptions.domain = cookieDomain;
+        }
+
+        res.cookie('admin_session', token, cookieOptions);
+
+        // Return success with user info (excluding sensitive data)
+        const userResponse = {
+            id: user.id,
+            email: user.email,
+            fullName: user.full_name,
+            role: user.role,
+            department: user.department,
+            lastLogin: user.last_login
+        };
+
+        logger.info('Admin login successful', { userId: user.id });
+        res.json({
+            status: 'success',
+            data: {
+                user: userResponse,
+                token: token,
+                expiresIn: '8h'
+            },
+            message: 'Login successful'
+        });
+
+    } catch (error) {
+        logger.error('Admin login error:', error);
+        res.status(500).json({
+            status: 'error',
+            code: 'INTERNAL_ERROR',
+            message: 'Authentication failed'
+        });
+    }
+}
+
+// Register routes using the reusable handler so cookies and headers are handled in-process
+app.post('/api/admin/login', authLimiter, adminLoginHandler);
+app.post('/admin/login', authLimiter, adminLoginHandler);
+
+// Admin logout endpoint
+app.post('/api/admin/logout', async (req, res) => {
+    try {
+        // Safely clear admin cookie
+        const cookieOptions = {
+            path: '/'
+        };
+        
+        if (isProduction && process.env.FRONTEND_URL) {
+            try {
+                const frontendUrl = new URL(process.env.FRONTEND_URL);
+                cookieOptions.domain = frontendUrl.hostname;
+            } catch (error) {
+                logger.warn('Invalid FRONTEND_URL for cookie clearing:', error);
+            }
+        }
+        
+        res.clearCookie('admin_session', cookieOptions);
+
+        res.json({
+            status: 'success',
+            message: 'Logged out successfully'
+        });
+    } catch (error) {
+        logger.error('Admin logout error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Logout failed'
+        });
+    }
+});
+
+// Admin session verification
+app.get('/api/admin/session', async (req, res) => {
+    try {
+        const token = req.cookies?.admin_session;
+        
+        if (!token) {
+            return res.status(401).json({
+                status: 'error',
+                code: 'NO_SESSION',
+                message: 'No active session'
+            });
+        }
+
+        let decoded;
+        try {
+            decoded = jwt.verify(token, JWT_SECRET, {
+                issuer: 'nuesa-biu-system',
+                audience: 'nuesa-biu-admin'
+            });
+        } catch (e) {
+            return res.status(401).json({
+                status: 'error',
+                code: 'INVALID_TOKEN',
+                message: 'Session expired or invalid'
+            });
+        }
+
+        // Get user from database
+        const result = await db.query('select', 'users', {
+            where: { id: decoded.userId },
+            select: 'id, email, full_name, role, is_active, last_login'
+        });
+
+        if (result.data.length === 0 || !result.data[0].is_active) {
+            return res.status(401).json({
+                status: 'error',
+                code: 'USER_NOT_FOUND',
+                message: 'User not found or deactivated'
+            });
+        }
+
+        const user = result.data[0];
+        
+        if (user.role !== 'admin') {
+            return res.status(401).json({
+                status: 'error',
+                code: 'AUTH_FAILED',
+                message: 'Invalid credentials'
+            });
+        }
+
+        const userResponse = {
+            id: user.id,
+            email: user.email,
+            fullName: user.full_name,
+            role: user.role,
+            lastLogin: user.last_login
+        };
+
+        res.json({
+            status: 'success',
+            data: userResponse,
+            message: 'Session is valid'
+        });
+
+    } catch (error) {
+        logger.error('Session verification error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Session verification failed'
+        });
+    }
+});
+
+// ==================== REGULAR CONTACT FORM ENDPOINT ====================
+// Regular contact form submission (kept separate from admin auth)
+app.post('/api/contact/submit', contactFormLimiter, async (req, res) => {
+    try {
+        const { name, email, message, subject } = req.body;
+
+        if (!name || !email || !message) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Name, email, and message are required'
+            });
+        }
+
+        // Validate email format
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Invalid email format'
+            });
+        }
+
+        // Here you would typically:
+        // 1. Save to database
+        // 2. Send email notification
+        // 3. Trigger any workflow
+
+        logger.info('Contact form submitted', { name, email, subject: subject || 'No subject' });
+
+        res.json({
+            status: 'success',
+            message: 'Thank you for your message! We will get back to you soon.'
+        });
+
+    } catch (error) {
+        logger.error('Contact form error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to submit form. Please try again later.'
+        });
+    }
+});
 
 // ==================== ENHANCED USER MANAGEMENT ====================
 const userRouter = express.Router();
@@ -1769,6 +2168,289 @@ app.delete('/api/upload/:filename', verifyToken, requireRole('admin'), async (re
     }
 });
 
+// ==================== PUBLIC PAGES ROUTING ====================
+const adminDir = path.join(__dirname, 'admin');
+const publicDir = path.join(__dirname, 'public');
+const adminExists = fsSync.existsSync(adminDir);
+const publicExists = fsSync.existsSync(publicDir);
+
+// Block direct access to any resources admin sub-path unless user is admin
+app.all('/resources/admin*', (req, res, next) => {
+    if (!req.isAdmin) {
+        // Do not reveal the existence of admin resources to unauthenticated users
+        return res.status(404).send('Not found');
+    }
+    next();
+});
+
+// Serve static public files first
+if (publicExists) {
+    app.use(express.static(publicDir, {
+        maxAge: '1d',
+        setHeaders: (res, filePath) => {
+            res.setHeader('X-Content-Type-Options', 'nosniff');
+            if (filePath.endsWith('.html')) {
+                res.setHeader('Cache-Control', 'public, max-age=3600');
+            }
+        }
+    }));
+    
+    // Define explicit public routes
+    const publicRoutes = {
+        '/': 'index.html',
+        '/index.html': 'index.html',
+        '/about': 'about.html',
+        '/about.html': 'about.html',
+        '/events': 'event.html',
+        '/event.html': 'event.html',
+        '/members': 'member.html',
+        '/member.html': 'member.html',
+        '/resources': 'resources.html',
+        '/resources.html': 'resources.html',
+        '/news': 'news.html',
+        '/news.html': 'news.html',
+        '/contact': 'contacts.html',
+        '/contacts.html': 'contacts.html'
+    };
+    
+    Object.entries(publicRoutes).forEach(([route, file]) => {
+        app.get(route, (req, res) => {
+            res.sendFile(path.join(publicDir, file));
+        });
+    });
+    
+    console.log('✅ Public pages served from /public folder');
+}
+
+// ==================== HIDDEN ADMIN ROUTING ====================
+if (adminExists) {
+    console.log('✅ Admin folder found. Setting up hidden admin routes...');
+    
+    // 1. DISGUISED ADMIN PORTAL (looks like a system portal)
+    app.get('/portal/system', async (req, res) => {
+        try {
+            if (!req.isAdmin) {
+                // Show access denied page that looks like regular 404
+                return res.status(404).send(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Page Not Found - NUESA BIU</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; padding: 40px; text-align: center; }
+                            .error-box { max-width: 600px; margin: 50px auto; padding: 30px; border: 1px solid #ddd; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="error-box">
+                            <h1>404 - Page Not Found</h1>
+                            <p>The page you are looking for does not exist.</p>
+                            <a href="/">Return to Home</a>
+                        </div>
+                    </body>
+                    </html>
+                `);
+            }
+            
+            // Admin is logged in, serve dashboard
+            res.sendFile(path.join(adminDir, 'dash.html'));
+        } catch (error) {
+            res.status(404).send('Page not found');
+        }
+    });
+    
+    // 2. HIDDEN ADMIN LOGIN PAGE (disguised as internal portal)
+    app.get('/portal/login', async (req, res) => {
+        // Check if user is already admin
+        if (req.isAdmin) {
+            // Redirect to admin dashboard
+            return res.redirect('/portal/system');
+        }
+        
+        // Show disguised login page without hardcoded secret
+        res.send(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Internal Portal - NUESA BIU</title>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        max-width: 500px;
+                        margin: 50px auto;
+                        padding: 20px;
+                        background: #f5f5f5;
+                    }
+                    .login-box {
+                        background: white;
+                        padding: 30px;
+                        border-radius: 8px;
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                        text-align: center;
+                    }
+                    .logo {
+                        font-size: 24px;
+                        font-weight: bold;
+                        color: #0066cc;
+                        margin-bottom: 20px;
+                    }
+                    input {
+                        width: 100%;
+                        padding: 12px;
+                        margin: 10px 0;
+                        border: 1px solid #ddd;
+                        border-radius: 4px;
+                        box-sizing: border-box;
+                    }
+                    button {
+                        background: #0066cc;
+                        color: white;
+                        padding: 12px 30px;
+                        border: none;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        font-size: 16px;
+                        width: 100%;
+                        margin-top: 10px;
+                    }
+                    .message {
+                        margin-top: 15px;
+                        padding: 10px;
+                        border-radius: 4px;
+                    }
+                    .error { background: #ffe6e6; color: #cc0000; }
+                    .success { background: #e6ffe6; color: #006600; }
+                </style>
+            </head>
+            <body>
+                <div class="login-box">
+                    <div class="logo">NUESA BIU</div>
+                    <h2>Internal Portal</h2>
+                    <p>Authorized access only</p>
+                    
+                    <form id="portalLogin">
+                        <input type="email" name="admin_email" placeholder="Email Address" required>
+                        <input type="password" name="admin_password" placeholder="Password" required>
+                        <button type="submit">Access Portal</button>
+                    </form>
+                    
+                    <div id="message" class="message"></div>
+                    
+                    <p style="margin-top: 30px; font-size: 0.9em; color: #666;">
+                        Forgot your credentials? Contact system administrator.
+                    </p>
+                </div>
+                
+                <script>
+                    document.getElementById('portalLogin').addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const formData = new FormData(e.target);
+                        const data = Object.fromEntries(formData);
+                        
+                        const messageDiv = document.getElementById('message');
+                        messageDiv.textContent = 'Authenticating...';
+                        messageDiv.className = 'message';
+                        
+                        try {
+                            // Use proper admin login endpoint
+                            const response = await fetch('/api/admin/login', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    email: data.admin_email,
+                                    password: data.admin_password,
+                                    rememberMe: false
+                                })
+                            });
+                            
+                            const result = await response.json();
+                            
+                            if (result.status === 'success') {
+                                messageDiv.textContent = 'Login successful! Redirecting...';
+                                messageDiv.className = 'message success';
+                                setTimeout(() => {
+                                    window.location.href = '/portal/system';
+                                }, 1000);
+                            } else {
+                                messageDiv.textContent = result.message || 'Authentication failed';
+                                messageDiv.className = 'message error';
+                            }
+                        } catch (error) {
+                            messageDiv.textContent = 'Connection error. Please try again.';
+                            messageDiv.className = 'message error';
+                        }
+                    });
+                </script>
+            </body>
+            </html>
+        `);
+    });
+    
+    // 3. ADMIN LOGOUT
+    app.get('/portal/logout', (req, res) => {
+        // Clear admin cookies
+        const cookieOptions = {
+            path: '/'
+        };
+        
+        if (isProduction && process.env.FRONTEND_URL) {
+            try {
+                const frontendUrl = new URL(process.env.FRONTEND_URL);
+                cookieOptions.domain = frontendUrl.hostname;
+            } catch (error) {
+                console.warn('Invalid FRONTEND_URL for cookie clearing:', error);
+            }
+        }
+        
+        res.clearCookie('admin_session', cookieOptions);
+        res.clearCookie('admin_token', cookieOptions);
+        
+        // Redirect to home page
+        res.redirect('/');
+    });
+    
+    // 4. SERVE ADMIN ASSETS
+    app.get('/assets/:folder/:file', (req, res) => {
+        const { folder, file } = req.params;
+        
+        // Only serve if admin
+        if (!req.isAdmin) {
+            return res.status(404).send('Not found');
+        }
+        
+        // Sanitize and validate path
+        const filePath = path.join(adminDir, folder, file);
+        const resolvedPath = path.resolve(filePath);
+        const resolvedAdminDir = path.resolve(adminDir);
+        
+        // Ensure resolved path is within admin directory
+        if (!resolvedPath.startsWith(resolvedAdminDir + path.sep)) {
+            return res.status(403).send('Access denied');
+        }
+        
+        if (fsSync.existsSync(resolvedPath)) {
+            res.sendFile(resolvedPath);
+        } else {
+            res.status(404).send('File not found');
+        }
+    });
+    
+    // 5. BLOCK DIRECT ACCESS TO ADMIN FOLDER
+    app.all('/admin/*', (req, res) => {
+        // Always redirect to home page
+        res.redirect('/');
+    });
+    
+    console.log('✅ Hidden admin system activated:');
+    console.log('   • Admin login: /portal/login');
+    console.log('   • Admin dashboard: /portal/system');
+    console.log('   • Admin logout: /portal/logout');
+    console.log('   • Direct /admin/* routes are blocked');
+    
+} else {
+    console.log('⚠️ Admin folder not found.');
+}
+
 // ==================== SYSTEM ENDPOINTS ====================
 app.get('/api/health', async (req, res) => {
     try {
@@ -1873,7 +2555,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
 }));
 
 // ==================== ROOT ENDPOINTS ====================
-app.get('/', (req, res) => {
+app.get('/api', (req, res) => {
     res.json({
         message: 'NUESA BIU API Server',
         version: '1.0.0',
@@ -1883,11 +2565,13 @@ app.get('/', (req, res) => {
         documentation: `${req.protocol}://${req.get('host')}/api/docs`,
         endpoints: {
             auth: '/api/auth',
+            admin: '/api/admin',
             users: '/api/users',
             members: '/api/members',
             profile: '/api/profile',
             health: '/api/health',
-            stats: '/api/stats'
+            stats: '/api/stats',
+            contact: '/api/contact/submit'
         }
     });
 });
@@ -1902,6 +2586,12 @@ app.get('/api/docs', (req, res) => {
                 path: '/api/auth/login',
                 method: 'POST',
                 description: 'User authentication',
+                body: 'email, password'
+            },
+            {
+                path: '/api/admin/login',
+                method: 'POST',
+                description: 'Admin authentication',
                 body: 'email, password'
             },
             {
@@ -1920,16 +2610,31 @@ app.get('/api/docs', (req, res) => {
     });
 });
 
-// ==================== ERROR HANDLERS ====================
+// ==================== 404 HANDLER ====================
 app.use((req, res) => {
-    res.status(404).json({
-        status: 'error',
-        code: 'ROUTE_NOT_FOUND',
-        message: `Route ${req.method} ${req.url} not found`,
-        timestamp: new Date().toISOString()
-    });
+    // For API routes, return JSON
+    if (req.path.startsWith('/api/')) {
+        return res.status(404).json({
+            status: 'error',
+            code: 'ROUTE_NOT_FOUND',
+            message: `Route ${req.method} ${req.url} not found`,
+            timestamp: new Date().toISOString()
+        });
+    }
+    
+    // For HTML routes, serve 404 page if exists, otherwise return JSON
+    const notFoundPage = path.join(publicDir, '404.html');
+    if (publicExists && fsSync.existsSync(notFoundPage)) {
+        res.status(404).sendFile(notFoundPage);
+    } else {
+        res.status(404).json({
+            status: 'error',
+            message: 'Page not found'
+        });
+    }
 });
 
+// ==================== ERROR HANDLER ====================
 app.use((err, req, res, next) => {
     logger.error('Unhandled error:', {
         error: err.message,
@@ -2006,8 +2711,6 @@ process.on('unhandledRejection', (reason, promise) => {
     });
 
     if (isProduction) {
-        // In production, we might want to restart the process
-        // or send an alert instead of exiting immediately
         logger.error('Unhandled rejection in production, continuing...');
     }
 });
@@ -2019,7 +2722,6 @@ process.on('uncaughtException', (error) => {
     });
 
     if (isProduction) {
-        // Give time for logs to be written
         setTimeout(() => {
             process.exit(1);
         }, 1000);
@@ -2044,17 +2746,19 @@ async function startServer() {
 
         app.listen(PORT, '0.0.0.0', () => {
             console.log(`
-╔═══════════════════════════════════════════════════════════╗
-║     🚀 NUESA BIU API Server Started Successfully!       ║
-╠═══════════════════════════════════════════════════════════╣
-║ 📡 Port: ${PORT}                                         ║
-║ 🌍 Environment: ${NODE_ENV}                              ║
-║ 🗄️  Database: Supabase                                   ║
-║ 🔗 API URL: http://localhost:${PORT}                     ║
-║ 🌐 Frontend: ${process.env.FRONTEND_URL || 'Not set'}    ║
-║ 🔒 JWT: ${JWT_SECRET ? 'Set ✓' : 'Missing ✗'}           ║
-║ 👑 Admin: ${process.env.ADMIN_EMAIL || 'Not configured'} ║
-╚═══════════════════════════════════════════════════════════╝
+╔═══════════════════════════════════════════════════════════════════╗
+║     🚀 NUESA BIU API Server Started Successfully!               ║
+╠═══════════════════════════════════════════════════════════════════╣
+║ 📡 Port: ${PORT}                                                ║
+║ 🌍 Environment: ${NODE_ENV}                                     ║
+║ 🗄️  Database: Supabase                                          ║
+║ 🔗 API URL: http://localhost:${PORT}                            ║
+║ 🌐 Frontend: ${process.env.FRONTEND_URL || 'Not set'}           ║
+║ 🔒 JWT: ${JWT_SECRET ? 'Set ✓' : 'Missing ✗'}                  ║
+║ 👑 Admin: ${process.env.ADMIN_EMAIL || 'Not configured'}        ║
+║ 🔐 Admin Panel: /portal/login                                   ║
+║ 🎭 Dashboard: /portal/system (after login)                      ║
+╚═══════════════════════════════════════════════════════════════════╝
             `);
 
             logger.info(`Server started on port ${PORT} in ${NODE_ENV} mode`);

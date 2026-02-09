@@ -1783,36 +1783,67 @@
 
 <script>
     // ==================== CONFIGURATION ====================
-    const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
-    let authToken = localStorage.getItem('authToken') || localStorage.getItem('auth_token');
+    const API_BASE_URL = window.location.origin; // Use current origin instead of hardcoded URL
+    
+    // Get admin token from cookie (handles '=' in cookie values such as JWTs)
+    function getAdminToken() {
+        const cookies = document.cookie ? document.cookie.split(';') : [];
+        for (let cookie of cookies) {
+            const idx = cookie.indexOf('=');
+            if (idx === -1) continue; // malformed
+            const name = cookie.slice(0, idx).trim();
+            const value = cookie.slice(idx + 1);
+            if (name === 'admin_session') {
+                try {
+                    return decodeURIComponent(value);
+                } catch {
+                    return value;
+                }
+            }
+        }
+        return null;
+    }
+    
+    let authToken = null;
     let currentUser = null;
     let currentMemberId = null;
     let currentArticleId = null;
     let currentResourceId = null;
     let currentEventId = null;
     let currentMessageId = null;
+    let inactivityTimeout;
     
     // ==================== UTILITY FUNCTIONS ====================
     function formatDate(dateString) {
         if (!dateString) return '';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return '';
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        } catch {
+            return dateString;
+        }
     }
     
     function formatDateTime(dateString) {
         if (!dateString) return '';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return '';
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch {
+            return dateString;
+        }
     }
     
     function formatFileSize(bytes) {
@@ -1876,51 +1907,82 @@
         }, duration);
     }
     
+    // ==================== SESSION MANAGEMENT ====================
+    function resetInactivityTimer() {
+        clearTimeout(inactivityTimeout);
+        inactivityTimeout = setTimeout(() => {
+            showToast('Your session will expire in 1 minute due to inactivity', 'warning');
+            
+            // Final warning after 1 minute
+            setTimeout(() => {
+                showToast('Session expired due to inactivity', 'error');
+                logout();
+            }, 60000);
+        }, 29 * 60 * 1000); // 29 minutes (1 minute before 30 minute expiry)
+    }
+    
+    function setupActivityListeners() {
+        const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+        events.forEach(event => {
+            document.addEventListener(event, resetInactivityTimer);
+        });
+        resetInactivityTimer();
+    }
+    
     // ==================== API CLIENT ====================
     async function apiRequest(endpoint, options = {}) {
+        const token = getAdminToken();
+        if (!token) {
+            window.location.href = '/portal/login';
+            throw new Error('Not authenticated');
+        }
+        
         const url = `${API_BASE_URL}/api${endpoint}`;
         const config = {
             ...options,
             headers: {
                 'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
                 ...options.headers
             }
         };
-        
-        // Add auth token if available
-        if (authToken) {
-            config.headers.Authorization = `Bearer ${authToken}`;
-        }
         
         try {
             const response = await fetch(url, config);
             
             // Handle 401 Unauthorized
             if (response.status === 401) {
-                localStorage.removeItem('authToken');
-                localStorage.removeItem('auth_token');
-                localStorage.removeItem('user');
+                // Clear admin cookie
+                document.cookie = 'admin_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
                 showToast('Session expired. Please login again.', 'error');
                 setTimeout(() => {
-                    window.location.href = 'adlog.html';
+                    window.location.href = '/portal/login';
                 }, 2000);
                 throw new Error('Unauthorized');
             }
             
-            // Try to parse JSON response
-            let data;
-            try {
-                data = await response.json();
-            } catch (e) {
-                throw new Error(`Invalid response from server: ${response.status}`);
-            }
-            
+            // Handle other errors
             if (!response.ok) {
-                throw new Error(data.message || `HTTP ${response.status}`);
+                let errorMsg = `HTTP ${response.status}`;
+                try {
+                    const data = await response.json();
+                    errorMsg = data.message || errorMsg;
+                } catch (e) {
+                    // Ignore JSON parse errors
+                }
+                throw new Error(errorMsg);
             }
             
-            return data;
+            // Try to parse JSON response
+            try {
+                return await response.json();
+            } catch (e) {
+                return { status: 'success', message: 'Operation completed' };
+            }
         } catch (error) {
+            if (error.message === 'Not authenticated' || error.message === 'Unauthorized') {
+                throw error;
+            }
             if (error.message.includes('Network') || error.message.includes('Failed to fetch')) {
                 console.warn('Network error for', endpoint);
                 throw new Error('Network error. Please check your connection.');
@@ -1951,57 +2013,109 @@
         return apiRequest(endpoint, { method: 'DELETE' });
     }
     
+    async function uploadFile(endpoint, formData) {
+        const token = getAdminToken();
+        if (!token) {
+            window.location.href = '/portal/login';
+            throw new Error('Not authenticated');
+        }
+
+        const url = `${API_BASE_URL}/api${endpoint}`;
+
+        const controller = new AbortController();
+        const timeoutMs = 10000;
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData,
+                signal: controller.signal
+            });
+
+            // Handle 401 Unauthorized similar to apiRequest
+            if (response.status === 401) {
+                // Clear admin cookie and redirect
+                document.cookie = 'admin_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                window.location.href = '/portal/login';
+                throw new Error('Unauthorized');
+            }
+
+            if (!response.ok) {
+                // Try to extract server-provided error message
+                let errMsg = `Upload failed: ${response.status}`;
+                try {
+                    const data = await response.json();
+                    if (data && data.message) errMsg = data.message;
+                    else errMsg = JSON.stringify(data) || errMsg;
+                } catch (e) {
+                    try {
+                        const text = await response.text();
+                        if (text) errMsg = text;
+                    } catch (e2) {
+                        // ignore
+                    }
+                }
+                throw new Error(errMsg);
+            }
+
+            // Parse JSON safely
+            try {
+                return await response.json();
+            } catch (e) {
+                return { status: 'success', message: 'Upload completed' };
+            }
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                throw new Error('Upload timed out');
+            }
+            // Network or other errors bubble up
+            throw error;
+        } finally {
+            clearTimeout(timeoutId);
+        }
+    }
+    
     // ==================== AUTHENTICATION ====================
     async function checkAuth() {
-        if (!authToken) {
-            window.location.href = 'adlog.html';
+        const token = getAdminToken();
+        if (!token) {
+            window.location.href = '/portal/login';
             return false;
         }
         
         try {
-            const response = await get('/auth/verify');
+            // Use the admin session endpoint from the server
+            const response = await fetch(`${API_BASE_URL}/api/admin/session`);
             
-            if (response.status === 'success' && response.data) {
-                currentUser = response.data;
-                
-                // Store user data in localStorage
-                localStorage.setItem('user', JSON.stringify(currentUser));
-                updateUserInfo();
-                return true;
-            } else {
-                throw new Error('Invalid user data');
-            }
-        } catch (error) {
-            console.error('Auth check failed:', error);
-            
-            // Try cached user data
-            const cachedUser = localStorage.getItem('user');
-            if (cachedUser) {
-                try {
-                    currentUser = JSON.parse(cachedUser);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.status === 'success' && data.data.role === 'admin') {
+                    currentUser = data.data;
                     updateUserInfo();
-                    showToast('Using cached user data', 'warning');
                     return true;
-                } catch (e) {
-                    // Cached data is invalid
                 }
             }
             
-            // Redirect to login
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('user');
-            window.location.href = 'adlog.html';
+            // If verification fails, redirect to login
+            document.cookie = 'admin_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            window.location.href = '/portal/login';
+            return false;
+        } catch (error) {
+            console.error('Auth check failed:', error);
+            window.location.href = '/portal/login';
             return false;
         }
     }
     
     function logout() {
         if (confirm('Are you sure you want to logout?')) {
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('user');
-            window.location.href = 'adlog.html';
+            // Clear admin cookie
+            document.cookie = 'admin_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            window.location.href = '/';
         }
     }
     
@@ -2046,12 +2160,6 @@
     async function initDashboard() {
         showLoading();
         
-        if (!authToken) {
-            showToast('Please login first', 'warning');
-            window.location.href = 'adlog.html';
-            return;
-        }
-        
         const isAuthenticated = await checkAuth();
         
         if (!isAuthenticated) {
@@ -2060,6 +2168,7 @@
         
         setupSidebar();
         setupEventListeners();
+        setupActivityListeners();
         await loadContent('dashboard');
         updateConnectionStatus();
         hideLoading();
@@ -2194,26 +2303,23 @@
     // ==================== DASHBOARD PAGE ====================
     async function loadDashboard() {
         try {
-            const [membersRes, eventsRes, messagesRes] = await Promise.allSettled([
+            const [membersRes, statsRes] = await Promise.allSettled([
                 get('/members'),
-                get('/events'),
-                get('/messages')
+                get('/stats')
             ]);
             
             const members = membersRes.status === 'fulfilled' ? (membersRes.value.data || []) : [];
-            const events = eventsRes.status === 'fulfilled' ? (eventsRes.value.data || []) : [];
-            const messages = messagesRes.status === 'fulfilled' ? (messagesRes.value.data || []) : [];
+            const stats = statsRes.status === 'fulfilled' ? (statsRes.value.data || {}) : {};
             
-            // Calculate statistics
             const activeMembers = members.filter(m => m.status === 'active').length;
-            const upcomingEvents = events.filter(e => e.status === 'upcoming').length;
-            const unreadMessages = messages.filter(m => m.status === 'new').length;
+            const totalUsers = stats.users || 0;
+            const totalMembers = stats.members || members.length;
             
             // Update notification badge
             const badge = document.getElementById('notificationBadge');
             if (badge) {
-                badge.textContent = unreadMessages;
-                badge.style.display = unreadMessages > 0 ? 'block' : 'none';
+                badge.textContent = '0';
+                badge.style.display = 'none'; // No message system yet
             }
             
             return `
@@ -2225,16 +2331,19 @@
                         <div class="stat-icon icon-green">
                             <i class="fas fa-users"></i>
                         </div>
-                        <div class="stat-value">${members.length}</div>
+                        <div class="stat-value">${totalMembers}</div>
                         <div class="stat-label">Executive Members</div>
+                        <div class="stat-change change-positive">
+                            ${activeMembers} active
+                        </div>
                     </div>
                     
-                    <div class="stat-card" onclick="loadContent('events')" style="cursor: pointer;">
+                    <div class="stat-card" onclick="loadContent('users')" style="cursor: pointer;">
                         <div class="stat-icon icon-blue">
-                            <i class="fas fa-calendar-alt"></i>
+                            <i class="fas fa-user-friends"></i>
                         </div>
-                        <div class="stat-value">${upcomingEvents}</div>
-                        <div class="stat-label">Upcoming Events</div>
+                        <div class="stat-value">${totalUsers}</div>
+                        <div class="stat-label">Total Users</div>
                     </div>
                     
                     <div class="stat-card" onclick="loadContent('articles')" style="cursor: pointer;">
@@ -2245,12 +2354,12 @@
                         <div class="stat-label">Articles</div>
                     </div>
                     
-                    <div class="stat-card" onclick="loadContent('messages')" style="cursor: pointer;">
+                    <div class="stat-card" onclick="loadContent('resources')" style="cursor: pointer;">
                         <div class="stat-icon icon-red">
-                            <i class="fas fa-envelope"></i>
+                            <i class="fas fa-file-download"></i>
                         </div>
-                        <div class="stat-value">${unreadMessages}</div>
-                        <div class="stat-label">Unread Messages</div>
+                        <div class="stat-value">0</div>
+                        <div class="stat-label">Resources</div>
                     </div>
                 </div>
                 
@@ -2260,6 +2369,7 @@
                             <i class="fas fa-user-plus"></i>
                         </div>
                         <div style="font-weight: 600; margin-bottom: 4px;">Add Member</div>
+                        <div style="font-size: 12px; color: var(--slate-500);">Add executive members</div>
                     </div>
                     
                     <div class="quick-action-card" onclick="loadContent('events'); setTimeout(() => document.getElementById('addEventBtn')?.click(), 100);">
@@ -2267,6 +2377,7 @@
                             <i class="fas fa-calendar-plus"></i>
                         </div>
                         <div style="font-weight: 600; margin-bottom: 4px;">Create Event</div>
+                        <div style="font-size: 12px; color: var(--slate-500);">Schedule new events</div>
                     </div>
                     
                     <div class="quick-action-card" onclick="loadContent('resources'); setTimeout(() => document.getElementById('addResourceBtn')?.click(), 100);">
@@ -2274,13 +2385,15 @@
                             <i class="fas fa-upload"></i>
                         </div>
                         <div style="font-weight: 600; margin-bottom: 4px;">Upload Resource</div>
+                        <div style="font-size: 12px; color: var(--slate-500);">Add study materials</div>
                     </div>
                     
-                    <div class="quick-action-card" onclick="loadContent('messages')">
+                    <div class="quick-action-card" onclick="loadContent('settings')">
                         <div class="quick-action-icon">
-                            <i class="fas fa-comments"></i>
+                            <i class="fas fa-cog"></i>
                         </div>
-                        <div style="font-weight: 600; margin-bottom: 4px;">View Messages</div>
+                        <div style="font-weight: 600; margin-bottom: 4px;">Settings</div>
+                        <div style="font-size: 12px; color: var(--slate-500);">Configure website</div>
                     </div>
                 </div>
                 
@@ -2309,27 +2422,22 @@
                     
                     <div class="content-card">
                         <div class="card-header">
-                            <h3 class="card-title">Recent Events</h3>
-                            <button class="btn btn-primary btn-sm" onclick="loadContent('events')">
-                                View All
-                            </button>
+                            <h3 class="card-title">System Status</h3>
                         </div>
-                        ${events.length > 0 ? events.slice(0, 5).map(event => `
-                            <div style="padding: 12px; border-bottom: 1px solid var(--slate-100);">
-                                <div style="font-weight: 600; margin-bottom: 4px; display: flex; justify-content: space-between;">
-                                    <span>${event.title || 'Untitled'}</span>
-                                    <span style="font-size: 10px; padding: 2px 8px; background: var(--slate-100); border-radius: 12px;">
-                                        ${event.category || 'General'}
-                                    </span>
-                                </div>
-                                <div style="font-size: 12px; color: var(--slate-500);">
-                                    <i class="far fa-calendar-alt" style="margin-right: 4px;"></i>
-                                    ${formatDate(event.date)} 
-                                    <i class="fas fa-map-marker-alt" style="margin-left: 12px; margin-right: 4px;"></i>
-                                    ${event.location || 'TBA'}
-                                </div>
+                        <div style="padding: 16px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <span>API Connection</span>
+                                <span class="status-badge badge-success">Online</span>
                             </div>
-                        `).join('') : '<p style="text-align: center; color: var(--slate-500); padding: 24px;">No events found</p>'}
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <span>Database</span>
+                                <span class="status-badge badge-success">Connected</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span>Admin Session</span>
+                                <span class="status-badge badge-success">Active</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
@@ -2443,8 +2551,8 @@
     }
     
     function filterMembers() {
-        const search = document.getElementById('memberSearch').value.toLowerCase();
-        const position = document.getElementById('memberPositionFilter').value;
+        const search = document.getElementById('memberSearch')?.value.toLowerCase() || '';
+        const position = document.getElementById('memberPositionFilter')?.value || '';
         
         const rows = document.querySelectorAll('#membersTable tbody tr');
         rows.forEach(row => {
@@ -2570,163 +2678,23 @@
     
     // ==================== EVENTS MANAGEMENT ====================
     async function loadEvents() {
-        try {
-            const response = await get('/events');
-            const events = response.data || [];
-            
-            return `
-                <div class="content-card">
-                    <div class="card-header">
-                        <h3 class="card-title">Events Management</h3>
-                        <button class="btn btn-primary" id="addEventBtn">
-                            <i class="fas fa-plus"></i> Add Event
-                        </button>
-                    </div>
-                    
-                    ${events.length > 0 ? `
-                        <div class="card-grid">
-                            ${events.map(event => `
-                                <div class="card-grid-item">
-                                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
-                                        <span style="font-size: 12px; padding: 4px 8px; background: var(--slate-100); border-radius: 12px;">
-                                            ${event.category || 'General'}
-                                        </span>
-                                        <span style="font-size: 12px; color: var(--slate-500);">
-                                            ${formatDate(event.date)}
-                                        </span>
-                                    </div>
-                                    
-                                    <h4 style="font-size: 16px; font-weight: 600; margin-bottom: 8px; line-height: 1.4;">${event.title || 'Untitled'}</h4>
-                                    
-                                    <p style="font-size: 14px; color: var(--slate-600); margin-bottom: 12px; line-height: 1.5;">
-                                        ${(event.description || '').substring(0, 100)}${(event.description || '').length > 100 ? '...' : ''}
-                                    </p>
-                                    
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px;">
-                                        <div>
-                                            <div style="font-size: 12px; color: var(--slate-500);">
-                                                <i class="fas fa-map-marker-alt" style="margin-right: 4px;"></i>
-                                                ${event.location || 'TBA'}
-                                            </div>
-                                        </div>
-                                        <div class="action-buttons">
-                                            <button class="icon-btn icon-btn-primary" onclick="editEvent('${event.id}')" title="Edit">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="icon-btn icon-btn-danger" onclick="deleteEvent('${event.id}')" title="Delete">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    ` : `
-                        <div class="empty-state">
-                            <i class="far fa-calendar-alt"></i>
-                            <h3>No Events Found</h3>
-                            <p>Create your first event.</p>
-                        </div>
-                    `}
+        // Events endpoint doesn't exist yet in the API
+        return `
+            <div class="content-card">
+                <div class="card-header">
+                    <h3 class="card-title">Events Management</h3>
+                    <button class="btn btn-primary" onclick="showToast('Events feature coming soon', 'info')">
+                        <i class="fas fa-plus"></i> Add Event
+                    </button>
                 </div>
-            `;
-        } catch (error) {
-            return `
+                
                 <div class="empty-state">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <h3>Unable to Load Events</h3>
-                    <p>${error.message}</p>
+                    <i class="far fa-calendar-alt"></i>
+                    <h3>Events Feature Coming Soon</h3>
+                    <p>This feature is under development. Check back soon!</p>
                 </div>
-            `;
-        }
-    }
-    
-    async function editEvent(eventId) {
-        try {
-            showLoading();
-            const response = await get(`/events/${eventId}`);
-            const event = response.data;
-            
-            if (!event) {
-                throw new Error('Event not found');
-            }
-            
-            currentEventId = eventId;
-            document.getElementById('eventModalTitle').textContent = 'Edit Event';
-            
-            // Set form values
-            document.getElementById('eventTitle').value = event.title || '';
-            document.getElementById('eventDescription').value = event.description || '';
-            document.getElementById('eventCategory').value = event.category || '';
-            document.getElementById('eventDate').value = event.date ? event.date.split('T')[0] : '';
-            document.getElementById('eventStartTime').value = event.start_time || '';
-            document.getElementById('eventEndTime').value = event.end_time || '';
-            document.getElementById('eventLocation').value = event.location || '';
-            document.getElementById('eventOrganizer').value = event.organizer || '';
-            document.getElementById('eventMaxParticipants').value = event.max_participants || '';
-            document.getElementById('eventStatus').value = event.status || 'upcoming';
-            
-            showModal('eventModal');
-        } catch (error) {
-            showToast('Failed to load event details: ' + error.message, 'error');
-        } finally {
-            hideLoading();
-        }
-    }
-    
-    async function saveEvent() {
-        try {
-            const eventData = {
-                title: document.getElementById('eventTitle').value.trim(),
-                description: document.getElementById('eventDescription').value.trim(),
-                category: document.getElementById('eventCategory').value,
-                date: document.getElementById('eventDate').value,
-                start_time: document.getElementById('eventStartTime').value,
-                end_time: document.getElementById('eventEndTime').value,
-                location: document.getElementById('eventLocation').value.trim(),
-                organizer: document.getElementById('eventOrganizer').value.trim(),
-                max_participants: document.getElementById('eventMaxParticipants').value || null,
-                status: document.getElementById('eventStatus').value
-            };
-            
-            // Validation
-            if (!eventData.title || !eventData.description || !eventData.date || !eventData.location) {
-                showToast('Please fill all required fields', 'error');
-                return;
-            }
-            
-            showLoading();
-            
-            let response;
-            if (currentEventId) {
-                response = await put(`/events/${currentEventId}`, eventData);
-            } else {
-                response = await post('/events', eventData);
-            }
-            
-            showToast(`Event ${currentEventId ? 'updated' : 'created'} successfully`, 'success');
-            hideModal('eventModal');
-            await loadContent('events');
-        } catch (error) {
-            showToast('Failed to save event: ' + error.message, 'error');
-        } finally {
-            hideLoading();
-        }
-    }
-    
-    async function deleteEvent(eventId) {
-        if (!confirm('Are you sure you want to delete this event?')) return;
-        
-        try {
-            showLoading();
-            await del(`/events/${eventId}`);
-            showToast('Event deleted successfully', 'success');
-            await loadContent('events');
-        } catch (error) {
-            showToast('Failed to delete event: ' + error.message, 'error');
-        } finally {
-            hideLoading();
-        }
+            </div>
+        `;
     }
     
     // ==================== ARTICLES MANAGEMENT ====================
@@ -2735,7 +2703,7 @@
             <div class="content-card">
                 <div class="card-header">
                     <h3 class="card-title">Articles Management</h3>
-                    <button class="btn btn-primary" id="addArticleBtn" onclick="showModal('articleModal')">
+                    <button class="btn btn-primary" onclick="showToast('Articles feature coming soon', 'info')">
                         <i class="fas fa-plus"></i> Add Article
                     </button>
                 </div>
@@ -2751,246 +2719,39 @@
     
     // ==================== RESOURCES MANAGEMENT ====================
     async function loadResources() {
-        try {
-            const response = await get('/resources');
-            const resources = response.data || [];
-            
-            return `
-                <div class="content-card">
-                    <div class="card-header">
-                        <h3 class="card-title">Resources Management</h3>
-                        <button class="btn btn-primary" id="addResourceBtn">
-                            <i class="fas fa-plus"></i> Add Resource
-                        </button>
-                    </div>
-                    
-                    ${resources.length > 0 ? `
-                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; margin-top: 24px;">
-                            ${resources.map(resource => `
-                                <div class="content-card" style="margin: 0; padding: 16px;">
-                                    <div style="display: flex; align-items: start; gap: 12px; margin-bottom: 12px;">
-                                        <i class="fas fa-file-alt" style="font-size: 24px; color: var(--primary);"></i>
-                                        <div style="flex: 1;">
-                                            <h4 style="font-size: 16px; font-weight: 600; margin-bottom: 4px;">${resource.title || 'Untitled'}</h4>
-                                            <div style="font-size: 12px; color: var(--slate-500);">
-                                                ${resource.category || 'General'} • ${resource.department || 'All Departments'}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <p style="font-size: 14px; color: var(--slate-600); margin-bottom: 16px; line-height: 1.5;">
-                                        ${(resource.description || '').substring(0, 80)}${(resource.description || '').length > 80 ? '...' : ''}
-                                    </p>
-                                    
-                                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <div style="font-size: 12px; color: var(--slate-500);">
-                                            ${resource.course_code || ''} ${resource.level ? `• Level ${resource.level}` : ''}
-                                        </div>
-                                        <div class="action-buttons">
-                                            <button class="icon-btn icon-btn-primary" onclick="downloadResource('${resource.id}')" title="Download">
-                                                <i class="fas fa-download"></i>
-                                            </button>
-                                            <button class="icon-btn icon-btn-danger" onclick="deleteResource('${resource.id}')" title="Delete">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    ` : `
-                        <div class="empty-state">
-                            <i class="fas fa-download"></i>
-                            <h3>No Resources Found</h3>
-                            <p>Upload study materials, past questions, or other resources.</p>
-                        </div>
-                    `}
+        return `
+            <div class="content-card">
+                <div class="card-header">
+                    <h3 class="card-title">Resources Management</h3>
+                    <button class="btn btn-primary" onclick="showToast('Resources feature coming soon', 'info')">
+                        <i class="fas fa-plus"></i> Add Resource
+                    </button>
                 </div>
-            `;
-        } catch (error) {
-            return `
+                
                 <div class="empty-state">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <h3>Unable to Load Resources</h3>
-                    <p>${error.message}</p>
+                    <i class="fas fa-download"></i>
+                    <h3>Resources Feature Coming Soon</h3>
+                    <p>This feature is under development. Check back soon!</p>
                 </div>
-            `;
-        }
-    }
-    
-    async function deleteResource(resourceId) {
-        if (!confirm('Are you sure you want to delete this resource?')) return;
-        
-        try {
-            showLoading();
-            await del(`/resources/${resourceId}`);
-            showToast('Resource deleted successfully', 'success');
-            await loadContent('resources');
-        } catch (error) {
-            showToast('Failed to delete resource: ' + error.message, 'error');
-        } finally {
-            hideLoading();
-        }
-    }
-    
-    async function downloadResource(resourceId) {
-        try {
-            window.open(`${API_BASE_URL}/api/resources/${resourceId}/download`, '_blank');
-        } catch (error) {
-            showToast('Failed to download resource', 'error');
-        }
+            </div>
+        `;
     }
     
     // ==================== MESSAGES MANAGEMENT ====================
     async function loadMessages() {
-        try {
-            const response = await get('/messages');
-            const messages = response.data || [];
-            
-            const unreadCount = messages.filter(m => m.status === 'new').length;
-            
-            // Update badge
-            const badge = document.getElementById('notificationBadge');
-            if (badge) {
-                badge.textContent = unreadCount;
-                badge.style.display = unreadCount > 0 ? 'flex' : 'none';
-            }
-            
-            return `
-                <div class="content-card">
-                    <div class="card-header">
-                        <h3 class="card-title">Contact Messages (${unreadCount} unread)</h3>
-                        ${unreadCount > 0 ? `
-                            <button class="btn btn-secondary btn-sm" onclick="markAllAsRead()">
-                                <i class="fas fa-check-double"></i> Mark All as Read
-                            </button>
-                        ` : ''}
-                    </div>
-                    
-                    ${messages.length > 0 ? `
-                        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
-                            ${messages.map(message => `
-                                <div class="content-card" style="margin: 0; padding: 16px; ${message.status === 'new' ? 'border-left: 4px solid var(--primary);' : ''}">
-                                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-                                        <div>
-                                            <div style="font-weight: 600; margin-bottom: 2px;">${message.name || 'Anonymous'}</div>
-                                            <div style="font-size: 14px; color: var(--slate-600);">${message.subject || 'No Subject'}</div>
-                                        </div>
-                                        <div style="font-size: 12px; color: var(--slate-500);">
-                                            ${formatDateTime(message.created_at)}
-                                        </div>
-                                    </div>
-                                    
-                                    <p style="font-size: 14px; color: var(--slate-700); margin-bottom: 12px; line-height: 1.5;">
-                                        ${(message.message || '').substring(0, 150)}${(message.message || '').length > 150 ? '...' : ''}
-                                    </p>
-                                    
-                                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <div style="font-size: 12px; color: var(--slate-500);">
-                                            ${message.email || ''} ${message.department ? `• ${message.department}` : ''}
-                                        </div>
-                                        <div class="action-buttons">
-                                            <button class="btn btn-secondary btn-sm" onclick="viewMessage('${message.id}')">
-                                                View Message
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    ` : `
-                        <div class="empty-state">
-                            <i class="far fa-comment-alt"></i>
-                            <h3>No Messages Found</h3>
-                            <p>No contact form messages yet.</p>
-                        </div>
-                    `}
+        return `
+            <div class="content-card">
+                <div class="card-header">
+                    <h3 class="card-title">Contact Messages</h3>
                 </div>
-            `;
-        } catch (error) {
-            return `
+                
                 <div class="empty-state">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <h3>Unable to Load Messages</h3>
-                    <p>${error.message}</p>
+                    <i class="far fa-comment-alt"></i>
+                    <h3>Messages Feature Coming Soon</h3>
+                    <p>This feature is under development. Check back soon!</p>
                 </div>
-            `;
-        }
-    }
-    
-    async function viewMessage(messageId) {
-        try {
-            showLoading();
-            currentMessageId = messageId;
-            
-            const response = await get(`/messages/${messageId}`);
-            const message = response.data;
-            
-            if (!message) {
-                throw new Error('Message not found');
-            }
-            
-            // Update modal content
-            document.getElementById('messageSubject').textContent = message.subject || 'No Subject';
-            document.getElementById('messageSender').textContent = `${message.name || 'Anonymous'} <${message.email || 'No email'}>`;
-            document.getElementById('messageDate').textContent = formatDateTime(message.created_at);
-            
-            // Format message body with line breaks
-            const messageBody = (message.message || '').replace(/\n/g, '<br>');
-            document.getElementById('messageBody').innerHTML = messageBody;
-            
-            // Update button handlers
-            document.getElementById('markAsReadBtn').onclick = async () => {
-                try {
-                    await put(`/messages/${messageId}/read`, {});
-                    showToast('Message marked as read', 'success');
-                    hideModal('messageModal');
-                    await loadContent('messages');
-                } catch (error) {
-                    showToast('Failed to mark as read', 'error');
-                }
-            };
-            
-            document.getElementById('replyToMessageBtn').onclick = () => {
-                if (message.email) {
-                    window.location.href = `mailto:${message.email}?subject=Re: ${encodeURIComponent(message.subject || '')}`;
-                } else {
-                    showToast('No email address to reply to', 'warning');
-                }
-            };
-            
-            showModal('messageModal');
-        } catch (error) {
-            showToast('Failed to load message: ' + error.message, 'error');
-        } finally {
-            hideLoading();
-        }
-    }
-    
-    async function markAllAsRead() {
-        if (!confirm('Mark all messages as read?')) return;
-        
-        try {
-            showLoading();
-            const response = await get('/messages');
-            const messages = response.data || [];
-            
-            const unreadMessages = messages.filter(m => m.status === 'new');
-            for (const message of unreadMessages) {
-                try {
-                    await put(`/messages/${message.id}/read`, {});
-                } catch (e) {
-                    console.log('Failed to mark one message as read:', e);
-                }
-            }
-            
-            showToast('All messages marked as read', 'success');
-            await loadContent('messages');
-        } catch (error) {
-            showToast('Failed to mark all as read: ' + error.message, 'error');
-        } finally {
-            hideLoading();
-        }
+            </div>
+        `;
     }
     
     // ==================== ANALYTICS PAGE ====================
@@ -3024,38 +2785,37 @@
                         
                         <div class="stat-card">
                             <div class="stat-icon icon-purple">
-                                <i class="fas fa-calendar-alt"></i>
+                                <i class="fas fa-server"></i>
                             </div>
-                            <div class="stat-value">0</div>
-                            <div class="stat-label">Total Events</div>
+                            <div class="stat-value">${Math.round(data.uptime || 0)}s</div>
+                            <div class="stat-label">System Uptime</div>
                         </div>
                         
                         <div class="stat-card">
                             <div class="stat-icon icon-red">
-                                <i class="fas fa-envelope"></i>
+                                <i class="fas fa-database"></i>
                             </div>
-                            <div class="stat-value">0</div>
-                            <div class="stat-label">Total Messages</div>
+                            <div class="stat-value">${data.environment || 'production'}</div>
+                            <div class="stat-label">Environment</div>
                         </div>
                     </div>
                     
-                    <div style="margin-top: 32px; background: white; padding: 20px; border-radius: var(--radius); border: 1px solid var(--slate-200);">
-                        <h4 style="margin-bottom: 16px; color: var(--slate-700);">System Status</h4>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-                            <div>
-                                <div style="font-weight: 600; margin-bottom: 4px;">API Connection</div>
-                                <div class="status-badge badge-success">Online</div>
-                            </div>
-                            <div>
-                                <div style="font-weight: 600; margin-bottom: 4px;">Database</div>
-                                <div class="status-badge badge-success">Connected</div>
-                            </div>
-                            <div>
-                                <div style="font-weight: 600; margin-bottom: 4px;">Cache Status</div>
-                                <div class="status-badge badge-success">Active</div>
+                    ${data.cache ? `
+                        <div style="margin-top: 32px;">
+                            <h4 style="margin-bottom: 16px; color: var(--slate-700);">Cache Statistics</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                                ${Object.entries(data.cache).map(([name, stats]) => `
+                                    <div style="background: white; padding: 16px; border-radius: var(--radius); border: 1px solid var(--slate-200);">
+                                        <div style="font-weight: 600; margin-bottom: 8px;">${name}</div>
+                                        <div style="font-size: 14px; color: var(--slate-600);">
+                                            Size: ${stats.size || 0}/${stats.maxSize || 100}<br>
+                                            Hit Rate: ${stats.hitRate || '0%'}
+                                        </div>
+                                    </div>
+                                `).join('')}
                             </div>
                         </div>
-                    </div>
+                    ` : ''}
                 </div>
             `;
         } catch (error) {
@@ -3077,7 +2837,7 @@
             <div class="content-card">
                 <div class="card-header">
                     <h3 class="card-title">Website Settings</h3>
-                    <button class="btn btn-primary" onclick="showModal('settingsModal')">
+                    <button class="btn btn-primary" onclick="showToast('Settings feature coming soon', 'info')">
                         <i class="fas fa-cog"></i> Configure Settings
                     </button>
                 </div>
@@ -3091,8 +2851,8 @@
                                 <div style="color: var(--slate-600); padding: 8px 12px; background: var(--slate-50); border-radius: var(--radius);">NUESA BIU</div>
                             </div>
                             <div>
-                                <div style="font-weight: 600; margin-bottom: 8px;">Contact Email</div>
-                                <div style="color: var(--slate-600); padding: 8px 12px; background: var(--slate-50); border-radius: var(--radius);">nuesa@biu.edu.ng</div>
+                                <div style="font-weight: 600; margin-bottom: 8px;">Current Environment</div>
+                                <div style="color: var(--slate-600); padding: 8px 12px; background: var(--slate-50); border-radius: var(--radius);">${API_BASE_URL.includes('localhost') ? 'Development' : 'Production'}</div>
                             </div>
                         </div>
                     </div>
@@ -3142,62 +2902,13 @@
         }
     }
     
+    function clearResourceFile() {
+        document.getElementById('resourceFile').value = '';
+        document.getElementById('resourcePreview').style.display = 'none';
+    }
+    
     async function uploadResource() {
-        const fileInput = document.getElementById('resourceFile');
-        if (!fileInput.files.length) {
-            showToast('Please select a file to upload', 'error');
-            return;
-        }
-        
-        // Validate required fields
-        const title = document.getElementById('resourceTitle').value.trim();
-        const category = document.getElementById('resourceCategory').value;
-        
-        if (!title) {
-            showToast('Please enter a resource title', 'error');
-            return;
-        }
-        
-        if (!category) {
-            showToast('Please select a category', 'error');
-            return;
-        }
-        
-        try {
-            showLoading();
-            
-            const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
-            formData.append('title', title);
-            formData.append('description', document.getElementById('resourceDescription').value);
-            formData.append('category', category);
-            formData.append('department', document.getElementById('resourceDepartment').value);
-            formData.append('level', document.getElementById('resourceLevel').value);
-            formData.append('course_code', document.getElementById('resourceCourseCode').value);
-            
-            const url = `${API_BASE_URL}/api/upload`;
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${authToken}`
-                },
-                body: formData
-            });
-            
-            const result = await response.json();
-            
-            if (response.ok && result.status === 'success') {
-                showToast('Resource uploaded successfully', 'success');
-                hideModal('resourceModal');
-                await loadContent('resources');
-            } else {
-                throw new Error(result.message || 'Upload failed');
-            }
-        } catch (error) {
-            showToast('Failed to upload resource: ' + error.message, 'error');
-        } finally {
-            hideLoading();
-        }
+        showToast('File upload feature coming soon', 'info');
     }
     
     // ==================== INITIALIZE PAGE EVENTS ====================
@@ -3219,78 +2930,51 @@
     }
     
     function initializeMembersPage() {
-        document.getElementById('addMemberBtn')?.addEventListener('click', () => {
-            currentMemberId = null;
-            document.getElementById('memberModalTitle').textContent = 'Add New Member';
-            document.getElementById('memberForm').reset();
-            document.getElementById('memberImagePreview').innerHTML = '<i class="fas fa-user-plus" style="font-size: 48px; color: var(--slate-400);"></i>';
-            showModal('memberModal');
-        });
-        
-        document.getElementById('saveMember')?.addEventListener('click', saveMember);
-        document.getElementById('cancelMember')?.addEventListener('click', () => hideModal('memberModal'));
-    }
-    
-    function initializeEventsPage() {
-        document.getElementById('addEventBtn')?.addEventListener('click', () => {
-            currentEventId = null;
-            document.getElementById('eventModalTitle').textContent = 'Add New Event';
-            document.getElementById('eventForm').reset();
-            document.getElementById('eventImagePreview').innerHTML = '<i class="fas fa-calendar-alt" style="font-size: 48px; color: var(--slate-400);"></i>';
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            document.getElementById('eventDate').value = tomorrow.toISOString().split('T')[0];
-            showModal('eventModal');
-        });
-        
-        document.getElementById('saveEvent')?.addEventListener('click', saveEvent);
-        document.getElementById('cancelEvent')?.addEventListener('click', () => hideModal('eventModal'));
-    }
-    
-    function initializeResourcesPage() {
-        document.getElementById('addResourceBtn')?.addEventListener('click', () => {
-            currentResourceId = null;
-            document.getElementById('resourceModalTitle').textContent = 'Upload New Resource';
-            document.getElementById('resourceForm').reset();
-            document.getElementById('resourcePreview').style.display = 'none';
-            showModal('resourceModal');
-        });
-        
-        document.getElementById('saveResource')?.addEventListener('click', uploadResource);
-        document.getElementById('cancelResource')?.addEventListener('click', () => hideModal('resourceModal'));
-        
-        // Setup drag and drop for file upload
-        const uploadContainer = document.getElementById('resourceUploadContainer');
-        if (uploadContainer) {
-            uploadContainer.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                uploadContainer.classList.add('drag-over');
-            });
-            
-            uploadContainer.addEventListener('dragleave', () => {
-                uploadContainer.classList.remove('drag-over');
-            });
-            
-            uploadContainer.addEventListener('drop', (e) => {
-                e.preventDefault();
-                uploadContainer.classList.remove('drag-over');
-                
-                const fileInput = document.getElementById('resourceFile');
-                if (e.dataTransfer.files.length) {
-                    fileInput.files = e.dataTransfer.files;
-                    previewResourceFile(fileInput);
+        const addMemberBtn = document.getElementById('addMemberBtn');
+        if (addMemberBtn) {
+            addMemberBtn.addEventListener('click', () => {
+                currentMemberId = null;
+                document.getElementById('memberModalTitle').textContent = 'Add New Member';
+                const form = document.getElementById('memberForm');
+                if (form) form.reset();
+                const preview = document.getElementById('memberImagePreview');
+                if (preview) {
+                    preview.innerHTML = '<i class="fas fa-user-plus" style="font-size: 48px; color: var(--slate-400);"></i>';
                 }
+                showModal('memberModal');
             });
+        }
+        
+        const saveMemberBtn = document.getElementById('saveMember');
+        if (saveMemberBtn) {
+            saveMemberBtn.addEventListener('click', saveMember);
+        }
+        
+        const cancelMemberBtn = document.getElementById('cancelMember');
+        if (cancelMemberBtn) {
+            cancelMemberBtn.addEventListener('click', () => hideModal('memberModal'));
         }
     }
     
+    function initializeEventsPage() {
+        // Nothing to initialize yet
+    }
+    
+    function initializeResourcesPage() {
+        // Nothing to initialize yet
+    }
+    
     function initializeMessagesPage() {
-        // Nothing additional needed for now
+        // Nothing to initialize yet
     }
     
     // ==================== INITIALIZE ON LOAD ====================
     document.addEventListener('DOMContentLoaded', () => {
-        initDashboard();
+        // Check if we're on the admin page (not login page)
+        if (window.location.pathname.includes('/portal/system')) {
+            // Initialize dashboard
+            initDashboard();
+        }
     });
     
     // Make functions available globally
@@ -3308,7 +2992,10 @@
     window.previewMemberImage = previewMemberImage;
     window.previewEventImage = previewEventImage;
     window.previewResourceFile = previewResourceFile;
+    window.clearResourceFile = clearResourceFile;
     window.uploadResource = uploadResource;
+    window.showModal = showModal;
+    window.hideModal = hideModal;
 </script>
 </body>
 </html>

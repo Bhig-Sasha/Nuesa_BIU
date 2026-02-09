@@ -513,9 +513,9 @@
         </div>
     </div>
 
-    <script>
+<script>
     // Configuration
-    const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
+    const API_BASE_URL = window.location.origin; // Use current origin
     
     // DOM Elements
     const loginForm = document.getElementById('loginForm');
@@ -543,16 +543,15 @@
     let isDatabaseConnected = false;
     let serverOnline = false;
     
-    // AbortController for timeouts
-    let abortController = null;
-    
     // Initialize
     function init() {
         console.log('NUESA BIU Admin Login Initializing...');
         
-        // Clear any existing auth data
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('auth_token');
+        // Clear any existing auth data (except remember me)
+        const shouldRemember = localStorage.getItem('nuesa_remember_me') === 'true';
+        if (!shouldRemember) {
+            localStorage.removeItem('nuesa_admin_email');
+        }
         
         // Check URL parameters for session expiration
         checkSessionStatus();
@@ -608,13 +607,13 @@
         updateServerStatus(null);
         
         try {
-            // Create new abort controller for timeout
-            abortController = new AbortController();
-            const timeoutId = setTimeout(() => abortController.abort(), 5000);
+            // Use a timeout to prevent hanging
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
             
             const response = await fetch(`${API_BASE_URL}/api/health`, {
                 cache: 'no-cache',
-                signal: abortController.signal
+                signal: controller.signal
             });
             
             clearTimeout(timeoutId);
@@ -649,7 +648,6 @@
         updateDatabaseStatus('checking', 'Checking database...');
         
         try {
-            // Use the same health endpoint
             const response = await fetch(`${API_BASE_URL}/api/health`, {
                 cache: 'no-cache'
             });
@@ -657,7 +655,7 @@
             if (response.ok) {
                 const data = await response.json();
                 
-                if (data.status === 'healthy' || data.status === 'success') {
+                if (data.status === 'healthy' || data.database === 'connected') {
                     isDatabaseConnected = true;
                     updateDatabaseStatus('connected', 'Database connected');
                     return true;
@@ -787,7 +785,7 @@
         return re.test(email);
     }
     
-    // Login handler - UPDATED VERSION
+    // Login handler - CORRECTED FOR YOUR SERVER
     async function handleSubmit(e) {
         e.preventDefault();
         
@@ -820,11 +818,11 @@
             console.log('Admin login attempt:', email);
             
             // Create abort controller for timeout
-            const abortController = new AbortController();
-            const timeoutId = setTimeout(() => abortController.abort(), 10000); // 10 second timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
             
-            // Call login endpoint - CORRECTED ENDPOINT
-            const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+            // CORRECTED: Use /api/admin/login endpoint from your server
+            const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -832,9 +830,10 @@
                 },
                 body: JSON.stringify({ 
                     email: email.toLowerCase().trim(),
-                    password: password
+                    password: password,
+                    rememberMe: rememberMe
                 }),
-                signal: abortController.signal
+                signal: controller.signal
             });
             
             clearTimeout(timeoutId);
@@ -844,12 +843,12 @@
             try {
                 data = await response.json();
             } catch (parseError) {
-                throw new Error(`Server returned invalid JSON: ${response.status}`);
+                throw new Error(`Server returned invalid response: ${response.status}`);
             }
             
             // Check response status
             if (!response.ok) {
-                let errorMessage = data.message || data.error || `HTTP ${response.status}`;
+                let errorMessage = data.message || data.error || `Login failed (HTTP ${response.status})`;
                 
                 // Specific error messages
                 if (response.status === 401) {
@@ -870,44 +869,21 @@
             // Check response format and extract token
             let token, user;
             
-            if (data.token) {
-                token = data.token;
-                user = data.user || data.data;
-            } else if (data.data && data.data.token) {
-                token = data.data.token;
-                user = data.data.user || data.data;
-            } else if (data.data && data.data.user) {
-                token = data.data.token || data.data.access_token;
-                user = data.data.user;
-            } else if (data.access_token) {
-                token = data.access_token;
-                user = data.user;
+            if (data.status === 'success' && data.data) {
+                if (data.data.token) {
+                    token = data.data.token;
+                    user = data.data.user;
+                } else if (data.token) {
+                    token = data.token;
+                    user = data.user || data.data;
+                }
             } else {
-                throw new Error('No authentication token received');
+                throw new Error('Invalid response from server');
             }
             
             if (!token) {
                 throw new Error('No authentication token received');
             }
-            
-            // Create user object if not provided
-            if (!user) {
-                user = {
-                    email: email,
-                    fullName: email.split('@')[0],
-                    role: 'admin'
-                };
-            }
-            
-            // Check if user is admin (if role information is provided)
-            if (user.role && user.role !== 'admin') {
-                throw new Error('Access denied. Admin account required.');
-            }
-            
-            // Save auth data
-            localStorage.setItem('authToken', token);
-            localStorage.setItem('auth_token', token); // Store both for compatibility
-            localStorage.setItem('user', JSON.stringify(user));
             
             // Remember email if checked
             if (rememberMe) {
@@ -921,20 +897,15 @@
             // Store login time
             localStorage.setItem('lastLogin', new Date().toISOString());
             
-            showAlert('Login successful! Redirecting...', 'success');
+            showAlert('Login successful! Redirecting to admin panel...', 'success');
             
-            // Redirect to dashboard
+            // Redirect to admin dashboard
             setTimeout(() => {
-                window.location.href = 'dash.html';
-            }, 800);
+                window.location.href = '/portal/system';
+            }, 1000);
             
         } catch (error) {
             console.error('Login error:', error);
-            
-            // Clear invalid stored data
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('user');
             
             let errorMessage = error.message;
             
@@ -967,34 +938,41 @@
     }
     
     // Test admin account creation (for initial setup)
-    async function createDefaultAdmin() {
+    // testAdminLogin accepts credentials as parameters to avoid using process.env in browser
+    async function testAdminLogin(emailParam, passwordParam) {
         try {
-            console.log('Checking admin account...');
-            
-            // This is just for testing - you should create admin via your server
-            const testEmail = 'admin@nuesabiu.org';
-            const testPassword = 'Admin@12345';
-            
-            const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+            console.log('Testing admin login endpoint...');
+
+            // Prefer explicit parameters, fall back to window-injected values if present
+            const testEmail = typeof emailParam !== 'undefined' ? emailParam : (window.ADMIN_EMAIL || null);
+            const testPassword = typeof passwordParam !== 'undefined' ? passwordParam : (window.ADMIN_PASSWORD || null);
+
+            if (!testEmail || !testPassword) {
+                console.warn('No test credentials provided for admin login test');
+                return false;
+            }
+
+            const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     email: testEmail,
-                    password: testPassword
+                    password: testPassword,
+                    rememberMe: false
                 })
             });
-            
+
             if (response.status === 200) {
-                console.log('Default admin account exists');
+                // do not log credentials or secret data
                 return true;
             } else {
-                console.log('Default admin account not found or invalid');
+                console.warn('Admin login test failed:', response.status);
                 return false;
             }
         } catch (error) {
-            console.log('Cannot check admin account:', error.message);
+            console.error('Admin login test error:', error);
             return false;
         }
     }
@@ -1020,22 +998,22 @@
     
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', () => {
-        // Clear any previous session on login page
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('auth_token');
+        // Clear any previous session tokens on login page
+        document.cookie = 'admin_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
         
         init();
         
         // Get server info after initialization
         setTimeout(() => {
             getServerInfo();
-            createDefaultAdmin();
+            testAdminLogin();
         }, 1500);
     });
     
     // Handle page visibility change
     document.addEventListener('visibilitychange', () => {
-        if (!document.hidden && window.location.pathname.includes('adlog.html')) {
+        if (!document.hidden && window.location.pathname.includes('portal/login')) {
             // Refresh server status when page becomes visible again
             checkServerHealth();
         }
