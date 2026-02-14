@@ -2452,6 +2452,36 @@ if (adminExists) {
 }
 
 // ==================== SYSTEM ENDPOINTS ====================
+// TEMPORARY DEBUG ENDPOINT - REMOVE AFTER FIXING
+app.get('/api/debug/env', (req, res) => {
+    res.json({
+        admin_email: process.env.ADMIN_EMAIL ? '✓ Set' : '✗ Missing',
+        admin_password: process.env.ADMIN_PASSWORD ? '✓ Set' : '✗ Missing',
+        jwt_secret: process.env.JWT_SECRET ? '✓ Set' : '✗ Missing',
+        supabase_url: process.env.SUPABASE_URL ? '✓ Set' : '✗ Missing',
+        supabase_key: process.env.SUPABASE_SERVICE_ROLE_KEY ? '✓ Set' : '✗ Missing',
+        node_env: process.env.NODE_ENV
+    });
+});
+
+app.get('/api/debug/db', async (req, res) => {
+    try {
+        // Test database connection
+        const result = await db.query('select', 'users', { limit: 1 });
+        res.json({
+            status: 'connected',
+            message: 'Database connection successful',
+            data: result.data
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            message: error.message,
+            code: error.code
+        });
+    }
+});
+
 app.get('/api/health', async (req, res) => {
     try {
         const health = {
