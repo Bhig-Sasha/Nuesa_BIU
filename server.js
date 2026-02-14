@@ -1230,12 +1230,18 @@ authRouter.post('/forgot-password', async (req, res) => {
 app.use('/api/auth', authRouter);
 
 // ==================== ADMIN AUTH ROUTES ====================
+// ==================== ADMIN AUTH ROUTES ====================
 // Reusable admin login handler
 async function adminLoginHandler(req, res) {
+    const requestId = Date.now() + '-' + Math.random().toString(36).substring(7);
+    console.log(`[${requestId}] Admin login attempt started`);
+    
     try {
         const { email, password, rememberMe } = req.body;
+        console.log(`[${requestId}] Login attempt for email:`, email);
 
         if (!email || !password) {
+            console.log(`[${requestId}] Missing email or password`);
             return res.status(400).json({
                 status: 'error',
                 code: 'VALIDATION_ERROR',
@@ -1244,13 +1250,15 @@ async function adminLoginHandler(req, res) {
         }
 
         // Get user from database
+        console.log(`[${requestId}] Querying database for user...`);
         const result = await db.query('select', 'users', {
             where: { email: email.toLowerCase().trim() },
             select: 'id, email, full_name, role, department, is_active, password_hash, created_at, last_login'
         });
+        console.log(`[${requestId}] Database query complete. Found:`, result.data.length > 0 ? 'Yes' : 'No');
 
         if (result.data.length === 0) {
-            // Use generic error message to prevent user enumeration
+            console.log(`[${requestId}] User not found`);
             return res.status(401).json({
                 status: 'error',
                 code: 'AUTH_FAILED',
@@ -1259,9 +1267,16 @@ async function adminLoginHandler(req, res) {
         }
 
         const user = result.data[0];
+        console.log(`[${requestId}] User found:`, { 
+            id: user.id, 
+            email: user.email, 
+            role: user.role,
+            is_active: user.is_active 
+        });
 
         // Check if account is active
         if (!user.is_active) {
+            console.log(`[${requestId}] Account is deactivated`);
             return res.status(401).json({
                 status: 'error',
                 code: 'ACCOUNT_DEACTIVATED',
@@ -1271,6 +1286,7 @@ async function adminLoginHandler(req, res) {
 
         // Check if user has admin role
         if (user.role !== 'admin') {
+            console.log(`[${requestId}] User is not admin. Role:`, user.role);
             return res.status(401).json({
                 status: 'error',
                 code: 'AUTH_FAILED',
@@ -1279,11 +1295,20 @@ async function adminLoginHandler(req, res) {
         }
 
         // Verify password
-        const validPassword = await bcrypt.compare(password, user.password_hash);
+        console.log(`[${requestId}] Verifying password...`);
+        console.log(`[${requestId}] Stored hash:`, user.password_hash.substring(0, 20) + '...');
+        
+        let validPassword = false;
+        try {
+            validPassword = await bcrypt.compare(password, user.password_hash);
+            console.log(`[${requestId}] Password verification result:`, validPassword);
+        } catch (bcryptError) {
+            console.error(`[${requestId}] Bcrypt error:`, bcryptError);
+            throw bcryptError;
+        }
+        
         if (!validPassword) {
-            // Log failed login attempt
-            logger.warn('Failed admin login attempt', { email: email.toLowerCase() });
-            
+            console.log(`[${requestId}] Invalid password`);
             return res.status(401).json({
                 status: 'error',
                 code: 'AUTH_FAILED',
@@ -1292,10 +1317,12 @@ async function adminLoginHandler(req, res) {
         }
 
         // Update last login
+        console.log(`[${requestId}] Updating last login...`);
         await db.query('update', 'users', {
             data: { last_login: new Date() },
             where: { id: user.id }
         });
+        console.log(`[${requestId}] Last login updated`);
 
         // Create token payload
         const tokenPayload = {
@@ -1306,42 +1333,58 @@ async function adminLoginHandler(req, res) {
             sessionType: 'admin_panel',
             loginTime: Date.now()
         };
+        console.log(`[${requestId}] Token payload created`);
 
-        // Generate admin session token with shorter expiry
-        const token = jwt.sign(tokenPayload, JWT_SECRET, {
-            expiresIn: '8h',
-            issuer: 'nuesa-biu-system',
-            audience: 'nuesa-biu-admin'
-        });
+        // Generate admin session token
+        console.log(`[${requestId}] Generating JWT...`);
+        let token;
+        try {
+            token = jwt.sign(tokenPayload, JWT_SECRET, {
+                expiresIn: '8h',
+                issuer: 'nuesa-biu-system',
+                audience: 'nuesa-biu-admin'
+            });
+            console.log(`[${requestId}] JWT generated successfully`);
+        } catch (jwtError) {
+            console.error(`[${requestId}] JWT generation error:`, jwtError);
+            throw jwtError;
+        }
 
-        // Safely set cookie domain
-        let cookieDomain;
-        if (isProduction && process.env.FRONTEND_URL) {
-            try {
-                const frontendUrl = new URL(process.env.FRONTEND_URL);
-                cookieDomain = frontendUrl.hostname;
-            } catch (error) {
-                logger.error('Invalid FRONTEND_URL in environment:', error);
-                cookieDomain = undefined;
+        // Set cookie
+        console.log(`[${requestId}] Setting cookie...`);
+        try {
+            let cookieDomain;
+            if (isProduction && process.env.FRONTEND_URL) {
+                try {
+                    const frontendUrl = new URL(process.env.FRONTEND_URL);
+                    cookieDomain = frontendUrl.hostname;
+                    console.log(`[${requestId}] Cookie domain:`, cookieDomain);
+                } catch (error) {
+                    console.error(`[${requestId}] Invalid FRONTEND_URL:`, error);
+                    cookieDomain = undefined;
+                }
             }
+
+            const cookieOptions = {
+                httpOnly: true,
+                secure: isProduction,
+                sameSite: 'strict',
+                maxAge: 8 * 60 * 60 * 1000,
+                path: '/'
+            };
+
+            if (cookieDomain) {
+                cookieOptions.domain = cookieDomain;
+            }
+
+            res.cookie('admin_session', token, cookieOptions);
+            console.log(`[${requestId}] Cookie set successfully`);
+        } catch (cookieError) {
+            console.error(`[${requestId}] Cookie error:`, cookieError);
+            throw cookieError;
         }
 
-        // Set secure cookie
-        const cookieOptions = {
-            httpOnly: true,
-            secure: isProduction,
-            sameSite: 'strict',
-            maxAge: 8 * 60 * 60 * 1000, // 8 hours
-            path: '/'
-        };
-
-        if (cookieDomain) {
-            cookieOptions.domain = cookieDomain;
-        }
-
-        res.cookie('admin_session', token, cookieOptions);
-
-        // Return success with user info (excluding sensitive data)
+        // Return success
         const userResponse = {
             id: user.id,
             email: user.email,
@@ -1351,7 +1394,7 @@ async function adminLoginHandler(req, res) {
             lastLogin: user.last_login
         };
 
-        logger.info('Admin login successful', { userId: user.id });
+        console.log(`[${requestId}] Login successful for user:`, user.id);
         res.json({
             status: 'success',
             data: {
@@ -1363,12 +1406,27 @@ async function adminLoginHandler(req, res) {
         });
 
     } catch (error) {
-        logger.error('Admin login error:', error);
-        res.status(500).json({
+        console.error(`[${requestId}] Admin login error:`, {
+            message: error.message,
+            stack: error.stack,
+            name: error.name,
+            code: error.code
+        });
+        
+        // Send more detailed error in development, generic in production
+        const errorResponse = {
             status: 'error',
             code: 'INTERNAL_ERROR',
             message: 'Authentication failed'
-        });
+        };
+        
+        // Add details only in development
+        if (!isProduction) {
+            errorResponse.details = error.message;
+            errorResponse.stack = error.stack;
+        }
+        
+        res.status(500).json(errorResponse);
     }
 }
 
