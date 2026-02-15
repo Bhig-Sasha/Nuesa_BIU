@@ -20,7 +20,29 @@ const morgan = require('morgan');
 const timeout = require('connect-timeout');
 const mime = require('mime-types');
 const cookieParser = require('cookie-parser');
-const crypto = require('crypto'); // Added for obfuscation
+const crypto = require('crypto');
+const uuid = require('uuid');
+const Joi = require('joi');
+const csrf = require('csurf');
+const Redis = require('ioredis');
+const swaggerJsdoc = require('swagger-jsdoc');
+const swaggerUi = require('swagger-ui-express');
+const { exec } = require('child_process');
+const util = require('util');
+const execPromise = util.promisify(exec);
+
+// ==================== ENVIRONMENT VALIDATION ====================
+const requiredEnvVars = [
+    'JWT_SECRET',
+    'SUPABASE_URL',
+    'SUPABASE_SERVICE_ROLE_KEY'
+];
+
+const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+if (missingEnvVars.length > 0) {
+    console.error('❌ ERROR: Missing required environment variables:', missingEnvVars.join(', '));
+    process.exit(1);
+}
 
 // ==================== CONFIGURATION ====================
 const app = express();
@@ -32,19 +54,23 @@ const isProduction = NODE_ENV === 'production';
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRE = process.env.JWT_EXPIRE || '7d';
 
-if (!JWT_SECRET) {
-    console.error('❌ ERROR: JWT_SECRET is required in environment variables');
-    process.exit(1);
+// ==================== REDIS SETUP (Optional) ====================
+let redis = null;
+if (process.env.REDIS_URL) {
+    try {
+        redis = new Redis(process.env.REDIS_URL, {
+            maxRetriesPerRequest: 3,
+            retryStrategy: (times) => Math.min(times * 50, 2000)
+        });
+        console.log('✅ Redis connected successfully');
+    } catch (error) {
+        console.warn('⚠️ Redis connection failed, using in-memory cache:', error.message);
+    }
 }
 
 // ==================== SUPABASE SETUP ====================
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-    console.error('❌ ERROR: SUPABASE_URL and SUPABASE_KEY are required');
-    process.exit(1);
-}
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const supabase = createClient(supabaseUrl, supabaseKey, {
     auth: {
@@ -53,7 +79,11 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
         detectSessionInUrl: false
     },
     db: {
-        schema: 'public'
+        schema: 'public',
+        pool: {
+            max: 20,
+            idleTimeoutMillis: 30000
+        }
     },
     global: {
         headers: {
@@ -63,13 +93,65 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
     }
 });
 
+// ==================== CUSTOM ERROR CLASSES ====================
+class DatabaseError extends Error {
+    constructor(message, code, table, operation) {
+        super(message);
+        this.name = 'DatabaseError';
+        this.code = code;
+        this.table = table;
+        this.operation = operation;
+        this.timestamp = new Date();
+        this.statusCode = 400;
+    }
+}
+
+class ValidationError extends Error {
+    constructor(message, errors = []) {
+        super(message);
+        this.name = 'ValidationError';
+        this.errors = errors;
+        this.statusCode = 400;
+    }
+}
+
+class NotFoundError extends Error {
+    constructor(resource) {
+        super(`${resource} not found`);
+        this.name = 'NotFoundError';
+        this.statusCode = 404;
+    }
+}
+
+class AuthError extends Error {
+    constructor(message, code = 'AUTH_ERROR') {
+        super(message);
+        this.name = 'AuthError';
+        this.code = code;
+        this.statusCode = 401;
+    }
+}
+
+class ForbiddenError extends Error {
+    constructor(message = 'Access denied') {
+        super(message);
+        this.name = 'ForbiddenError';
+        this.statusCode = 403;
+    }
+}
+
 // ==================== ENHANCED QUERY HELPER ====================
 class DatabaseService {
     constructor(supabase) {
         this.supabase = supabase;
+        this.queryCount = 0;
+        this.queryTimes = [];
     }
 
     async query(operation, table, options = {}) {
+        const startTime = Date.now();
+        this.queryCount++;
+
         try {
             const {
                 data = null,
@@ -103,7 +185,7 @@ class DatabaseService {
                     throw new Error(`Unknown operation: ${operation}`);
             }
 
-            // Apply filters
+            // Apply filters with enhanced operators
             if (where && Object.keys(where).length > 0) {
                 for (const [key, value] of Object.entries(where)) {
                     if (Array.isArray(value)) {
@@ -131,6 +213,15 @@ class DatabaseService {
                             case 'neq':
                                 query = query.neq(key, value.value);
                                 break;
+                            case 'contains':
+                                query = query.contains(key, value.value);
+                                break;
+                            case 'overlaps':
+                                query = query.overlaps(key, value.value);
+                                break;
+                            case 'isNull':
+                                query = query.is(key, null);
+                                break;
                             default:
                                 query = query.eq(key, value.value);
                         }
@@ -155,6 +246,10 @@ class DatabaseService {
 
             const result = await query;
 
+            const queryTime = Date.now() - startTime;
+            this.queryTimes.push(queryTime);
+            if (this.queryTimes.length > 100) this.queryTimes.shift();
+
             if (result.error) {
                 throw new DatabaseError(result.error.message, result.error.code, table, operation);
             }
@@ -162,23 +257,25 @@ class DatabaseService {
             return {
                 data: result.data || [],
                 count: result.count,
-                status: 'success'
+                status: 'success',
+                queryTime
             };
         } catch (error) {
             console.error(`Database ${operation} error on table ${table}:`, error);
             throw error;
         }
     }
-}
 
-class DatabaseError extends Error {
-    constructor(message, code, table, operation) {
-        super(message);
-        this.name = 'DatabaseError';
-        this.code = code;
-        this.table = table;
-        this.operation = operation;
-        this.timestamp = new Date();
+    getStats() {
+        const avgQueryTime = this.queryTimes.length > 0 
+            ? this.queryTimes.reduce((a, b) => a + b, 0) / this.queryTimes.length 
+            : 0;
+        
+        return {
+            totalQueries: this.queryCount,
+            averageQueryTime: Math.round(avgQueryTime) + 'ms',
+            recentQueryTimes: this.queryTimes.slice(-10)
+        };
     }
 }
 
@@ -246,10 +343,11 @@ if (!isProduction) {
     }));
 }
 
-// ==================== ENHANCED CACHE SYSTEM ====================
+// ==================== ENHANCED CACHE SYSTEM WITH REDIS ====================
 class CacheManager {
     constructor() {
         this.caches = new Map();
+        this.redis = redis;
     }
 
     getCache(name, options = {}) {
@@ -259,16 +357,74 @@ class CacheManager {
         return this.caches.get(name);
     }
 
-    clearAll() {
-        this.caches.forEach(cache => cache.clear());
+    async get(key, options = {}) {
+        if (this.redis) {
+            const value = await this.redis.get(key);
+            if (value) {
+                return JSON.parse(value);
+            }
+            return null;
+        }
+        return this.caches.get('default')?.get(key) || null;
     }
 
-    invalidate(pattern) {
-        this.caches.forEach((cache, cacheName) => {
-            if (cacheName.match(pattern)) {
-                cache.clear();
+    async set(key, value, ttl = 300000) {
+        if (this.redis) {
+            await this.redis.set(key, JSON.stringify(value), 'PX', ttl);
+        } else {
+            if (!this.caches.has('default')) {
+                this.caches.set('default', new LRUCache(100, ttl));
             }
+            this.caches.get('default').set(key, value, ttl);
+        }
+    }
+
+    async delete(key) {
+        if (this.redis) {
+            await this.redis.del(key);
+        } else {
+            this.caches.forEach(cache => cache.delete(key));
+        }
+    }
+
+    async invalidate(pattern) {
+        if (this.redis) {
+            const keys = await this.redis.keys(pattern);
+            if (keys.length > 0) {
+                await this.redis.del(...keys);
+            }
+        } else {
+            this.caches.forEach((cache, cacheName) => {
+                if (cacheName.match(pattern)) {
+                    cache.clear();
+                }
+            });
+        }
+    }
+
+    async invalidateByTags(tags) {
+        for (const tag of tags) {
+            await this.invalidate(`tag:${tag}:*`);
+        }
+    }
+
+    clearAll() {
+        if (this.redis) {
+            this.redis.flushdb();
+        } else {
+            this.caches.forEach(cache => cache.clear());
+        }
+    }
+
+    getStats() {
+        const stats = {};
+        this.caches.forEach((cache, name) => {
+            stats[name] = cache.getStats();
         });
+        if (this.redis) {
+            stats.redis = { connected: true };
+        }
+        return stats;
     }
 }
 
@@ -282,7 +438,6 @@ class LRUCache {
     }
 
     set(key, value, customTTL = null) {
-        // Check size and remove oldest if needed
         if (this.cache.size >= this.maxSize) {
             const firstKey = this.cache.keys().next().value;
             this.cache.delete(firstKey);
@@ -308,7 +463,6 @@ class LRUCache {
             return null;
         }
 
-        // Update access time
         item.accessed = Date.now();
         this.hits++;
         return item.value;
@@ -340,6 +494,23 @@ class LRUCache {
 const cacheManager = new CacheManager();
 const userCache = cacheManager.getCache('users', { maxSize: 200, ttl: 300000 });
 const dataCache = cacheManager.getCache('data', { maxSize: 100, ttl: 60000 });
+
+// ==================== REQUEST ID MIDDLEWARE ====================
+app.use((req, res, next) => {
+    req.id = uuid.v4();
+    res.setHeader('X-Request-ID', req.id);
+    next();
+});
+
+// ==================== SECURITY HEADERS MIDDLEWARE ====================
+app.use((req, res, next) => {
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+    next();
+});
 
 // ==================== ENHANCED MIDDLEWARE ====================
 app.set('trust proxy', 1);
@@ -377,6 +548,10 @@ app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
+// CSRF Protection (except for API routes)
+const csrfProtection = csrf({ cookie: true });
+app.use('/portal', csrfProtection);
+
 // XSS protection
 app.use(xss());
 
@@ -391,28 +566,23 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
     .map(origin => origin.trim())
     .filter(origin => origin.length > 0);
 
-// Add your Vercel frontend URL
 if (process.env.FRONTEND_URL && !allowedOrigins.includes(process.env.FRONTEND_URL)) {
     allowedOrigins.push(process.env.FRONTEND_URL);
 }
 
-// ALSO add the specific Vercel URL directly:
 allowedOrigins.push('https://nuesa-biu.vercel.app');
 allowedOrigins.push('https://www.nuesa-biu.vercel.app');
 
 const corsOptions = {
     origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps, curl, postman)
         if (!origin) {
             return callback(null, true);
         }
 
-        // In development, allow all origins
         if (!isProduction) {
             return callback(null, true);
         }
 
-        // In production, check against allowed origins
         if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
@@ -430,14 +600,16 @@ const corsOptions = {
         'X-Requested-With',
         'X-API-Key',
         'X-Total-Count',
-        'X-Page-Count'
+        'X-Page-Count',
+        'X-CSRF-Token'
     ],
     exposedHeaders: [
         'X-Total-Count',
         'X-Page-Count',
         'X-RateLimit-Limit',
         'X-RateLimit-Remaining',
-        'X-RateLimit-Reset'
+        'X-RateLimit-Reset',
+        'X-Request-ID'
     ],
     maxAge: 86400,
     preflightContinue: false,
@@ -479,6 +651,7 @@ app.use(haltOnTimedout);
 function haltOnTimedout(req, res, next) {
     if (req.timedout) {
         logger.error('Request timeout', {
+            requestId: req.id,
             url: req.url,
             method: req.method,
             ip: req.ip,
@@ -494,89 +667,80 @@ function haltOnTimedout(req, res, next) {
     }
 }
 
-// Enhanced rate limiting
-const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: (req) => {
-        // Allow more requests for authenticated users
-        return req.headers.authorization ? 200 : 100;
-    },
-    message: {
-        status: 'error',
-        code: 'TOO_MANY_REQUESTS',
-        message: 'Too many requests from this IP, please try again later.'
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-    skipSuccessfulRequests: false,
-    keyGenerator: (req) => {
-        return req.headers['x-forwarded-for'] || req.ip;
-    },
-    handler: (req, res) => {
-        logger.warn('Rate limit exceeded', {
-            ip: req.ip,
-            url: req.url,
-            method: req.method
-        });
-        res.status(429).json({
+// Enhanced rate limiting with configurable limits
+const createRateLimiter = (max, windowMs = 15 * 60 * 1000, message = 'Too many requests') => {
+    return rateLimit({
+        windowMs,
+        max,
+        message: {
             status: 'error',
             code: 'TOO_MANY_REQUESTS',
-            message: 'Too many requests from this IP, please try again later.'
-        });
-    }
-});
-
-const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 10,
-    skipSuccessfulRequests: false,
-    message: {
-        status: 'error',
-        code: 'TOO_MANY_LOGIN_ATTEMPTS',
-        message: 'Too many login attempts, please try again later.'
-    }
-});
-
-// Rate limiter for contact form submissions to prevent abuse
-const contactFormLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 10,
-    skipSuccessfulRequests: false,
-    message: {
-        status: 'error',
-        code: 'TOO_MANY_CONTACT_REQUESTS',
-        message: 'Too many contact form submissions, please try again later.'
-    }
-});
+            message
+        },
+        standardHeaders: true,
+        legacyHeaders: false,
+        skipSuccessfulRequests: false,
+        keyGenerator: (req) => {
+            return req.headers['x-forwarded-for'] || req.ip;
+        },
+        handler: (req, res) => {
+            logger.warn('Rate limit exceeded', {
+                requestId: req.id,
+                ip: req.ip,
+                url: req.url,
+                method: req.method
+            });
+            res.status(429).json({
+                status: 'error',
+                code: 'TOO_MANY_REQUESTS',
+                message
+            });
+        }
+    });
+};
 
 // Apply rate limiting
-app.use('/api/auth/login', authLimiter);
-app.use('/api/admin/login', authLimiter);
-app.use('/api/', apiLimiter);
+app.use('/api/auth/login', createRateLimiter(10, 15 * 60 * 1000, 'Too many login attempts'));
+app.use('/api/admin/login', createRateLimiter(5, 15 * 60 * 1000, 'Too many admin login attempts'));
+app.use('/api/contact/submit', createRateLimiter(10, 15 * 60 * 1000, 'Too many contact form submissions'));
+app.use('/api/', createRateLimiter(200, 15 * 60 * 1000));
 
-// Cache middleware
-const cacheMiddleware = (duration = 60) => {
-    return (req, res, next) => {
+// Cache middleware with Redis support
+const cacheMiddleware = (duration = 60, tags = []) => {
+    return async (req, res, next) => {
         if (req.method !== 'GET' || req.headers.authorization) {
             return next();
         }
 
-        const key = req.originalUrl || req.url;
-        const cachedResponse = dataCache.get(key);
+        const key = `cache:${req.originalUrl || req.url}`;
+        
+        try {
+            const cachedResponse = await cacheManager.get(key);
 
-        if (cachedResponse) {
-            return res.json(cachedResponse);
-        }
-
-        const originalSend = res.json;
-        res.json = function (body) {
-            if (res.statusCode >= 200 && res.statusCode < 300) {
-                dataCache.set(key, body, duration * 1000);
+            if (cachedResponse) {
+                return res.json(cachedResponse);
             }
-            originalSend.call(this, body);
-        };
 
-        next();
+            const originalSend = res.json;
+            res.json = async function (body) {
+                if (res.statusCode >= 200 && res.statusCode < 300) {
+                    await cacheManager.set(key, body, duration * 1000);
+                    
+                    // Set cache tags for invalidation
+                    if (tags.length > 0) {
+                        for (const tag of tags) {
+                            await cacheManager.set(`tag:${tag}:${key}`, true, duration * 1000);
+                        }
+                    }
+                }
+                originalSend.call(this, body);
+            };
+
+            next();
+        } catch (error) {
+            logger.error('Cache middleware error:', { requestId: req.id, error: error.message });
+            next();
+        }
     };
 };
 
@@ -586,6 +750,7 @@ app.use((req, res, next) => {
     res.on('finish', () => {
         const duration = Date.now() - start;
         logger.info('Request completed', {
+            requestId: req.id,
             method: req.method,
             url: req.url,
             status: res.statusCode,
@@ -595,6 +760,44 @@ app.use((req, res, next) => {
     });
     next();
 });
+
+// ==================== ACCOUNT LOCKOUT SYSTEM ====================
+const loginAttempts = new Map();
+
+async function checkLoginAttempts(identifier) {
+    const attempts = loginAttempts.get(identifier) || { count: 0, lockedUntil: null };
+    
+    // Check if locked
+    if (attempts.lockedUntil && attempts.lockedUntil > Date.now()) {
+        throw new AuthError('Account temporarily locked. Try again later.', 'ACCOUNT_LOCKED');
+    }
+    
+    // Reset if lock expired
+    if (attempts.lockedUntil && attempts.lockedUntil <= Date.now()) {
+        loginAttempts.delete(identifier);
+        return;
+    }
+    
+    return attempts;
+}
+
+async function recordFailedAttempt(identifier) {
+    const attempts = loginAttempts.get(identifier) || { count: 0, lockedUntil: null };
+    attempts.count += 1;
+    
+    // Lock after 5 failed attempts
+    if (attempts.count >= 5) {
+        attempts.lockedUntil = Date.now() + 15 * 60 * 1000; // 15 minutes
+        attempts.count = 0;
+        logger.warn('Account locked due to multiple failed attempts', { identifier });
+    }
+    
+    loginAttempts.set(identifier, attempts);
+}
+
+async function resetLoginAttempts(identifier) {
+    loginAttempts.delete(identifier);
+}
 
 // ==================== ENHANCED FILE UPLOAD ====================
 const uploadDirs = {
@@ -680,6 +883,77 @@ const upload = multer({
     fileFilter: fileFilter
 });
 
+// ==================== VALIDATION SCHEMAS ====================
+const schemas = {
+    login: Joi.object({
+        email: Joi.string().email().required(),
+        password: Joi.string().min(8).required(),
+        rememberMe: Joi.boolean()
+    }),
+    
+    register: Joi.object({
+        email: Joi.string().email().required(),
+        password: Joi.string().min(8).required(),
+        full_name: Joi.string().min(2).max(100).required(),
+        department: Joi.string().optional(),
+        role: Joi.string().valid('member', 'editor', 'admin').default('member')
+    }),
+    
+    createUser: Joi.object({
+        email: Joi.string().email().required(),
+        password: Joi.string().min(8).required(),
+        full_name: Joi.string().min(2).max(100).required(),
+        department: Joi.string().optional(),
+        role: Joi.string().valid('member', 'editor', 'admin').default('member'),
+        is_active: Joi.boolean().default(true)
+    }),
+    
+    updateUser: Joi.object({
+        full_name: Joi.string().min(2).max(100).optional(),
+        department: Joi.string().optional(),
+        role: Joi.string().valid('member', 'editor', 'admin').optional(),
+        is_active: Joi.boolean().optional(),
+        password: Joi.string().min(8).optional()
+    }),
+    
+    changePassword: Joi.object({
+        currentPassword: Joi.string().required(),
+        newPassword: Joi.string().min(8).required()
+    }),
+    
+    createMember: Joi.object({
+        full_name: Joi.string().required(),
+        position: Joi.string().required(),
+        department: Joi.string().optional(),
+        level: Joi.string().optional(),
+        email: Joi.string().email().optional(),
+        phone: Joi.string().optional(),
+        bio: Joi.string().optional(),
+        committee: Joi.string().optional(),
+        display_order: Joi.number().integer().default(0),
+        status: Joi.string().valid('active', 'inactive', 'alumni').default('active'),
+        social_links: Joi.object().default({})
+    }),
+    
+    contactForm: Joi.object({
+        name: Joi.string().min(2).max(100).required(),
+        email: Joi.string().email().required(),
+        message: Joi.string().min(10).max(1000).required(),
+        subject: Joi.string().max(200).optional()
+    })
+};
+
+// Validation middleware
+const validate = (schema) => {
+    return (req, res, next) => {
+        const { error } = schema.validate(req.body);
+        if (error) {
+            throw new ValidationError('Validation failed', error.details);
+        }
+        next();
+    };
+};
+
 // ==================== ENHANCED AUTHENTICATION ====================
 class AuthService {
     constructor() {
@@ -691,7 +965,8 @@ class AuthService {
         return jwt.sign(payload, this.secret, {
             expiresIn: this.expire,
             issuer: 'nuesa-biu-api',
-            audience: 'nuesa-biu-client'
+            audience: 'nuesa-biu-client',
+            jwtid: uuid.v4()
         });
     }
 
@@ -708,12 +983,16 @@ class AuthService {
 
     async authenticateUser(email, password) {
         try {
+            // Check login attempts
+            await checkLoginAttempts(email.toLowerCase());
+
             const result = await db.query('select', 'users', {
                 where: { email: email.toLowerCase().trim() },
                 select: 'id, email, password_hash, full_name, role, department, is_active, created_at, last_login'
             });
 
             if (result.data.length === 0) {
+                await recordFailedAttempt(email.toLowerCase());
                 throw new AuthError('Invalid credentials');
             }
 
@@ -725,14 +1004,21 @@ class AuthService {
 
             const validPassword = await bcrypt.compare(password, user.password_hash);
             if (!validPassword) {
+                await recordFailedAttempt(email.toLowerCase());
                 throw new AuthError('Invalid credentials');
             }
+
+            // Reset login attempts on success
+            await resetLoginAttempts(email.toLowerCase());
 
             // Update last login
             await db.query('update', 'users', {
                 data: { last_login: new Date() },
                 where: { id: user.id }
             });
+
+            // Log successful login
+            logger.info('User logged in successfully', { userId: user.id, email: user.email });
 
             return this.createUserResponse(user);
         } catch (error) {
@@ -760,15 +1046,6 @@ class AuthService {
             role: user.role,
             fullName: user.full_name
         };
-    }
-}
-
-class AuthError extends Error {
-    constructor(message, code = 'AUTH_ERROR') {
-        super(message);
-        this.name = 'AuthError';
-        this.code = code;
-        this.statusCode = 401;
     }
 }
 
@@ -874,7 +1151,7 @@ const verifyToken = async (req, res, next) => {
         const decoded = authService.verifyToken(token);
 
         const cacheKey = `user:${decoded.userId}`;
-        const cachedUser = userCache.get(cacheKey);
+        const cachedUser = await cacheManager.get(cacheKey);
 
         if (cachedUser) {
             req.user = cachedUser;
@@ -897,7 +1174,7 @@ const verifyToken = async (req, res, next) => {
             throw new AuthError('Account deactivated', 'ACCOUNT_DEACTIVATED');
         }
 
-        userCache.set(cacheKey, user, 300000);
+        await cacheManager.set(cacheKey, user, 300000);
         req.user = user;
         req.token = token;
 
@@ -919,7 +1196,7 @@ const verifyToken = async (req, res, next) => {
             });
         }
 
-        logger.error('Authentication error:', error);
+        logger.error('Authentication error:', { requestId: req.id, error: error.message });
         res.status(error.statusCode || 401).json({
             status: 'error',
             code: error.code || 'AUTH_FAILED',
@@ -931,18 +1208,11 @@ const verifyToken = async (req, res, next) => {
 const requireRole = (...roles) => {
     return (req, res, next) => {
         if (!req.user) {
-            return res.status(401).json({
-                status: 'error',
-                message: 'Authentication required'
-            });
+            throw new AuthError('Authentication required', 'AUTH_REQUIRED');
         }
 
         if (!roles.includes(req.user.role)) {
-            return res.status(403).json({
-                status: 'error',
-                code: 'INSUFFICIENT_PERMISSIONS',
-                message: `Required roles: ${roles.join(', ')}`
-            });
+            throw new ForbiddenError(`Required roles: ${roles.join(', ')}`);
         }
 
         next();
@@ -951,26 +1221,19 @@ const requireRole = (...roles) => {
 
 const requirePermission = (permission) => {
     const permissions = {
-        admin: ['manage_users', 'manage_content', 'manage_settings'],
-        editor: ['manage_content'],
+        admin: ['manage_users', 'manage_content', 'manage_settings', 'view_all'],
+        editor: ['manage_content', 'view_all'],
         member: ['view_content']
     };
 
     return (req, res, next) => {
         if (!req.user) {
-            return res.status(401).json({
-                status: 'error',
-                message: 'Authentication required'
-            });
+            throw new AuthError('Authentication required', 'AUTH_REQUIRED');
         }
 
         const userPermissions = permissions[req.user.role] || [];
         if (!userPermissions.includes(permission)) {
-            return res.status(403).json({
-                status: 'error',
-                code: 'INSUFFICIENT_PERMISSIONS',
-                message: `Required permission: ${permission}`
-            });
+            throw new ForbiddenError(`Required permission: ${permission}`);
         }
 
         next();
@@ -1046,77 +1309,23 @@ async function createDefaultAdmin() {
 }
 
 async function createDefaultTables() {
-    const tables = [
-        {
-            name: 'users',
-            columns: [
-                'id UUID PRIMARY KEY DEFAULT gen_random_uuid()',
-                'email VARCHAR(255) UNIQUE NOT NULL',
-                'password_hash VARCHAR(255) NOT NULL',
-                'full_name VARCHAR(255) NOT NULL',
-                'username VARCHAR(100) UNIQUE',
-                'role VARCHAR(50) DEFAULT \'member\'',
-                'department VARCHAR(100)',
-                'is_active BOOLEAN DEFAULT true',
-                'profile_picture VARCHAR(500)',
-                'last_login TIMESTAMPTZ',
-                'created_at TIMESTAMPTZ DEFAULT NOW()',
-                'updated_at TIMESTAMPTZ DEFAULT NOW()'
-            ]
-        },
-        {
-            name: 'executive_members',
-            columns: [
-                'id UUID PRIMARY KEY DEFAULT gen_random_uuid()',
-                'full_name VARCHAR(255) NOT NULL',
-                'position VARCHAR(100) NOT NULL',
-                'department VARCHAR(100)',
-                'level VARCHAR(50)',
-                'email VARCHAR(255)',
-                'phone VARCHAR(50)',
-                'bio TEXT',
-                'committee VARCHAR(100)',
-                'display_order INTEGER DEFAULT 0',
-                'status VARCHAR(50) DEFAULT \'active\'',
-                'social_links JSONB DEFAULT \'{}\'',
-                'profile_image VARCHAR(500)',
-                'created_at TIMESTAMPTZ DEFAULT NOW()',
-                'updated_at TIMESTAMPTZ DEFAULT NOW()'
-            ]
-        }
-    ];
-
-    for (const table of tables) {
-        try {
-            // Note: In Supabase, tables are created via SQL or Dashboard
-            // This is just a placeholder for schema validation
-            logger.info(`Checking table: ${table.name}`);
-        } catch (error) {
-            logger.warn(`Table ${table.name} may not exist: ${error.message}`);
-        }
-    }
+    // Note: Tables should be created via Supabase migrations
+    // This is just for logging
+    logger.info('Checking database tables...');
 }
 
 // ==================== ENHANCED AUTH ROUTES ====================
 const authRouter = express.Router();
 
-authRouter.post('/login', async (req, res) => {
+authRouter.post('/login', validate(schemas.login), async (req, res) => {
     try {
         const { email, password, rememberMe } = req.body;
-
-        if (!email || !password) {
-            return res.status(400).json({
-                status: 'error',
-                code: 'VALIDATION_ERROR',
-                message: 'Email and password are required'
-            });
-        }
 
         const user = await authService.authenticateUser(email, password);
         const tokenPayload = authService.createTokenPayload(user);
         const token = authService.generateToken(tokenPayload);
 
-        userCache.set(`user:${user.id}`, user, rememberMe ? 604800000 : 300000); // 7 days or 5 minutes
+        await cacheManager.set(`user:${user.id}`, user, rememberMe ? 604800000 : 300000);
 
         // Set secure cookie
         res.cookie('auth_token', token, {
@@ -1150,8 +1359,8 @@ authRouter.post('/login', async (req, res) => {
 
 authRouter.post('/logout', verifyToken, async (req, res) => {
     try {
-        userCache.delete(`user:${req.user.id}`);
-        dataCache.clear();
+        await cacheManager.delete(`user:${req.user.id}`);
+        await cacheManager.invalidate('data:*');
 
         res.clearCookie('auth_token');
 
@@ -1199,20 +1408,13 @@ authRouter.post('/refresh', verifyToken, async (req, res) => {
     }
 });
 
-// Password reset endpoints
-authRouter.post('/forgot-password', async (req, res) => {
+authRouter.post('/forgot-password', validate(Joi.object({ email: Joi.string().email().required() })), async (req, res) => {
     try {
         const { email } = req.body;
 
-        if (!email) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'Email is required'
-            });
-        }
-
         // In production, send reset email
-        // For now, just return success
+        logger.info('Password reset requested', { email });
+
         res.json({
             status: 'success',
             message: 'If an account exists with this email, you will receive a reset link'
@@ -1226,28 +1428,25 @@ authRouter.post('/forgot-password', async (req, res) => {
     }
 });
 
-// Mount auth router
 app.use('/api/auth', authRouter);
 
 // ==================== ADMIN AUTH ROUTES ====================
-// ==================== ADMIN AUTH ROUTES ====================
-// Reusable admin login handler
 async function adminLoginHandler(req, res) {
-    const requestId = Date.now() + '-' + Math.random().toString(36).substring(7);
+    const requestId = req.id;
     console.log(`[${requestId}] Admin login attempt started`);
     
     try {
         const { email, password, rememberMe } = req.body;
         console.log(`[${requestId}] Login attempt for email:`, email);
 
-        if (!email || !password) {
-            console.log(`[${requestId}] Missing email or password`);
-            return res.status(400).json({
-                status: 'error',
-                code: 'VALIDATION_ERROR',
-                message: 'Email and password are required'
-            });
+        // Validate input
+        const { error } = schemas.login.validate({ email, password });
+        if (error) {
+            throw new ValidationError('Validation failed', error.details);
         }
+
+        // Check login attempts
+        await checkLoginAttempts(email.toLowerCase());
 
         // Get user from database
         console.log(`[${requestId}] Querying database for user...`);
@@ -1255,74 +1454,40 @@ async function adminLoginHandler(req, res) {
             where: { email: email.toLowerCase().trim() },
             select: 'id, email, full_name, role, department, is_active, password_hash, created_at, last_login'
         });
-        console.log(`[${requestId}] Database query complete. Found:`, result.data.length > 0 ? 'Yes' : 'No');
 
         if (result.data.length === 0) {
-            console.log(`[${requestId}] User not found`);
-            return res.status(401).json({
-                status: 'error',
-                code: 'AUTH_FAILED',
-                message: 'Invalid credentials'
-            });
+            await recordFailedAttempt(email.toLowerCase());
+            throw new AuthError('Invalid credentials');
         }
 
         const user = result.data[0];
-        console.log(`[${requestId}] User found:`, { 
-            id: user.id, 
-            email: user.email, 
-            role: user.role,
-            is_active: user.is_active 
-        });
 
         // Check if account is active
         if (!user.is_active) {
-            console.log(`[${requestId}] Account is deactivated`);
-            return res.status(401).json({
-                status: 'error',
-                code: 'ACCOUNT_DEACTIVATED',
-                message: 'Account is deactivated'
-            });
+            throw new AuthError('Account is deactivated', 'ACCOUNT_DEACTIVATED');
         }
 
         // Check if user has admin role
         if (user.role !== 'admin') {
-            console.log(`[${requestId}] User is not admin. Role:`, user.role);
-            return res.status(401).json({
-                status: 'error',
-                code: 'AUTH_FAILED',
-                message: 'Invalid credentials'
-            });
+            await recordFailedAttempt(email.toLowerCase());
+            throw new AuthError('Invalid credentials');
         }
 
         // Verify password
-        console.log(`[${requestId}] Verifying password...`);
-        console.log(`[${requestId}] Stored hash:`, user.password_hash.substring(0, 20) + '...');
-        
-        let validPassword = false;
-        try {
-            validPassword = await bcrypt.compare(password, user.password_hash);
-            console.log(`[${requestId}] Password verification result:`, validPassword);
-        } catch (bcryptError) {
-            console.error(`[${requestId}] Bcrypt error:`, bcryptError);
-            throw bcryptError;
-        }
-        
+        const validPassword = await bcrypt.compare(password, user.password_hash);
         if (!validPassword) {
-            console.log(`[${requestId}] Invalid password`);
-            return res.status(401).json({
-                status: 'error',
-                code: 'AUTH_FAILED',
-                message: 'Invalid credentials'
-            });
+            await recordFailedAttempt(email.toLowerCase());
+            throw new AuthError('Invalid credentials');
         }
 
+        // Reset login attempts on success
+        await resetLoginAttempts(email.toLowerCase());
+
         // Update last login
-        console.log(`[${requestId}] Updating last login...`);
         await db.query('update', 'users', {
             data: { last_login: new Date() },
             where: { id: user.id }
         });
-        console.log(`[${requestId}] Last login updated`);
 
         // Create token payload
         const tokenPayload = {
@@ -1331,58 +1496,41 @@ async function adminLoginHandler(req, res) {
             role: user.role,
             fullName: user.full_name,
             sessionType: 'admin_panel',
-            loginTime: Date.now()
+            loginTime: Date.now(),
+            jti: uuid.v4()
         };
-        console.log(`[${requestId}] Token payload created`);
 
         // Generate admin session token
-        console.log(`[${requestId}] Generating JWT...`);
-        let token;
-        try {
-            token = jwt.sign(tokenPayload, JWT_SECRET, {
-                expiresIn: '8h',
-                issuer: 'nuesa-biu-system',
-                audience: 'nuesa-biu-admin'
-            });
-            console.log(`[${requestId}] JWT generated successfully`);
-        } catch (jwtError) {
-            console.error(`[${requestId}] JWT generation error:`, jwtError);
-            throw jwtError;
-        }
+        const token = jwt.sign(tokenPayload, JWT_SECRET, {
+            expiresIn: '8h',
+            issuer: 'nuesa-biu-system',
+            audience: 'nuesa-biu-admin'
+        });
 
         // Set cookie
-        console.log(`[${requestId}] Setting cookie...`);
-        try {
-            let cookieDomain;
-            if (isProduction && process.env.FRONTEND_URL) {
-                try {
-                    const frontendUrl = new URL(process.env.FRONTEND_URL);
-                    cookieDomain = frontendUrl.hostname;
-                    console.log(`[${requestId}] Cookie domain:`, cookieDomain);
-                } catch (error) {
-                    console.error(`[${requestId}] Invalid FRONTEND_URL:`, error);
-                    cookieDomain = undefined;
-                }
+        let cookieDomain;
+        if (isProduction && process.env.FRONTEND_URL) {
+            try {
+                const frontendUrl = new URL(process.env.FRONTEND_URL);
+                cookieDomain = frontendUrl.hostname;
+            } catch (error) {
+                logger.error('Invalid FRONTEND_URL:', error);
             }
-
-            const cookieOptions = {
-                httpOnly: true,
-                secure: isProduction,
-                sameSite: 'strict',
-                maxAge: 8 * 60 * 60 * 1000,
-                path: '/'
-            };
-
-            if (cookieDomain) {
-                cookieOptions.domain = cookieDomain;
-            }
-
-            res.cookie('admin_session', token, cookieOptions);
-            console.log(`[${requestId}] Cookie set successfully`);
-        } catch (cookieError) {
-            console.error(`[${requestId}] Cookie error:`, cookieError);
-            throw cookieError;
         }
+
+        const cookieOptions = {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: 'strict',
+            maxAge: 8 * 60 * 60 * 1000,
+            path: '/'
+        };
+
+        if (cookieDomain) {
+            cookieOptions.domain = cookieDomain;
+        }
+
+        res.cookie('admin_session', token, cookieOptions);
 
         // Return success
         const userResponse = {
@@ -1394,7 +1542,7 @@ async function adminLoginHandler(req, res) {
             lastLogin: user.last_login
         };
 
-        console.log(`[${requestId}] Login successful for user:`, user.id);
+        logger.info('Admin login successful', { userId: user.id, requestId });
         res.json({
             status: 'success',
             data: {
@@ -1406,38 +1554,39 @@ async function adminLoginHandler(req, res) {
         });
 
     } catch (error) {
-        console.error(`[${requestId}] Admin login error:`, {
-            message: error.message,
-            stack: error.stack,
-            name: error.name,
-            code: error.code
+        console.error(`[${requestId}] Admin login error:`, error.message);
+        
+        // Log the error
+        logger.error('Admin login error', {
+            requestId,
+            error: error.message,
+            code: error.code,
+            name: error.name
         });
         
-        // Send more detailed error in development, generic in production
+        // Send appropriate error response
+        const statusCode = error.statusCode || 500;
         const errorResponse = {
             status: 'error',
-            code: 'INTERNAL_ERROR',
-            message: 'Authentication failed'
+            code: error.code || 'INTERNAL_ERROR',
+            message: error.message || 'Authentication failed'
         };
         
-        // Add details only in development
-        if (!isProduction) {
-            errorResponse.details = error.message;
+        if (!isProduction && error.stack) {
             errorResponse.stack = error.stack;
         }
         
-        res.status(500).json(errorResponse);
+        res.status(statusCode).json(errorResponse);
     }
 }
 
-// Register routes using the reusable handler so cookies and headers are handled in-process
-app.post('/api/admin/login', authLimiter, adminLoginHandler);
-app.post('/admin/login', authLimiter, adminLoginHandler);
+// Register admin routes
+app.post('/api/admin/login', createRateLimiter(5), adminLoginHandler);
+app.post('/admin/login', createRateLimiter(5), adminLoginHandler);
 
 // Admin logout endpoint
 app.post('/api/admin/logout', async (req, res) => {
     try {
-        // Safely clear admin cookie
         const cookieOptions = {
             path: '/'
         };
@@ -1541,32 +1690,21 @@ app.get('/api/admin/session', async (req, res) => {
 });
 
 // ==================== REGULAR CONTACT FORM ENDPOINT ====================
-// Regular contact form submission (kept separate from admin auth)
-app.post('/api/contact/submit', contactFormLimiter, async (req, res) => {
+app.post('/api/contact/submit', createRateLimiter(10), validate(schemas.contactForm), async (req, res) => {
     try {
         const { name, email, message, subject } = req.body;
-
-        if (!name || !email || !message) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'Name, email, and message are required'
-            });
-        }
-
-        // Validate email format
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'Invalid email format'
-            });
-        }
 
         // Here you would typically:
         // 1. Save to database
         // 2. Send email notification
         // 3. Trigger any workflow
 
-        logger.info('Contact form submitted', { name, email, subject: subject || 'No subject' });
+        logger.info('Contact form submitted', { 
+            requestId: req.id,
+            name, 
+            email, 
+            subject: subject || 'No subject' 
+        });
 
         res.json({
             status: 'success',
@@ -1574,7 +1712,7 @@ app.post('/api/contact/submit', contactFormLimiter, async (req, res) => {
         });
 
     } catch (error) {
-        logger.error('Contact form error:', error);
+        logger.error('Contact form error:', { requestId: req.id, error: error.message });
         res.status(500).json({
             status: 'error',
             message: 'Failed to submit form. Please try again later.'
@@ -1638,7 +1776,7 @@ userRouter.get('/', verifyToken, requireRole('admin'), async (req, res) => {
             }
         });
     } catch (error) {
-        logger.error('Error fetching users:', error);
+        logger.error('Error fetching users:', { requestId: req.id, error: error.message });
         res.status(500).json({
             status: 'error',
             message: 'Failed to fetch users'
@@ -1646,7 +1784,7 @@ userRouter.get('/', verifyToken, requireRole('admin'), async (req, res) => {
     }
 });
 
-userRouter.post('/', verifyToken, requireRole('admin'), async (req, res) => {
+userRouter.post('/', verifyToken, requireRole('admin'), validate(schemas.createUser), async (req, res) => {
     try {
         const {
             email,
@@ -1657,29 +1795,6 @@ userRouter.post('/', verifyToken, requireRole('admin'), async (req, res) => {
             is_active = true
         } = req.body;
 
-        // Validation
-        if (!email || !password || !full_name) {
-            return res.status(400).json({
-                status: 'error',
-                code: 'VALIDATION_ERROR',
-                message: 'Email, password, and full name are required'
-            });
-        }
-
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'Invalid email format'
-            });
-        }
-
-        if (password.length < 8) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'Password must be at least 8 characters long'
-            });
-        }
-
         // Check existing user
         const existing = await db.query('select', 'users', {
             where: { email: email.toLowerCase() },
@@ -1687,10 +1802,7 @@ userRouter.post('/', verifyToken, requireRole('admin'), async (req, res) => {
         });
 
         if (existing.data.length > 0) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'User with this email already exists'
-            });
+            throw new ValidationError('User with this email already exists');
         }
 
         // Create user
@@ -1713,13 +1825,24 @@ userRouter.post('/', verifyToken, requireRole('admin'), async (req, res) => {
 
         const user = authService.createUserResponse(result.data[0]);
 
+        logger.info('User created', { requestId: req.id, userId: user.id, createdBy: req.user.id });
+
         res.status(201).json({
             status: 'success',
             data: user,
             message: 'User created successfully'
         });
     } catch (error) {
-        logger.error('Error creating user:', error);
+        logger.error('Error creating user:', { requestId: req.id, error: error.message });
+        
+        if (error instanceof ValidationError) {
+            return res.status(400).json({
+                status: 'error',
+                code: 'VALIDATION_ERROR',
+                message: error.message
+            });
+        }
+        
         res.status(500).json({
             status: 'error',
             message: 'Failed to create user'
@@ -1731,10 +1854,7 @@ userRouter.get('/:id', verifyToken, async (req, res) => {
     try {
         // Users can view their own profile, admins can view any
         if (req.user.role !== 'admin' && req.user.id !== req.params.id) {
-            return res.status(403).json({
-                status: 'error',
-                message: 'Access denied'
-            });
+            throw new ForbiddenError('Access denied');
         }
 
         const result = await db.query('select', 'users', {
@@ -1743,10 +1863,7 @@ userRouter.get('/:id', verifyToken, async (req, res) => {
         });
 
         if (result.data.length === 0) {
-            return res.status(404).json({
-                status: 'error',
-                message: 'User not found'
-            });
+            throw new NotFoundError('User');
         }
 
         res.json({
@@ -1754,7 +1871,22 @@ userRouter.get('/:id', verifyToken, async (req, res) => {
             data: authService.createUserResponse(result.data[0])
         });
     } catch (error) {
-        logger.error('Error fetching user:', error);
+        logger.error('Error fetching user:', { requestId: req.id, error: error.message });
+        
+        if (error instanceof NotFoundError) {
+            return res.status(404).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+        
+        if (error instanceof ForbiddenError) {
+            return res.status(403).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+        
         res.status(500).json({
             status: 'error',
             message: 'Failed to fetch user'
@@ -1762,14 +1894,11 @@ userRouter.get('/:id', verifyToken, async (req, res) => {
     }
 });
 
-userRouter.put('/:id', verifyToken, async (req, res) => {
+userRouter.put('/:id', verifyToken, validate(schemas.updateUser), async (req, res) => {
     try {
         // Check permissions
         if (req.user.role !== 'admin' && req.user.id !== req.params.id) {
-            return res.status(403).json({
-                status: 'error',
-                message: 'Access denied'
-            });
+            throw new ForbiddenError('Access denied');
         }
 
         const {
@@ -1793,12 +1922,6 @@ userRouter.put('/:id', verifyToken, async (req, res) => {
         }
 
         if (password) {
-            if (password.length < 8) {
-                return res.status(400).json({
-                    status: 'error',
-                    message: 'Password must be at least 8 characters long'
-                });
-            }
             updateData.password_hash = await bcrypt.hash(password, 12);
         }
 
@@ -1812,17 +1935,18 @@ userRouter.put('/:id', verifyToken, async (req, res) => {
         });
 
         if (result.data.length === 0) {
-            return res.status(404).json({
-                status: 'error',
-                message: 'User not found'
-            });
+            throw new NotFoundError('User');
         }
 
         // Clear caches
-        userCache.delete(`user:${req.params.id}`);
+        await cacheManager.delete(`user:${req.params.id}`);
+        await cacheManager.invalidate('data:*');
+
         if (req.user.id === req.params.id) {
             req.user = authService.createUserResponse(result.data[0]);
         }
+
+        logger.info('User updated', { requestId: req.id, userId: req.params.id, updatedBy: req.user.id });
 
         res.json({
             status: 'success',
@@ -1830,7 +1954,22 @@ userRouter.put('/:id', verifyToken, async (req, res) => {
             message: 'User updated successfully'
         });
     } catch (error) {
-        logger.error('Error updating user:', error);
+        logger.error('Error updating user:', { requestId: req.id, error: error.message });
+        
+        if (error instanceof NotFoundError) {
+            return res.status(404).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+        
+        if (error instanceof ForbiddenError) {
+            return res.status(403).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+        
         res.status(500).json({
             status: 'error',
             message: 'Failed to update user'
@@ -1841,10 +1980,7 @@ userRouter.put('/:id', verifyToken, async (req, res) => {
 userRouter.delete('/:id', verifyToken, requireRole('admin'), async (req, res) => {
     try {
         if (req.params.id === req.user.id) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'Cannot delete your own account'
-            });
+            throw new ValidationError('Cannot delete your own account');
         }
 
         const result = await db.query('delete', 'users', {
@@ -1852,20 +1988,35 @@ userRouter.delete('/:id', verifyToken, requireRole('admin'), async (req, res) =>
         });
 
         if (result.data.length === 0) {
-            return res.status(404).json({
-                status: 'error',
-                message: 'User not found'
-            });
+            throw new NotFoundError('User');
         }
 
-        userCache.delete(`user:${req.params.id}`);
+        await cacheManager.delete(`user:${req.params.id}`);
+        await cacheManager.invalidate('data:*');
+
+        logger.info('User deleted', { requestId: req.id, userId: req.params.id, deletedBy: req.user.id });
 
         res.json({
             status: 'success',
             message: 'User deleted successfully'
         });
     } catch (error) {
-        logger.error('Error deleting user:', error);
+        logger.error('Error deleting user:', { requestId: req.id, error: error.message });
+        
+        if (error instanceof NotFoundError) {
+            return res.status(404).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+        
+        if (error instanceof ValidationError) {
+            return res.status(400).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+        
         res.status(500).json({
             status: 'error',
             message: 'Failed to delete user'
@@ -1883,16 +2034,12 @@ app.get('/api/profile', verifyToken, async (req, res) => {
     });
 });
 
-app.put('/api/profile', verifyToken, async (req, res) => {
+app.put('/api/profile', verifyToken, validate(Joi.object({ 
+    full_name: Joi.string().min(2).max(100).required(),
+    department: Joi.string().optional()
+})), async (req, res) => {
     try {
         const { full_name, department } = req.body;
-
-        if (!full_name) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'Full name is required'
-            });
-        }
 
         const updateData = {
             full_name: full_name.trim(),
@@ -1906,7 +2053,7 @@ app.put('/api/profile', verifyToken, async (req, res) => {
         });
 
         const updatedUser = authService.createUserResponse(result.data[0]);
-        userCache.set(`user:${req.user.id}`, updatedUser, 300000);
+        await cacheManager.set(`user:${req.user.id}`, updatedUser, 300000);
         req.user = updatedUser;
 
         res.json({
@@ -1915,7 +2062,7 @@ app.put('/api/profile', verifyToken, async (req, res) => {
             message: 'Profile updated successfully'
         });
     } catch (error) {
-        logger.error('Error updating profile:', error);
+        logger.error('Error updating profile:', { requestId: req.id, error: error.message });
         res.status(500).json({
             status: 'error',
             message: 'Failed to update profile'
@@ -1923,23 +2070,9 @@ app.put('/api/profile', verifyToken, async (req, res) => {
     }
 });
 
-app.put('/api/profile/password', verifyToken, async (req, res) => {
+app.put('/api/profile/password', verifyToken, validate(schemas.changePassword), async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
-
-        if (!currentPassword || !newPassword) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'Current password and new password are required'
-            });
-        }
-
-        if (newPassword.length < 8) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'New password must be at least 8 characters long'
-            });
-        }
 
         // Verify current password
         const result = await db.query('select', 'users', {
@@ -1949,10 +2082,7 @@ app.put('/api/profile/password', verifyToken, async (req, res) => {
 
         const validPassword = await bcrypt.compare(currentPassword, result.data[0].password_hash);
         if (!validPassword) {
-            return res.status(401).json({
-                status: 'error',
-                message: 'Current password is incorrect'
-            });
+            throw new ValidationError('Current password is incorrect');
         }
 
         // Update password
@@ -1962,12 +2092,22 @@ app.put('/api/profile/password', verifyToken, async (req, res) => {
             where: { id: req.user.id }
         });
 
+        logger.info('Password updated', { requestId: req.id, userId: req.user.id });
+
         res.json({
             status: 'success',
             message: 'Password updated successfully'
         });
     } catch (error) {
-        logger.error('Error updating password:', error);
+        logger.error('Error updating password:', { requestId: req.id, error: error.message });
+        
+        if (error instanceof ValidationError) {
+            return res.status(400).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+        
         res.status(500).json({
             status: 'error',
             message: 'Failed to update password'
@@ -1978,7 +2118,7 @@ app.put('/api/profile/password', verifyToken, async (req, res) => {
 // ==================== ENHANCED MEMBERS ROUTES ====================
 const memberRouter = express.Router();
 
-memberRouter.get('/', cacheMiddleware(120), async (req, res) => {
+memberRouter.get('/', cacheMiddleware(120, ['members']), async (req, res) => {
     try {
         const { committee, status = 'active', sort = 'display_order', order = 'asc' } = req.query;
 
@@ -1996,7 +2136,7 @@ memberRouter.get('/', cacheMiddleware(120), async (req, res) => {
             count: result.data.length
         });
     } catch (error) {
-        logger.error('Error fetching members:', error);
+        logger.error('Error fetching members:', { requestId: req.id, error: error.message });
         res.status(500).json({
             status: 'error',
             message: 'Failed to fetch members'
@@ -2004,17 +2144,14 @@ memberRouter.get('/', cacheMiddleware(120), async (req, res) => {
     }
 });
 
-memberRouter.get('/:id', cacheMiddleware(300), async (req, res) => {
+memberRouter.get('/:id', cacheMiddleware(300, ['members']), async (req, res) => {
     try {
         const result = await db.query('select', 'executive_members', {
             where: { id: req.params.id }
         });
 
         if (result.data.length === 0) {
-            return res.status(404).json({
-                status: 'error',
-                message: 'Member not found'
-            });
+            throw new NotFoundError('Member');
         }
 
         res.json({
@@ -2022,7 +2159,15 @@ memberRouter.get('/:id', cacheMiddleware(300), async (req, res) => {
             data: result.data[0]
         });
     } catch (error) {
-        logger.error('Error fetching member:', error);
+        logger.error('Error fetching member:', { requestId: req.id, error: error.message });
+        
+        if (error instanceof NotFoundError) {
+            return res.status(404).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+        
         res.status(500).json({
             status: 'error',
             message: 'Failed to fetch member'
@@ -2030,19 +2175,12 @@ memberRouter.get('/:id', cacheMiddleware(300), async (req, res) => {
     }
 });
 
-memberRouter.post('/', verifyToken, requireRole('admin', 'editor'), upload.single('profile_image'), async (req, res) => {
+memberRouter.post('/', verifyToken, requireRole('admin', 'editor'), upload.single('profile_image'), validate(schemas.createMember), async (req, res) => {
     try {
         const {
             full_name, position, department, level, email, phone,
             bio, committee, display_order, status, social_links
         } = req.body;
-
-        if (!full_name || !position) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'Full name and position are required'
-            });
-        }
 
         const memberData = {
             full_name: full_name.trim(),
@@ -2055,7 +2193,7 @@ memberRouter.post('/', verifyToken, requireRole('admin', 'editor'), upload.singl
             committee: committee ? committee.trim() : null,
             display_order: display_order || 0,
             status: status || 'active',
-            social_links: social_links ? JSON.parse(social_links) : {},
+            social_links: social_links ? (typeof social_links === 'string' ? JSON.parse(social_links) : social_links) : {},
             created_at: new Date(),
             updated_at: new Date()
         };
@@ -2066,7 +2204,9 @@ memberRouter.post('/', verifyToken, requireRole('admin', 'editor'), upload.singl
 
         const result = await db.query('insert', 'executive_members', { data: memberData });
 
-        cacheManager.invalidate(/members/);
+        await cacheManager.invalidateByTags(['members']);
+
+        logger.info('Member created', { requestId: req.id, memberId: result.data[0].id, createdBy: req.user.id });
 
         res.status(201).json({
             status: 'success',
@@ -2074,7 +2214,7 @@ memberRouter.post('/', verifyToken, requireRole('admin', 'editor'), upload.singl
             message: 'Member created successfully'
         });
     } catch (error) {
-        logger.error('Error creating member:', error);
+        logger.error('Error creating member:', { requestId: req.id, error: error.message });
         res.status(500).json({
             status: 'error',
             message: 'Failed to create member'
@@ -2098,7 +2238,9 @@ memberRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), upload.sin
         });
 
         if (req.body.social_links) {
-            memberData.social_links = JSON.parse(req.body.social_links);
+            memberData.social_links = typeof req.body.social_links === 'string' 
+                ? JSON.parse(req.body.social_links) 
+                : req.body.social_links;
         }
 
         if (req.file) {
@@ -2113,13 +2255,12 @@ memberRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), upload.sin
         });
 
         if (result.data.length === 0) {
-            return res.status(404).json({
-                status: 'error',
-                message: 'Member not found'
-            });
+            throw new NotFoundError('Member');
         }
 
-        cacheManager.invalidate(/members/);
+        await cacheManager.invalidateByTags(['members']);
+
+        logger.info('Member updated', { requestId: req.id, memberId: req.params.id, updatedBy: req.user.id });
 
         res.json({
             status: 'success',
@@ -2127,7 +2268,15 @@ memberRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), upload.sin
             message: 'Member updated successfully'
         });
     } catch (error) {
-        logger.error('Error updating member:', error);
+        logger.error('Error updating member:', { requestId: req.id, error: error.message });
+        
+        if (error instanceof NotFoundError) {
+            return res.status(404).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+        
         res.status(500).json({
             status: 'error',
             message: 'Failed to update member'
@@ -2142,20 +2291,27 @@ memberRouter.delete('/:id', verifyToken, requireRole('admin', 'editor'), async (
         });
 
         if (result.data.length === 0) {
-            return res.status(404).json({
-                status: 'error',
-                message: 'Member not found'
-            });
+            throw new NotFoundError('Member');
         }
 
-        cacheManager.invalidate(/members/);
+        await cacheManager.invalidateByTags(['members']);
+
+        logger.info('Member deleted', { requestId: req.id, memberId: req.params.id, deletedBy: req.user.id });
 
         res.json({
             status: 'success',
             message: 'Member deleted successfully'
         });
     } catch (error) {
-        logger.error('Error deleting member:', error);
+        logger.error('Error deleting member:', { requestId: req.id, error: error.message });
+        
+        if (error instanceof NotFoundError) {
+            return res.status(404).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+        
         res.status(500).json({
             status: 'error',
             message: 'Failed to delete member'
@@ -2169,10 +2325,7 @@ app.use('/api/members', memberRouter);
 app.post('/api/upload', verifyToken, requireRole('admin', 'editor'), upload.single('file'), async (req, res) => {
     try {
         if (!req.file) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'No file uploaded'
-            });
+            throw new ValidationError('No file uploaded');
         }
 
         const fileInfo = {
@@ -2186,13 +2339,28 @@ app.post('/api/upload', verifyToken, requireRole('admin', 'editor'), upload.sing
             uploadedAt: new Date()
         };
 
+        logger.info('File uploaded', { 
+            requestId: req.id, 
+            filename: req.file.filename,
+            size: req.file.size,
+            uploadedBy: req.user.id 
+        });
+
         res.json({
             status: 'success',
             data: fileInfo,
             message: 'File uploaded successfully'
         });
     } catch (error) {
-        logger.error('Error uploading file:', error);
+        logger.error('Error uploading file:', { requestId: req.id, error: error.message });
+        
+        if (error instanceof ValidationError) {
+            return res.status(400).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+        
         res.status(500).json({
             status: 'error',
             message: 'Failed to upload file'
@@ -2207,18 +2375,22 @@ app.delete('/api/upload/:filename', verifyToken, requireRole('admin'), async (re
         await fs.access(filePath);
         await fs.unlink(filePath);
 
+        logger.info('File deleted', { requestId: req.id, filename: req.params.filename, deletedBy: req.user.id });
+
         res.json({
             status: 'success',
             message: 'File deleted successfully'
         });
     } catch (error) {
-        logger.error('Error deleting file:', error);
+        logger.error('Error deleting file:', { requestId: req.id, error: error.message });
+        
         if (error.code === 'ENOENT') {
             return res.status(404).json({
                 status: 'error',
                 message: 'File not found'
             });
         }
+        
         res.status(500).json({
             status: 'error',
             message: 'Failed to delete file'
@@ -2235,7 +2407,6 @@ const publicExists = fsSync.existsSync(publicDir);
 // Block direct access to any resources admin sub-path unless user is admin
 app.all('/resources/admin*', (req, res, next) => {
     if (!req.isAdmin) {
-        // Do not reveal the existence of admin resources to unauthenticated users
         return res.status(404).send('Not found');
     }
     next();
@@ -2284,11 +2455,18 @@ if (publicExists) {
 if (adminExists) {
     console.log('✅ Admin folder found. Setting up hidden admin routes...');
     
-    // 1. DISGUISED ADMIN PORTAL (looks like a system portal)
-    app.get('/portal/system', async (req, res) => {
+    // CSRF token endpoint for admin forms
+    app.get('/api/csrf-token', csrfProtection, (req, res) => {
+        res.json({
+            status: 'success',
+            csrfToken: req.csrfToken()
+        });
+    });
+    
+    // 1. DISGUISED ADMIN PORTAL
+    app.get('/portal/system', csrfProtection, async (req, res) => {
         try {
             if (!req.isAdmin) {
-                // Show access denied page that looks like regular 404
                 return res.status(404).send(`
                     <!DOCTYPE html>
                     <html>
@@ -2317,15 +2495,14 @@ if (adminExists) {
         }
     });
     
-    // 2. HIDDEN ADMIN LOGIN PAGE (disguised as internal portal)
-    app.get('/portal/login', async (req, res) => {
+    // 2. HIDDEN ADMIN LOGIN PAGE with CSRF token
+    app.get('/portal/login', csrfProtection, async (req, res) => {
         // Check if user is already admin
         if (req.isAdmin) {
-            // Redirect to admin dashboard
             return res.redirect('/portal/system');
         }
         
-        // Show disguised login page without hardcoded secret
+        // Show disguised login page with CSRF token
         res.send(`
             <!DOCTYPE html>
             <html>
@@ -2386,6 +2563,8 @@ if (adminExists) {
                     <h2>Internal Portal</h2>
                     <p>Authorized access only</p>
                     
+                    <input type="hidden" id="csrfToken" value="${req.csrfToken()}">
+                    
                     <form id="portalLogin">
                         <input type="email" name="admin_email" placeholder="Email Address" required>
                         <input type="password" name="admin_password" placeholder="Password" required>
@@ -2404,16 +2583,19 @@ if (adminExists) {
                         e.preventDefault();
                         const formData = new FormData(e.target);
                         const data = Object.fromEntries(formData);
+                        const csrfToken = document.getElementById('csrfToken').value;
                         
                         const messageDiv = document.getElementById('message');
                         messageDiv.textContent = 'Authenticating...';
                         messageDiv.className = 'message';
                         
                         try {
-                            // Use proper admin login endpoint
                             const response = await fetch('/api/admin/login', {
                                 method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
+                                headers: { 
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-Token': csrfToken
+                                },
                                 body: JSON.stringify({
                                     email: data.admin_email,
                                     password: data.admin_password,
@@ -2495,7 +2677,6 @@ if (adminExists) {
     
     // 5. BLOCK DIRECT ACCESS TO ADMIN FOLDER
     app.all('/admin/*', (req, res) => {
-        // Always redirect to home page
         res.redirect('/');
     });
     
@@ -2509,72 +2690,130 @@ if (adminExists) {
     console.log('⚠️ Admin folder not found.');
 }
 
-// ==================== SYSTEM ENDPOINTS ====================
-// TEMPORARY DEBUG ENDPOINT - REMOVE AFTER FIXING
-app.get('/api/debug/env', (req, res) => {
-    res.json({
-        admin_email: process.env.ADMIN_EMAIL ? '✓ Set' : '✗ Missing',
-        admin_password: process.env.ADMIN_PASSWORD ? '✓ Set' : '✗ Missing',
-        jwt_secret: process.env.JWT_SECRET ? '✓ Set' : '✗ Missing',
-        supabase_url: process.env.SUPABASE_URL ? '✓ Set' : '✗ Missing',
-        supabase_key: process.env.SUPABASE_SERVICE_ROLE_KEY ? '✓ Set' : '✗ Missing',
-        node_env: process.env.NODE_ENV
-    });
-});
+// ==================== SWAGGER API DOCUMENTATION ====================
+const swaggerOptions = {
+    definition: {
+        openapi: '3.0.0',
+        info: {
+            title: 'NUESA BIU API',
+            version: '1.0.0',
+            description: 'API documentation for NUESA BIU application',
+            contact: {
+                name: 'NUESA BIU',
+                email: process.env.ADMIN_EMAIL
+            }
+        },
+        servers: [
+            {
+                url: isProduction ? 'https://nuesa-biu-pjp0.onrender.com' : `http://localhost:${PORT}`,
+                description: isProduction ? 'Production server' : 'Development server'
+            }
+        ],
+        components: {
+            securitySchemes: {
+                bearerAuth: {
+                    type: 'http',
+                    scheme: 'bearer',
+                    bearerFormat: 'JWT'
+                }
+            }
+        }
+    },
+    apis: ['./server.js'], // Path to the API docs
+};
 
-app.get('/api/debug/db', async (req, res) => {
+const swaggerSpecs = swaggerJsdoc(swaggerOptions);
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
+
+// ==================== SYSTEM ENDPOINTS ====================
+// Enhanced health check
+async function checkDatabase() {
     try {
-        // Test database connection
-        const result = await db.query('select', 'users', { limit: 1 });
-        res.json({
-            status: 'connected',
-            message: 'Database connection successful',
-            data: result.data
-        });
+        const start = Date.now();
+        await db.query('select', 'users', { limit: 1 });
+        const responseTime = Date.now() - start;
+        return { status: 'healthy', responseTime: `${responseTime}ms` };
     } catch (error) {
-        res.status(500).json({
-            status: 'error',
-            message: error.message,
-            code: error.code
-        });
+        return { status: 'unhealthy', error: error.message };
     }
-});
+}
+
+async function checkCache() {
+    try {
+        if (redis) {
+            await redis.ping();
+            return { status: 'healthy', type: 'redis' };
+        } else {
+            return { status: 'healthy', type: 'memory', size: cacheManager.getStats() };
+        }
+    } catch (error) {
+        return { status: 'unhealthy', error: error.message };
+    }
+}
+
+async function checkDiskSpace() {
+    try {
+        if (process.platform !== 'win32') {
+            const { stdout } = await execPromise('df -k . | tail -1');
+            const parts = stdout.trim().split(/\s+/);
+            const used = parseInt(parts[2]) * 1024;
+            const available = parseInt(parts[3]) * 1024;
+            const total = used + available;
+            
+            return {
+                status: 'healthy',
+                total: formatBytes(total),
+                used: formatBytes(used),
+                available: formatBytes(available),
+                usagePercent: Math.round((used / total) * 100) + '%'
+            };
+        }
+        return { status: 'healthy', message: 'Disk check not available on Windows' };
+    } catch (error) {
+        return { status: 'unknown', error: error.message };
+    }
+}
+
+function checkMemory() {
+    const memory = process.memoryUsage();
+    return {
+        status: 'healthy',
+        rss: formatBytes(memory.rss),
+        heapTotal: formatBytes(memory.heapTotal),
+        heapUsed: formatBytes(memory.heapUsed),
+        external: formatBytes(memory.external)
+    };
+}
+
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
 
 app.get('/api/health', async (req, res) => {
-    try {
-        const health = {
-            status: 'healthy',
-            timestamp: new Date().toISOString(),
-            uptime: process.uptime(),
-            memory: process.memoryUsage(),
-            database: 'unknown',
-            cache: {
-                users: userCache.getStats(),
-                data: dataCache.getStats()
-            }
-        };
-
-        try {
-            await db.query('select', 'users', { limit: 1 });
-            health.database = 'connected';
-        } catch (error) {
-            health.database = 'disconnected';
-            health.databaseError = error.message;
-        }
-
-        const status = health.database === 'connected' ? 200 : 503;
-
-        res.status(status).json({
-            status: health.status,
-            ...health
-        });
-    } catch (error) {
-        res.status(503).json({
-            status: 'unhealthy',
-            error: error.message,
-            timestamp: new Date().toISOString()
-        });
-    }
+    const checks = {
+        database: await checkDatabase(),
+        cache: await checkCache(),
+        disk: await checkDiskSpace(),
+        memory: checkMemory(),
+        uptime: process.uptime(),
+        nodeVersion: process.version,
+        environment: NODE_ENV
+    };
+    
+    const isHealthy = Object.values(checks).every(check => 
+        check.status === 'healthy' || check.status === 'unknown'
+    );
+    
+    res.status(isHealthy ? 200 : 503).json({
+        status: isHealthy ? 'healthy' : 'unhealthy',
+        checks,
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+    });
 });
 
 app.get('/api/ping', (req, res) => {
@@ -2582,19 +2821,77 @@ app.get('/api/ping', (req, res) => {
         status: 'success',
         message: 'pong',
         timestamp: new Date().toISOString(),
-        version: '1.0.0'
+        version: '1.0.0',
+        requestId: req.id
     });
 });
+
+// Metrics endpoint
+app.get('/api/metrics', verifyToken, requireRole('admin'), async (req, res) => {
+    try {
+        // Get request stats from logs (simplified)
+        const metrics = {
+            requests: {
+                total: await getRequestCount(),
+                byEndpoint: await getEndpointStats(),
+                byStatus: await getStatusStats()
+            },
+            performance: {
+                averageResponseTime: await getAvgResponseTime(),
+                p95ResponseTime: await getP95ResponseTime()
+            },
+            database: db.getStats(),
+            cache: cacheManager.getStats(),
+            system: {
+                uptime: process.uptime(),
+                memory: process.memoryUsage(),
+                cpu: process.cpuUsage()
+            }
+        };
+        
+        res.json({
+            status: 'success',
+            data: metrics,
+            timestamp: new Date().toISOString(),
+            requestId: req.id
+        });
+    } catch (error) {
+        logger.error('Error fetching metrics:', { requestId: req.id, error: error.message });
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch metrics'
+        });
+    }
+});
+
+// Helper functions for metrics (simplified)
+async function getRequestCount() {
+    // In production, you'd query this from your logs or a database
+    return 0;
+}
+
+async function getEndpointStats() {
+    return {};
+}
+
+async function getStatusStats() {
+    return {};
+}
+
+async function getAvgResponseTime() {
+    return '0ms';
+}
+
+async function getP95ResponseTime() {
+    return '0ms';
+}
 
 app.get('/api/stats', verifyToken, requireRole('admin'), async (req, res) => {
     try {
         const [users, members, cacheStats] = await Promise.all([
             db.query('select', 'users', { count: true }),
             db.query('select', 'executive_members', { count: true }),
-            Promise.resolve({
-                users: userCache.getStats(),
-                data: dataCache.getStats()
-            })
+            Promise.resolve(cacheManager.getStats())
         ]);
 
         res.json({
@@ -2605,10 +2902,11 @@ app.get('/api/stats', verifyToken, requireRole('admin'), async (req, res) => {
                 cache: cacheStats,
                 uptime: process.uptime(),
                 environment: NODE_ENV
-            }
+            },
+            requestId: req.id
         });
     } catch (error) {
-        logger.error('Error fetching stats:', error);
+        logger.error('Error fetching stats:', { requestId: req.id, error: error.message });
         res.status(500).json({
             status: 'error',
             message: 'Failed to fetch statistics'
@@ -2616,8 +2914,44 @@ app.get('/api/stats', verifyToken, requireRole('admin'), async (req, res) => {
     }
 });
 
+// Debug endpoints (only in development)
+if (!isProduction) {
+    app.get('/api/debug/env', (req, res) => {
+        res.json({
+            admin_email: process.env.ADMIN_EMAIL ? '✓ Set' : '✗ Missing',
+            admin_password: process.env.ADMIN_PASSWORD ? '✓ Set' : '✗ Missing',
+            jwt_secret: process.env.JWT_SECRET ? '✓ Set' : '✗ Missing',
+            supabase_url: process.env.SUPABASE_URL ? '✓ Set' : '✗ Missing',
+            supabase_key: process.env.SUPABASE_SERVICE_ROLE_KEY ? '✓ Set' : '✗ Missing',
+            node_env: process.env.NODE_ENV,
+            redis: process.env.REDIS_URL ? '✓ Set' : '✗ Missing',
+            requestId: req.id
+        });
+    });
+
+    app.get('/api/debug/db', async (req, res) => {
+        try {
+            const result = await db.query('select', 'users', { limit: 1 });
+            res.json({
+                status: 'connected',
+                message: 'Database connection successful',
+                data: result.data,
+                stats: db.getStats(),
+                requestId: req.id
+            });
+        } catch (error) {
+            res.status(500).json({
+                status: 'error',
+                message: error.message,
+                code: error.code,
+                requestId: req.id
+            });
+        }
+    });
+}
+
 // ==================== STATIC FILES ====================
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+app.use('/uploads', compression(), express.static(path.join(__dirname, 'uploads'), {
     maxAge: isProduction ? '30d' : '0',
     setHeaders: (res, filePath) => {
         const ext = path.extname(filePath).toLowerCase();
@@ -2659,42 +2993,11 @@ app.get('/api', (req, res) => {
             profile: '/api/profile',
             health: '/api/health',
             stats: '/api/stats',
-            contact: '/api/contact/submit'
-        }
-    });
-});
-
-app.get('/api/docs', (req, res) => {
-    res.json({
-        title: 'API Documentation',
-        description: 'NUESA BIU API Server Documentation',
-        version: '1.0.0',
-        endpoints: [
-            {
-                path: '/api/auth/login',
-                method: 'POST',
-                description: 'User authentication',
-                body: 'email, password'
-            },
-            {
-                path: '/api/admin/login',
-                method: 'POST',
-                description: 'Admin authentication',
-                body: 'email, password'
-            },
-            {
-                path: '/api/members',
-                method: 'GET',
-                description: 'Get all executive members',
-                query: '?committee=tech&status=active'
-            },
-            {
-                path: '/api/users',
-                method: 'GET',
-                description: 'Get users (admin only)',
-                auth: 'Bearer token required'
-            }
-        ]
+            metrics: '/api/metrics',
+            contact: '/api/contact/submit',
+            docs: '/api/docs'
+        },
+        requestId: req.id
     });
 });
 
@@ -2706,7 +3009,8 @@ app.use((req, res) => {
             status: 'error',
             code: 'ROUTE_NOT_FOUND',
             message: `Route ${req.method} ${req.url} not found`,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            requestId: req.id
         });
     }
     
@@ -2717,7 +3021,8 @@ app.use((req, res) => {
     } else {
         res.status(404).json({
             status: 'error',
-            message: 'Page not found'
+            message: 'Page not found',
+            requestId: req.id
         });
     }
 });
@@ -2725,6 +3030,7 @@ app.use((req, res) => {
 // ==================== ERROR HANDLER ====================
 app.use((err, req, res, next) => {
     logger.error('Unhandled error:', {
+        requestId: req.id,
         error: err.message,
         stack: err.stack,
         url: req.url,
@@ -2740,13 +3046,15 @@ app.use((err, req, res, next) => {
             return res.status(400).json({
                 status: 'error',
                 code: 'FILE_TOO_LARGE',
-                message: `File size too large. Maximum size is ${process.env.MAX_FILE_SIZE || '10MB'}.`
+                message: `File size too large. Maximum size is ${process.env.MAX_FILE_SIZE || '10MB'}.`,
+                requestId: req.id
             });
         }
         return res.status(400).json({
             status: 'error',
             code: 'UPLOAD_ERROR',
-            message: `File upload error: ${err.message}`
+            message: `File upload error: ${err.message}`,
+            requestId: req.id
         });
     }
 
@@ -2755,7 +3063,8 @@ app.use((err, req, res, next) => {
         return res.status(400).json({
             status: 'error',
             code: 'DATABASE_ERROR',
-            message: `Database error: ${err.message}`
+            message: `Database error: ${err.message}`,
+            requestId: req.id
         });
     }
 
@@ -2764,17 +3073,39 @@ app.use((err, req, res, next) => {
         return res.status(err.statusCode || 401).json({
             status: 'error',
             code: err.code,
-            message: err.message
+            message: err.message,
+            requestId: req.id
         });
     }
 
     // Validation errors
-    if (err.name === 'ValidationError') {
+    if (err instanceof ValidationError) {
         return res.status(400).json({
             status: 'error',
             code: 'VALIDATION_ERROR',
             message: err.message,
-            errors: err.errors
+            errors: err.errors,
+            requestId: req.id
+        });
+    }
+
+    // Not found errors
+    if (err instanceof NotFoundError) {
+        return res.status(404).json({
+            status: 'error',
+            code: 'NOT_FOUND',
+            message: err.message,
+            requestId: req.id
+        });
+    }
+
+    // Forbidden errors
+    if (err instanceof ForbiddenError) {
+        return res.status(403).json({
+            status: 'error',
+            code: 'FORBIDDEN',
+            message: err.message,
+            requestId: req.id
         });
     }
 
@@ -2786,7 +3117,8 @@ app.use((err, req, res, next) => {
         status: 'error',
         code: 'INTERNAL_ERROR',
         message: message,
-        ...(!isProduction && { stack: err.stack, details: err.message })
+        ...(!isProduction && { stack: err.stack, details: err.message }),
+        requestId: req.id
     });
 });
 
@@ -2819,12 +3151,22 @@ process.on('uncaughtException', (error) => {
 // Graceful shutdown
 process.on('SIGTERM', () => {
     logger.info('SIGTERM received, starting graceful shutdown');
-    process.exit(0);
+    
+    // Close database connections
+    // Close server
+    setTimeout(() => {
+        process.exit(0);
+    }, 1000);
 });
 
 process.on('SIGINT', () => {
     logger.info('SIGINT received, starting graceful shutdown');
-    process.exit(0);
+    
+    // Close database connections
+    // Close server
+    setTimeout(() => {
+        process.exit(0);
+    }, 1000);
 });
 
 // ==================== SERVER STARTUP ====================
@@ -2840,10 +3182,12 @@ async function startServer() {
 ║ 📡 Port: ${PORT}                                                ║
 ║ 🌍 Environment: ${NODE_ENV}                                     ║
 ║ 🗄️  Database: Supabase                                          ║
+║ 💾 Cache: ${redis ? 'Redis' : 'In-Memory'}                      ║
 ║ 🔗 API URL: http://localhost:${PORT}                            ║
 ║ 🌐 Frontend: ${process.env.FRONTEND_URL || 'Not set'}           ║
 ║ 🔒 JWT: ${JWT_SECRET ? 'Set ✓' : 'Missing ✗'}                  ║
 ║ 👑 Admin: ${process.env.ADMIN_EMAIL || 'Not configured'}        ║
+║ 📚 API Docs: http://localhost:${PORT}/api/docs                  ║
 ║ 🔐 Admin Panel: /portal/login                                   ║
 ║ 🎭 Dashboard: /portal/system (after login)                      ║
 ╚═══════════════════════════════════════════════════════════════════╝
