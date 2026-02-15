@@ -949,23 +949,66 @@
             background-color: var(--emerald-700);
         }
 
-        /* No Events Message */
-        .no-events {
+        /* Empty State Styles */
+        .empty-state {
             text-align: center;
-            padding: 5rem 0;
-            border: 2px dashed var(--gray-300);
-            background-color: var(--white);
-            opacity: 0;
-            transition: opacity 0.5s ease;
+            padding: 4rem 2rem;
+            background: var(--white);
+            border: 2px dashed var(--emerald-200);
+            border-radius: 0.5rem;
+            grid-column: 1 / -1;
         }
 
-        .no-events.visible {
-            opacity: 1;
+        .empty-state i {
+            font-size: 3rem;
+            color: var(--emerald-300);
+            margin-bottom: 1rem;
         }
 
-        .no-events p {
+        .empty-state h3 {
+            font-family: 'Inter', sans-serif;
+            font-size: 1.25rem;
+            color: var(--slate-700);
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state p {
             font-family: 'Roboto Mono', monospace;
-            color: var(--gray-600);
+            color: var(--slate-500);
+            margin-bottom: 1.5rem;
+        }
+
+        .empty-state button {
+            padding: 0.75rem 1.5rem;
+            background: var(--emerald-600);
+            color: white;
+            border: none;
+            border-radius: 0.375rem;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .empty-state button:hover {
+            background: var(--emerald-700);
+        }
+
+        /* Loading Spinner */
+        .loading-spinner {
+            display: inline-block;
+            width: 2rem;
+            height: 2rem;
+            border: 3px solid var(--emerald-200);
+            border-radius: 50%;
+            border-top-color: var(--emerald-600);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
 
         /* Media Queries */
@@ -1099,21 +1142,15 @@
                         <span>FILTER BY:</span>
                     </div>
                     <button class="filter-button active" data-filter="all">All</button>
-                    <button class="filter-button" data-filter="Workshops">Workshops</button>
-                    <button class="filter-button" data-filter="Competitions">Competitions</button>
-                    <button class="filter-button" data-filter="Socials">Socials</button>
+                    <button class="filter-button" data-filter="Workshop">Workshops</button>
+                    <button class="filter-button" data-filter="Competition">Competitions</button>
+                    <button class="filter-button" data-filter="Social">Socials</button>
+                    <button class="filter-button" data-filter="Career">Career</button>
                 </div>
 
                 <!-- Events Grid -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="eventsGrid">
-                    <!-- Event cards will be populated by JavaScript -->
-                </div>
-
-                <!-- No Events Message -->
-                <div class="no-events rounded-lg hidden" id="noEvents">
-                    <p class="font-mono text-gray-600">
-                        No events found in this category.
-                    </p>
+                    <!-- Events will be loaded from API -->
                 </div>
             </div>
         </section>
@@ -1205,558 +1242,356 @@
     </footer>
 
     <script>
-// API Configuration - Only use your server
-const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
+    // API Configuration - Live backend only, no mock data
+    const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
+    
+    // Global state
+    let activeFilter = 'all';
+    let allEvents = [];
 
-// Global state
-let activeFilter = 'all';
-let allEvents = [];
-let isConnected = false;
-
-// Utility Functions (keep the same)
-function formatDate(dateString) {
-    if (!dateString) return 'TBA';
-    try {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-        });
-    } catch (error) {
-        console.error('Date formatting error:', error);
-        return dateString;
-    }
-}
-
-function formatTime(timeString) {
-    if (!timeString) return 'TBA';
-    try {
-        const [hours, minutes] = timeString.split(':');
-        const hour = parseInt(hours);
-        const ampm = hour >= 12 ? 'PM' : 'AM';
-        const displayHour = hour % 12 || 12;
-        return `${displayHour}:${minutes} ${ampm}`;
-    } catch (error) {
-        return timeString;
-    }
-}
-
-function showLoading(container) {
-    if (!container) return;
-    container.innerHTML = `
-        <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
-            <div class="animate-spin" style="
-                width: 3rem;
-                height: 3rem;
-                border: 3px solid var(--emerald-200);
-                border-top: 3px solid var(--emerald-600);
-                border-radius: 50%;
-                margin: 0 auto 1rem;
-            "></div>
-            <p style="font-family: 'Roboto Mono', monospace; color: var(--slate-500);">
-                Connecting to server...
-            </p>
-        </div>
-    `;
-}
-
-function getCategoryClass(category) {
-    if (!category) return 'category-default';
-    
-    const categoryMap = {
-        'Workshop': 'category-workshops',
-        'Workshops': 'category-workshops',
-        'Competition': 'category-competitions',
-        'Competitions': 'category-competitions',
-        'Social': 'category-socials',
-        'Socials': 'category-socials',
-        'Career': 'category-career',
-        'Academic': 'category-workshops',
-        'General': 'category-default',
-        'Seminar': 'category-workshops',
-        'Conference': 'category-workshops'
-    };
-    
-    return categoryMap[category] || 'category-default';
-}
-
-// Main function to load events from API
-async function loadEventsFromAPI() {
-    const eventsGrid = document.getElementById('eventsGrid');
-    if (!eventsGrid) return;
-    
-    console.log('🔍 Loading events from API...');
-    showLoading(eventsGrid);
-    
-    try {
-        // First check if server is reachable
-        console.log('📡 Checking server connection...');
-        const healthCheck = await fetch(`${API_BASE_URL}/api/health`, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json'
-            },
-            mode: 'cors'
-        }).catch(error => {
-            console.error('Health check failed:', error);
-            throw new Error('Cannot connect to server. Please check if the server is running.');
-        });
-        
-        if (!healthCheck.ok) {
-            throw new Error(`Server returned ${healthCheck.status}`);
-        }
-        
-        isConnected = true;
-        console.log('✅ Server is reachable');
-        
-        // Now fetch events
-        const response = await fetch(`${API_BASE_URL}/api/events`, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            },
-            mode: 'cors'
-        });
-        
-        console.log('📡 Events API Response Status:', response.status);
-        
-        if (!response.ok) {
-            throw new Error(`API returned ${response.status}: ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        console.log('📊 API Data received:', data);
-        
-        // Handle different response formats
-        if (data.status === 'success' && data.data) {
-            allEvents = data.data;
-        } else if (Array.isArray(data)) {
-            allEvents = data;
-        } else if (data.events && Array.isArray(data.events)) {
-            allEvents = data.events;
-        } else {
-            console.warn('Unexpected API response format:', data);
-            allEvents = [];
-        }
-        
-        console.log(`✅ Loaded ${allEvents.length} events from database`);
-        
-        if (allEvents.length === 0) {
-            showNoEventsMessage('No events found in the database.');
-        } else {
-            generateEventCards(activeFilter);
-        }
-        
-    } catch (error) {
-        console.error('❌ Error loading events:', error);
-        isConnected = false;
-        
-        // Show connection error
-        showConnectionError(error.message);
-    }
-}
-
-// Show connection error
-function showConnectionError(message) {
-    const eventsGrid = document.getElementById('eventsGrid');
-    if (!eventsGrid) return;
-    
-    eventsGrid.innerHTML = `
-        <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: var(--white); border-radius: 0.5rem; border: 2px solid var(--emerald-200);">
-            <i class="fas fa-unlink" style="font-size: 3rem; color: var(--slate-400); margin-bottom: 1rem;"></i>
-            <h3 style="font-family: 'Inter', sans-serif; font-size: 1.25rem; color: var(--slate-700); margin-bottom: 0.5rem;">
-                Server Connection Error
-            </h3>
-            <p style="font-family: 'Roboto Mono', monospace; color: var(--slate-500); margin-bottom: 1rem;">
-                ${message}
-            </p>
-            <p style="font-family: 'Roboto Mono', monospace; color: var(--slate-400); font-size: 0.75rem; margin-bottom: 1.5rem;">
-                Check if your server is running at:<br>
-                <code style="background: var(--slate-100); padding: 0.25rem 0.5rem; border-radius: 0.25rem; margin-top: 0.5rem; display: inline-block;">
-                    ${API_BASE_URL}
-                </code>
-            </p>
-            <button onclick="loadEventsFromAPI()" style="
-                padding: 0.75rem 1.5rem;
-                background: var(--emerald-600);
-                color: white;
-                border: none;
-                border-radius: 0.375rem;
-                font-family: 'Roboto Mono', monospace;
-                font-size: 0.75rem;
-                font-weight: 700;
-                text-transform: uppercase;
-                letter-spacing: 0.05em;
-                cursor: pointer;
-                transition: background-color 0.3s;
-            ">
-                <i class="fas fa-sync-alt mr-2"></i> Retry Connection
-            </button>
-        </div>
-    `;
-}
-
-// Show no events message
-function showNoEventsMessage(message) {
-    const eventsGrid = document.getElementById('eventsGrid');
-    const noEvents = document.getElementById('noEvents');
-    
-    if (eventsGrid) {
-        eventsGrid.innerHTML = '';
-    }
-    
-    if (noEvents) {
-        noEvents.querySelector('p').textContent = message;
-        noEvents.classList.remove('hidden');
-        setTimeout(() => {
-            noEvents.classList.add('visible');
-        }, 50);
-    }
-}
-
-// Generate event cards based on filter
-function generateEventCards(filter = 'all') {
-    const eventsGrid = document.getElementById('eventsGrid');
-    const noEvents = document.getElementById('noEvents');
-    
-    if (!eventsGrid) return;
-    
-    // Clear current events
-    eventsGrid.innerHTML = '';
-    
-    // Filter events
-    let filteredEvents = [];
-    if (filter === 'all') {
-        filteredEvents = allEvents;
-    } else {
-        filteredEvents = allEvents.filter(event => {
-            if (!event.category) return false;
-            const eventCategory = event.category.toLowerCase();
-            const filterCategory = filter.toLowerCase();
-            
-            return eventCategory.includes(filterCategory) || 
-                   eventCategory === filterCategory ||
-                   filterCategory === 'socials' && (eventCategory.includes('social') || eventCategory === 'social');
-        });
-    }
-    
-    // Show/hide no events message
-    if (filteredEvents.length === 0) {
-        if (noEvents) {
-            noEvents.querySelector('p').textContent = isConnected 
-                ? `No ${filter.toLowerCase()} events found in the database.` 
-                : 'No events to display.';
-            noEvents.classList.remove('hidden');
-            setTimeout(() => {
-                noEvents.classList.add('visible');
-            }, 50);
-        }
-        
-        // Show message in grid
-        eventsGrid.innerHTML = `
-            <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: var(--white); border-radius: 0.5rem; border: 2px dashed var(--emerald-200);">
-                <i class="fas fa-database" style="font-size: 3rem; color: var(--emerald-300); margin-bottom: 1rem;"></i>
-                <h3 style="font-family: 'Inter', sans-serif; font-size: 1.25rem; color: var(--slate-700); margin-bottom: 0.5rem;">
-                    ${isConnected ? 'Database is Empty' : 'No Data Available'}
-                </h3>
-                <p style="font-family: 'Roboto Mono', monospace; color: var(--slate-500);">
-                    ${isConnected 
-                        ? `No events found in the ${filter === 'all' ? 'database' : filter.toLowerCase() + ' category'}.`
-                        : 'Cannot connect to the database.'
-                    }
-                </p>
-                ${isConnected && filter !== 'all' ? 
-                    `<button onclick="generateEventCards('all')" style="
-                        margin-top: 1rem;
-                        padding: 0.5rem 1rem;
-                        background: var(--emerald-600);
-                        color: white;
-                        border: none;
-                        border-radius: 0.25rem;
-                        font-family: 'Roboto Mono', monospace;
-                        font-size: 0.75rem;
-                        cursor: pointer;
-                    ">
-                        Show All Events
-                    </button>` : ''
-                }
-                ${!isConnected ? 
-                    `<button onclick="loadEventsFromAPI()" style="
-                        margin-top: 1rem;
-                        padding: 0.5rem 1rem;
-                        background: var(--emerald-600);
-                        color: white;
-                        border: none;
-                        border-radius: 0.25rem;
-                        font-family: 'Roboto Mono', monospace;
-                        font-size: 0.75rem;
-                        cursor: pointer;
-                    ">
-                        Retry Connection
-                    </button>` : ''
-                }
-            </div>
-        `;
-    } else {
-        // Hide no events message
-        if (noEvents) {
-            noEvents.classList.remove('visible');
-            setTimeout(() => {
-                noEvents.classList.add('hidden');
-            }, 300);
-        }
-        
-        // Generate event cards
-        filteredEvents.forEach((event, index) => {
-            const card = createEventCard(event, index);
-            eventsGrid.appendChild(card);
-        });
-        
-        // Animate cards in with staggered delay
-        setTimeout(() => {
-            const cards = eventsGrid.querySelectorAll('.event-card');
-            cards.forEach((card, index) => {
-                setTimeout(() => {
-                    card.classList.add('visible');
-                }, index * 100);
-            });
-        }, 100);
-        
-        // Attach event listeners
-        attachEventListeners();
-    }
-    
-    // Update active filter buttons
-    updateFilterButtons(filter);
-}
-
-// Create a single event card
-function createEventCard(event, index) {
-    const card = document.createElement('div');
-    card.className = 'event-card';
-    
-    const categoryClass = getCategoryClass(event.category || 'General');
-    const formattedDate = formatDate(event.date);
-    const formattedTime = formatTime(event.start_time);
-    
-    card.innerHTML = `
-        <div class="event-category ${categoryClass}">
-            ${event.category || 'Event'}
-        </div>
-        <div class="mt-4 mb-4">
-            <h3 class="event-title">
-                ${event.title || 'Upcoming Event'}
-            </h3>
-        </div>
-        <div class="event-details">
-            <div class="event-detail">
-                <i class="fas fa-calendar"></i>
-                <span>${formattedDate}</span>
-            </div>
-            <div class="event-detail">
-                <i class="fas fa-clock"></i>
-                <span>${formattedTime}</span>
-            </div>
-            <div class="event-detail">
-                <i class="fas fa-map-marker-alt"></i>
-                <span>${event.location || 'TBA'}</span>
-            </div>
-            ${event.organizer ? `
-            <div class="event-detail">
-                <i class="fas fa-user-tie"></i>
-                <span>${event.organizer}</span>
-            </div>` : ''}
-        </div>
-        <p class="event-description">
-            ${event.description || event.short_description || 'More details coming soon!'}
-        </p>
-        <button class="register-button" 
-                data-event-id="${event.id || ''}"
-                data-event-title="${event.title || 'Event'}">
-            <span>REGISTER NOW</span>
-            <i class="fas fa-arrow-right"></i>
-        </button>
-    `;
-    
-    return card;
-}
-
-// Update filter button states
-function updateFilterButtons(filter) {
-    const filterButtons = document.querySelectorAll('.filter-button');
-    filterButtons.forEach(button => {
-        if (button.getAttribute('data-filter') === filter) {
-            button.classList.add('active');
-        } else {
-            button.classList.remove('active');
-        }
-    });
-}
-
-// Attach event listeners to register buttons and cards
-function attachEventListeners() {
-    // Register button click handlers
-    const registerButtons = document.querySelectorAll('.register-button');
-    registerButtons.forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const eventId = this.getAttribute('data-event-id');
-            const eventTitle = this.getAttribute('data-event-title');
-            
-            if (!isConnected) {
-                alert('Cannot register: Server is not connected. Please check your connection.');
-                return;
-            }
-            
-            showRegistrationModal(eventTitle, eventId);
-        });
-    });
-    
-    // Event card hover effects
-    const eventCards = document.querySelectorAll('.event-card');
-    eventCards.forEach(card => {
-        card.addEventListener('mouseenter', function() {
-            this.style.transform = 'translateY(-0.5rem)';
-        });
-        
-        card.addEventListener('mouseleave', function() {
-            this.style.transform = 'translateY(0)';
-        });
-        
-        // Card click to show details
-        card.addEventListener('click', function(e) {
-            if (e.target.classList.contains('register-button') || e.target.closest('.register-button')) {
-                return;
-            }
-            
-            const eventId = this.querySelector('.register-button')?.getAttribute('data-event-id');
-            const eventTitle = this.querySelector('.event-title')?.textContent;
-            if (eventId && isConnected) {
-                showEventDetailsModal(eventId, eventTitle);
-            } else if (!isConnected) {
-                alert('Cannot load event details: Server is not connected.');
-            }
-        });
-    });
-}
-
-// Show event details modal
-async function showEventDetailsModal(eventId, eventTitle = 'Event') {
-    try {
-        if (!isConnected) {
-            throw new Error('Server is not connected');
-        }
-        
-        const response = await fetch(`${API_BASE_URL}/api/events/${eventId}`);
-        
-        if (!response.ok) {
-            throw new Error(`Failed to fetch event details: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        let event = {};
-        
-        if (data.status === 'success' && data.data) {
-            event = data.data;
-        } else if (data) {
-            event = data;
-        }
-        
-        // Use fallback from allEvents if API fails
-        if (!event.id) {
-            event = allEvents.find(e => e.id == eventId) || { title: eventTitle };
-        }
-        
-        // ... [Keep your existing modal code] ...
-        
-    } catch (error) {
-        console.error('Error loading event details:', error);
-        alert(`Error: ${error.message}`);
-    }
-}
-
-// Initialize the page
-document.addEventListener('DOMContentLoaded', function() {
     // DOM Elements
+    const eventsGrid = document.getElementById('eventsGrid');
     const mobileNav = document.getElementById('mobileNav');
     const mobileMenuBtn = document.getElementById('mobileMenuBtn');
     const logoBtn = document.getElementById('logoBtn');
     const filterButtons = document.querySelectorAll('.filter-button');
-    
-    // Load events from API
-    loadEventsFromAPI();
-    
-    // Filter button click handlers
-    filterButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const filter = this.getAttribute('data-filter');
-            activeFilter = filter;
+
+    // Utility Functions
+    function formatDate(dateString) {
+        if (!dateString) return 'TBA';
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return dateString;
+            return date.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+        } catch (error) {
+            console.error('Date formatting error:', error);
+            return dateString;
+        }
+    }
+
+    function formatTime(timeString) {
+        if (!timeString) return 'TBA';
+        try {
+            // Handle time format (assuming HH:MM:SS or HH:MM)
+            const parts = timeString.split(':');
+            if (parts.length < 2) return timeString;
             
-            // Show loading state
-            const eventsGrid = document.getElementById('eventsGrid');
-            if (eventsGrid) {
-                eventsGrid.innerHTML = `
-                    <div style="grid-column: 1 / -1; text-align: center; padding: 2rem;">
-                        <div class="animate-spin" style="
-                            width: 2rem;
-                            height: 2rem;
-                            border: 2px solid var(--emerald-200);
-                            border-top: 2px solid var(--emerald-600);
-                            border-radius: 50%;
-                            margin: 0 auto 1rem;
-                        "></div>
-                        <p style="font-family: 'Roboto Mono', monospace; color: var(--slate-500); font-size: 0.75rem;">
-                            Filtering events...
-                        </p>
-                    </div>
-                `;
-                
-                // Small delay for smoother UX
-                setTimeout(() => {
-                    generateEventCards(filter);
-                }, 300);
+            const hours = parseInt(parts[0]);
+            const minutes = parts[1];
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            const displayHour = hours % 12 || 12;
+            
+            return `${displayHour}:${minutes.padStart(2, '0')} ${ampm}`;
+        } catch (error) {
+            return timeString;
+        }
+    }
+
+    function getCategoryClass(category) {
+        if (!category) return 'category-default';
+        
+        const categoryLower = category.toLowerCase();
+        
+        if (categoryLower.includes('workshop')) return 'category-workshops';
+        if (categoryLower.includes('competition')) return 'category-competitions';
+        if (categoryLower.includes('social')) return 'category-socials';
+        if (categoryLower.includes('career')) return 'category-career';
+        
+        return 'category-default';
+    }
+
+    // Loading State
+    function showLoading() {
+        if (!eventsGrid) return;
+        
+        eventsGrid.innerHTML = `
+            <div class="empty-state">
+                <div class="loading-spinner"></div>
+                <h3 style="margin-top: 1rem;">Loading Events</h3>
+                <p>Please wait while we fetch the latest events.</p>
+            </div>
+        `;
+    }
+
+    // Empty State
+    function showEmptyState(message) {
+        if (!eventsGrid) return;
+        
+        eventsGrid.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-calendar-times"></i>
+                <h3>No Events Found</h3>
+                <p>${message || 'There are no events in the database yet.'}</p>
+                <button onclick="loadEventsFromAPI()">
+                    <i class="fas fa-sync-alt mr-2"></i>Refresh
+                </button>
+            </div>
+        `;
+    }
+
+    // Error State
+    function showErrorState(error) {
+        if (!eventsGrid) return;
+        
+        eventsGrid.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i>
+                <h3>Connection Error</h3>
+                <p>Unable to load events from the server.</p>
+                <p style="font-size: 0.75rem; color: #94a3b8; margin: 0.5rem 0;">
+                    ${error.message || 'Please check your connection'}
+                </p>
+                <button onclick="loadEventsFromAPI()">
+                    <i class="fas fa-sync-alt mr-2"></i>Try Again
+                </button>
+            </div>
+        `;
+    }
+
+    // Main function to load events from API
+    async function loadEventsFromAPI() {
+        if (!eventsGrid) return;
+        
+        console.log('🔍 Loading events from API...');
+        showLoading();
+        
+        try {
+            // Check server health first
+            console.log('📡 Checking server connection...');
+            const healthCheck = await fetch(`${API_BASE_URL}/api/health`, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' },
+                mode: 'cors'
+            });
+            
+            if (!healthCheck.ok) {
+                throw new Error(`Server returned ${healthCheck.status}`);
             }
-        });
-    });
-    
-    // Mobile menu toggle
-    if (mobileMenuBtn && mobileNav) {
-        mobileMenuBtn.addEventListener('click', function() {
-            mobileNav.classList.toggle('open');
-            const icon = this.querySelector('i');
-            if (mobileNav.classList.contains('open')) {
-                icon.classList.remove('fa-bars');
-                icon.classList.add('fa-times');
+            
+            console.log('✅ Server is reachable');
+            
+            // Fetch events
+            console.log('📡 Fetching events from:', `${API_BASE_URL}/api/events`);
+            const response = await fetch(`${API_BASE_URL}/api/events`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors'
+            });
+            
+            console.log('📡 Response status:', response.status);
+            
+            if (!response.ok) {
+                throw new Error(`API returned ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log('📊 Data received:', data);
+            
+            // Handle different response formats
+            if (data.status === 'success' && data.data) {
+                allEvents = data.data;
+            } else if (Array.isArray(data)) {
+                allEvents = data;
+            } else if (data.events && Array.isArray(data.events)) {
+                allEvents = data.events;
             } else {
-                icon.classList.remove('fa-times');
-                icon.classList.add('fa-bars');
+                console.warn('Unexpected API response format:', data);
+                allEvents = [];
             }
+            
+            console.log(`✅ Loaded ${allEvents.length} events from database`);
+            
+            if (allEvents.length === 0) {
+                showEmptyState('No events have been added to the database yet.');
+            } else {
+                renderEvents(activeFilter);
+            }
+            
+        } catch (error) {
+            console.error('❌ Error loading events:', error);
+            showErrorState(error);
+        }
+    }
+
+    // Render events based on filter
+    function renderEvents(filter = 'all') {
+        if (!eventsGrid) return;
+        
+        // Filter events
+        let filteredEvents = [];
+        
+        if (filter === 'all') {
+            filteredEvents = allEvents;
+        } else {
+            filteredEvents = allEvents.filter(event => {
+                if (!event.category) return false;
+                const eventCategory = event.category.toLowerCase();
+                const filterCategory = filter.toLowerCase();
+                
+                return eventCategory.includes(filterCategory) ||
+                       eventCategory === filterCategory ||
+                       (filterCategory === 'workshop' && eventCategory.includes('workshop')) ||
+                       (filterCategory === 'competition' && eventCategory.includes('competition')) ||
+                       (filterCategory === 'social' && eventCategory.includes('social')) ||
+                       (filterCategory === 'career' && eventCategory.includes('career'));
+            });
+        }
+        
+        if (filteredEvents.length === 0) {
+            showEmptyState(`No ${filter === 'all' ? '' : filter} events found.`);
+            return;
+        }
+        
+        // Render events
+        eventsGrid.innerHTML = '';
+        
+        filteredEvents.forEach((event, index) => {
+            const card = createEventCard(event);
+            eventsGrid.appendChild(card);
+            
+            // Animate card entrance
+            setTimeout(() => {
+                card.classList.add('visible');
+            }, index * 100);
         });
         
-        // Close mobile menu when clicking outside
-        document.addEventListener('click', function(e) {
-            if (!mobileNav.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
-                mobileNav.classList.remove('open');
-                mobileMenuBtn.querySelector('i').classList.remove('fa-times');
-                mobileMenuBtn.querySelector('i').classList.add('fa-bars');
+        // Update active filter button
+        updateActiveFilter(filter);
+    }
+
+    // Create a single event card
+    function createEventCard(event) {
+        const card = document.createElement('div');
+        card.className = 'event-card';
+        card.setAttribute('data-event-id', event.id || '');
+        
+        const category = event.category || 'Event';
+        const categoryClass = getCategoryClass(category);
+        const formattedDate = formatDate(event.date);
+        const formattedTime = formatTime(event.time || event.start_time);
+        
+        card.innerHTML = `
+            <div class="event-category ${categoryClass}">
+                ${category}
+            </div>
+            <h3 class="event-title">${event.title || 'Untitled Event'}</h3>
+            <div class="event-details">
+                <div class="event-detail">
+                    <i class="fas fa-calendar"></i>
+                    <span>${formattedDate}</span>
+                </div>
+                <div class="event-detail">
+                    <i class="fas fa-clock"></i>
+                    <span>${formattedTime}</span>
+                </div>
+                <div class="event-detail">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>${event.location || 'TBA'}</span>
+                </div>
+                ${event.organizer ? `
+                <div class="event-detail">
+                    <i class="fas fa-user-tie"></i>
+                    <span>${event.organizer}</span>
+                </div>` : ''}
+            </div>
+            <p class="event-description line-clamp-3">
+                ${event.description || event.short_description || 'No description available.'}
+            </p>
+            <button class="register-button" onclick="handleRegistration('${event.id}', '${event.title}')">
+                <span>REGISTER</span>
+                <i class="fas fa-arrow-right"></i>
+            </button>
+        `;
+        
+        return card;
+    }
+
+    // Handle registration
+    window.handleRegistration = function(eventId, eventTitle) {
+        if (!eventId) {
+            alert('Event registration is temporarily unavailable.');
+            return;
+        }
+        
+        // You can redirect to a registration page or show a modal
+        window.location.href = `register.html?event=${eventId}`;
+    };
+
+    // Update active filter button
+    function updateActiveFilter(filter) {
+        filterButtons.forEach(button => {
+            const buttonFilter = button.getAttribute('data-filter');
+            if (buttonFilter === filter) {
+                button.classList.add('active');
+            } else {
+                button.classList.remove('active');
             }
         });
     }
-    
-    // Logo click - go to home
-    if (logoBtn) {
-        logoBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            window.location.href = 'index.html';
+
+    // Initialize page
+    function init() {
+        console.log('🚀 Initializing Events Page');
+        console.log('📡 API URL:', API_BASE_URL);
+        
+        // Load events
+        loadEventsFromAPI();
+        
+        // Setup filter buttons
+        filterButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const filter = this.getAttribute('data-filter');
+                activeFilter = filter;
+                renderEvents(filter);
+            });
         });
+        
+        // Setup mobile menu
+        if (mobileMenuBtn && mobileNav) {
+            mobileMenuBtn.addEventListener('click', function() {
+                mobileNav.classList.toggle('open');
+                const icon = this.querySelector('i');
+                if (mobileNav.classList.contains('open')) {
+                    icon.classList.remove('fa-bars');
+                    icon.classList.add('fa-times');
+                } else {
+                    icon.classList.remove('fa-times');
+                    icon.classList.add('fa-bars');
+                }
+            });
+            
+            // Close mobile menu when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!mobileNav.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
+                    mobileNav.classList.remove('open');
+                    const icon = mobileMenuBtn.querySelector('i');
+                    if (icon) {
+                        icon.classList.remove('fa-times');
+                        icon.classList.add('fa-bars');
+                    }
+                }
+            });
+        }
+        
+        // Logo click
+        if (logoBtn) {
+            logoBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                window.location.href = 'index.html';
+            });
+        }
+        
+        // Highlight current page
+        highlightCurrentPage();
     }
-    
-    // Highlight current page in navigation
+
     function highlightCurrentPage() {
         const currentPage = window.location.pathname.split('/').pop();
         
@@ -1769,21 +1604,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    
-    highlightCurrentPage();
-});
 
-// Add CSS for spinner animation
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-    .animate-spin {
-        animation: spin 1s linear infinite;
-    }
-`;
-document.head.appendChild(style);
-</script>
+    // Start the application
+    document.addEventListener('DOMContentLoaded', init);
+    </script>
 </body>
 </html>

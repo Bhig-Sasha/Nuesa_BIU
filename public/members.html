@@ -803,6 +803,7 @@
             background-color: var(--white);
             padding: 1rem;
             transition: all 0.3s ease;
+            cursor: pointer;
         }
 
         .member-card:hover {
@@ -982,6 +983,66 @@
             margin-bottom: 0.25rem;
         }
 
+        /* Loading Spinner */
+        .loading-spinner {
+            display: inline-block;
+            width: 2rem;
+            height: 2rem;
+            border: 3px solid var(--emerald-200);
+            border-radius: 50%;
+            border-top-color: var(--emerald-600);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            background: var(--white);
+            border: 2px dashed var(--gray-300);
+            border-radius: 0.5rem;
+            grid-column: 1 / -1;
+        }
+
+        .empty-state i {
+            font-size: 2rem;
+            color: var(--gray-300);
+            margin-bottom: 1rem;
+        }
+
+        .empty-state h3 {
+            font-family: 'Inter', sans-serif;
+            font-size: 1.25rem;
+            color: var(--gray-600);
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state p {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.875rem;
+            color: var(--gray-400);
+        }
+
+        .retry-button {
+            margin-top: 1rem;
+            padding: 0.5rem 1rem;
+            background: var(--emerald-600);
+            color: white;
+            border: none;
+            border-radius: 0.25rem;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .retry-button:hover {
+            background: var(--emerald-700);
+        }
+
         /* Media Queries */
         @media (min-width: 640px) {
             .sm\:grid-cols-2 {
@@ -1091,13 +1152,13 @@
         <!-- Mobile Navigation -->
         <div class="mobile-nav" id="mobileNav">
             <div class="mobile-nav-items">
-                <a href="index.html" class="nav-button">Home</a>
-                <a href="about.html" class="nav-button active">About</a>
-                <a href="members.html" class="nav-button">Members</a>
-                <a href="events.html" class="nav-button">Events</a>
-                <a href="resources.html" class="nav-button">Resources</a>
-                <a href="news.html" class="nav-button">News</a>
-                <a href="contacts.html" class="nav-button">Contact</a>
+                <a href="index.html" class="mobile-nav-button">Home</a>
+                <a href="about.html" class="mobile-nav-button">About</a>
+                <a href="members.html" class="mobile-nav-button active">Members</a>
+                <a href="events.html" class="mobile-nav-button">Events</a>
+                <a href="resources.html" class="mobile-nav-button">Resources</a>
+                <a href="news.html" class="mobile-nav-button">News</a>
+                <a href="contacts.html" class="mobile-nav-button">Contact</a>
             </div>
         </div>
     </header>
@@ -1130,9 +1191,9 @@
                         <div class="divider-line"></div>
                     </div>
 
-                    <!-- Executive Cards -->
+                    <!-- Executive Cards - Will be populated by JavaScript -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8" id="executiveGrid">
-                        <!-- Executive cards will be populated by JavaScript -->
+                        <!-- Loading state will be shown here -->
                     </div>
                 </div>
 
@@ -1147,66 +1208,9 @@
                         <div class="divider-line"></div>
                     </div>
 
-                    <!-- Committee Cards -->
-                    <div class="committee-grid">
-                        <!-- Academic Committee -->
-                        <div class="committee-card">
-                            <h3 class="committee-title">
-                                Academic Committee
-                            </h3>
-                            <p class="committee-description">
-                                Responsible for organizing tutorials, quizzes, and academic
-                                competitions.
-                            </p>
-                            <ul class="committee-members">
-                                <li>• Head: Michael Chen</li>
-                                <li>• Asst: Sarah Jones</li>
-                            </ul>
-                        </div>
-
-                        <!-- Technical Committee -->
-                        <div class="committee-card">
-                            <h3 class="committee-title">
-                                Technical Committee
-                            </h3>
-                            <p class="committee-description">
-                                Focuses on workshops, skill acquisition, and project
-                                exhibitions.
-                            </p>
-                            <ul class="committee-members">
-                                <li>• Head: Robert Stark</li>
-                                <li>• Asst: Pepper Potts</li>
-                            </ul>
-                        </div>
-
-                        <!-- Social Committee -->
-                        <div class="committee-card">
-                            <h3 class="committee-title">
-                                Social Committee
-                            </h3>
-                            <p class="committee-description">
-                                Organizes dinners, freshers' welcome, and recreational
-                                activities.
-                            </p>
-                            <ul class="committee-members">
-                                <li>• Head: Bruce Wayne</li>
-                                <li>• Asst: Diana Prince</li>
-                            </ul>
-                        </div>
-
-                        <!-- Welfare Committee -->
-                        <div class="committee-card">
-                            <h3 class="committee-title">
-                                Welfare Committee
-                            </h3>
-                            <p class="committee-description">
-                                Ensures the well-being of students and handles complaints.
-                            </p>
-                            <ul class="committee-members">
-                                <li>• Head: Clark Kent</li>
-                                <li>• Asst: Lois Lane</li>
-                            </ul>
-                        </div>
+                    <!-- Committee Cards - Will be populated by JavaScript -->
+                    <div class="committee-grid" id="committeeGrid">
+                        <!-- Committees will be loaded from API -->
                     </div>
                 </div>
             </div>
@@ -1298,977 +1302,474 @@
         </div>
     </footer>
 
-<script>
-// Members Page JavaScript - Complete API Integration
+    <script>
+    // Members Page JavaScript - Clean version with no mock data
+    document.addEventListener('DOMContentLoaded', function() {
+        // Configuration - Live backend only
+        const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
+        
+        // State
+        let membersData = [];
+        let isLoading = false;
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Configuration
-    const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
-    
-    // State
-    let membersData = [];
-    let isLoading = false;
+        // Initialize
+        init();
 
-    // Initialize
-    init();
-
-    function init() {
-        // Initialize mobile menu
-        initMobileMenu();
-        
-        // Load members data
-        loadMembersData();
-        
-        // Attach event listeners
-        attachEventListeners();
-        
-        // Highlight current page
-        highlightCurrentPage();
-    }
-
-    function initMobileMenu() {
-        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-        const mobileNav = document.getElementById('mobileNav');
-        
-        if (!mobileMenuBtn || !mobileNav) return;
-        
-        mobileMenuBtn.addEventListener('click', function() {
-            mobileNav.classList.toggle('open');
+        function init() {
+            // Initialize mobile menu
+            initMobileMenu();
             
-            const icon = this.querySelector('i');
-            if (icon) {
-                if (mobileNav.classList.contains('open')) {
-                    icon.classList.remove('fa-bars');
-                    icon.classList.add('fa-times');
-                } else {
-                    icon.classList.remove('fa-times');
-                    icon.classList.add('fa-bars');
-                }
-            }
-        });
-        
-        // Close mobile menu when clicking outside
-        document.addEventListener('click', function(e) {
-            if (!mobileNav.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
-                mobileNav.classList.remove('open');
-                const icon = mobileMenuBtn.querySelector('i');
-                if (icon) {
-                    icon.classList.remove('fa-times');
-                    icon.classList.add('fa-bars');
-                }
-            }
-        });
-        
-        // Fix mobile nav links - they should use mobile-nav-button class
-        const mobileNavButtons = mobileNav.querySelectorAll('.nav-button');
-        mobileNavButtons.forEach(button => {
-            button.classList.add('mobile-nav-button');
-            button.classList.remove('nav-button');
-        });
-    }
+            // Load members data from API only
+            loadMembersData();
+            
+            // Attach event listeners
+            attachEventListeners();
+            
+            // Highlight current page
+            highlightCurrentPage();
+        }
 
-    async function loadMembersData() {
-        if (isLoading) return;
-        
-        isLoading = true;
-        showLoadingState();
-        
-        try {
-            // Load members
-            console.log('🔍 Loading members from API...');
-            const response = await fetch(`${API_BASE_URL}/api/members`, {
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
+        // Mobile menu functionality
+        function initMobileMenu() {
+            const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+            const mobileNav = document.getElementById('mobileNav');
+            
+            if (!mobileMenuBtn || !mobileNav) return;
+            
+            mobileMenuBtn.addEventListener('click', function() {
+                mobileNav.classList.toggle('open');
+                
+                const icon = this.querySelector('i');
+                if (icon) {
+                    if (mobileNav.classList.contains('open')) {
+                        icon.classList.remove('fa-bars');
+                        icon.classList.add('fa-times');
+                    } else {
+                        icon.classList.remove('fa-times');
+                        icon.classList.add('fa-bars');
+                    }
                 }
             });
             
-            console.log('📡 API Response Status:', response.status);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            console.log('📊 API Data received:', data);
-            
-            // Handle different response formats
-            if (data && data.status === 'success') {
-                membersData = data.data || [];
-                console.log(`✅ Loaded ${membersData.length} members from database`);
-                
-                if (membersData.length > 0) {
-                    renderExecutives();
-                    renderCommittees();
-                } else {
-                    showNoDataMessage();
-                }
-            } else if (Array.isArray(data)) {
-                membersData = data;
-                console.log(`✅ Loaded ${membersData.length} members from database`);
-                
-                if (membersData.length > 0) {
-                    renderExecutives();
-                    renderCommittees();
-                } else {
-                    showNoDataMessage();
-                }
-            } else {
-                console.log('API returned unexpected format:', data);
-                showNoDataMessage();
-            }
-            
-        } catch (error) {
-            console.error('❌ Error loading members:', error);
-            showErrorState(error.message);
-        } finally {
-            isLoading = false;
-            hideLoadingState();
-        }
-    }
-
-    function renderExecutives() {
-        const executiveGrid = document.getElementById('executiveGrid');
-        if (!executiveGrid) {
-            console.log('No executive grid found');
-            return;
-        }
-        
-        if (membersData.length === 0) {
-            executiveGrid.innerHTML = '';
-            return;
-        }
-        
-        console.log('🎨 Rendering executives:', membersData.length);
-        
-        // Filter executives (members with positions like President, VP, etc.)
-        const executives = membersData.filter(member => 
-            member.position && 
-            ['President', 'Vice President', 'General Secretary', 'Treasurer', 
-             'Financial Secretary', 'Public Relations Officer', 'Social Director',
-             'Sports Director', 'Welfare Director', 'Academic Director'].some(
-                pos => member.position.toLowerCase().includes(pos.toLowerCase())
-            )
-        );
-        
-        // If no specific executives found, use all members
-        const membersToDisplay = executives.length > 0 ? executives : membersData.slice(0, 8);
-        
-        executiveGrid.innerHTML = membersToDisplay.map(member => {
-            // Handle profile picture URL
-            let profilePicture = '';
-            if (member.profile_image) {
-                // Check if it's a full URL or relative path
-                if (member.profile_image.startsWith('http')) {
-                    profilePicture = member.profile_image;
-                } else {
-                    // Remove leading slash if present and add properly
-                    const cleanPath = member.profile_image.startsWith('/') 
-                        ? member.profile_image.substring(1) 
-                        : member.profile_image;
-                    profilePicture = `${API_BASE_URL}/${cleanPath}`;
-                }
-            }
-            
-            return `
-            <div class="member-card" data-member-id="${member.id || member._id || ''}">
-                <div class="member-photo">
-                    ${profilePicture ? 
-                        `<img src="${profilePicture}" 
-                              alt="${member.full_name || member.name || 'Member'}" 
-                              class="member-photo-image"
-                              onerror="this.onerror=null; this.parentElement.innerHTML=generatePhotoPlaceholder();">` :
-                        generatePhotoPlaceholder()
+            // Close mobile menu when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!mobileNav.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
+                    mobileNav.classList.remove('open');
+                    const icon = mobileMenuBtn.querySelector('i');
+                    if (icon) {
+                        icon.classList.remove('fa-times');
+                        icon.classList.add('fa-bars');
                     }
-                </div>
-                <div class="member-info">
-                    <h3 class="member-name">
-                        ${member.full_name || member.name || 'Unknown Member'}
-                    </h3>
-                    <p class="member-position">
-                        ${member.position || 'Member'}
-                    </p>
-                    <p class="member-department">
-                        ${member.department || 'Engineering Department'}
-                        ${member.level ? ` • Level ${member.level}` : ''}
-                    </p>
-                    <div class="member-social">
-                        ${member.email ? 
-                            `<a href="mailto:${member.email}" class="social-link" title="Email">
-                                <i class="fas fa-envelope"></i>
-                            </a>` : ''
-                        }
-                        ${member.phone ? 
-                            `<a href="tel:${member.phone}" class="social-link" title="Phone">
-                                <i class="fas fa-phone"></i>
-                            </a>` : ''
-                        }
-                        ${member.social_links || member.social ? 
-                            renderSocialLinks(member.social_links || member.social) : ''
+                }
+            });
+        }
+
+        // Load members from API - no fallbacks, no mock data
+        async function loadMembersData() {
+            if (isLoading) return;
+            
+            isLoading = true;
+            showLoadingState();
+            
+            try {
+                console.log('🔍 Fetching members from:', `${API_BASE_URL}/api/members`);
+                
+                const response = await fetch(`${API_BASE_URL}/api/members`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('📡 Response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('📊 Data received:', data);
+                
+                // Handle different response formats
+                if (data && data.status === 'success') {
+                    membersData = data.data || [];
+                    console.log(`✅ Loaded ${membersData.length} members from database`);
+                    
+                    if (membersData.length > 0) {
+                        renderExecutives();
+                        renderCommittees();
+                    } else {
+                        showEmptyState('No members found in database');
+                    }
+                } else if (Array.isArray(data) && data.length > 0) {
+                    membersData = data;
+                    console.log(`✅ Loaded ${membersData.length} members from database`);
+                    renderExecutives();
+                    renderCommittees();
+                } else {
+                    console.log('No members data available');
+                    showEmptyState('No members have been added yet');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error loading members:', error);
+                showErrorState(error.message);
+            } finally {
+                isLoading = false;
+            }
+        }
+
+        // Render executive members
+        function renderExecutives() {
+            const executiveGrid = document.getElementById('executiveGrid');
+            if (!executiveGrid) return;
+            
+            if (membersData.length === 0) {
+                showEmptyState('No executive members found');
+                return;
+            }
+            
+            // Filter for executive positions (you can adjust this based on your data structure)
+            const executives = membersData.filter(member => 
+                member.position && (
+                    member.position.toLowerCase().includes('president') ||
+                    member.position.toLowerCase().includes('vice') ||
+                    member.position.toLowerCase().includes('secretary') ||
+                    member.position.toLowerCase().includes('treasurer') ||
+                    member.position.toLowerCase().includes('financial') ||
+                    member.position.toLowerCase().includes('public') ||
+                    member.position.toLowerCase().includes('social') ||
+                    member.position.toLowerCase().includes('sports') ||
+                    member.position.toLowerCase().includes('welfare') ||
+                    member.position.toLowerCase().includes('academic')
+                )
+            );
+            
+            // If no executives found with specific positions, show first 8 members
+            const membersToDisplay = executives.length > 0 ? executives : membersData.slice(0, 8);
+            
+            executiveGrid.innerHTML = membersToDisplay.map(member => {
+                // Handle profile image
+                const profileImage = member.profile_image || member.photo || member.avatar;
+                const imageUrl = profileImage ? 
+                    (profileImage.startsWith('http') ? profileImage : `${API_BASE_URL}${profileImage.startsWith('/') ? '' : '/'}${profileImage}`) 
+                    : null;
+                
+                return `
+                <div class="member-card" data-member-id="${member.id || member._id || ''}">
+                    <div class="member-photo">
+                        ${imageUrl ? 
+                            `<img src="${imageUrl}" 
+                                  alt="${member.full_name || member.name || 'Member'}" 
+                                  class="member-photo-image"
+                                  onerror="this.onerror=null; this.parentElement.innerHTML=generatePhotoPlaceholder()">` :
+                            generatePhotoPlaceholder()
                         }
                     </div>
-                </div>
-            </div>
-        `}).join('');
-        
-        console.log('✅ Executives rendered');
-        // Attach click handlers to member cards
-        attachMemberCardListeners();
-    }
-    
-    function generatePhotoPlaceholder() {
-        return `
-            <div class="photo-placeholder">
-                <span class="photo-placeholder-text">PHOTO</span>
-                <div class="photo-placeholder-icon">
-                    <i class="fas fa-user text-gray-300" style="font-size: 1.5rem;"></i>
-                </div>
-            </div>
-        `;
-    }
-
-    function renderCommittees() {
-        if (membersData.length === 0) {
-            console.log('No members to group into committees');
-            return;
-        }
-        
-        console.log('🏢 Grouping members into committees');
-        
-        // Group members by committee
-        const committeesMap = {};
-        
-        membersData.forEach(member => {
-            const committee = member.committee || 'General';
-            
-            if (!committeesMap[committee]) {
-                committeesMap[committee] = [];
-            }
-            
-            committeesMap[committee].push(member);
-        });
-        
-        const committeeGrid = document.querySelector('.committee-grid');
-        if (!committeeGrid) {
-            console.log('No committee grid found');
-            return;
-        }
-        
-        console.log('📋 Creating committee cards:', Object.keys(committeesMap));
-        
-        // Only show non-General committees
-        const nonGeneralCommittees = Object.entries(committeesMap).filter(
-            ([committeeName]) => committeeName && committeeName !== 'General'
-        );
-        
-        if (nonGeneralCommittees.length === 0) {
-            // Keep the existing static content if no committees in database
-            console.log('No committees found, keeping static content');
-            return;
-        }
-        
-        // Replace static content with dynamic committees
-        committeeGrid.innerHTML = '';
-        
-        nonGeneralCommittees.forEach(([committeeName, members]) => {
-            // Find committee head and assistant
-            const head = members.find(m => 
-                m.position && (
-                    m.position.toLowerCase().includes('head') ||
-                    m.position.toLowerCase().includes('chair') ||
-                    m.position.toLowerCase().includes('director')
-                )
-            );
-            
-            const assistant = members.find(m => 
-                m.position && (
-                    m.position.toLowerCase().includes('assistant') ||
-                    m.position.toLowerCase().includes('asst') ||
-                    m.position.toLowerCase().includes('deputy')
-                )
-            );
-            
-            const otherMembers = members.filter(m => m !== head && m !== assistant);
-            
-            committeeGrid.innerHTML += `
-                <div class="committee-card">
-                    <h3 class="committee-title">
-                        ${committeeName} Committee
-                    </h3>
-                    <p class="committee-description">
-                        ${getCommitteeDescription(committeeName)}
-                    </p>
-                    <ul class="committee-members">
-                        ${head ? 
-                            `<li>• Head: ${head.full_name || head.name} ${head.department ? `(${head.department})` : ''}</li>` : ''
-                        }
-                        ${assistant ? 
-                            `<li>• Asst: ${assistant.full_name || assistant.name} ${assistant.department ? `(${assistant.department})` : ''}</li>` : ''
-                        }
-                        ${otherMembers.length > 0 ? 
-                            `<li>• Members: ${otherMembers.slice(0, 3).map(m => m.full_name || m.name).join(', ')}${otherMembers.length > 3 ? '...' : ''}</li>` : ''
-                        }
-                    </ul>
-                </div>
-            `;
-        });
-    }
-
-    function getCommitteeDescription(committeeName) {
-        const descriptions = {
-            'Academic': 'Responsible for organizing tutorials, quizzes, and academic competitions.',
-            'Technical': 'Focuses on workshops, skill acquisition, and project exhibitions.',
-            'Social': 'Organizes dinners, freshers welcome, and recreational activities.',
-            'Welfare': 'Ensures the well-being of students and handles complaints.',
-            'Sports': 'Manages sports activities and inter-department competitions.',
-            'Publicity': 'Handles publicity and communications for all events.',
-            'Financial': 'Manages association finances and fundraising activities.',
-            'Projects': 'Oversees engineering projects and competitions.',
-            'Executive': 'Overall leadership and management of the association.'
-        };
-        
-        return descriptions[committeeName] || `${committeeName} committee responsible for various student activities.`;
-    }
-
-    function renderSocialLinks(socialLinks) {
-        try {
-            let links;
-            
-            // Parse social_links from string to object if needed
-            if (typeof socialLinks === 'string') {
-                try {
-                    links = JSON.parse(socialLinks);
-                } catch (e) {
-                    console.log('Social links is not valid JSON, trying to extract URLs');
-                    links = {};
-                    
-                    // Simple URL extraction
-                    const urlRegex = /(https?:\/\/[^\s]+)/g;
-                    const urls = socialLinks.match(urlRegex) || [];
-                    
-                    urls.forEach(url => {
-                        if (url.includes('linkedin.com')) links.linkedin = url;
-                        else if (url.includes('twitter.com') || url.includes('x.com')) links.twitter = url;
-                        else if (url.includes('github.com')) links.github = url;
-                        else if (url.includes('instagram.com')) links.instagram = url;
-                        else if (url.includes('facebook.com')) links.facebook = url;
-                    });
-                }
-            } else if (typeof socialLinks === 'object' && socialLinks !== null) {
-                links = socialLinks;
-            } else {
-                return '';
-            }
-            
-            if (!links || Object.keys(links).length === 0) return '';
-            
-            let html = '';
-            const socialIcons = {
-                linkedin: 'fab fa-linkedin-in',
-                twitter: 'fab fa-twitter',
-                x: 'fab fa-twitter',
-                github: 'fab fa-github',
-                instagram: 'fab fa-instagram',
-                facebook: 'fab fa-facebook-f'
-            };
-            
-            Object.entries(links).forEach(([platform, url]) => {
-                if (url && socialIcons[platform]) {
-                    html += `<a href="${url}" class="social-link" title="${platform}" target="_blank" rel="noopener noreferrer">
-                                <i class="${socialIcons[platform]}"></i>
-                             </a>`;
-                }
-            });
-            
-            return html;
-        } catch (error) {
-            console.error('Error parsing social links:', error);
-            return '';
-        }
-    }
-
-    function attachMemberCardListeners() {
-        document.querySelectorAll('.member-card').forEach(card => {
-            card.addEventListener('click', function(e) {
-                // Don't trigger if clicking on a link
-                if (e.target.tagName === 'A' || e.target.closest('a')) return;
-                
-                const memberId = this.dataset.memberId;
-                if (memberId) {
-                    showMemberDetails(memberId);
-                }
-            });
-        });
-    }
-
-    async function showMemberDetails(memberId) {
-        try {
-            console.log('📋 Fetching member details for:', memberId);
-            const response = await fetch(`${API_BASE_URL}/api/members/${memberId}`, {
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            console.log('👤 Member details:', data);
-            
-            let member;
-            
-            if (data && data.status === 'success' && data.data) {
-                // Handle different response formats
-                if (Array.isArray(data.data) && data.data.length > 0) {
-                    member = data.data[0];
-                } else if (typeof data.data === 'object') {
-                    member = data.data;
-                } else {
-                    member = data.data;
-                }
-            } else if (typeof data === 'object') {
-                member = data;
-            }
-            
-            if (member) {
-                showMemberModal(member);
-            } else {
-                // Try to find member in our cached data
-                const cachedMember = membersData.find(m => 
-                    (m.id == memberId) || (m._id == memberId)
-                );
-                if (cachedMember) {
-                    showMemberModal(cachedMember);
-                } else {
-                    alert('Member details not available.');
-                }
-            }
-        } catch (error) {
-            console.error('Error fetching member details:', error);
-            // Show cached member if available
-            const cachedMember = membersData.find(m => 
-                (m.id == memberId) || (m._id == memberId)
-            );
-            if (cachedMember) {
-                showMemberModal(cachedMember);
-            } else {
-                alert('Unable to load member details. Please check your connection.');
-            }
-        }
-    }
-
-    function showMemberModal(member) {
-        // Create modal HTML
-        const modalHTML = `
-            <div id="memberModal" class="member-modal-overlay">
-                <div class="member-modal-content">
-                    <button id="closeMemberModal" class="member-modal-close">&times;</button>
-                    
-                    <div class="member-modal-header">
-                        <div class="member-modal-photo">
-                            ${member.profile_image ? 
-                                `<img src="${member.profile_image.startsWith('http') ? member.profile_image : API_BASE_URL + (member.profile_image.startsWith('/') ? '' : '/') + member.profile_image}" 
-                                      alt="${member.full_name || member.name || 'Member'}" 
-                                      class="member-modal-photo-image"
-                                      onerror="this.onerror=null; this.parentElement.innerHTML='<i class=\\'fas fa-user member-modal-photo-icon\\'></i>'">` :
-                                `<i class="fas fa-user member-modal-photo-icon"></i>`
-                            }
-                        </div>
-                        
-                        <h2 class="member-modal-name">${member.full_name || member.name || 'Unknown Member'}</h2>
-                        
-                        <p class="member-modal-position">${member.position || 'Member'}</p>
-                        
-                        <p class="member-modal-department">
-                            <i class="fas fa-graduation-cap"></i>
+                    <div class="member-info">
+                        <h3 class="member-name">
+                            ${member.full_name || member.name || 'Unnamed Member'}
+                        </h3>
+                        <p class="member-position">
+                            ${member.position || 'Member'}
+                        </p>
+                        <p class="member-department">
                             ${member.department || 'Engineering Department'}
                             ${member.level ? ` • Level ${member.level}` : ''}
                         </p>
-                    </div>
-                    
-                    <div class="member-modal-section">
-                        <h3>Contact Information</h3>
-                        
-                        <div class="member-modal-contact-info">
-                            ${member.email ? `
-                                <div class="contact-item">
+                        <div class="member-social">
+                            ${member.email ? 
+                                `<a href="mailto:${member.email}" class="social-link" title="Email">
                                     <i class="fas fa-envelope"></i>
-                                    <a href="mailto:${member.email}">${member.email}</a>
-                                </div>
-                            ` : ''}
-                            
-                            ${member.phone ? `
-                                <div class="contact-item">
+                                </a>` : ''
+                            }
+                            ${member.phone ? 
+                                `<a href="tel:${member.phone}" class="social-link" title="Phone">
                                     <i class="fas fa-phone"></i>
-                                    <a href="tel:${member.phone}">${member.phone}</a>
-                                </div>
-                            ` : ''}
-                            
-                            ${renderModalSocialLinks(member.social_links || member.social || {})}
+                                </a>` : ''
+                            }
+                            ${renderSocialLinks(member.social_links || member.social)}
                         </div>
-                    </div>
-                    
-                    ${member.bio || member.description ? `
-                        <div class="member-modal-section">
-                            <h3>Bio</h3>
-                            <p class="member-modal-bio">${member.bio || member.description || ''}</p>
-                        </div>
-                    ` : ''}
-                    
-                    ${member.committee && member.committee !== 'General' ? `
-                        <div class="member-modal-section">
-                            <h3>Committee</h3>
-                            <div class="member-modal-committee">${member.committee}</div>
-                        </div>
-                    ` : ''}
-                    
-                    <div class="member-modal-footer">
-                        <button id="closeModalBtn" class="member-modal-button">Close</button>
                     </div>
                 </div>
-            </div>
-        `;
-        
-        // Add modal styles
-        const modalStyles = `
-            <style>
-                .member-modal-overlay {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: rgba(0,0,0,0.7);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    z-index: 10000;
-                    padding: 1rem;
-                    animation: fadeIn 0.3s ease;
-                }
-                
-                .member-modal-content {
-                    background: white;
-                    padding: 2rem;
-                    border-radius: 0.5rem;
-                    max-width: 500px;
-                    width: 100%;
-                    max-height: 90vh;
-                    overflow-y: auto;
-                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-                    position: relative;
-                    animation: slideUp 0.3s ease;
-                }
-                
-                .member-modal-close {
-                    position: absolute;
-                    top: 1rem;
-                    right: 1rem;
-                    background: none;
-                    border: none;
-                    font-size: 1.5rem;
-                    color: #64748b;
-                    cursor: pointer;
-                    padding: 0.5rem;
-                    z-index: 1;
-                    transition: color 0.3s;
-                }
-                
-                .member-modal-close:hover {
-                    color: #1e293b;
-                }
-                
-                .member-modal-header {
-                    text-align: center;
-                    margin-bottom: 2rem;
-                    padding-bottom: 1.5rem;
-                    border-bottom: 1px solid #e2e8f0;
-                }
-                
-                .member-modal-photo {
-                    width: 120px;
-                    height: 120px;
-                    border-radius: 50%;
-                    background: linear-gradient(135deg, #d1fae5 0%, #dbeafe 100%);
-                    margin: 0 auto 1.5rem;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    overflow: hidden;
-                    border: 3px solid #10b981;
-                }
-                
-                .member-modal-photo-image {
-                    width: 100%;
-                    height: 100%;
-                    object-fit: cover;
-                }
-                
-                .member-modal-photo-icon {
-                    font-size: 3rem;
-                    color: #059669;
-                }
-                
-                .member-modal-name {
-                    font-family: 'Inter', sans-serif;
-                    font-size: 1.5rem;
-                    font-weight: 700;
-                    color: #1e293b;
-                    margin-bottom: 0.25rem;
-                }
-                
-                .member-modal-position {
-                    font-family: 'Roboto Mono', monospace;
-                    font-size: 0.875rem;
-                    font-weight: 700;
-                    color: #059669;
-                    text-transform: uppercase;
-                    letter-spacing: 0.05em;
-                    margin-bottom: 0.5rem;
-                }
-                
-                .member-modal-department {
-                    font-family: 'Inter', sans-serif;
-                    font-size: 0.875rem;
-                    color: #64748b;
-                    margin-bottom: 0;
-                }
-                
-                .member-modal-department i {
-                    margin-right: 0.5rem;
-                }
-                
-                .member-modal-section {
-                    margin-bottom: 2rem;
-                }
-                
-                .member-modal-section h3 {
-                    font-family: 'Roboto Mono', monospace;
-                    font-size: 0.875rem;
-                    font-weight: 700;
-                    text-transform: uppercase;
-                    color: #1e293b;
-                    margin-bottom: 1rem;
-                    letter-spacing: 0.05em;
-                }
-                
-                .member-modal-contact-info {
-                    background: #f8fafc;
-                    border-radius: 0.5rem;
-                    padding: 1.5rem;
-                }
-                
-                .contact-item {
-                    display: flex;
-                    align-items: center;
-                    margin-bottom: 1rem;
-                }
-                
-                .contact-item:last-child {
-                    margin-bottom: 0;
-                }
-                
-                .contact-item i {
-                    margin-right: 0.75rem;
-                    color: #059669;
-                    width: 20px;
-                    text-align: center;
-                }
-                
-                .contact-item a {
-                    font-family: 'Inter', sans-serif;
-                    font-size: 0.875rem;
-                    color: #374151;
-                    text-decoration: none;
-                    transition: color 0.3s;
-                }
-                
-                .contact-item a:hover {
-                    color: #059669;
-                }
-                
-                .member-modal-bio {
-                    font-family: 'Inter', sans-serif;
-                    font-size: 0.875rem;
-                    color: #374151;
-                    line-height: 1.6;
-                    background: #f8fafc;
-                    padding: 1rem;
-                    border-radius: 0.5rem;
-                }
-                
-                .member-modal-committee {
-                    font-family: 'Inter', sans-serif;
-                    font-size: 0.875rem;
-                    color: #059669;
-                    padding: 0.5rem 1rem;
-                    background: #f0fdf4;
-                    border-radius: 0.25rem;
-                    display: inline-block;
-                    border: 1px solid #bbf7d0;
-                }
-                
-                .member-modal-footer {
-                    display: flex;
-                    justify-content: center;
-                    gap: 1rem;
-                    margin-top: 2rem;
-                    padding-top: 1.5rem;
-                    border-top: 1px solid #e2e8f0;
-                }
-                
-                .member-modal-button {
-                    padding: 0.5rem 1.5rem;
-                    background: #e2e8f0;
-                    color: #374151;
-                    border: none;
-                    border-radius: 0.375rem;
-                    font-family: 'Roboto Mono', monospace;
-                    font-size: 0.75rem;
-                    font-weight: 700;
-                    text-transform: uppercase;
-                    letter-spacing: 0.05em;
-                    cursor: pointer;
-                    transition: all 0.3s;
-                }
-                
-                .member-modal-button:hover {
-                    background: #cbd5e1;
-                }
-                
-                @keyframes fadeIn {
-                    from { opacity: 0; }
-                    to { opacity: 1; }
-                }
-                
-                @keyframes slideUp {
-                    from { 
-                        opacity: 0;
-                        transform: translateY(20px);
-                    }
-                    to { 
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
-                }
-            </style>
-        `;
-        
-        // Add modal to page
-        const modalContainer = document.createElement('div');
-        modalContainer.innerHTML = modalStyles + modalHTML;
-        document.body.appendChild(modalContainer);
-        
-        // Add close functionality
-        const closeModal = () => modalContainer.remove();
-        
-        document.getElementById('closeMemberModal').addEventListener('click', closeModal);
-        document.getElementById('closeModalBtn').addEventListener('click', closeModal);
-        
-        modalContainer.querySelector('#memberModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeModal();
-            }
-        });
-        
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeModal();
-            }
-        });
-    }
-    
-    function renderModalSocialLinks(socialLinks) {
-        try {
-            let links;
+            `}).join('');
             
-            if (typeof socialLinks === 'string') {
-                try {
-                    links = JSON.parse(socialLinks);
-                } catch (e) {
-                    return '';
-                }
-            } else if (typeof socialLinks === 'object' && socialLinks !== null) {
-                links = socialLinks;
-            } else {
-                return '';
+            // Attach click handlers to member cards
+            attachMemberCardListeners();
+        }
+
+        // Generate photo placeholder
+        function generatePhotoPlaceholder() {
+            return `
+                <div class="photo-placeholder">
+                    <span class="photo-placeholder-text">PHOTO</span>
+                    <div class="photo-placeholder-icon">
+                        <i class="fas fa-user text-gray-300" style="font-size: 1.5rem;"></i>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Render committees from actual data
+        function renderCommittees() {
+            const committeeGrid = document.getElementById('committeeGrid');
+            if (!committeeGrid) return;
+            
+            if (membersData.length === 0) {
+                committeeGrid.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-users-slash"></i>
+                        <h3>No Committees Found</h3>
+                        <p>Committee information will appear here when available.</p>
+                    </div>
+                `;
+                return;
             }
             
-            if (!links || Object.keys(links).length === 0) return '';
+            // Group members by committee
+            const committeesMap = {};
             
-            let html = '';
-            const socialPlatforms = {
-                linkedin: { icon: 'fab fa-linkedin', label: 'LinkedIn' },
-                twitter: { icon: 'fab fa-twitter', label: 'Twitter' },
-                x: { icon: 'fab fa-twitter', label: 'Twitter' },
-                github: { icon: 'fab fa-github', label: 'GitHub' },
-                instagram: { icon: 'fab fa-instagram', label: 'Instagram' },
-                facebook: { icon: 'fab fa-facebook', label: 'Facebook' }
+            membersData.forEach(member => {
+                const committee = member.committee || 'General';
+                
+                if (!committeesMap[committee]) {
+                    committeesMap[committee] = [];
+                }
+                
+                committeesMap[committee].push(member);
+            });
+            
+            // Filter out General committee and empty committees
+            const validCommittees = Object.entries(committeesMap)
+                .filter(([name, members]) => name && name !== 'General' && members.length > 0);
+            
+            if (validCommittees.length === 0) {
+                committeeGrid.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-users-slash"></i>
+                        <h3>No Committees Found</h3>
+                        <p>Committee information will appear here when available.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            committeeGrid.innerHTML = validCommittees.map(([committeeName, members]) => {
+                // Find committee head and assistant
+                const head = members.find(m => 
+                    m.position && (
+                        m.position.toLowerCase().includes('head') ||
+                        m.position.toLowerCase().includes('chair') ||
+                        m.position.toLowerCase().includes('director')
+                    )
+                );
+                
+                const assistant = members.find(m => 
+                    m.position && (
+                        m.position.toLowerCase().includes('assistant') ||
+                        m.position.toLowerCase().includes('asst') ||
+                        m.position.toLowerCase().includes('deputy')
+                    )
+                );
+                
+                const otherMembers = members.filter(m => m !== head && m !== assistant);
+                
+                return `
+                    <div class="committee-card">
+                        <h3 class="committee-title">
+                            ${committeeName} Committee
+                        </h3>
+                        <p class="committee-description">
+                            ${getCommitteeDescription(committeeName)}
+                        </p>
+                        <ul class="committee-members">
+                            ${head ? 
+                                `<li>• Head: ${head.full_name || head.name}</li>` : ''
+                            }
+                            ${assistant ? 
+                                `<li>• Asst: ${assistant.full_name || assistant.name}</li>` : ''
+                            }
+                            ${otherMembers.length > 0 ? 
+                                `<li>• Members: ${otherMembers.slice(0, 3).map(m => m.full_name || m.name).join(', ')}${otherMembers.length > 3 ? '...' : ''}</li>` : ''
+                            }
+                        </ul>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Get committee description
+        function getCommitteeDescription(committeeName) {
+            const descriptions = {
+                'Academic': 'Responsible for organizing tutorials, quizzes, and academic competitions.',
+                'Technical': 'Focuses on workshops, skill acquisition, and project exhibitions.',
+                'Social': 'Organizes dinners, freshers welcome, and recreational activities.',
+                'Welfare': 'Ensures the well-being of students and handles complaints.',
+                'Sports': 'Manages sports activities and inter-department competitions.',
+                'Publicity': 'Handles publicity and communications for all events.',
+                'Financial': 'Manages association finances and fundraising activities.',
+                'Projects': 'Oversees engineering projects and competitions.'
             };
             
-            Object.entries(links).forEach(([platform, url]) => {
-                if (url && socialPlatforms[platform]) {
-                    html += `
-                        <div class="contact-item">
-                            <i class="${socialPlatforms[platform].icon}"></i>
-                            <a href="${url}" target="_blank" rel="noopener noreferrer">
-                                ${socialPlatforms[platform].label}
-                            </a>
-                        </div>
-                    `;
+            return descriptions[committeeName] || `${committeeName} committee responsible for various student activities.`;
+        }
+
+        // Render social links
+        function renderSocialLinks(socialLinks) {
+            if (!socialLinks) return '';
+            
+            try {
+                let links = socialLinks;
+                
+                // Parse if string
+                if (typeof socialLinks === 'string') {
+                    try {
+                        links = JSON.parse(socialLinks);
+                    } catch {
+                        return '';
+                    }
+                }
+                
+                if (typeof links !== 'object' || Object.keys(links).length === 0) return '';
+                
+                const socialIcons = {
+                    linkedin: 'fab fa-linkedin-in',
+                    twitter: 'fab fa-twitter',
+                    x: 'fab fa-twitter',
+                    github: 'fab fa-github',
+                    instagram: 'fab fa-instagram',
+                    facebook: 'fab fa-facebook-f'
+                };
+                
+                return Object.entries(links)
+                    .filter(([platform, url]) => url && socialIcons[platform])
+                    .map(([platform, url]) => 
+                        `<a href="${url}" class="social-link" title="${platform}" target="_blank" rel="noopener noreferrer">
+                            <i class="${socialIcons[platform]}"></i>
+                         </a>`
+                    ).join('');
+                    
+            } catch (error) {
+                console.error('Error rendering social links:', error);
+                return '';
+            }
+        }
+
+        // Attach member card click listeners
+        function attachMemberCardListeners() {
+            document.querySelectorAll('.member-card').forEach(card => {
+                card.addEventListener('click', function(e) {
+                    // Don't trigger if clicking on a link
+                    if (e.target.tagName === 'A' || e.target.closest('a')) return;
+                    
+                    const memberId = this.dataset.memberId;
+                    if (memberId) {
+                        window.location.href = `member-profile.html?id=${memberId}`;
+                    }
+                });
+            });
+        }
+
+        // Show loading state
+        function showLoadingState() {
+            const executiveGrid = document.getElementById('executiveGrid');
+            const committeeGrid = document.getElementById('committeeGrid');
+            
+            if (executiveGrid) {
+                executiveGrid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="loading-spinner"></div>
+                        <h3 style="margin-top: 1rem;">Loading members...</h3>
+                        <p>Please wait while we fetch the data.</p>
+                    </div>
+                `;
+            }
+            
+            if (committeeGrid) {
+                committeeGrid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="loading-spinner"></div>
+                        <h3 style="margin-top: 1rem;">Loading committees...</h3>
+                    </div>
+                `;
+            }
+        }
+
+        // Show empty state
+        function showEmptyState(message) {
+            const executiveGrid = document.getElementById('executiveGrid');
+            const committeeGrid = document.getElementById('committeeGrid');
+            
+            if (executiveGrid) {
+                executiveGrid.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-users-slash"></i>
+                        <h3>No Members Found</h3>
+                        <p>${message || 'No members have been added to the database yet.'}</p>
+                        <button class="retry-button" onclick="window.location.reload()">
+                            <i class="fas fa-sync-alt mr-2"></i>Retry
+                        </button>
+                    </div>
+                `;
+            }
+            
+            if (committeeGrid) {
+                committeeGrid.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-users-slash"></i>
+                        <h3>No Committees Found</h3>
+                        <p>Committee information will appear here when available.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Show error state
+        function showErrorState(errorMessage) {
+            const executiveGrid = document.getElementById('executiveGrid');
+            
+            if (executiveGrid) {
+                executiveGrid.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i>
+                        <h3>Connection Error</h3>
+                        <p>Unable to load members data.</p>
+                        <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem;">
+                            ${errorMessage || 'Please check your internet connection.'}
+                        </p>
+                        <button class="retry-button" onclick="window.location.reload()">
+                            <i class="fas fa-sync-alt mr-2"></i>Try Again
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // Attach event listeners
+        function attachEventListeners() {
+            const logoBtn = document.getElementById('logoBtn');
+            if (logoBtn) {
+                logoBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    window.location.href = 'index.html';
+                });
+            }
+        }
+
+        // Highlight current page
+        function highlightCurrentPage() {
+            const currentPage = window.location.pathname.split('/').pop();
+            
+            document.querySelectorAll('.desktop-nav .nav-button, .mobile-nav-button').forEach(link => {
+                const href = link.getAttribute('href');
+                if (href === currentPage) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
                 }
             });
-            
-            return html;
-        } catch (error) {
-            console.error('Error parsing modal social links:', error);
-            return '';
         }
-    }
-
-    function showLoadingState() {
-        const executiveGrid = document.getElementById('executiveGrid');
-        
-        if (executiveGrid) {
-            executiveGrid.innerHTML = `
-                <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
-                    <div class="loading-spinner" style="
-                        width: 3rem;
-                        height: 3rem;
-                        border: 3px solid #d1fae5;
-                        border-top: 3px solid #059669;
-                        border-radius: 50%;
-                        margin: 0 auto 1rem;
-                        animation: spin 1s linear infinite;
-                    "></div>
-                    <p style="font-family: 'Roboto Mono', monospace; color: #64748b;">
-                        Loading members...
-                    </p>
-                </div>
-            `;
-        }
-        
-        // Add spin animation
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes spin {
-                to { transform: rotate(360deg); }
-            }
-        `;
-        document.head.appendChild(style);
-    }
-
-    function hideLoadingState() {
-        // Loading state is automatically hidden when content renders
-    }
-
-    function showNoDataMessage() {
-        const executiveGrid = document.getElementById('executiveGrid');
-        if (executiveGrid) {
-            executiveGrid.innerHTML = `
-                <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
-                    <i class="fas fa-users-slash" style="font-size: 2rem; color: #cbd5e1;"></i>
-                    <h3 style="font-family: 'Inter', sans-serif; font-size: 1.25rem; color: #475569; margin: 1rem 0 0.5rem;">
-                        No Members Found
-                    </h3>
-                    <p style="font-family: 'Roboto Mono', monospace; color: #64748b;">
-                        No members have been added to the database yet.
-                    </p>
-                    <button id="retryLoadMembers" style="
-                        margin-top: 1rem;
-                        padding: 0.5rem 1rem;
-                        background: #059669;
-                        color: white;
-                        border: none;
-                        border-radius: 0.25rem;
-                        font-family: 'Roboto Mono', monospace;
-                        font-size: 0.75rem;
-                        cursor: pointer;
-                        transition: background-color 0.3s;
-                    ">Try Again</button>
-                </div>
-            `;
-            
-            document.getElementById('retryLoadMembers').addEventListener('click', loadMembersData);
-        }
-    }
-
-    function showErrorState(errorMessage) {
-        const executiveGrid = document.getElementById('executiveGrid');
-        if (executiveGrid) {
-            executiveGrid.innerHTML = `
-                <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
-                    <i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: #f59e0b;"></i>
-                    <h3 style="font-family: 'Inter', sans-serif; font-size: 1.25rem; color: #475569; margin: 1rem 0 0.5rem;">
-                        Connection Error
-                    </h3>
-                    <p style="font-family: 'Roboto Mono', monospace; color: #64748b; margin-bottom: 0.5rem;">
-                        Unable to load members data.
-                    </p>
-                    <p style="font-family: 'Roboto Mono', monospace; color: #94a3b8; font-size: 0.75rem; margin-bottom: 1rem;">
-                        ${errorMessage || 'Please check your internet connection.'}
-                    </p>
-                    <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center;">
-                        <button id="retryAfterError" style="
-                            padding: 0.5rem 1rem;
-                            background: #059669;
-                            color: white;
-                            border: none;
-                            border-radius: 0.25rem;
-                            font-family: 'Roboto Mono', monospace;
-                            font-size: 0.75rem;
-                            cursor: pointer;
-                            transition: background-color 0.3s;
-                        ">Try Again</button>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('retryAfterError').addEventListener('click', loadMembersData);
-        }
-    }
-
-    function attachEventListeners() {
-        // Handle logo click
-        const logoBtn = document.getElementById('logoBtn');
-        if (logoBtn) {
-            logoBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                window.location.href = 'index.html';
-            });
-        }
-    }
-
-    function highlightCurrentPage() {
-        const currentPage = window.location.pathname.split('/').pop();
-        console.log('Current page:', currentPage);
-        
-        // Desktop navigation
-        const desktopNavButtons = document.querySelectorAll('.desktop-nav .nav-button');
-        desktopNavButtons.forEach(link => {
-            const href = link.getAttribute('href');
-            if (href === currentPage) {
-                link.classList.add('active');
-            } else {
-                link.classList.remove('active');
-            }
-        });
-        
-        // Mobile navigation
-        const mobileNavButtons = document.querySelectorAll('.mobile-nav .mobile-nav-button, .mobile-nav .nav-button');
-        mobileNavButtons.forEach(link => {
-            const href = link.getAttribute('href');
-            if (href === currentPage) {
-                link.classList.add('active');
-            } else {
-                link.classList.remove('active');
-            }
-        });
-    }
-});
-</script>
+    });
+    </script>
 </body>
 </html>
