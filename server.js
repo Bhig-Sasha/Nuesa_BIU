@@ -2658,6 +2658,474 @@ eventRouter.get('/status/past', cacheMiddleware(300, ['events']), async (req, re
 // Register the events router
 app.use('/api/events', eventRouter);
 
+// ==================== RESOURCES ROUTES ====================
+// ==================== RESOURCES ROUTES ====================
+const resourceRouter = express.Router();
+
+// GET all resources (public)
+resourceRouter.get('/', cacheMiddleware(120, ['resources']), async (req, res) => {
+    try {
+        const { 
+            category,
+            department,
+            level,
+            course_code,
+            year,
+            semester,
+            limit = 50
+        } = req.query;
+
+        let where = {};
+        
+        // Apply filters based on query parameters
+        if (category && category !== 'all') {
+            where.category = category;
+        }
+        
+        if (department && department !== 'all') {
+            where.department = department;
+        }
+        
+        if (level) {
+            where.level = parseInt(level);
+        }
+        
+        if (course_code && course_code !== 'all') {
+            where.course_code = course_code;
+        }
+        
+        if (year && year !== 'all') {
+            where.year = year;
+        }
+        
+        if (semester && semester !== 'all') {
+            where.semester = semester;
+        }
+
+        const result = await db.query('select', 'resources', {
+            where,
+            order: { column: 'created_at', ascending: false },
+            limit: parseInt(limit)
+        });
+
+        res.json({
+            status: 'success',
+            data: result.data,
+            count: result.data.length
+        });
+    } catch (error) {
+        logger.error('Error fetching resources:', { requestId: req.id, error: error.message });
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch resources'
+        });
+    }
+});
+
+// GET resources by category (for backward compatibility with your frontend)
+resourceRouter.get('/past-questions', cacheMiddleware(120, ['resources']), async (req, res) => {
+    try {
+        const { 
+            department,
+            level,
+            course_code,
+            year,
+            semester,
+            limit = 50
+        } = req.query;
+
+        let where = { 
+            category: 'past-question'
+        };
+        
+        // Apply filters
+        if (department && department !== 'all') {
+            where.department = department;
+        }
+        
+        if (level) {
+            where.level = parseInt(level);
+        }
+        
+        if (course_code && course_code !== 'all') {
+            where.course_code = course_code;
+        }
+        
+        if (year && year !== 'all') {
+            where.year = year;
+        }
+        
+        if (semester && semester !== 'all') {
+            where.semester = semester;
+        }
+
+        const result = await db.query('select', 'resources', {
+            where,
+            order: { column: 'year', ascending: false },
+            limit: parseInt(limit)
+        });
+
+        res.json({
+            status: 'success',
+            data: result.data,
+            count: result.data.length
+        });
+    } catch (error) {
+        logger.error('Error fetching past questions:', { requestId: req.id, error: error.message });
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch past questions'
+        });
+    }
+});
+
+// GET single resource by ID
+resourceRouter.get('/:id', cacheMiddleware(300, ['resources']), async (req, res) => {
+    try {
+        const result = await db.query('select', 'resources', {
+            where: { id: req.params.id }
+        });
+
+        if (result.data.length === 0) {
+            throw new NotFoundError('Resource');
+        }
+
+        res.json({
+            status: 'success',
+            data: result.data[0]
+        });
+    } catch (error) {
+        logger.error('Error fetching resource:', { requestId: req.id, error: error.message });
+        
+        if (error instanceof NotFoundError) {
+            return res.status(404).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+        
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch resource'
+        });
+    }
+});
+
+// CREATE resource (admin/editor only)
+resourceRouter.post('/', verifyToken, requireRole('admin', 'editor'), upload.single('file'), async (req, res) => {
+    try {
+        const {
+            title,
+            category,
+            description,
+            department,
+            level,
+            course_code,
+            course_title,
+            year,
+            semester,
+            file_type,
+            file_size
+        } = req.body;
+
+        // Validate required fields
+        if (!title || !category) {
+            throw new ValidationError('Title and category are required');
+        }
+
+        const resourceData = {
+            title: title.trim(),
+            category: category.trim(),
+            description: description || null,
+            department: department || null,
+            level: level ? parseInt(level) : null,
+            course_code: course_code || null,
+            course_title: course_title || null,
+            year: year || null,
+            semester: semester || null,
+            file_type: file_type || null,
+            file_size: file_size ? parseInt(file_size) : null,
+            download_count: 0,
+            uploaded_by: req.user.id,
+            created_at: new Date()
+        };
+
+        // If file was uploaded
+        if (req.file) {
+            resourceData.file_url = `/uploads/${req.file.filename}`;
+            resourceData.file_size = req.file.size;
+            resourceData.file_type = req.file.mimetype;
+        }
+
+        const result = await db.query('insert', 'resources', { data: resourceData });
+
+        await cacheManager.invalidateByTags(['resources']);
+
+        logger.info('Resource created', { 
+            requestId: req.id, 
+            resourceId: result.data[0].id, 
+            createdBy: req.user.id 
+        });
+
+        res.status(201).json({
+            status: 'success',
+            data: result.data[0],
+            message: 'Resource created successfully'
+        });
+    } catch (error) {
+        logger.error('Error creating resource:', { requestId: req.id, error: error.message });
+        
+        if (error instanceof ValidationError) {
+            return res.status(400).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+        
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to create resource'
+        });
+    }
+});
+
+// UPDATE resource
+resourceRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
+    try {
+        const allowedFields = [
+            'title', 'category', 'description', 'department', 'level',
+            'course_code', 'course_title', 'year', 'semester', 
+            'file_type', 'file_size', 'file_url'
+        ];
+        
+        const updateData = {};
+        allowedFields.forEach(field => {
+            if (req.body[field] !== undefined) {
+                if (field === 'level' || field === 'file_size') {
+                    updateData[field] = parseInt(req.body[field]);
+                } else if (typeof req.body[field] === 'string') {
+                    updateData[field] = req.body[field].trim();
+                } else {
+                    updateData[field] = req.body[field];
+                }
+            }
+        });
+
+        if (Object.keys(updateData).length === 0) {
+            throw new ValidationError('No fields to update');
+        }
+
+        updateData.updated_at = new Date();
+
+        const result = await db.query('update', 'resources', {
+            data: updateData,
+            where: { id: req.params.id }
+        });
+
+        if (result.data.length === 0) {
+            throw new NotFoundError('Resource');
+        }
+
+        await cacheManager.invalidateByTags(['resources']);
+
+        logger.info('Resource updated', { 
+            requestId: req.id, 
+            resourceId: req.params.id, 
+            updatedBy: req.user.id 
+        });
+
+        res.json({
+            status: 'success',
+            data: result.data[0],
+            message: 'Resource updated successfully'
+        });
+    } catch (error) {
+        logger.error('Error updating resource:', { requestId: req.id, error: error.message });
+        
+        if (error instanceof NotFoundError) {
+            return res.status(404).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+        
+        if (error instanceof ValidationError) {
+            return res.status(400).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+        
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to update resource'
+        });
+    }
+});
+
+// DELETE resource
+resourceRouter.delete('/:id', verifyToken, requireRole('admin'), async (req, res) => {
+    try {
+        const result = await db.query('delete', 'resources', {
+            where: { id: req.params.id }
+        });
+
+        if (result.data.length === 0) {
+            throw new NotFoundError('Resource');
+        }
+
+        await cacheManager.invalidateByTags(['resources']);
+
+        logger.info('Resource deleted', { 
+            requestId: req.id, 
+            resourceId: req.params.id, 
+            deletedBy: req.user.id 
+        });
+
+        res.json({
+            status: 'success',
+            message: 'Resource deleted successfully'
+        });
+    } catch (error) {
+        logger.error('Error deleting resource:', { requestId: req.id, error: error.message });
+        
+        if (error instanceof NotFoundError) {
+            return res.status(404).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+        
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to delete resource'
+        });
+    }
+});
+
+// Increment download count
+resourceRouter.post('/:id/download', async (req, res) => {
+    try {
+        // First get current download count
+        const getResult = await db.query('select', 'resources', {
+            where: { id: req.params.id },
+            select: 'download_count'
+        });
+
+        if (getResult.data.length === 0) {
+            throw new NotFoundError('Resource');
+        }
+
+        const currentCount = getResult.data[0].download_count || 0;
+        
+        // Update download count
+        const updateResult = await db.query('update', 'resources', {
+            data: { 
+                download_count: currentCount + 1,
+                updated_at: new Date()
+            },
+            where: { id: req.params.id }
+        });
+
+        res.json({
+            status: 'success',
+            data: { download_count: currentCount + 1 },
+            message: 'Download count updated'
+        });
+    } catch (error) {
+        logger.error('Error updating download count:', { requestId: req.id, error: error.message });
+        
+        if (error instanceof NotFoundError) {
+            return res.status(404).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+        
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to update download count'
+        });
+    }
+});
+
+// Get unique categories for filtering
+resourceRouter.get('/meta/categories', async (req, res) => {
+    try {
+        const result = await db.query('select', 'resources', {
+            select: 'DISTINCT category',
+            where: { category: { operator: 'isNull', value: false } }
+        });
+        
+        const categories = result.data.map(item => item.category).filter(Boolean);
+        
+        res.json({
+            status: 'success',
+            data: categories
+        });
+    } catch (error) {
+        logger.error('Error fetching categories:', { requestId: req.id, error: error.message });
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch categories'
+        });
+    }
+});
+
+// Get unique departments for filtering
+resourceRouter.get('/meta/departments', async (req, res) => {
+    try {
+        const result = await db.query('select', 'resources', {
+            select: 'DISTINCT department',
+            where: { department: { operator: 'isNull', value: false } }
+        });
+        
+        const departments = result.data.map(item => item.department).filter(Boolean);
+        
+        res.json({
+            status: 'success',
+            data: departments
+        });
+    } catch (error) {
+        logger.error('Error fetching departments:', { requestId: req.id, error: error.message });
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch departments'
+        });
+    }
+});
+
+// Get unique course codes for filtering
+resourceRouter.get('/meta/courses', async (req, res) => {
+    try {
+        const { department } = req.query;
+        
+        let where = { course_code: { operator: 'isNull', value: false } };
+        if (department) {
+            where.department = department;
+        }
+        
+        const result = await db.query('select', 'resources', {
+            select: 'DISTINCT course_code, course_title',
+            where
+        });
+        
+        res.json({
+            status: 'success',
+            data: result.data
+        });
+    } catch (error) {
+        logger.error('Error fetching courses:', { requestId: req.id, error: error.message });
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch courses'
+        });
+    }
+});
+
+// Register the resources router
+app.use('/api/resources', resourceRouter);
+
 // ==================== FILE MANAGEMENT ROUTES ====================
 app.post('/api/upload', verifyToken, requireRole('admin', 'editor'), upload.single('file'), async (req, res) => {
     try {
@@ -3327,6 +3795,8 @@ app.get('/api', (req, res) => {
             admin: '/api/admin',
             users: '/api/users',
             members: '/api/members',
+            events: '/api/events',
+            resources: '/api/resources',
             profile: '/api/profile',
             health: '/api/health',
             stats: '/api/stats',
