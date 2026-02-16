@@ -1357,10 +1357,20 @@
         if (!eventsGrid) return;
         
         console.log('🔍 Loading events from API...');
+        console.log('📡 API URL:', API_BASE_URL);
         showLoading();
         
         try {
-            // DIRECTLY fetch events WITHOUT health check
+            // First, check if the API is reachable
+            console.log('📡 Testing API connection...');
+            const healthCheck = await fetch(`${API_BASE_URL}/api/health`, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' }
+            }).catch(e => ({ ok: false, error: e }));
+            
+            console.log('📡 Health check result:', healthCheck.ok ? 'OK' : 'Failed');
+            
+            // Now fetch events
             console.log('📡 Fetching events from:', `${API_BASE_URL}/api/events`);
             const response = await fetch(`${API_BASE_URL}/api/events`, {
                 method: 'GET',
@@ -1372,39 +1382,88 @@
             });
             
             console.log('📡 Response status:', response.status);
+            console.log('📡 Response headers:', {
+                'content-type': response.headers.get('content-type'),
+                'status': response.status
+            });
             
             if (!response.ok) {
-                throw new Error(`API returned ${response.status}`);
+                const errorText = await response.text();
+                console.error('❌ Error response body:', errorText);
+                throw new Error(`API returned ${response.status}: ${errorText}`);
             }
             
             const data = await response.json();
-            console.log('📊 Data received:', data);
+            console.log('📊 Full API response:', data);
             
             // Handle different response formats
             if (data.status === 'success' && data.data) {
                 allEvents = data.data;
+                console.log('✅ Found events in data.data:', allEvents.length);
             } else if (Array.isArray(data)) {
                 allEvents = data;
+                console.log('✅ Found events as array:', allEvents.length);
             } else if (data.events && Array.isArray(data.events)) {
                 allEvents = data.events;
+                console.log('✅ Found events in data.events:', allEvents.length);
             } else {
-                console.warn('Unexpected API response format:', data);
+                console.warn('⚠️ Unexpected API response format:', data);
                 allEvents = [];
             }
             
-            console.log(`✅ Loaded ${allEvents.length} events from database`);
+            console.log(`📊 Processed ${allEvents.length} events:`, allEvents);
             
             if (allEvents.length === 0) {
-                showEmptyState('No events have been added to the database yet.');
+                showEmptyState('No events in the database. Add some events in the admin panel.');
             } else {
                 renderEvents(activeFilter);
             }
             
         } catch (error) {
             console.error('❌ Error loading events:', error);
-            showErrorState(error);
+            console.error('Error details:', {
+                message: error.message,
+                stack: error.stack
+            });
+            
+            // Show more helpful error message
+            if (error.message.includes('Failed to fetch')) {
+                showErrorState({
+                    message: 'Cannot connect to the server. Please check if the server is running.'
+                });
+            } else {
+                showErrorState(error);
+            }
         }
     }
+
+    // Add a function to manually check the server status
+    window.checkServerStatus = async function() {
+        console.log('🔍 Checking server status...');
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/health`);
+            const data = await response.json();
+            console.log('✅ Server status:', data);
+            alert('Server is running!\nCheck console for details.');
+        } catch (error) {
+            console.error('❌ Server is not reachable:', error);
+            alert('Server is not reachable. Please check if the server is running.');
+        }
+    };
+
+    // Add a function to manually check the events table
+    window.checkEventsTable = async function() {
+        console.log('🔍 Checking events table...');
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/debug/events-table`);
+            const data = await response.json();
+            console.log('📊 Events table info:', data);
+            alert('Check console for events table information.');
+        } catch (error) {
+            console.error('❌ Could not check events table:', error);
+            alert('Could not check events table. See console for details.');
+        }
+    };
 
     // Render events based on filter
     function renderEvents(filter = 'all') {

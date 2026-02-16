@@ -2337,6 +2337,7 @@ eventRouter.get('/test', (req, res) => {
 });
 
 // GET all events (public) - UPDATED TO biu_events
+// GET all events (public) - UPDATED TO biu_events
 eventRouter.get('/', cacheMiddleware(120, ['biu_events']), async (req, res) => {
     console.log('📡 [3] GET /api/events called at:', new Date().toISOString());
     console.log('📡 [3a] Query params:', req.query);
@@ -2364,7 +2365,15 @@ eventRouter.get('/', cacheMiddleware(120, ['biu_events']), async (req, res) => {
         }
 
         console.log('📡 [5] Final where clause:', where);
-        console.log('📡 [6] Executing database query...');
+        console.log('📡 [6] Executing database query on biu_events table...');
+
+        // Log the actual query being executed (for debugging)
+        console.log('📡 [6a] Query details:', {
+            table: 'biu_events',
+            where: where,
+            order: { column: 'date', ascending: status === 'past' ? false : true },
+            limit: parseInt(limit)
+        });
 
         const result = await db.query('select', 'biu_events', {
             where,
@@ -2373,22 +2382,45 @@ eventRouter.get('/', cacheMiddleware(120, ['biu_events']), async (req, res) => {
         });
 
         console.log(`📡 [7] Query returned ${result.data.length} events`);
-        console.log('📡 [8] First event (if any):', result.data[0] || 'No events');
         
-        // Log the full response structure (without overwhelming logs)
-        console.log('📡 [9] Response structure:', {
-            status: 'success',
-            dataCount: result.data.length,
-            hasData: result.data.length > 0
-        });
+        if (result.data.length > 0) {
+            console.log('📡 [8] First event:', {
+                id: result.data[0].id,
+                title: result.data[0].title,
+                date: result.data[0].date,
+                category: result.data[0].category
+            });
+        } else {
+            console.log('📡 [8] No events found in biu_events table');
+            
+            // Check if table exists
+            try {
+                const { error } = await supabase
+                    .from('biu_events')
+                    .select('count', { count: 'exact', head: true });
+                
+                if (error) {
+                    console.log('📡 [8a] Table check error:', error.message);
+                    if (error.message.includes('relation') && error.message.includes('does not exist')) {
+                        console.log('📡 [8b] biu_events table does not exist!');
+                    }
+                } else {
+                    console.log('📡 [8c] biu_events table exists but is empty');
+                }
+            } catch (tableCheckError) {
+                console.log('📡 [8d] Error checking table:', tableCheckError.message);
+            }
+        }
 
+        // Return response
         res.json({
             status: 'success',
             data: result.data,
-            count: result.data.length
+            count: result.data.length,
+            message: result.data.length === 0 ? 'No events found' : undefined
         });
         
-        console.log('✅ [10] Response sent successfully');
+        console.log('✅ [10] Response sent successfully with', result.data.length, 'events');
         
     } catch (error) {
         console.error('❌ [ERROR] Events API error:', {
@@ -2404,7 +2436,8 @@ eventRouter.get('/', cacheMiddleware(120, ['biu_events']), async (req, res) => {
             return res.status(500).json({
                 status: 'error',
                 message: 'Events table not found in database',
-                debug: 'Please create the biu_events table in Supabase'
+                debug: 'Please create the biu_events table in Supabase',
+                error: error.message
             });
         }
         
