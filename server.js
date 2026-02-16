@@ -3592,9 +3592,9 @@ if (publicExists) {
     console.log('✅ Public pages served from /public folder');
 }
 
-// ==================== HIDDEN ADMIN ROUTING ====================
+// ==================== VISIBLE ADMIN ROUTING ====================
 if (adminExists) {
-    console.log('✅ Admin folder found. Setting up hidden admin routes...');
+    console.log('✅ Admin folder found. Setting up visible admin routes...');
     
     // CSRF token endpoint for admin forms
     app.get('/api/csrf-token', csrfProtection, (req, res) => {
@@ -3604,174 +3604,82 @@ if (adminExists) {
         });
     });
     
-    // 1. DISGUISED ADMIN PORTAL
-    app.get('/portal/system', csrfProtection, async (req, res) => {
-        try {
-            if (!req.isAdmin) {
-                return res.status(404).send(`
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <title>Page Not Found - NUESA BIU</title>
-                        <style>
-                            body { font-family: Arial, sans-serif; padding: 40px; text-align: center; }
-                            .error-box { max-width: 600px; margin: 50px auto; padding: 30px; border: 1px solid #ddd; }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="error-box">
-                            <h1>404 - Page Not Found</h1>
-                            <p>The page you are looking for does not exist.</p>
-                            <a href="/">Return to Home</a>
-                        </div>
-                    </body>
-                    </html>
-                `);
-            }
+    // ========== VISIBLE ADMIN ROUTES ==========
+    
+    // 1. ADMIN LOGIN PAGE - Using your adlog.html
+    app.get('/admin/login', csrfProtection, async (req, res) => {
+        // Check if user is already admin
+        if (req.isAdmin) {
+            return res.redirect('/admin/dashboard');
+        }
+        
+        // Serve your adlog.html file
+        const loginPath = path.join(adminDir, 'adlog.html');
+        if (fsSync.existsSync(loginPath)) {
+            // Read the file and inject CSRF token
+            let loginHtml = await fs.readFile(loginPath, 'utf8');
             
-            // Admin is logged in, serve dashboard
-            res.sendFile(path.join(adminDir, 'dash.html'));
-        } catch (error) {
-            res.status(404).send('Page not found');
+            // Inject CSRF token
+            loginHtml = loginHtml.replace(
+                '</head>',
+                `<script>
+                    window.CSRF_TOKEN = '${req.csrfToken()}';
+                </script>
+                </head>`
+            );
+            
+            res.send(loginHtml);
+        } else {
+            res.status(404).send('Login page not found');
         }
     });
     
-    // 2. HIDDEN ADMIN LOGIN PAGE with CSRF token
-    app.get('/portal/login', csrfProtection, async (req, res) => {
-        // Check if user is already admin
-        if (req.isAdmin) {
-            return res.redirect('/portal/system');
+    // 2. ADMIN DASHBOARD - Using your dash.html
+    app.get('/admin/dashboard', csrfProtection, async (req, res) => {
+        // Check if user is admin
+        if (!req.isAdmin) {
+            return res.redirect('/admin/login');
         }
         
-        // Show disguised login page with CSRF token
-        res.send(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Internal Portal - NUESA BIU</title>
-                <style>
-                    body {
-                        font-family: Arial, sans-serif;
-                        max-width: 500px;
-                        margin: 50px auto;
-                        padding: 20px;
-                        background: #f5f5f5;
-                    }
-                    .login-box {
-                        background: white;
-                        padding: 30px;
-                        border-radius: 8px;
-                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                        text-align: center;
-                    }
-                    .logo {
-                        font-size: 24px;
-                        font-weight: bold;
-                        color: #0066cc;
-                        margin-bottom: 20px;
-                    }
-                    input {
-                        width: 100%;
-                        padding: 12px;
-                        margin: 10px 0;
-                        border: 1px solid #ddd;
-                        border-radius: 4px;
-                        box-sizing: border-box;
-                    }
-                    button {
-                        background: #0066cc;
-                        color: white;
-                        padding: 12px 30px;
-                        border: none;
-                        border-radius: 4px;
-                        cursor: pointer;
-                        font-size: 16px;
-                        width: 100%;
-                        margin-top: 10px;
-                    }
-                    .message {
-                        margin-top: 15px;
-                        padding: 10px;
-                        border-radius: 4px;
-                    }
-                    .error { background: #ffe6e6; color: #cc0000; }
-                    .success { background: #e6ffe6; color: #006600; }
-                </style>
-            </head>
-            <body>
-                <div class="login-box">
-                    <div class="logo">NUESA BIU</div>
-                    <h2>Internal Portal</h2>
-                    <p>Authorized access only</p>
-                    
-                    <input type="hidden" id="csrfToken" value="${req.csrfToken()}">
-                    
-                    <form id="portalLogin">
-                        <input type="email" name="admin_email" placeholder="Email Address" required>
-                        <input type="password" name="admin_password" placeholder="Password" required>
-                        <button type="submit">Access Portal</button>
-                    </form>
-                    
-                    <div id="message" class="message"></div>
-                    
-                    <p style="margin-top: 30px; font-size: 0.9em; color: #666;">
-                        Forgot your credentials? Contact system administrator.
-                    </p>
-                </div>
-                
-                <script>
-                    document.getElementById('portalLogin').addEventListener('submit', async (e) => {
-                        e.preventDefault();
-                        const formData = new FormData(e.target);
-                        const data = Object.fromEntries(formData);
-                        const csrfToken = document.getElementById('csrfToken').value;
-                        
-                        const messageDiv = document.getElementById('message');
-                        messageDiv.textContent = 'Authenticating...';
-                        messageDiv.className = 'message';
-                        
-                        try {
-                            const response = await fetch('/api/admin/login', {
-                                method: 'POST',
-                                headers: { 
-                                    'Content-Type': 'application/json',
-                                    'X-CSRF-Token': csrfToken
-                                },
-                                body: JSON.stringify({
-                                    email: data.admin_email,
-                                    password: data.admin_password,
-                                    rememberMe: false
-                                })
-                            });
-                            
-                            const result = await response.json();
-                            
-                            if (result.status === 'success') {
-                                messageDiv.textContent = 'Login successful! Redirecting...';
-                                messageDiv.className = 'message success';
-                                setTimeout(() => {
-                                    window.location.href = '/portal/system';
-                                }, 1000);
-                            } else {
-                                messageDiv.textContent = result.message || 'Authentication failed';
-                                messageDiv.className = 'message error';
-                            }
-                        } catch (error) {
-                            messageDiv.textContent = 'Connection error. Please try again.';
-                            messageDiv.className = 'message error';
-                        }
-                    });
+        // Serve your dash.html file
+        const dashPath = path.join(adminDir, 'dash.html');
+        if (fsSync.existsSync(dashPath)) {
+            // Read the file and inject user data
+            let dashHtml = await fs.readFile(dashPath, 'utf8');
+            
+            // Inject user data for the dashboard to use
+            const userData = {
+                id: req.admin?.id,
+                email: req.admin?.email,
+                fullName: req.admin?.full_name || req.admin?.email?.split('@')[0] || 'Admin',
+                role: req.admin?.role || 'admin'
+            };
+            
+            // Inject the user data and API base URL
+            dashHtml = dashHtml.replace(
+                '</head>',
+                `<script>
+                    window.ADMIN_USER = ${JSON.stringify(userData)};
+                    window.API_BASE_URL = '${req.protocol}://${req.get('host')}';
+                    window.CSRF_TOKEN = '${req.csrfToken()}';
                 </script>
-            </body>
-            </html>
-        `);
+                </head>`
+            );
+            
+            res.send(dashHtml);
+        } else {
+            res.status(404).send('Dashboard page not found');
+        }
     });
     
     // 3. ADMIN LOGOUT
-    app.get('/portal/logout', (req, res) => {
+    app.get('/admin/logout', (req, res) => {
         // Clear admin cookies
         const cookieOptions = {
-            path: '/'
+            path: '/',
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: 'strict'
         };
         
         if (isProduction && process.env.FRONTEND_URL) {
@@ -3785,18 +3693,19 @@ if (adminExists) {
         
         res.clearCookie('admin_session', cookieOptions);
         res.clearCookie('admin_token', cookieOptions);
+        res.clearCookie('auth_token', cookieOptions);
         
-        // Redirect to home page
-        res.redirect('/');
+        // Redirect to login page
+        res.redirect('/admin/login?session=expired');
     });
     
-    // 4. SERVE ADMIN ASSETS
-    app.get('/assets/:folder/:file', (req, res) => {
+    // 4. SERVE ADMIN ASSETS (CSS, JS, images)
+    app.get('/admin/assets/:folder/:file', (req, res) => {
         const { folder, file } = req.params;
         
-        // Only serve if admin
+        // Check if user is admin
         if (!req.isAdmin) {
-            return res.status(404).send('Not found');
+            return res.redirect('/admin/login');
         }
         
         // Sanitize and validate path
@@ -3816,19 +3725,47 @@ if (adminExists) {
         }
     });
     
-    // 5. BLOCK DIRECT ACCESS TO ADMIN FOLDER
-    app.all('/admin/*', (req, res) => {
-        res.redirect('/');
+    // 5. ADMIN API STATUS ENDPOINT
+    app.get('/admin/status', csrfProtection, (req, res) => {
+        if (!req.isAdmin) {
+            return res.status(401).json({
+                status: 'error',
+                message: 'Not authenticated'
+            });
+        }
+        
+        res.json({
+            status: 'success',
+            data: {
+                user: {
+                    id: req.admin?.id,
+                    email: req.admin?.email,
+                    fullName: req.admin?.full_name,
+                    role: req.admin?.role
+                },
+                isAdmin: req.isAdmin,
+                timestamp: new Date().toISOString(),
+                requestId: req.id
+            }
+        });
     });
     
-    console.log('✅ Hidden admin system activated:');
-    console.log('   • Admin login: /portal/login');
-    console.log('   • Admin dashboard: /portal/system');
-    console.log('   • Admin logout: /portal/logout');
-    console.log('   • Direct /admin/* routes are blocked');
+    console.log('✅ Visible admin system activated:');
+    console.log('   • Admin login: /admin/login (using adlog.html)');
+    console.log('   • Admin dashboard: /admin/dashboard (using dash.html)');
+    console.log('   • Admin logout: /admin/logout');
+    console.log('   • Admin assets: /admin/assets/*');
+    console.log('   • Admin status: /admin/status');
+    
+    // ========== REDIRECT OLD HIDDEN ROUTES ==========
+    app.get('/portal/login', (req, res) => res.redirect('/admin/login'));
+    app.get('/portal/system', (req, res) => res.redirect('/admin/dashboard'));
+    app.get('/portal/logout', (req, res) => res.redirect('/admin/logout'));
     
 } else {
-    console.log('⚠️ Admin folder not found.');
+    console.log('⚠️ Admin folder not found at:', adminDir);
+    console.log('⚠️ Please ensure admin folder contains: adlog.html and dash.html');
+    // No fallback - just log the error
 }
 
 // ==================== SWAGGER API DOCUMENTATION ====================
