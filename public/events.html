@@ -1360,21 +1360,7 @@
         showLoading();
         
         try {
-            // Check server health first
-            console.log('📡 Checking server connection...');
-            const healthCheck = await fetch(`${API_BASE_URL}/api/health`, {
-                method: 'GET',
-                headers: { 'Accept': 'application/json' },
-                mode: 'cors'
-            });
-            
-            if (!healthCheck.ok) {
-                throw new Error(`Server returned ${healthCheck.status}`);
-            }
-            
-            console.log('✅ Server is reachable');
-            
-            // Fetch events
+            // DIRECTLY fetch events WITHOUT health check
             console.log('📡 Fetching events from:', `${API_BASE_URL}/api/events`);
             const response = await fetch(`${API_BASE_URL}/api/events`, {
                 method: 'GET',

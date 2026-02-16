@@ -2321,7 +2321,7 @@ memberRouter.delete('/:id', verifyToken, requireRole('admin', 'editor'), async (
 
 app.use('/api/members', memberRouter);
 
-// ==================== EVENTS ROUTES ====================
+// ==================== EVENTS ROUTES (UPDATED TO USE biu_events TABLE) ====================
 console.log('🔧 [1] Starting to define eventRouter...');
 const eventRouter = express.Router();
 console.log('✅ [2] eventRouter created successfully');
@@ -2336,8 +2336,8 @@ eventRouter.get('/test', (req, res) => {
     });
 });
 
-// GET all events (public)
-eventRouter.get('/', cacheMiddleware(120, ['events']), async (req, res) => {
+// GET all events (public) - UPDATED TO biu_events
+eventRouter.get('/', cacheMiddleware(120, ['biu_events']), async (req, res) => {
     console.log('📡 [3] GET /api/events called at:', new Date().toISOString());
     console.log('📡 [3a] Query params:', req.query);
     console.log('📡 [3b] Request ID:', req.id);
@@ -2366,7 +2366,7 @@ eventRouter.get('/', cacheMiddleware(120, ['events']), async (req, res) => {
         console.log('📡 [5] Final where clause:', where);
         console.log('📡 [6] Executing database query...');
 
-        const result = await db.query('select', 'events', {
+        const result = await db.query('select', 'biu_events', {
             where,
             order: { column: 'date', ascending: status === 'past' ? false : true },
             limit: parseInt(limit)
@@ -2400,11 +2400,11 @@ eventRouter.get('/', cacheMiddleware(120, ['events']), async (req, res) => {
         
         // Check for specific database errors
         if (error.message && error.message.includes('relation') && error.message.includes('does not exist')) {
-            console.error('❌ [DB ERROR] Events table does not exist!');
+            console.error('❌ [DB ERROR] biu_events table does not exist!');
             return res.status(500).json({
                 status: 'error',
                 message: 'Events table not found in database',
-                debug: 'Please create the events table in Supabase'
+                debug: 'Please create the biu_events table in Supabase'
             });
         }
         
@@ -2416,12 +2416,12 @@ eventRouter.get('/', cacheMiddleware(120, ['events']), async (req, res) => {
     }
 });
 
-// GET single event by ID
-eventRouter.get('/:id', cacheMiddleware(300, ['events']), async (req, res) => {
+// GET single event by ID - UPDATED TO biu_events
+eventRouter.get('/:id', cacheMiddleware(300, ['biu_events']), async (req, res) => {
     console.log(`📡 GET /api/events/${req.params.id} called`);
     
     try {
-        const result = await db.query('select', 'events', {
+        const result = await db.query('select', 'biu_events', {
             where: { id: req.params.id }
         });
 
@@ -2448,12 +2448,12 @@ eventRouter.get('/:id', cacheMiddleware(300, ['events']), async (req, res) => {
     }
 });
 
-// Get upcoming events (status = 'upcoming')
-eventRouter.get('/status/upcoming', cacheMiddleware(60, ['events']), async (req, res) => {
+// Get upcoming events (status = 'upcoming') - UPDATED TO biu_events
+eventRouter.get('/status/upcoming', cacheMiddleware(60, ['biu_events']), async (req, res) => {
     console.log('📡 GET /api/events/status/upcoming called');
     
     try {
-        const result = await db.query('select', 'events', {
+        const result = await db.query('select', 'biu_events', {
             where: { status: 'upcoming' },
             order: { column: 'date', ascending: true }
         });
@@ -2473,12 +2473,12 @@ eventRouter.get('/status/upcoming', cacheMiddleware(60, ['events']), async (req,
     }
 });
 
-// Get past events (status = 'past')
-eventRouter.get('/status/past', cacheMiddleware(300, ['events']), async (req, res) => {
+// Get past events (status = 'past') - UPDATED TO biu_events
+eventRouter.get('/status/past', cacheMiddleware(300, ['biu_events']), async (req, res) => {
     console.log('📡 GET /api/events/status/past called');
     
     try {
-        const result = await db.query('select', 'events', {
+        const result = await db.query('select', 'biu_events', {
             where: { status: 'past' },
             order: { column: 'date', ascending: false }
         });
@@ -2498,12 +2498,12 @@ eventRouter.get('/status/past', cacheMiddleware(300, ['events']), async (req, re
     }
 });
 
-// Get events by category
-eventRouter.get('/category/:category', cacheMiddleware(120, ['events']), async (req, res) => {
+// Get events by category - UPDATED TO biu_events
+eventRouter.get('/category/:category', cacheMiddleware(120, ['biu_events']), async (req, res) => {
     console.log(`📡 GET /api/events/category/${req.params.category} called`);
     
     try {
-        const result = await db.query('select', 'events', {
+        const result = await db.query('select', 'biu_events', {
             where: { category: req.params.category },
             order: { column: 'date', ascending: true }
         });
@@ -2523,7 +2523,7 @@ eventRouter.get('/category/:category', cacheMiddleware(120, ['events']), async (
     }
 });
 
-// CREATE event (admin/editor only)
+// CREATE event (admin/editor only) - UPDATED TO biu_events
 eventRouter.post('/', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
     console.log('📡 POST /api/events called');
     console.log('📡 Request body:', req.body);
@@ -2572,11 +2572,11 @@ eventRouter.post('/', verifyToken, requireRole('admin', 'editor'), async (req, r
 
         console.log('📡 Inserting event data:', eventData);
 
-        const result = await db.query('insert', 'events', { data: eventData });
+        const result = await db.query('insert', 'biu_events', { data: eventData });
 
         console.log('✅ Event created with ID:', result.data[0].id);
 
-        await cacheManager.invalidateByTags(['events']);
+        await cacheManager.invalidateByTags(['biu_events']);
 
         res.status(201).json({
             status: 'success',
@@ -2601,7 +2601,7 @@ eventRouter.post('/', verifyToken, requireRole('admin', 'editor'), async (req, r
     }
 });
 
-// UPDATE event
+// UPDATE event - UPDATED TO biu_events
 eventRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
     console.log(`📡 PUT /api/events/${req.params.id} called`);
     console.log('📡 Update data:', req.body);
@@ -2636,7 +2636,7 @@ eventRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (req,
 
         console.log('📡 Executing update with:', updateData);
 
-        const result = await db.query('update', 'events', {
+        const result = await db.query('update', 'biu_events', {
             data: updateData,
             where: { id: req.params.id }
         });
@@ -2651,7 +2651,7 @@ eventRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (req,
 
         console.log('✅ Event updated:', result.data[0].id);
 
-        await cacheManager.invalidateByTags(['events']);
+        await cacheManager.invalidateByTags(['biu_events']);
 
         res.json({
             status: 'success',
@@ -2682,12 +2682,12 @@ eventRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (req,
     }
 });
 
-// DELETE event
+// DELETE event - UPDATED TO biu_events
 eventRouter.delete('/:id', verifyToken, requireRole('admin'), async (req, res) => {
     console.log(`📡 DELETE /api/events/${req.params.id} called`);
     
     try {
-        const result = await db.query('delete', 'events', {
+        const result = await db.query('delete', 'biu_events', {
             where: { id: req.params.id }
         });
 
@@ -2701,7 +2701,7 @@ eventRouter.delete('/:id', verifyToken, requireRole('admin'), async (req, res) =
 
         console.log('✅ Event deleted:', req.params.id);
 
-        await cacheManager.invalidateByTags(['events']);
+        await cacheManager.invalidateByTags(['biu_events']);
 
         res.json({
             status: 'success',
@@ -4343,6 +4343,3 @@ async function startServer() {
 }
 
 startServer();
-
-
-
