@@ -1644,105 +1644,102 @@ async function loadResources() {
         
         console.log('Fetching resources from API...');
         
-        // Try multiple endpoints
-        const endpoints = [
-            `${API_BASE_URL}/api/resources`,
-            `${API_BASE_URL}/resources`,
-            `${API_BASE_URL}/api/past-questions`
-        ];
+        // Try the main API endpoint only
+        const endpoint = `${API_BASE_URL}/api/resources`;
         
-        let resources = [];
-        let success = false;
+        console.log(`Fetching from: ${endpoint}`);
+        const response = await fetch(endpoint, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            mode: 'cors'
+        });
         
-        for (const endpoint of endpoints) {
-            try {
-                console.log(`Trying endpoint: ${endpoint}`);
-                const response = await fetch(endpoint, {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
-                    },
-                    mode: 'cors'
-                });
-                
-                if (response.ok) {
-                    // Check if response is JSON
-                    const contentType = response.headers.get('content-type');
-                    if (!contentType || !contentType.includes('application/json')) {
-                        console.log(`Endpoint ${endpoint} returned non-JSON response`);
-                        continue;
-                    }
-                    
-                    const data = await response.json();
-                    console.log(`Response from ${endpoint}:`, data);
-                    
-                    // Parse different response formats
-                    if (data.status === 'success' && data.data) {
-                        resources = data.data;
-                        success = true;
-                        break;
-                    } else if (Array.isArray(data)) {
-                        resources = data;
-                        success = true;
-                        break;
-                    } else if (data.resources && Array.isArray(data.resources)) {
-                        resources = data.resources;
-                        success = true;
-                        break;
-                    }
-                }
-            } catch (endpointError) {
-                console.log(`Endpoint ${endpoint} failed:`, endpointError.message);
-                continue;
-            }
+        if (!response.ok) {
+            throw new Error(`API returned ${response.status}: ${response.statusText}`);
         }
         
-        if (!success || resources.length === 0) {
-            console.log('No resources found in any endpoint, using mock data');
-            // Use mock data instead of showing empty state
-            appState.resources = generateMockResources();
-            appState.filteredResources = [...appState.resources];
+        // Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('Server returned non-JSON response');
+        }
+        
+        const data = await response.json();
+        console.log('API Response:', data);
+        
+        // Process the data based on your API response structure
+        let resources = [];
+        
+        // Handle different response formats your API might return
+        if (data.status === 'success' && data.data) {
+            // Format: { status: 'success', data: [...] }
+            resources = data.data;
+        } else if (Array.isArray(data)) {
+            // Format: directly an array
+            resources = data;
+        } else if (data.resources && Array.isArray(data.resources)) {
+            // Format: { resources: [...] }
+            resources = data.resources;
+        } else {
+            console.warn('Unexpected API response format:', data);
+            resources = [];
+        }
+        
+        if (resources.length === 0) {
+            console.log('No resources found in database');
+            appState.resources = [];
+            appState.filteredResources = [];
             renderResources();
-            renderTools();
-            renderLinks();
+            showError('No resources available yet');
             return;
         }
         
-        // Process resources
+        // Map the database fields to what your frontend expects
         appState.resources = resources.map(resource => ({
-            id: resource.id || resource._id || Math.random().toString(36).substr(2, 9),
-            title: resource.title || resource.name || 'Untitled Resource',
+            id: resource.id,
+            title: resource.title || 'Untitled Resource',
             description: resource.description || '',
-            file_type: getFileExtension(resource.file_url || resource.url || ''),
-            file_size: resource.file_size || Math.floor(Math.random() * 5000000) + 100000, // Mock size if not provided
-            level: resource.level || null,
+            file_type: resource.file_type || getFileExtension(resource.file_url || ''),
+            file_size: resource.file_size || 0,
+            level: resource.level ? resource.level.toString() : null,
             department: resource.department || '',
             course_code: resource.course_code || '',
             course_title: resource.course_title || '',
             year: resource.year || '',
-            semester: resource.semester || '',
-            category: resource.category || resource.type || 'General',
-            download_count: resource.download_count || Math.floor(Math.random() * 100) + 10,
-            file_url: resource.file_url || resource.url || '#'
+            semester: resource.semester ? resource.semester.toString() : '',
+            category: resource.category || 'General',
+            download_count: resource.download_count || 0,
+            file_url: resource.file_url || '#'
         }));
         
         appState.filteredResources = [...appState.resources];
         
-        console.log(`Loaded ${appState.resources.length} resources`);
+        console.log(`Loaded ${appState.resources.length} resources from database`);
         renderResources();
-        renderTools();
-        renderLinks();
         
     } catch (error) {
         console.error('Error loading resources:', error);
-        // Show mock data on error
-        appState.resources = generateMockResources();
-        appState.filteredResources = [...appState.resources];
-        renderResources();
-        renderTools();
-        renderLinks();
-        showError('Using sample data - API connection failed');
+        
+        // Show error state - NO MOCK DATA
+        if (resourcesContainer) {
+            resourcesContainer.innerHTML = `
+                <div style="text-align: center; padding: 3rem; color: var(--gray-600);">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 1rem; color: #ef4444;"></i>
+                    <p style="font-size: 1.1rem; margin-bottom: 1rem;">Failed to load resources</p>
+                    <p style="color: var(--gray-500); margin-bottom: 1.5rem;">${error.message}</p>
+                    <button onclick="loadResources()" style="padding: 0.75rem 1.5rem; background: var(--emerald-600); color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 500;">
+                        <i class="fas fa-sync-alt mr-2"></i> Try Again
+                    </button>
+                </div>
+            `;
+        }
+        
+        // Show error toast
+        showError('Failed to load resources. Please try again.');
+        
     } finally {
         hideLoadingState();
     }
@@ -1784,11 +1781,22 @@ function filterResources() {
 function renderResources() {
     if (!resourcesContainer) return;
     
+    if (appState.resources.length === 0) {
+        resourcesContainer.innerHTML = `
+            <div style="text-align: center; padding: 3rem; color: var(--gray-600);">
+                <i class="fas fa-folder-open" style="font-size: 3rem; margin-bottom: 1rem; color: var(--gray-400);"></i>
+                <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">No resources available</p>
+                <p style="color: var(--gray-500);">Check back later for study materials and resources.</p>
+            </div>
+        `;
+        return;
+    }
+    
     if (appState.filteredResources.length === 0) {
         resourcesContainer.innerHTML = `
             <div style="text-align: center; padding: 3rem; color: var(--gray-600);">
-                <i class="fas fa-file-alt" style="font-size: 3rem; margin-bottom: 1rem;"></i>
-                <p>No study resources found.</p>
+                <i class="fas fa-search" style="font-size: 3rem; margin-bottom: 1rem; color: var(--gray-400);"></i>
+                <p>No resources match your filters.</p>
                 ${appState.filters.search || appState.filters.level !== 'All' ? 
                     '<button onclick="clearFilters()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: var(--emerald-600); color: white; border: none; border-radius: 0.25rem; cursor: pointer;">Clear Filters</button>' : 
                     ''
@@ -1798,13 +1806,14 @@ function renderResources() {
         return;
     }
     
+    // Rest of your rendering code...
     resourcesContainer.innerHTML = appState.filteredResources.map(resource => `
         <div class="download-item">
             <div class="download-info">
                 <i class="fas fa-${getFileIcon(resource.file_type)} download-icon"></i>
                 <div class="download-details">
                     <h3>${resource.title}</h3>
-                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem; flex-wrap: wrap;">
                         <span class="download-meta">
                             ${resource.file_type ? resource.file_type.toUpperCase() : 'FILE'} • 
                             ${formatFileSize(resource.file_size)}
@@ -1831,33 +1840,37 @@ function renderResources() {
                             </span>
                         ` : ''}
                     </div>
-                    <p style="font-family: 'Inter', sans-serif; font-size: 0.75rem; 
-                           color: var(--gray-600); margin-top: 0.25rem;">
-                        ${resource.description || 'No description available.'}
-                    </p>
-                    <div style="margin-top: 0.5rem;">
+                    ${resource.description ? `
+                        <p style="font-family: 'Inter', sans-serif; font-size: 0.75rem; 
+                               color: var(--gray-600); margin-top: 0.5rem;">
+                            ${resource.description}
+                        </p>
+                    ` : ''}
+                    <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
                         ${resource.course_code ? `
                             <span style="font-family: 'Roboto Mono', monospace; font-size: 0.75rem; 
-                                   color: var(--gray-500);">
+                                   background: var(--gray-100); color: var(--gray-700); 
+                                   padding: 0.125rem 0.5rem; border-radius: 0.25rem;">
                                 ${resource.course_code}
                             </span>
                         ` : ''}
                         ${resource.category ? `
-                            <span style="margin-left: 0.5rem; font-family: 'Roboto Mono', monospace; 
-                                   font-size: 0.75rem; color: var(--gray-500);">
-                                • ${resource.category}
+                            <span style="font-family: 'Roboto Mono', monospace; font-size: 0.75rem; 
+                                   background: var(--gray-100); color: var(--gray-700); 
+                                   padding: 0.125rem 0.5rem; border-radius: 0.25rem;">
+                                ${resource.category}
                             </span>
                         ` : ''}
                         ${resource.download_count ? `
-                            <span style="margin-left: 0.5rem; font-family: 'Roboto Mono', monospace; 
-                                   font-size: 0.75rem; color: var(--gray-500);">
-                                • ${resource.download_count} downloads
+                            <span style="font-family: 'Roboto Mono', monospace; font-size: 0.75rem; 
+                                   color: var(--gray-500);">
+                                <i class="fas fa-download mr-1"></i> ${resource.download_count}
                             </span>
                         ` : ''}
                     </div>
                 </div>
             </div>
-            <button class="download-button" data-id="${resource.id}">
+            <button class="download-button" data-id="${resource.id}" data-url="${resource.file_url}">
                 <i class="fas fa-download"></i>
             </button>
         </div>
