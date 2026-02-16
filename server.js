@@ -2321,6 +2321,343 @@ memberRouter.delete('/:id', verifyToken, requireRole('admin', 'editor'), async (
 
 app.use('/api/members', memberRouter);
 
+// ==================== EVENTS ROUTES ====================
+const eventRouter = express.Router();
+
+// GET all events (public)
+eventRouter.get('/', cacheMiddleware(120, ['events']), async (req, res) => {
+    try {
+        const { 
+            status = 'upcoming',
+            category,
+            limit = 50
+        } = req.query;
+
+        let where = {};
+        
+        // Filter by status
+        if (status !== 'all') {
+            where.status = status;
+        }
+        
+        // Filter by category if provided
+        if (category && category !== 'all') {
+            where.category = category;
+        }
+
+        const result = await db.query('select', 'events', {
+            where,
+            order: { column: 'date', ascending: status === 'past' ? false : true },
+            limit: parseInt(limit)
+        });
+
+        res.json({
+            status: 'success',
+            data: result.data,
+            count: result.data.length
+        });
+    } catch (error) {
+        logger.error('Error fetching events:', { requestId: req.id, error: error.message });
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch events'
+        });
+    }
+});
+
+// GET single event by ID
+eventRouter.get('/:id', cacheMiddleware(300, ['events']), async (req, res) => {
+    try {
+        const result = await db.query('select', 'events', {
+            where: { id: req.params.id }
+        });
+
+        if (result.data.length === 0) {
+            throw new NotFoundError('Event');
+        }
+
+        res.json({
+            status: 'success',
+            data: result.data[0]
+        });
+    } catch (error) {
+        logger.error('Error fetching event:', { requestId: req.id, error: error.message });
+        
+        if (error instanceof NotFoundError) {
+            return res.status(404).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+        
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch event'
+        });
+    }
+});
+
+// CREATE event (admin/editor only)
+eventRouter.post('/', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
+    try {
+        const {
+            title,
+            date,
+            description,
+            category,
+            start_time,
+            end_time,
+            location,
+            organizer,
+            max_participants,
+            status = 'upcoming'
+        } = req.body;
+
+        // Validate required fields
+        if (!title || !date) {
+            throw new ValidationError('Title and date are required');
+        }
+
+        // Parse date from DD/MM/YYYY to ISO format for storage
+        let formattedDate = date;
+        if (typeof date === 'string' && date.includes('/')) {
+            const [day, month, year] = date.split('/');
+            formattedDate = `${year}-${month}-${day}`;
+        }
+
+        const eventData = {
+            title: title.trim(),
+            date: formattedDate,
+            description: description || null,
+            category: category || null,
+            start_time: start_time || null,
+            end_time: end_time || null,
+            location: location || null,
+            organizer: organizer || null,
+            max_participants: max_participants ? parseInt(max_participants) : null,
+            status,
+            created_at: new Date(),
+            updated_at: new Date()
+        };
+
+        const result = await db.query('insert', 'events', { data: eventData });
+
+        await cacheManager.invalidateByTags(['events']);
+
+        logger.info('Event created', { 
+            requestId: req.id, 
+            eventId: result.data[0].id, 
+            createdBy: req.user.id 
+        });
+
+        res.status(201).json({
+            status: 'success',
+            data: result.data[0],
+            message: 'Event created successfully'
+        });
+    } catch (error) {
+        logger.error('Error creating event:', { requestId: req.id, error: error.message });
+        
+        if (error instanceof ValidationError) {
+            return res.status(400).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+        
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to create event'
+        });
+    }
+});
+
+// UPDATE event
+eventRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
+    try {
+        const allowedFields = [
+            'title', 'date', 'description', 'category', 'start_time', 
+            'end_time', 'location', 'organizer', 'max_participants', 'status'
+        ];
+        
+        const updateData = {};
+        allowedFields.forEach(field => {
+            if (req.body[field] !== undefined) {
+                if (field === 'date' && req.body[field] && typeof req.body[field] === 'string' && req.body[field].includes('/')) {
+                    // Convert DD/MM/YYYY to YYYY-MM-DD
+                    const [day, month, year] = req.body[field].split('/');
+                    updateData[field] = `${year}-${month}-${day}`;
+                } else if (field === 'max_participants' && req.body[field]) {
+                    updateData[field] = parseInt(req.body[field]);
+                } else if (typeof req.body[field] === 'string') {
+                    updateData[field] = req.body[field].trim();
+                } else {
+                    updateData[field] = req.body[field];
+                }
+            }
+        });
+
+        if (Object.keys(updateData).length === 0) {
+            throw new ValidationError('No fields to update');
+        }
+
+        updateData.updated_at = new Date();
+
+        const result = await db.query('update', 'events', {
+            data: updateData,
+            where: { id: req.params.id }
+        });
+
+        if (result.data.length === 0) {
+            throw new NotFoundError('Event');
+        }
+
+        await cacheManager.invalidateByTags(['events']);
+
+        logger.info('Event updated', { 
+            requestId: req.id, 
+            eventId: req.params.id, 
+            updatedBy: req.user.id 
+        });
+
+        res.json({
+            status: 'success',
+            data: result.data[0],
+            message: 'Event updated successfully'
+        });
+    } catch (error) {
+        logger.error('Error updating event:', { requestId: req.id, error: error.message });
+        
+        if (error instanceof NotFoundError) {
+            return res.status(404).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+        
+        if (error instanceof ValidationError) {
+            return res.status(400).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+        
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to update event'
+        });
+    }
+});
+
+// DELETE event
+eventRouter.delete('/:id', verifyToken, requireRole('admin'), async (req, res) => {
+    try {
+        const result = await db.query('delete', 'events', {
+            where: { id: req.params.id }
+        });
+
+        if (result.data.length === 0) {
+            throw new NotFoundError('Event');
+        }
+
+        await cacheManager.invalidateByTags(['events']);
+
+        logger.info('Event deleted', { 
+            requestId: req.id, 
+            eventId: req.params.id, 
+            deletedBy: req.user.id 
+        });
+
+        res.json({
+            status: 'success',
+            message: 'Event deleted successfully'
+        });
+    } catch (error) {
+        logger.error('Error deleting event:', { requestId: req.id, error: error.message });
+        
+        if (error instanceof NotFoundError) {
+            return res.status(404).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+        
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to delete event'
+        });
+    }
+});
+
+// Get events by category
+eventRouter.get('/category/:category', cacheMiddleware(120, ['events']), async (req, res) => {
+    try {
+        const result = await db.query('select', 'events', {
+            where: { category: req.params.category },
+            order: { column: 'date', ascending: true }
+        });
+
+        res.json({
+            status: 'success',
+            data: result.data,
+            count: result.data.length
+        });
+    } catch (error) {
+        logger.error('Error fetching events by category:', { requestId: req.id, error: error.message });
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch events'
+        });
+    }
+});
+
+// Get upcoming events (status = 'upcoming')
+eventRouter.get('/status/upcoming', cacheMiddleware(60, ['events']), async (req, res) => {
+    try {
+        const result = await db.query('select', 'events', {
+            where: { status: 'upcoming' },
+            order: { column: 'date', ascending: true }
+        });
+
+        res.json({
+            status: 'success',
+            data: result.data,
+            count: result.data.length
+        });
+    } catch (error) {
+        logger.error('Error fetching upcoming events:', { requestId: req.id, error: error.message });
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch upcoming events'
+        });
+    }
+});
+
+// Get past events (status = 'past')
+eventRouter.get('/status/past', cacheMiddleware(300, ['events']), async (req, res) => {
+    try {
+        const result = await db.query('select', 'events', {
+            where: { status: 'past' },
+            order: { column: 'date', ascending: false }
+        });
+
+        res.json({
+            status: 'success',
+            data: result.data,
+            count: result.data.length
+        });
+    } catch (error) {
+        logger.error('Error fetching past events:', { requestId: req.id, error: error.message });
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch past events'
+        });
+    }
+});
+
+// Register the events router
+app.use('/api/events', eventRouter);
+
 // ==================== FILE MANAGEMENT ROUTES ====================
 app.post('/api/upload', verifyToken, requireRole('admin', 'editor'), upload.single('file'), async (req, res) => {
     try {
@@ -2864,7 +3201,7 @@ app.get('/api/metrics', verifyToken, requireRole('admin'), async (req, res) => {
     }
 });
 
-// Helper functions for metrics (simplified)
+// Helper functions for metrics 
 async function getRequestCount() {
     // In production, you'd query this from your logs or a database
     return 0;
@@ -3202,3 +3539,6 @@ async function startServer() {
 }
 
 startServer();
+
+
+
