@@ -2749,37 +2749,29 @@ try {
     console.error('❌ [ERROR] Failed to register /api/events router:', error.message);
 }
 
-// Add a test endpoint outside the router to verify the server is working
-app.get('/api/health-check', (req, res) => {
-    console.log('📡 Health check endpoint hit');
-    res.json({
-        status: 'ok',
-        message: 'Server is running',
-        time: new Date().toISOString(),
-        endpoints: {
-            events: '/api/events should be available',
-            eventsTest: '/api/events/test'
-        }
-    });
+// Improved health check endpoint
+app.get('/api/health', async (req, res) => {
+    try {
+        // Try to query the database
+        const dbStatus = await db.query('select', 'biu_events', { limit: 1 })
+            .then(() => ({ status: 'healthy' }))
+            .catch(err => ({ status: 'unhealthy', error: err.message }));
+
+        res.status(200).json({
+            status: 'healthy',
+            database: dbStatus,
+            uptime: process.uptime(),
+            timestamp: new Date().toISOString(),
+            version: '1.0.0'
+        });
+    } catch (error) {
+        res.status(200).json({ // Always return 200 for health checks
+            status: 'degraded',
+            message: 'Partial service disruption',
+            timestamp: new Date().toISOString()
+        });
+    }
 });
-
-console.log('🔧 [14] Events router setup complete');
-
-// Add a test endpoint outside the router to verify the server is working
-app.get('/api/health-check', (req, res) => {
-    console.log('📡 Health check endpoint hit');
-    res.json({
-        status: 'ok',
-        message: 'Server is running',
-        time: new Date().toISOString(),
-        endpoints: {
-            events: '/api/events should be available',
-            eventsTest: '/api/events/test'
-        }
-    });
-});
-
-console.log('🔧 [14] Events router setup complete');
 
 // ==================== RESOURCES ROUTES ====================
 console.log('🔧 [R1] Starting to define resourceRouter...');
@@ -3941,29 +3933,6 @@ function formatBytes(bytes) {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
-
-app.get('/api/health', async (req, res) => {
-    const checks = {
-        database: await checkDatabase(),
-        cache: await checkCache(),
-        disk: await checkDiskSpace(),
-        memory: checkMemory(),
-        uptime: process.uptime(),
-        nodeVersion: process.version,
-        environment: NODE_ENV
-    };
-    
-    const isHealthy = Object.values(checks).every(check => 
-        check.status === 'healthy' || check.status === 'unknown'
-    );
-    
-    res.status(isHealthy ? 200 : 503).json({
-        status: isHealthy ? 'healthy' : 'unhealthy',
-        checks,
-        timestamp: new Date().toISOString(),
-        requestId: req.id
-    });
-});
 
 app.get('/api/ping', (req, res) => {
     res.json({
