@@ -2322,10 +2322,26 @@ memberRouter.delete('/:id', verifyToken, requireRole('admin', 'editor'), async (
 app.use('/api/members', memberRouter);
 
 // ==================== EVENTS ROUTES ====================
+console.log('🔧 [1] Starting to define eventRouter...');
 const eventRouter = express.Router();
+console.log('✅ [2] eventRouter created successfully');
+
+// Test route to verify router is working
+eventRouter.get('/test', (req, res) => {
+    console.log('📡 [TEST] Test route hit at:', new Date().toISOString());
+    res.json({ 
+        message: 'Event router test route works',
+        timestamp: new Date().toISOString(),
+        requestId: req.id 
+    });
+});
 
 // GET all events (public)
 eventRouter.get('/', cacheMiddleware(120, ['events']), async (req, res) => {
+    console.log('📡 [3] GET /api/events called at:', new Date().toISOString());
+    console.log('📡 [3a] Query params:', req.query);
+    console.log('📡 [3b] Request ID:', req.id);
+    
     try {
         const { 
             status = 'upcoming',
@@ -2333,6 +2349,8 @@ eventRouter.get('/', cacheMiddleware(120, ['events']), async (req, res) => {
             limit = 50
         } = req.query;
 
+        console.log('📡 [4] Building where clause with:', { status, category, limit });
+        
         let where = {};
         
         // Filter by status
@@ -2345,10 +2363,23 @@ eventRouter.get('/', cacheMiddleware(120, ['events']), async (req, res) => {
             where.category = category;
         }
 
+        console.log('📡 [5] Final where clause:', where);
+        console.log('📡 [6] Executing database query...');
+
         const result = await db.query('select', 'events', {
             where,
             order: { column: 'date', ascending: status === 'past' ? false : true },
             limit: parseInt(limit)
+        });
+
+        console.log(`📡 [7] Query returned ${result.data.length} events`);
+        console.log('📡 [8] First event (if any):', result.data[0] || 'No events');
+        
+        // Log the full response structure (without overwhelming logs)
+        console.log('📡 [9] Response structure:', {
+            status: 'success',
+            dataCount: result.data.length,
+            hasData: result.data.length > 0
         });
 
         res.json({
@@ -2356,8 +2387,135 @@ eventRouter.get('/', cacheMiddleware(120, ['events']), async (req, res) => {
             data: result.data,
             count: result.data.length
         });
+        
+        console.log('✅ [10] Response sent successfully');
+        
     } catch (error) {
-        logger.error('Error fetching events:', { requestId: req.id, error: error.message });
+        console.error('❌ [ERROR] Events API error:', {
+            message: error.message,
+            code: error.code,
+            stack: error.stack,
+            name: error.name
+        });
+        
+        // Check for specific database errors
+        if (error.message && error.message.includes('relation') && error.message.includes('does not exist')) {
+            console.error('❌ [DB ERROR] Events table does not exist!');
+            return res.status(500).json({
+                status: 'error',
+                message: 'Events table not found in database',
+                debug: 'Please create the events table in Supabase'
+            });
+        }
+        
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch events',
+            debug: error.message
+        });
+    }
+});
+
+// GET single event by ID
+eventRouter.get('/:id', cacheMiddleware(300, ['events']), async (req, res) => {
+    console.log(`📡 GET /api/events/${req.params.id} called`);
+    
+    try {
+        const result = await db.query('select', 'events', {
+            where: { id: req.params.id }
+        });
+
+        if (result.data.length === 0) {
+            console.log(`📡 Event with id ${req.params.id} not found`);
+            return res.status(404).json({
+                status: 'error',
+                message: 'Event not found'
+            });
+        }
+
+        console.log(`📡 Event found:`, result.data[0].title);
+        res.json({
+            status: 'success',
+            data: result.data[0]
+        });
+    } catch (error) {
+        console.error('❌ Error fetching event:', error.message);
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch event',
+            debug: error.message
+        });
+    }
+});
+
+// Get upcoming events (status = 'upcoming')
+eventRouter.get('/status/upcoming', cacheMiddleware(60, ['events']), async (req, res) => {
+    console.log('📡 GET /api/events/status/upcoming called');
+    
+    try {
+        const result = await db.query('select', 'events', {
+            where: { status: 'upcoming' },
+            order: { column: 'date', ascending: true }
+        });
+
+        console.log(`📡 Found ${result.data.length} upcoming events`);
+        res.json({
+            status: 'success',
+            data: result.data,
+            count: result.data.length
+        });
+    } catch (error) {
+        console.error('❌ Error fetching upcoming events:', error.message);
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch upcoming events'
+        });
+    }
+});
+
+// Get past events (status = 'past')
+eventRouter.get('/status/past', cacheMiddleware(300, ['events']), async (req, res) => {
+    console.log('📡 GET /api/events/status/past called');
+    
+    try {
+        const result = await db.query('select', 'events', {
+            where: { status: 'past' },
+            order: { column: 'date', ascending: false }
+        });
+
+        console.log(`📡 Found ${result.data.length} past events`);
+        res.json({
+            status: 'success',
+            data: result.data,
+            count: result.data.length
+        });
+    } catch (error) {
+        console.error('❌ Error fetching past events:', error.message);
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch past events'
+        });
+    }
+});
+
+// Get events by category
+eventRouter.get('/category/:category', cacheMiddleware(120, ['events']), async (req, res) => {
+    console.log(`📡 GET /api/events/category/${req.params.category} called`);
+    
+    try {
+        const result = await db.query('select', 'events', {
+            where: { category: req.params.category },
+            order: { column: 'date', ascending: true }
+        });
+
+        console.log(`📡 Found ${result.data.length} events in category ${req.params.category}`);
+        res.json({
+            status: 'success',
+            data: result.data,
+            count: result.data.length
+        });
+    } catch (error) {
+        console.error('❌ Error fetching events by category:', error.message);
         res.status(500).json({
             status: 'error',
             message: 'Failed to fetch events'
@@ -2365,40 +2523,11 @@ eventRouter.get('/', cacheMiddleware(120, ['events']), async (req, res) => {
     }
 });
 
-// GET single event by ID
-eventRouter.get('/:id', cacheMiddleware(300, ['events']), async (req, res) => {
-    try {
-        const result = await db.query('select', 'events', {
-            where: { id: req.params.id }
-        });
-
-        if (result.data.length === 0) {
-            throw new NotFoundError('Event');
-        }
-
-        res.json({
-            status: 'success',
-            data: result.data[0]
-        });
-    } catch (error) {
-        logger.error('Error fetching event:', { requestId: req.id, error: error.message });
-        
-        if (error instanceof NotFoundError) {
-            return res.status(404).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-        
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch event'
-        });
-    }
-});
-
 // CREATE event (admin/editor only)
 eventRouter.post('/', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
+    console.log('📡 POST /api/events called');
+    console.log('📡 Request body:', req.body);
+    
     try {
         const {
             title,
@@ -2423,6 +2552,7 @@ eventRouter.post('/', verifyToken, requireRole('admin', 'editor'), async (req, r
         if (typeof date === 'string' && date.includes('/')) {
             const [day, month, year] = date.split('/');
             formattedDate = `${year}-${month}-${day}`;
+            console.log('📡 Date formatted:', formattedDate);
         }
 
         const eventData = {
@@ -2440,15 +2570,13 @@ eventRouter.post('/', verifyToken, requireRole('admin', 'editor'), async (req, r
             updated_at: new Date()
         };
 
+        console.log('📡 Inserting event data:', eventData);
+
         const result = await db.query('insert', 'events', { data: eventData });
 
-        await cacheManager.invalidateByTags(['events']);
+        console.log('✅ Event created with ID:', result.data[0].id);
 
-        logger.info('Event created', { 
-            requestId: req.id, 
-            eventId: result.data[0].id, 
-            createdBy: req.user.id 
-        });
+        await cacheManager.invalidateByTags(['events']);
 
         res.status(201).json({
             status: 'success',
@@ -2456,7 +2584,7 @@ eventRouter.post('/', verifyToken, requireRole('admin', 'editor'), async (req, r
             message: 'Event created successfully'
         });
     } catch (error) {
-        logger.error('Error creating event:', { requestId: req.id, error: error.message });
+        console.error('❌ Error creating event:', error.message);
         
         if (error instanceof ValidationError) {
             return res.status(400).json({
@@ -2467,13 +2595,17 @@ eventRouter.post('/', verifyToken, requireRole('admin', 'editor'), async (req, r
         
         res.status(500).json({
             status: 'error',
-            message: 'Failed to create event'
+            message: 'Failed to create event',
+            debug: error.message
         });
     }
 });
 
 // UPDATE event
 eventRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
+    console.log(`📡 PUT /api/events/${req.params.id} called`);
+    console.log('📡 Update data:', req.body);
+    
     try {
         const allowedFields = [
             'title', 'date', 'description', 'category', 'start_time', 
@@ -2484,7 +2616,6 @@ eventRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (req,
         allowedFields.forEach(field => {
             if (req.body[field] !== undefined) {
                 if (field === 'date' && req.body[field] && typeof req.body[field] === 'string' && req.body[field].includes('/')) {
-                    // Convert DD/MM/YYYY to YYYY-MM-DD
                     const [day, month, year] = req.body[field].split('/');
                     updateData[field] = `${year}-${month}-${day}`;
                 } else if (field === 'max_participants' && req.body[field]) {
@@ -2503,22 +2634,24 @@ eventRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (req,
 
         updateData.updated_at = new Date();
 
+        console.log('📡 Executing update with:', updateData);
+
         const result = await db.query('update', 'events', {
             data: updateData,
             where: { id: req.params.id }
         });
 
         if (result.data.length === 0) {
-            throw new NotFoundError('Event');
+            console.log(`📡 Event ${req.params.id} not found`);
+            return res.status(404).json({
+                status: 'error',
+                message: 'Event not found'
+            });
         }
 
-        await cacheManager.invalidateByTags(['events']);
+        console.log('✅ Event updated:', result.data[0].id);
 
-        logger.info('Event updated', { 
-            requestId: req.id, 
-            eventId: req.params.id, 
-            updatedBy: req.user.id 
-        });
+        await cacheManager.invalidateByTags(['events']);
 
         res.json({
             status: 'success',
@@ -2526,7 +2659,7 @@ eventRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (req,
             message: 'Event updated successfully'
         });
     } catch (error) {
-        logger.error('Error updating event:', { requestId: req.id, error: error.message });
+        console.error('❌ Error updating event:', error.message);
         
         if (error instanceof NotFoundError) {
             return res.status(404).json({
@@ -2551,29 +2684,31 @@ eventRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (req,
 
 // DELETE event
 eventRouter.delete('/:id', verifyToken, requireRole('admin'), async (req, res) => {
+    console.log(`📡 DELETE /api/events/${req.params.id} called`);
+    
     try {
         const result = await db.query('delete', 'events', {
             where: { id: req.params.id }
         });
 
         if (result.data.length === 0) {
-            throw new NotFoundError('Event');
+            console.log(`📡 Event ${req.params.id} not found`);
+            return res.status(404).json({
+                status: 'error',
+                message: 'Event not found'
+            });
         }
 
-        await cacheManager.invalidateByTags(['events']);
+        console.log('✅ Event deleted:', req.params.id);
 
-        logger.info('Event deleted', { 
-            requestId: req.id, 
-            eventId: req.params.id, 
-            deletedBy: req.user.id 
-        });
+        await cacheManager.invalidateByTags(['events']);
 
         res.json({
             status: 'success',
             message: 'Event deleted successfully'
         });
     } catch (error) {
-        logger.error('Error deleting event:', { requestId: req.id, error: error.message });
+        console.error('❌ Error deleting event:', error.message);
         
         if (error instanceof NotFoundError) {
             return res.status(404).json({
@@ -2589,81 +2724,74 @@ eventRouter.delete('/:id', verifyToken, requireRole('admin'), async (req, res) =
     }
 });
 
-// Get events by category
-eventRouter.get('/category/:category', cacheMiddleware(120, ['events']), async (req, res) => {
-    try {
-        const result = await db.query('select', 'events', {
-            where: { category: req.params.category },
-            order: { column: 'date', ascending: true }
-        });
-
-        res.json({
-            status: 'success',
-            data: result.data,
-            count: result.data.length
-        });
-    } catch (error) {
-        logger.error('Error fetching events by category:', { requestId: req.id, error: error.message });
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch events'
-        });
-    }
-});
-
-// Get upcoming events (status = 'upcoming')
-eventRouter.get('/status/upcoming', cacheMiddleware(60, ['events']), async (req, res) => {
-    try {
-        const result = await db.query('select', 'events', {
-            where: { status: 'upcoming' },
-            order: { column: 'date', ascending: true }
-        });
-
-        res.json({
-            status: 'success',
-            data: result.data,
-            count: result.data.length
-        });
-    } catch (error) {
-        logger.error('Error fetching upcoming events:', { requestId: req.id, error: error.message });
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch upcoming events'
-        });
-    }
-});
-
-// Get past events (status = 'past')
-eventRouter.get('/status/past', cacheMiddleware(300, ['events']), async (req, res) => {
-    try {
-        const result = await db.query('select', 'events', {
-            where: { status: 'past' },
-            order: { column: 'date', ascending: false }
-        });
-
-        res.json({
-            status: 'success',
-            data: result.data,
-            count: result.data.length
-        });
-    } catch (error) {
-        logger.error('Error fetching past events:', { requestId: req.id, error: error.message });
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch past events'
-        });
-    }
-});
+// ==================== REGISTER THE ROUTER ====================
+console.log('🔧 [11] Attempting to register /api/events router...');
+console.log('🔧 [11a] Current time:', new Date().toISOString());
+console.log('🔧 [11b] Is eventRouter defined?', eventRouter ? 'Yes' : 'No');
+console.log('🔧 [11c] eventRouter type:', typeof eventRouter);
 
 // Register the events router
-app.use('/api/events', eventRouter);
+try {
+    app.use('/api/events', eventRouter);
+    console.log('✅ [12] SUCCESS! /api/events router registered');
+    
+    // Verify the router was registered
+    const registeredRoutes = app._router?.stack
+        .filter(layer => layer.route || layer.name === 'router')
+        .map(layer => {
+            if (layer.route) {
+                return `${Object.keys(layer.route.methods).join(',')} ${layer.route.path}`;
+            }
+            if (layer.name === 'router' && layer.regexp) {
+                return `Router: ${layer.regexp}`;
+            }
+            return null;
+        })
+        .filter(Boolean);
+    
+    console.log('🔧 [13] Currently registered routes:', registeredRoutes);
+    
+} catch (error) {
+    console.error('❌ [ERROR] Failed to register /api/events router:', error.message);
+}
+
+// Add a test endpoint outside the router to verify the server is working
+app.get('/api/health-check', (req, res) => {
+    console.log('📡 Health check endpoint hit');
+    res.json({
+        status: 'ok',
+        message: 'Server is running',
+        time: new Date().toISOString(),
+        endpoints: {
+            events: '/api/events should be available',
+            eventsTest: '/api/events/test'
+        }
+    });
+});
+
+console.log('🔧 [14] Events router setup complete');
 
 // ==================== RESOURCES ROUTES ====================
-// ==================== RESOURCES ROUTES ====================
+console.log('🔧 [R1] Starting to define resourceRouter...');
 const resourceRouter = express.Router();
+console.log('✅ [R2] resourceRouter created successfully');
+
+// Test route to verify router is working
+resourceRouter.get('/test', (req, res) => {
+    console.log('📡 [TEST] Resources test route hit at:', new Date().toISOString());
+    res.json({ 
+        message: 'Resources router test route works',
+        timestamp: new Date().toISOString(),
+        requestId: req.id 
+    });
+});
 
 // GET all resources (public)
 resourceRouter.get('/', cacheMiddleware(120, ['resources']), async (req, res) => {
+    console.log('📡 [R3] GET /api/resources called at:', new Date().toISOString());
+    console.log('📡 [R3a] Query params:', req.query);
+    console.log('📡 [R3b] Request ID:', req.id);
+    
     try {
         const { 
             category,
@@ -2675,32 +2803,45 @@ resourceRouter.get('/', cacheMiddleware(120, ['resources']), async (req, res) =>
             limit = 50
         } = req.query;
 
+        console.log('📡 [R4] Building where clause with filters:', { 
+            category, department, level, course_code, year, semester, limit 
+        });
+        
         let where = {};
         
         // Apply filters based on query parameters
         if (category && category !== 'all') {
             where.category = category;
+            console.log('📡 [R4a] Filter by category:', category);
         }
         
         if (department && department !== 'all') {
             where.department = department;
+            console.log('📡 [R4b] Filter by department:', department);
         }
         
         if (level) {
             where.level = parseInt(level);
+            console.log('📡 [R4c] Filter by level:', level);
         }
         
         if (course_code && course_code !== 'all') {
             where.course_code = course_code;
+            console.log('📡 [R4d] Filter by course_code:', course_code);
         }
         
         if (year && year !== 'all') {
             where.year = year;
+            console.log('📡 [R4e] Filter by year:', year);
         }
         
         if (semester && semester !== 'all') {
             where.semester = semester;
+            console.log('📡 [R4f] Filter by semester:', semester);
         }
+
+        console.log('📡 [R5] Final where clause:', where);
+        console.log('📡 [R6] Executing database query on resources table...');
 
         const result = await db.query('select', 'resources', {
             where,
@@ -2708,22 +2849,65 @@ resourceRouter.get('/', cacheMiddleware(120, ['resources']), async (req, res) =>
             limit: parseInt(limit)
         });
 
+        console.log(`📡 [R7] Query returned ${result.data.length} resources`);
+        
+        if (result.data.length > 0) {
+            console.log('📡 [R8] First resource:', {
+                id: result.data[0].id,
+                title: result.data[0].title,
+                category: result.data[0].category,
+                department: result.data[0].department
+            });
+        } else {
+            console.log('📡 [R8] No resources found');
+        }
+        
+        console.log('📡 [R9] Response structure:', {
+            status: 'success',
+            dataCount: result.data.length,
+            hasData: result.data.length > 0
+        });
+
         res.json({
             status: 'success',
             data: result.data,
             count: result.data.length
         });
+        
+        console.log('✅ [R10] Resources response sent successfully');
+        
     } catch (error) {
+        console.error('❌ [R-ERROR] Resources API error:', {
+            message: error.message,
+            code: error.code,
+            stack: error.stack,
+            name: error.name
+        });
+        
+        // Check for specific database errors
+        if (error.message && error.message.includes('relation') && error.message.includes('does not exist')) {
+            console.error('❌ [R-DB ERROR] Resources table does not exist!');
+            return res.status(500).json({
+                status: 'error',
+                message: 'Resources table not found in database',
+                debug: 'Please create the resources table in Supabase'
+            });
+        }
+        
         logger.error('Error fetching resources:', { requestId: req.id, error: error.message });
         res.status(500).json({
             status: 'error',
-            message: 'Failed to fetch resources'
+            message: 'Failed to fetch resources',
+            debug: error.message
         });
     }
 });
 
 // GET resources by category (for backward compatibility with your frontend)
 resourceRouter.get('/past-questions', cacheMiddleware(120, ['resources']), async (req, res) => {
+    console.log('📡 [R11] GET /api/resources/past-questions called');
+    console.log('📡 [R11a] Query params:', req.query);
+    
     try {
         const { 
             department,
@@ -2734,30 +2918,42 @@ resourceRouter.get('/past-questions', cacheMiddleware(120, ['resources']), async
             limit = 50
         } = req.query;
 
+        console.log('📡 [R12] Building past questions where clause');
+        
         let where = { 
             category: 'past-question'
         };
         
+        console.log('📡 [R12a] Base category filter: past-question');
+        
         // Apply filters
         if (department && department !== 'all') {
             where.department = department;
+            console.log('📡 [R12b] Filter by department:', department);
         }
         
         if (level) {
             where.level = parseInt(level);
+            console.log('📡 [R12c] Filter by level:', level);
         }
         
         if (course_code && course_code !== 'all') {
             where.course_code = course_code;
+            console.log('📡 [R12d] Filter by course_code:', course_code);
         }
         
         if (year && year !== 'all') {
             where.year = year;
+            console.log('📡 [R12e] Filter by year:', year);
         }
         
         if (semester && semester !== 'all') {
             where.semester = semester;
+            console.log('📡 [R12f] Filter by semester:', semester);
         }
+
+        console.log('📡 [R13] Final where clause for past questions:', where);
+        console.log('📡 [R14] Executing past questions query...');
 
         const result = await db.query('select', 'resources', {
             where,
@@ -2765,36 +2961,62 @@ resourceRouter.get('/past-questions', cacheMiddleware(120, ['resources']), async
             limit: parseInt(limit)
         });
 
+        console.log(`📡 [R15] Past questions query returned ${result.data.length} results`);
+        
+        if (result.data.length > 0) {
+            console.log('📡 [R16] First past question:', {
+                id: result.data[0].id,
+                title: result.data[0].title,
+                course_code: result.data[0].course_code,
+                year: result.data[0].year
+            });
+        }
+
         res.json({
             status: 'success',
             data: result.data,
             count: result.data.length
         });
+        
+        console.log('✅ [R17] Past questions response sent');
+        
     } catch (error) {
+        console.error('❌ [R-ERROR] Past questions API error:', error.message);
         logger.error('Error fetching past questions:', { requestId: req.id, error: error.message });
         res.status(500).json({
             status: 'error',
-            message: 'Failed to fetch past questions'
+            message: 'Failed to fetch past questions',
+            debug: error.message
         });
     }
 });
 
 // GET single resource by ID
 resourceRouter.get('/:id', cacheMiddleware(300, ['resources']), async (req, res) => {
+    console.log(`📡 [R18] GET /api/resources/${req.params.id} called`);
+    
     try {
+        console.log('📡 [R19] Querying for resource ID:', req.params.id);
+        
         const result = await db.query('select', 'resources', {
             where: { id: req.params.id }
         });
 
         if (result.data.length === 0) {
-            throw new NotFoundError('Resource');
+            console.log(`📡 [R20] Resource with id ${req.params.id} not found`);
+            return res.status(404).json({
+                status: 'error',
+                message: 'Resource not found'
+            });
         }
 
+        console.log(`📡 [R21] Resource found:`, result.data[0].title);
         res.json({
             status: 'success',
             data: result.data[0]
         });
     } catch (error) {
+        console.error('❌ [R-ERROR] Error fetching resource:', error.message);
         logger.error('Error fetching resource:', { requestId: req.id, error: error.message });
         
         if (error instanceof NotFoundError) {
@@ -2806,13 +3028,22 @@ resourceRouter.get('/:id', cacheMiddleware(300, ['resources']), async (req, res)
         
         res.status(500).json({
             status: 'error',
-            message: 'Failed to fetch resource'
+            message: 'Failed to fetch resource',
+            debug: error.message
         });
     }
 });
 
 // CREATE resource (admin/editor only)
 resourceRouter.post('/', verifyToken, requireRole('admin', 'editor'), upload.single('file'), async (req, res) => {
+    console.log('📡 [R22] POST /api/resources called');
+    console.log('📡 [R22a] Request body:', req.body);
+    console.log('📡 [R22b] File uploaded:', req.file ? {
+        filename: req.file.filename,
+        size: req.file.size,
+        mimetype: req.file.mimetype
+    } : 'No file');
+    
     try {
         const {
             title,
@@ -2830,6 +3061,7 @@ resourceRouter.post('/', verifyToken, requireRole('admin', 'editor'), upload.sin
 
         // Validate required fields
         if (!title || !category) {
+            console.log('❌ [R23] Validation failed: missing title or category');
             throw new ValidationError('Title and category are required');
         }
 
@@ -2850,14 +3082,24 @@ resourceRouter.post('/', verifyToken, requireRole('admin', 'editor'), upload.sin
             created_at: new Date()
         };
 
+        console.log('📡 [R24] Prepared resource data:', resourceData);
+
         // If file was uploaded
         if (req.file) {
             resourceData.file_url = `/uploads/${req.file.filename}`;
             resourceData.file_size = req.file.size;
             resourceData.file_type = req.file.mimetype;
+            console.log('📡 [R25] File data added:', {
+                file_url: resourceData.file_url,
+                file_size: resourceData.file_size,
+                file_type: resourceData.file_type
+            });
         }
 
+        console.log('📡 [R26] Inserting resource into database...');
         const result = await db.query('insert', 'resources', { data: resourceData });
+
+        console.log('✅ [R27] Resource created with ID:', result.data[0].id);
 
         await cacheManager.invalidateByTags(['resources']);
 
@@ -2873,6 +3115,7 @@ resourceRouter.post('/', verifyToken, requireRole('admin', 'editor'), upload.sin
             message: 'Resource created successfully'
         });
     } catch (error) {
+        console.error('❌ [R-ERROR] Error creating resource:', error.message);
         logger.error('Error creating resource:', { requestId: req.id, error: error.message });
         
         if (error instanceof ValidationError) {
@@ -2884,13 +3127,17 @@ resourceRouter.post('/', verifyToken, requireRole('admin', 'editor'), upload.sin
         
         res.status(500).json({
             status: 'error',
-            message: 'Failed to create resource'
+            message: 'Failed to create resource',
+            debug: error.message
         });
     }
 });
 
 // UPDATE resource
 resourceRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
+    console.log(`📡 [R28] PUT /api/resources/${req.params.id} called`);
+    console.log('📡 [R28a] Update data:', req.body);
+    
     try {
         const allowedFields = [
             'title', 'category', 'description', 'department', 'level',
@@ -2903,19 +3150,25 @@ resourceRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (r
             if (req.body[field] !== undefined) {
                 if (field === 'level' || field === 'file_size') {
                     updateData[field] = parseInt(req.body[field]);
+                    console.log(`📡 [R29] Parsed ${field} as integer:`, updateData[field]);
                 } else if (typeof req.body[field] === 'string') {
                     updateData[field] = req.body[field].trim();
+                    console.log(`📡 [R29a] Processed ${field} as string:`, updateData[field]);
                 } else {
                     updateData[field] = req.body[field];
+                    console.log(`📡 [R29b] Processed ${field}:`, updateData[field]);
                 }
             }
         });
 
         if (Object.keys(updateData).length === 0) {
+            console.log('❌ [R30] No fields to update');
             throw new ValidationError('No fields to update');
         }
 
         updateData.updated_at = new Date();
+
+        console.log('📡 [R31] Executing update with:', updateData);
 
         const result = await db.query('update', 'resources', {
             data: updateData,
@@ -2923,8 +3176,14 @@ resourceRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (r
         });
 
         if (result.data.length === 0) {
-            throw new NotFoundError('Resource');
+            console.log(`📡 [R32] Resource ${req.params.id} not found`);
+            return res.status(404).json({
+                status: 'error',
+                message: 'Resource not found'
+            });
         }
+
+        console.log('✅ [R33] Resource updated:', result.data[0].id);
 
         await cacheManager.invalidateByTags(['resources']);
 
@@ -2940,6 +3199,7 @@ resourceRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (r
             message: 'Resource updated successfully'
         });
     } catch (error) {
+        console.error('❌ [R-ERROR] Error updating resource:', error.message);
         logger.error('Error updating resource:', { requestId: req.id, error: error.message });
         
         if (error instanceof NotFoundError) {
@@ -2958,21 +3218,32 @@ resourceRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (r
         
         res.status(500).json({
             status: 'error',
-            message: 'Failed to update resource'
+            message: 'Failed to update resource',
+            debug: error.message
         });
     }
 });
 
 // DELETE resource
 resourceRouter.delete('/:id', verifyToken, requireRole('admin'), async (req, res) => {
+    console.log(`📡 [R34] DELETE /api/resources/${req.params.id} called`);
+    
     try {
+        console.log('📡 [R35] Deleting resource:', req.params.id);
+        
         const result = await db.query('delete', 'resources', {
             where: { id: req.params.id }
         });
 
         if (result.data.length === 0) {
-            throw new NotFoundError('Resource');
+            console.log(`📡 [R36] Resource ${req.params.id} not found`);
+            return res.status(404).json({
+                status: 'error',
+                message: 'Resource not found'
+            });
         }
+
+        console.log('✅ [R37] Resource deleted:', req.params.id);
 
         await cacheManager.invalidateByTags(['resources']);
 
@@ -2987,6 +3258,7 @@ resourceRouter.delete('/:id', verifyToken, requireRole('admin'), async (req, res
             message: 'Resource deleted successfully'
         });
     } catch (error) {
+        console.error('❌ [R-ERROR] Error deleting resource:', error.message);
         logger.error('Error deleting resource:', { requestId: req.id, error: error.message });
         
         if (error instanceof NotFoundError) {
@@ -2998,14 +3270,19 @@ resourceRouter.delete('/:id', verifyToken, requireRole('admin'), async (req, res
         
         res.status(500).json({
             status: 'error',
-            message: 'Failed to delete resource'
+            message: 'Failed to delete resource',
+            debug: error.message
         });
     }
 });
 
 // Increment download count
 resourceRouter.post('/:id/download', async (req, res) => {
+    console.log(`📡 [R38] POST /api/resources/${req.params.id}/download called`);
+    
     try {
+        console.log('📡 [R39] Getting current download count for resource:', req.params.id);
+        
         // First get current download count
         const getResult = await db.query('select', 'resources', {
             where: { id: req.params.id },
@@ -3013,26 +3290,37 @@ resourceRouter.post('/:id/download', async (req, res) => {
         });
 
         if (getResult.data.length === 0) {
-            throw new NotFoundError('Resource');
+            console.log(`📡 [R40] Resource ${req.params.id} not found`);
+            return res.status(404).json({
+                status: 'error',
+                message: 'Resource not found'
+            });
         }
 
         const currentCount = getResult.data[0].download_count || 0;
+        console.log(`📡 [R41] Current download count: ${currentCount}`);
         
         // Update download count
-        const updateResult = await db.query('update', 'resources', {
+        const newCount = currentCount + 1;
+        console.log(`📡 [R42] Updating to: ${newCount}`);
+        
+        await db.query('update', 'resources', {
             data: { 
-                download_count: currentCount + 1,
+                download_count: newCount,
                 updated_at: new Date()
             },
             where: { id: req.params.id }
         });
 
+        console.log('✅ [R43] Download count updated');
+
         res.json({
             status: 'success',
-            data: { download_count: currentCount + 1 },
+            data: { download_count: newCount },
             message: 'Download count updated'
         });
     } catch (error) {
+        console.error('❌ [R-ERROR] Error updating download count:', error.message);
         logger.error('Error updating download count:', { requestId: req.id, error: error.message });
         
         if (error instanceof NotFoundError) {
@@ -3044,13 +3332,16 @@ resourceRouter.post('/:id/download', async (req, res) => {
         
         res.status(500).json({
             status: 'error',
-            message: 'Failed to update download count'
+            message: 'Failed to update download count',
+            debug: error.message
         });
     }
 });
 
 // Get unique categories for filtering
 resourceRouter.get('/meta/categories', async (req, res) => {
+    console.log('📡 [R44] GET /api/resources/meta/categories called');
+    
     try {
         const result = await db.query('select', 'resources', {
             select: 'DISTINCT category',
@@ -3058,12 +3349,14 @@ resourceRouter.get('/meta/categories', async (req, res) => {
         });
         
         const categories = result.data.map(item => item.category).filter(Boolean);
+        console.log(`📡 [R45] Found ${categories.length} unique categories`);
         
         res.json({
             status: 'success',
             data: categories
         });
     } catch (error) {
+        console.error('❌ [R-ERROR] Error fetching categories:', error.message);
         logger.error('Error fetching categories:', { requestId: req.id, error: error.message });
         res.status(500).json({
             status: 'error',
@@ -3074,6 +3367,8 @@ resourceRouter.get('/meta/categories', async (req, res) => {
 
 // Get unique departments for filtering
 resourceRouter.get('/meta/departments', async (req, res) => {
+    console.log('📡 [R46] GET /api/resources/meta/departments called');
+    
     try {
         const result = await db.query('select', 'resources', {
             select: 'DISTINCT department',
@@ -3081,12 +3376,14 @@ resourceRouter.get('/meta/departments', async (req, res) => {
         });
         
         const departments = result.data.map(item => item.department).filter(Boolean);
+        console.log(`📡 [R47] Found ${departments.length} unique departments`);
         
         res.json({
             status: 'success',
             data: departments
         });
     } catch (error) {
+        console.error('❌ [R-ERROR] Error fetching departments:', error.message);
         logger.error('Error fetching departments:', { requestId: req.id, error: error.message });
         res.status(500).json({
             status: 'error',
@@ -3097,12 +3394,16 @@ resourceRouter.get('/meta/departments', async (req, res) => {
 
 // Get unique course codes for filtering
 resourceRouter.get('/meta/courses', async (req, res) => {
+    console.log('📡 [R48] GET /api/resources/meta/courses called');
+    console.log('📡 [R48a] Query params:', req.query);
+    
     try {
         const { department } = req.query;
         
         let where = { course_code: { operator: 'isNull', value: false } };
         if (department) {
             where.department = department;
+            console.log('📡 [R49] Filtering by department:', department);
         }
         
         const result = await db.query('select', 'resources', {
@@ -3110,11 +3411,14 @@ resourceRouter.get('/meta/courses', async (req, res) => {
             where
         });
         
+        console.log(`📡 [R50] Found ${result.data.length} unique courses`);
+        
         res.json({
             status: 'success',
             data: result.data
         });
     } catch (error) {
+        console.error('❌ [R-ERROR] Error fetching courses:', error.message);
         logger.error('Error fetching courses:', { requestId: req.id, error: error.message });
         res.status(500).json({
             status: 'error',
@@ -3123,8 +3427,38 @@ resourceRouter.get('/meta/courses', async (req, res) => {
     }
 });
 
+// ==================== REGISTER THE ROUTER ====================
+console.log('🔧 [R51] Attempting to register /api/resources router...');
+console.log('🔧 [R51a] Current time:', new Date().toISOString());
+console.log('🔧 [R51b] Is resourceRouter defined?', resourceRouter ? 'Yes' : 'No');
+console.log('🔧 [R51c] resourceRouter type:', typeof resourceRouter);
+
 // Register the resources router
-app.use('/api/resources', resourceRouter);
+try {
+    app.use('/api/resources', resourceRouter);
+    console.log('✅ [R52] SUCCESS! /api/resources router registered');
+    
+    // Log all registered routes for verification
+    const registeredRoutes = app._router?.stack
+        .filter(layer => layer.route || layer.name === 'router')
+        .map(layer => {
+            if (layer.route) {
+                return `${Object.keys(layer.route.methods).join(',')} ${layer.route.path}`;
+            }
+            if (layer.name === 'router' && layer.regexp) {
+                return `Router: ${layer.regexp}`;
+            }
+            return null;
+        })
+        .filter(Boolean);
+    
+    console.log('🔧 [R53] Currently registered routes:', registeredRoutes);
+    
+} catch (error) {
+    console.error('❌ [R-ERROR] Failed to register /api/resources router:', error.message);
+}
+
+console.log('🔧 [R54] Resources router setup complete');
 
 // ==================== FILE MANAGEMENT ROUTES ====================
 app.post('/api/upload', verifyToken, requireRole('admin', 'editor'), upload.single('file'), async (req, res) => {
