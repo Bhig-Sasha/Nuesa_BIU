@@ -1194,7 +1194,7 @@
         </div>
     </footer>
 
-    <script>
+<script>
 document.addEventListener('DOMContentLoaded', function() {
     // Constants - Updated API URL
     const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
@@ -1223,7 +1223,7 @@ document.addEventListener('DOMContentLoaded', function() {
         initMobileMenu();
         
         // Load initial articles
-        loadArticles();
+        loadArticlesFromAPI();
         
         // Attach event listeners
         if (loadMoreBtn) {
@@ -1278,138 +1278,101 @@ document.addEventListener('DOMContentLoaded', function() {
             link.addEventListener('click', () => {
                 mobileNav.classList.remove('open');
                 mobileMenuBtn.setAttribute('aria-expanded', 'false');
-                mobileMenuBtn.querySelector('i').classList.remove('fa-times');
-                mobileMenuBtn.querySelector('i').classList.add('fa-bars');
+                const icon = mobileMenuBtn.querySelector('i');
+                if (icon) {
+                    icon.classList.remove('fa-times');
+                    icon.classList.add('fa-bars');
+                }
             });
         });
     }
     
-    async function loadArticles(page = 1, append = false) {
-        if (isLoading) return;
+    async function loadArticlesFromAPI() {
+        // Try different endpoint variations
+        const possibleEndpoints = [
+            `${API_BASE_URL}/api/articles`,
+            `${API_BASE_URL}/api/articles/published`,
+            `${API_BASE_URL}/api/articles?status=published`,
+            `${API_BASE_URL}/api/news`,
+            `${API_BASE_URL}/articles`,
+            `${API_BASE_URL}/api/v1/articles`,
+            `${API_BASE_URL}/api/posts`
+        ];
         
-        isLoading = true;
+        let lastError = null;
         
-        if (!append) {
-            showLoadingState();
-        } else {
-            showLoadMoreLoading();
-        }
+        // Show loading state
+        showLoadingState();
         
-        try {
-            // Fetch articles from API
-            const apiArticles = await fetchArticlesFromAPI();
-            
-            if (apiArticles && apiArticles.length > 0) {
-                allArticles = apiArticles;
-                filteredArticles = [...allArticles];
-                
-                // For pagination, get articles for current page
-                const startIndex = (page - 1) * ARTICLES_PER_PAGE;
-                const endIndex = startIndex + ARTICLES_PER_PAGE;
-                const pageArticles = filteredArticles.slice(startIndex, endIndex);
-                
-                if (append) {
-                    renderArticles(pageArticles, true);
-                } else {
-                    renderArticles(pageArticles);
-                }
-                
-                // Check if there are more articles
-                hasMoreArticles = endIndex < filteredArticles.length;
-            } else {
-                // If no articles from API, show empty state
-                showNoArticlesMessage();
-                hasMoreArticles = false;
-            }
-            
-            // Update load more button
-            updateLoadMoreButton();
-            
-        } catch (error) {
-            console.error('Error loading articles:', error);
-            showErrorState('Failed to load articles. Please check your connection.');
-        } finally {
-            isLoading = false;
-            hideLoadingState();
-        }
-    }
-    
-    async function fetchArticlesFromAPI() {
-        try {
-            console.log('Fetching articles from API...');
-            
-            // Try multiple endpoints since we're not sure about the exact structure
-            const endpoints = [
-                `${API_BASE_URL}/api/news`,
-                `${API_BASE_URL}/api/articles`,
-                `${API_BASE_URL}/news`,
-                `${API_BASE_URL}/articles`
-            ];
-            
-            let articles = [];
-            
-            for (const endpoint of endpoints) {
-                try {
-                    console.log(`Trying endpoint: ${endpoint}`);
-                    const response = await fetch(endpoint, {
-                        method: 'GET',
-                        headers: {
-                            'Accept': 'application/json',
-                            'Content-Type': 'application/json'
-                        },
-                        mode: 'cors'
-                    });
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        console.log(`Success from ${endpoint}:`, data);
-                        
-                        // Parse different response formats
-                        if (data.status === 'success' && data.data) {
-                            articles = data.data;
-                            break;
-                        } else if (Array.isArray(data)) {
-                            articles = data;
-                            break;
-                        } else if (data.articles && Array.isArray(data.articles)) {
-                            articles = data.articles;
-                            break;
-                        } else if (data.news && Array.isArray(data.news)) {
-                            articles = data.news;
-                            break;
-                        }
+        for (const endpoint of possibleEndpoints) {
+            try {
+                console.log('Trying endpoint:', endpoint);
+                const response = await fetch(endpoint, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
                     }
-                } catch (endpointError) {
-                    console.log(`Endpoint ${endpoint} failed:`, endpointError.message);
+                });
+                
+                if (!response.ok) {
+                    console.log(`Endpoint ${endpoint} failed: ${response.status}`);
+                    lastError = new Error(`HTTP ${response.status}`);
                     continue;
                 }
+                
+                const data = await response.json();
+                
+                // Handle different response structures
+                let articles = [];
+                
+                if (Array.isArray(data)) {
+                    articles = data;
+                } else if (data.data && Array.isArray(data.data)) {
+                    articles = data.data;
+                } else if (data.articles && Array.isArray(data.articles)) {
+                    articles = data.articles;
+                } else if (data.results && Array.isArray(data.results)) {
+                    articles = data.results;
+                }
+                
+                // Filter only published articles
+                articles = articles.filter(article => 
+                    article.status === 'published' || article.is_published === true
+                );
+                
+                if (articles.length > 0) {
+                    console.log(`✅ Found ${articles.length} articles at ${endpoint}`);
+                    
+                    // Store articles and display first page
+                    allArticles = articles;
+                    filteredArticles = [...allArticles];
+                    
+                    // Display first page
+                    const startIndex = 0;
+                    const endIndex = ARTICLES_PER_PAGE;
+                    const pageArticles = filteredArticles.slice(startIndex, endIndex);
+                    
+                    renderArticles(pageArticles);
+                    
+                    // Check if there are more articles
+                    hasMoreArticles = endIndex < filteredArticles.length;
+                    updateLoadMoreButton();
+                    
+                    return articles;
+                } else {
+                    console.log(`Endpoint ${endpoint} returned 0 published articles`);
+                }
+                
+            } catch (error) {
+                console.log(`❌ Endpoint ${endpoint} error:`, error.message);
+                lastError = error;
             }
-            
-            if (articles.length === 0) {
-                console.log('No articles found in any endpoint');
-                return [];
-            }
-            
-            // Filter only published articles
-            const publishedArticles = articles.filter(article => {
-                const status = article.status || article.published || article.is_published;
-                return status === 'published' || status === true || status === 1 || !status;
-            });
-            
-            // Sort by date (newest first)
-            const sortedArticles = publishedArticles.sort((a, b) => {
-                const dateA = new Date(a.published_at || a.created_at || a.date || a.timestamp);
-                const dateB = new Date(b.published_at || b.created_at || b.date || b.timestamp);
-                return dateB - dateA;
-            });
-            
-            console.log(`Loaded ${sortedArticles.length} published articles`);
-            return sortedArticles;
-            
-        } catch (error) {
-            console.error('API fetch failed:', error);
-            throw error;
         }
+        
+        // If all endpoints fail, show error message
+        console.error('Failed to fetch articles from any endpoint');
+        showErrorState('Unable to load articles. Please try again later.');
     }
     
     function renderArticles(articles, append = false) {
@@ -1441,80 +1404,64 @@ document.addEventListener('DOMContentLoaded', function() {
     function createArticleCard(article) {
         const articleCard = document.createElement('article');
         articleCard.className = 'article-card';
-        articleCard.dataset.articleId = article.id;
+        articleCard.dataset.articleId = article.id || article.uuid;
         
         // Format date
-        const publishedDate = article.published_at || article.created_at || article.date;
-        const formattedDate = formatDate(publishedDate);
+        const publishDate = article.published_at || article.created_at || article.date;
+        const formattedDate = formatDate(publishDate);
         
         // Get tags/categories
         let tags = [];
         if (article.tags && Array.isArray(article.tags)) {
             tags = article.tags;
-        } else if (article.tag && typeof article.tag === 'string') {
-            tags = [article.tag];
         } else if (article.category) {
             tags = [article.category];
-        } else if (article.categories && Array.isArray(article.categories)) {
-            tags = article.categories;
-        } else {
-            tags = ['News'];
         }
-        
-        // Ensure tags are strings
-        tags = tags.map(tag => String(tag));
         
         // Limit tags to 2 for display
         const displayTags = tags.slice(0, 2);
         
-        // Handle image URL
-        const imageUrl = article.image_url || article.featured_image || article.image || null;
-        
         // Get excerpt or create from content
-        let excerpt = article.excerpt || article.description || article.short_content;
+        let excerpt = article.excerpt || article.description;
         if (!excerpt && article.content) {
             excerpt = article.content.substring(0, 150) + '...';
         }
         if (!excerpt) {
-            excerpt = 'No excerpt available.';
+            excerpt = 'Click to read more about this article.';
         }
         
         articleCard.innerHTML = `
             <div class="article-image">
-                ${imageUrl ? 
-                    `<img src="${imageUrl}" 
-                          alt="${article.title || 'Article Image'}"
-                          style="width:100%;height:100%;object-fit:cover;"
-                          onerror="this.onerror=null; this.src=''; this.nextElementSibling.style.display='flex';">` :
-                    `<span class="article-image-text">
-                        Article Image
-                    </span>`
-                }
+                <span class="article-image-text">
+                    <i class="fas fa-newspaper"></i> Article
+                </span>
                 <div class="article-image-overlay"></div>
             </div>
             <div class="article-content">
-                <div class="article-tags">
-                    ${displayTags.map(tag => 
-                        `<span class="article-tag" data-tag="${tag}">${tag}</span>`
-                    ).join('')}
-                </div>
+                ${displayTags.length > 0 ? `
+                    <div class="article-tags">
+                        ${displayTags.map(tag => 
+                            `<span class="article-tag" data-tag="${tag}">${tag}</span>`
+                        ).join('')}
+                    </div>
+                ` : ''}
                 <h2 class="article-title">
                     ${article.title || 'Untitled Article'}
                 </h2>
                 <div class="article-date">
-                    <i class="fas fa-calendar"></i>
+                    <i class="fas fa-calendar-alt"></i>
                     ${formattedDate}
                     ${article.author ? `
                         <span style="margin-left: 1rem;">
-                            <i class="fas fa-user" style="margin-right: 0.5rem;"></i>
+                            <i class="fas fa-user"></i>
                             ${article.author}
                         </span>
                     ` : ''}
                 </div>
-                <p class="article-excerpt line-clamp-3">
+                <p class="article-excerpt">
                     ${excerpt}
                 </p>
-                <a href="#" class="article-read-more" data-article-id="${article.id}">
+                <a href="#" class="article-read-more" data-article-id="${article.id || article.uuid}">
                     Read Full Story <i class="fas fa-arrow-right"></i>
                 </a>
             </div>
@@ -1548,81 +1495,33 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.stopPropagation();
                 const tagText = this.dataset.tag || this.textContent;
                 filterArticlesByTag(tagText);
-                
-                // Visual feedback
-                const originalColor = this.style.color;
-                const originalBg = this.style.backgroundColor;
-                const originalBorder = this.style.borderColor;
-                
-                this.style.color = 'var(--white)';
-                this.style.backgroundColor = 'var(--emerald-600)';
-                this.style.borderColor = 'var(--emerald-600)';
-                
-                setTimeout(() => {
-                    this.style.color = originalColor;
-                    this.style.backgroundColor = originalBg;
-                    this.style.borderColor = originalBorder;
-                }, 500);
             });
         });
     }
     
-    async function showArticleModal(articleId) {
-        try {
-            // First try to find article in loaded articles
-            let article = allArticles.find(a => a.id == articleId);
-            
-            if (!article) {
-                // If not found, try to fetch from API
-                try {
-                    const response = await fetch(`${API_BASE_URL}/api/news/${articleId}`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.status === 'success' && data.data) {
-                            article = data.data;
-                        }
-                    }
-                } catch (apiError) {
-                    console.log('Could not fetch article details from API');
-                }
-            }
-            
-            if (!article) {
-                throw new Error('Article not found');
-            }
-            
-            createAndShowModal(article);
-            
-        } catch (error) {
-            console.error('Error loading article details:', error);
-            showErrorToast('Unable to load article details. Please try again.');
-        }
-    }
-    
-    function createAndShowModal(article) {
-        // Format date
-        const publishedDate = article.published_at || article.created_at || article.date;
-        const formattedDate = formatDate(publishedDate);
+    function showArticleModal(articleId) {
+        // Find article in our data
+        const article = allArticles.find(a => a.id == articleId || a.uuid == articleId);
         
-        // Get tags/categories
+        if (!article) {
+            showErrorToast('Article not found');
+            return;
+        }
+        
+        // Format date
+        const publishDate = article.published_at || article.created_at || article.date;
+        const formattedDate = formatDate(publishDate);
+        
+        // Get tags
         let tags = [];
         if (article.tags && Array.isArray(article.tags)) {
             tags = article.tags;
-        } else if (article.tag) {
-            tags = [article.tag];
         } else if (article.category) {
             tags = [article.category];
         }
         
-        // Ensure tags are strings
-        tags = tags.map(tag => String(tag));
-        
-        // Handle image URL
-        const imageUrl = article.image_url || article.featured_image || article.image;
-        
-        // Get full content
-        let content = article.content || article.full_content || article.body || 
-                     article.description || '<p>No content available for this article.</p>';
+        // Get content
+        const content = article.content || article.body || article.description || 'No content available.';
         
         // Create modal
         const modal = document.createElement('div');
@@ -1639,7 +1538,6 @@ document.addEventListener('DOMContentLoaded', function() {
             justify-content: center;
             z-index: 9999;
             padding: 1rem;
-            backdrop-filter: blur(4px);
         `;
         
         modal.innerHTML = `
@@ -1653,227 +1551,94 @@ document.addEventListener('DOMContentLoaded', function() {
                 overflow-y: auto;
                 box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
                 position: relative;
-                border: 2px solid var(--emerald-200);
             ">
-                <button id="closeModal" style="
+                <button class="close-modal" style="
                     position: absolute;
                     top: 1rem;
                     right: 1rem;
                     background: none;
                     border: none;
-                    font-size: 1.5rem;
-                    color: var(--gray-600);
+                    font-size: 2rem;
+                    color: #666;
                     cursor: pointer;
                     padding: 0.5rem;
-                    z-index: 1;
-                    transition: color 0.3s;
-                " aria-label="Close modal">&times;</button>
+                    line-height: 1;
+                ">&times;</button>
                 
-                <div class="modal-header" style="margin-bottom: 2rem;">
-                    ${imageUrl ? `
-                        <div style="
-                            background: url('${imageUrl}') center/cover;
-                            height: 12rem;
-                            border-radius: 0.5rem;
-                            margin-bottom: 1.5rem;
-                            position: relative;
-                            overflow: hidden;
-                        ">
-                            <div style="
-                                position: absolute;
-                                inset: 0;
-                                background: rgba(0,0,0,0.05);
-                            "></div>
-                        </div>
-                    ` : `
-                        <div style="
-                            background: linear-gradient(135deg, var(--emerald-100) 0%, var(--blue-100) 100%);
-                            height: 8rem;
-                            border-radius: 0.5rem;
-                            margin-bottom: 1.5rem;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                        ">
-                            <span style="
-                                font-family: 'Roboto Mono', monospace;
-                                font-size: 0.875rem;
-                                color: var(--gray-600);
-                                text-transform: uppercase;
-                                letter-spacing: 0.1em;
-                            ">Article Image</span>
-                        </div>
-                    `}
-                    
-                    ${tags.length > 0 ? `
-                        <div class="modal-tags" style="
-                            display: flex;
-                            gap: 0.5rem;
-                            margin-bottom: 1rem;
-                            flex-wrap: wrap;
-                        ">
-                            ${tags.map(tag => `
-                                <span style="
-                                    padding: 0.25rem 0.5rem;
-                                    background-color: var(--gray-100);
-                                    border: 1px solid var(--gray-300);
-                                    font-family: 'Roboto Mono', monospace;
-                                    font-size: 0.625rem;
-                                    text-transform: uppercase;
-                                    font-weight: 700;
-                                    color: var(--gray-600);
-                                    border-radius: 2px;
-                                ">${tag}</span>
-                            `).join('')}
-                        </div>
-                    ` : ''}
-                    
-                    <h2 class="modal-title" style="
-                        font-family: 'Inter', sans-serif;
-                        font-size: 1.5rem;
-                        font-weight: 700;
-                        color: var(--gray-800);
-                        margin-bottom: 0.5rem;
-                        line-height: 1.3;
-                    ">${article.title || 'Untitled Article'}</h2>
-                    
-                    <div class="modal-meta" style="
-                        display: flex;
-                        align-items: center;
-                        color: var(--gray-600);
-                        font-family: 'Roboto Mono', monospace;
-                        font-size: 0.75rem;
-                        margin-bottom: 1.5rem;
-                    ">
-                        <i class="fas fa-calendar" style="margin-right: 0.5rem;"></i>
-                        ${formattedDate}
-                        ${article.author ? `
-                            <span style="margin-left: 1rem;">
-                                <i class="fas fa-user" style="margin-right: 0.5rem;"></i>
-                                ${article.author}
-                            </span>
-                        ` : ''}
-                    </div>
+                <h2 style="
+                    font-size: 1.5rem;
+                    font-weight: 700;
+                    margin-bottom: 1rem;
+                    padding-right: 2rem;
+                ">${article.title || 'Untitled Article'}</h2>
+                
+                <div style="
+                    display: flex;
+                    gap: 1rem;
+                    margin-bottom: 1.5rem;
+                    color: #666;
+                    font-size: 0.875rem;
+                ">
+                    <span><i class="fas fa-calendar-alt"></i> ${formattedDate}</span>
+                    ${article.author ? `<span><i class="fas fa-user"></i> ${article.author}</span>` : ''}
                 </div>
                 
-                <div class="modal-body" style="
-                    font-family: 'Inter', sans-serif;
+                ${tags.length > 0 ? `
+                    <div style="
+                        display: flex;
+                        gap: 0.5rem;
+                        margin-bottom: 1.5rem;
+                        flex-wrap: wrap;
+                    ">
+                        ${tags.map(tag => `
+                            <span style="
+                                padding: 0.25rem 0.5rem;
+                                background: #f3f4f6;
+                                border-radius: 0.25rem;
+                                font-size: 0.75rem;
+                                color: #4b5563;
+                            ">${tag}</span>
+                        `).join('')}
+                    </div>
+                ` : ''}
+                
+                <div style="
                     line-height: 1.6;
-                    color: var(--gray-700);
-                    margin-bottom: 2rem;
+                    color: #374151;
                 ">
                     ${content.replace(/\n/g, '<br>')}
                 </div>
                 
-                <div class="modal-footer" style="
-                    padding-top: 1.5rem;
-                    border-top: 1px solid var(--gray-200);
+                <div style="
+                    margin-top: 2rem;
                     display: flex;
-                    align-items: center;
-                    justify-content: space-between;
+                    justify-content: flex-end;
                 ">
-                    <button id="shareArticle" style="
-                        padding: 0.75rem 1.5rem;
-                        background-color: var(--emerald-600);
-                        color: white;
+                    <button class="close-modal-btn" style="
+                        padding: 0.5rem 1rem;
+                        background: #e5e7eb;
                         border: none;
-                        border-radius: 0.375rem;
-                        font-family: 'Roboto Mono', monospace;
-                        font-size: 0.75rem;
-                        font-weight: 700;
-                        text-transform: uppercase;
-                        letter-spacing: 0.05em;
+                        border-radius: 0.25rem;
                         cursor: pointer;
-                        transition: all 0.3s;
-                        display: flex;
-                        align-items: center;
-                        gap: 0.5rem;
-                    ">
-                        <i class="fas fa-share-alt"></i>
-                        Share Article
-                    </button>
-                    
-                    <button id="closeModalBtn" style="
-                        padding: 0.75rem 1.5rem;
-                        background-color: var(--gray-200);
-                        color: var(--gray-700);
-                        border: none;
-                        border-radius: 0.375rem;
-                        font-family: 'Roboto Mono', monospace;
-                        font-size: 0.75rem;
-                        font-weight: 700;
-                        text-transform: uppercase;
-                        letter-spacing: 0.05em;
-                        cursor: pointer;
-                        transition: all 0.3s;
-                    ">
-                        Close
-                    </button>
+                    ">Close</button>
                 </div>
             </div>
         `;
         
         document.body.appendChild(modal);
         
-        // Add modal event listeners
-        const closeModalBtn = modal.querySelector('#closeModal');
-        const closeModalBtn2 = modal.querySelector('#closeModalBtn');
-        const shareBtn = modal.querySelector('#shareArticle');
-        
-        const closeModalFunc = () => {
+        // Add close functionality
+        const closeModal = () => {
             document.body.removeChild(modal);
-            document.removeEventListener('keydown', escapeHandler);
         };
         
-        const escapeHandler = (e) => {
-            if (e.key === 'Escape') closeModalFunc();
-        };
-        
-        if (closeModalBtn) closeModalBtn.addEventListener('click', closeModalFunc);
-        if (closeModalBtn2) closeModalBtn2.addEventListener('click', closeModalFunc);
-        
-        if (shareBtn) {
-            shareBtn.addEventListener('click', () => {
-                shareArticle(article.title, article.id);
-            });
-        }
-        
-        // Close modal on outside click
+        modal.querySelector('.close-modal').addEventListener('click', closeModal);
+        modal.querySelector('.close-modal-btn').addEventListener('click', closeModal);
         modal.addEventListener('click', function(e) {
             if (e.target === this) {
-                closeModalFunc();
+                closeModal();
             }
         });
-        
-        // Close modal on escape key
-        document.addEventListener('keydown', escapeHandler);
-        
-        // Add hover effects
-        if (shareBtn) {
-            shareBtn.addEventListener('mouseenter', function() {
-                this.style.backgroundColor = 'var(--emerald-700)';
-                this.style.transform = 'translateY(-2px)';
-                this.style.boxShadow = 'var(--shadow-md)';
-            });
-            
-            shareBtn.addEventListener('mouseleave', function() {
-                this.style.backgroundColor = 'var(--emerald-600)';
-                this.style.transform = 'translateY(0)';
-                this.style.boxShadow = 'none';
-            });
-        }
-        
-        // Update view count
-        updateViewCount(article.id);
-    }
-    
-    async function updateViewCount(articleId) {
-        try {
-            // In a real application, you would send a POST request here
-            console.log(`Article ${articleId} viewed`);
-        } catch (error) {
-            console.error('Error updating view count:', error);
-        }
     }
     
     function filterArticlesByTag(tag) {
@@ -1881,13 +1646,18 @@ document.addEventListener('DOMContentLoaded', function() {
         
         currentFilter = tag;
         filteredArticles = allArticles.filter(article => {
-            const tags = article.tags || [article.category] || [];
-            return tags.includes(tag);
+            const articleTags = [];
+            if (article.tags && Array.isArray(article.tags)) {
+                articleTags.push(...article.tags);
+            }
+            if (article.category) {
+                articleTags.push(article.category);
+            }
+            return articleTags.includes(tag);
         });
         
         // Reset pagination
         currentPage = 1;
-        hasMoreArticles = true;
         
         // Show filtered articles
         const startIndex = 0;
@@ -1898,50 +1668,45 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Check if there are more articles
         hasMoreArticles = endIndex < filteredArticles.length;
-        
-        // Update load more button
         updateLoadMoreButton();
         
         // Show filter message
-        showFilterActiveMessage(tag);
+        showFilterMessage(tag);
     }
     
-    function showFilterActiveMessage(tag) {
-        removeExistingFilterMessages();
+    function showFilterMessage(tag) {
+        // Remove existing filter message
+        const existingMsg = document.getElementById('filterMessage');
+        if (existingMsg) existingMsg.remove();
         
         const filterMsg = document.createElement('div');
         filterMsg.id = 'filterMessage';
         filterMsg.style.cssText = `
-            background-color: var(--emerald-100);
-            border: 1px solid var(--emerald-300);
+            background: #d1fae5;
+            border: 1px solid #10b981;
             padding: 1rem;
             border-radius: 0.5rem;
             margin-bottom: 2rem;
-            text-align: center;
-            font-family: 'Roboto Mono', monospace;
-            font-size: 0.875rem;
-            color: var(--emerald-700);
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: space-between;
             flex-wrap: wrap;
-            gap: 0.5rem;
+            gap: 1rem;
         `;
         
         filterMsg.innerHTML = `
-            <i class="fas fa-filter" style="margin-right: 0.5rem;"></i>
-            Showing articles tagged: <strong>${tag}</strong>
+            <span>
+                <i class="fas fa-filter" style="margin-right: 0.5rem;"></i>
+                Showing articles tagged: <strong>${tag}</strong>
+            </span>
             <button id="clearFilter" style="
-                margin-left: 0.5rem;
-                padding: 0.25rem 0.5rem;
-                background: none;
-                border: 1px solid var(--emerald-300);
+                padding: 0.25rem 0.75rem;
+                background: white;
+                border: 1px solid #10b981;
                 border-radius: 0.25rem;
-                font-family: 'Roboto Mono', monospace;
-                font-size: 0.75rem;
-                color: var(--emerald-600);
+                color: #047857;
                 cursor: pointer;
-                transition: all 0.3s;
+                font-size: 0.875rem;
             ">Clear Filter</button>
         `;
         
@@ -1949,20 +1714,6 @@ document.addEventListener('DOMContentLoaded', function() {
         articlesGrid.parentNode.insertBefore(filterMsg, articlesGrid);
         
         document.getElementById('clearFilter').addEventListener('click', clearFilter);
-        
-        // Add hover effect to clear button
-        const clearBtn = document.getElementById('clearFilter');
-        clearBtn.addEventListener('mouseenter', function() {
-            this.style.backgroundColor = 'var(--emerald-600)';
-            this.style.color = 'var(--white)';
-            this.style.borderColor = 'var(--emerald-600)';
-        });
-        
-        clearBtn.addEventListener('mouseleave', function() {
-            this.style.backgroundColor = '';
-            this.style.color = '';
-            this.style.borderColor = '';
-        });
     }
     
     function clearFilter() {
@@ -1971,7 +1722,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Reset pagination
         currentPage = 1;
-        hasMoreArticles = true;
         
         // Show all articles
         const startIndex = 0;
@@ -1982,14 +1732,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Check if there are more articles
         hasMoreArticles = endIndex < filteredArticles.length;
-        
-        // Update load more button
         updateLoadMoreButton();
         
-        removeExistingFilterMessages();
-    }
-    
-    function removeExistingFilterMessages() {
+        // Remove filter message
         const filterMsg = document.getElementById('filterMessage');
         if (filterMsg) filterMsg.remove();
     }
@@ -2011,7 +1756,7 @@ document.addEventListener('DOMContentLoaded', function() {
         isLoading = true;
         showLoadMoreLoading();
         
-        // Simulate loading delay
+        // Small delay for UX
         await new Promise(resolve => setTimeout(resolve, 500));
         
         renderArticles(pageArticles, true);
@@ -2020,7 +1765,7 @@ document.addEventListener('DOMContentLoaded', function() {
         updateLoadMoreButton();
         
         isLoading = false;
-        hideLoadingState();
+        hideLoadMoreLoading();
     }
     
     function updateLoadMoreButton() {
@@ -2028,28 +1773,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (!hasMoreArticles || filteredArticles.length <= ARTICLES_PER_PAGE) {
             loadMoreBtn.style.display = 'none';
-            
-            // Only show message if we have articles
-            if (filteredArticles.length > 0) {
-                const allLoadedMsg = document.createElement('div');
-                allLoadedMsg.style.cssText = `
-                    text-align: center;
-                    font-family: 'Roboto Mono', monospace;
-                    font-size: 0.75rem;
-                    color: var(--gray-600);
-                    margin-top: 1rem;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 0.5rem;
-                `;
-                allLoadedMsg.innerHTML = `
-                    <i class="fas fa-check-circle" style="color: var(--emerald-600);"></i>
-                    All articles loaded
-                `;
-                
-                loadMoreBtn.parentElement.appendChild(allLoadedMsg);
-            }
         } else {
             loadMoreBtn.style.display = 'block';
         }
@@ -2059,24 +1782,21 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!articlesGrid) return;
         
         articlesGrid.innerHTML = `
-            <div class="loading-state" style="
+            <div style="
                 grid-column: 1 / -1;
                 text-align: center;
                 padding: 4rem;
             ">
-                <div class="spinner" style="
+                <div style="
                     width: 3rem;
                     height: 3rem;
-                    border: 3px solid var(--emerald-200);
-                    border-top: 3px solid var(--emerald-600);
+                    border: 3px solid #e5e7eb;
+                    border-top-color: #10b981;
                     border-radius: 50%;
                     animation: spin 1s linear infinite;
                     margin: 0 auto 1rem;
                 "></div>
-                <p style="
-                    font-family: 'Roboto Mono', monospace;
-                    color: var(--gray-600);
-                ">Loading articles...</p>
+                <p style="color: #6b7280;">Loading articles...</p>
             </div>
         `;
     }
@@ -2086,202 +1806,56 @@ document.addEventListener('DOMContentLoaded', function() {
         
         loadMoreBtn.disabled = true;
         loadMoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
-        loadMoreBtn.style.opacity = '0.7';
-        loadMoreBtn.style.cursor = 'not-allowed';
     }
     
-    function hideLoadingState() {
-        if (loadMoreBtn) {
-            loadMoreBtn.disabled = false;
-            loadMoreBtn.innerHTML = 'Load More Articles';
-            loadMoreBtn.style.opacity = '1';
-            loadMoreBtn.style.cursor = 'pointer';
-        }
+    function hideLoadMoreLoading() {
+        if (!loadMoreBtn) return;
+        
+        loadMoreBtn.disabled = false;
+        loadMoreBtn.innerHTML = 'Load More Articles';
     }
     
     function showNoArticlesMessage() {
         if (!articlesGrid) return;
         
         articlesGrid.innerHTML = `
-            <div class="no-articles" style="
+            <div style="
                 grid-column: 1 / -1;
                 text-align: center;
-                padding: 4rem 2rem;
-                background-color: var(--white);
-                border: 1px dashed var(--gray-300);
+                padding: 4rem;
+                background: white;
+                border: 1px dashed #d1d5db;
                 border-radius: 0.5rem;
             ">
-                <i class="fas fa-newspaper" style="
-                    font-size: 3rem;
-                    color: var(--gray-300);
-                    margin-bottom: 1rem;
-                "></i>
-                <h3 style="
-                    font-family: 'Inter', sans-serif;
-                    font-size: 1.25rem;
-                    color: var(--gray-700);
-                    margin-bottom: 0.5rem;
-                ">No Articles Available</h3>
-                <p style="
-                    font-family: 'Roboto Mono', monospace;
-                    font-size: 0.875rem;
-                    color: var(--gray-600);
-                    margin-bottom: 1.5rem;
-                ">Check back soon for updates and announcements!</p>
-                <button onclick="window.location.reload()" style="
-                    padding: 0.5rem 1rem;
-                    background: var(--emerald-600);
-                    color: white;
-                    border: none;
-                    border-radius: 0.25rem;
-                    font-family: 'Roboto Mono', monospace;
-                    font-size: 0.75rem;
-                    cursor: pointer;
-                    transition: background-color 0.3s;
-                ">Refresh Page</button>
+                <i class="fas fa-newspaper" style="font-size: 3rem; color: #9ca3af; margin-bottom: 1rem;"></i>
+                <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem;">No Articles Available</h3>
+                <p style="color: #6b7280;">Check back soon for updates!</p>
             </div>
         `;
-        
-        if (loadMoreBtn) {
-            loadMoreBtn.style.display = 'none';
-        }
     }
     
     function showErrorState(message) {
         if (!articlesGrid) return;
         
         articlesGrid.innerHTML = `
-            <div class="error-state" style="
+            <div style="
                 grid-column: 1 / -1;
                 text-align: center;
                 padding: 4rem;
             ">
-                <i class="fas fa-exclamation-triangle" style="
-                    font-size: 2rem;
-                    color: var(--amber-500);
-                    margin-bottom: 1rem;
-                "></i>
-                <h3 style="
-                    font-family: 'Inter', sans-serif;
-                    font-size: 1.25rem;
-                    color: var(--gray-700);
-                    margin-bottom: 0.5rem;
-                ">Unable to Load Articles</h3>
-                <p style="
-                    font-family: 'Roboto Mono', monospace;
-                    color: var(--gray-600);
-                    margin-bottom: 1rem;
-                ">${message}</p>
-                <button onclick="window.location.reload()" style="
+                <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #f59e0b; margin-bottom: 1rem;"></i>
+                <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Unable to Load Articles</h3>
+                <p style="color: #6b7280; margin-bottom: 1rem;">${message}</p>
+                <button onclick="location.reload()" style="
                     padding: 0.5rem 1rem;
-                    background: var(--emerald-600);
+                    background: #10b981;
                     color: white;
                     border: none;
                     border-radius: 0.25rem;
-                    font-family: 'Roboto Mono', monospace;
-                    font-size: 0.75rem;
                     cursor: pointer;
-                    transition: background-color 0.3s;
                 ">Try Again</button>
             </div>
         `;
-        
-        if (loadMoreBtn) {
-            loadMoreBtn.style.display = 'none';
-        }
-    }
-    
-    function shareArticle(articleTitle, articleId) {
-        const shareUrl = `${window.location.origin}/news.html#article-${articleId}`;
-        const shareText = `Check out "${articleTitle}" from NUESA BIU`;
-        
-        if (navigator.share) {
-            navigator.share({
-                title: articleTitle,
-                text: shareText,
-                url: shareUrl
-            }).then(() => {
-                console.log('Article shared successfully');
-            }).catch(error => {
-                console.log('Sharing cancelled or failed:', error);
-                // Fallback to clipboard
-                copyToClipboard(shareUrl, articleTitle);
-            });
-        } else {
-            // Fallback for browsers that don't support Web Share API
-            copyToClipboard(shareUrl, articleTitle);
-        }
-    }
-    
-    function copyToClipboard(url, title) {
-        navigator.clipboard.writeText(`${title}\n\n${url}`).then(() => {
-            showSuccessToast('Article link copied to clipboard!');
-        }).catch(() => {
-            // Fallback for older browsers
-            const textArea = document.createElement('textarea');
-            textArea.value = `${title}\n\n${url}`;
-            document.body.appendChild(textArea);
-            textArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textArea);
-            showSuccessToast('Article link copied to clipboard!');
-        });
-    }
-    
-    function formatDate(dateString) {
-        if (!dateString) return 'Date not available';
-        
-        try {
-            const date = new Date(dateString);
-            
-            // If date is invalid, return original string
-            if (isNaN(date.getTime())) {
-                return dateString;
-            }
-            
-            return date.toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-            });
-        } catch (error) {
-            console.error('Error formatting date:', error);
-            return dateString;
-        }
-    }
-    
-    function showSuccessToast(message) {
-        const toast = document.createElement('div');
-        toast.style.cssText = `
-            position: fixed;
-            bottom: 1rem;
-            right: 1rem;
-            background: var(--emerald-600);
-            color: white;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            font-family: 'Inter', sans-serif;
-            z-index: 10000;
-            box-shadow: var(--shadow-lg);
-            animation: slideIn 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        `;
-        toast.innerHTML = `
-            <i class="fas fa-check-circle"></i>
-            <span>${message}</span>
-        `;
-        document.body.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.style.animation = 'slideOut 0.3s ease';
-            setTimeout(() => {
-                if (toast.parentNode) {
-                    toast.parentNode.removeChild(toast);
-                }
-            }, 300);
-        }, 3000);
     }
     
     function showErrorToast(message) {
@@ -2294,45 +1868,38 @@ document.addEventListener('DOMContentLoaded', function() {
             color: white;
             padding: 1rem;
             border-radius: 0.5rem;
-            font-family: 'Inter', sans-serif;
             z-index: 10000;
-            box-shadow: var(--shadow-lg);
             animation: slideIn 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
         `;
-        toast.innerHTML = `
-            <i class="fas fa-exclamation-circle"></i>
-            <span>${message}</span>
-        `;
+        toast.textContent = message;
         document.body.appendChild(toast);
         
         setTimeout(() => {
-            toast.style.animation = 'slideOut 0.3s ease';
-            setTimeout(() => {
-                if (toast.parentNode) {
-                    toast.parentNode.removeChild(toast);
-                }
-            }, 300);
+            toast.remove();
         }, 3000);
     }
     
+    function formatDate(dateString) {
+        if (!dateString) return 'Date not available';
+        
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return dateString;
+            
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        } catch {
+            return dateString;
+        }
+    }
+    
     function highlightActiveNav() {
-        const currentPage = window.location.pathname.split('/').pop();
+        const currentPage = 'news.html';
         
-        // Desktop navigation
-        document.querySelectorAll('.nav-link').forEach(link => {
-            const href = link.getAttribute('href');
-            if (href === currentPage) {
-                link.classList.add('active');
-            } else {
-                link.classList.remove('active');
-            }
-        });
-        
-        // Mobile navigation
-        document.querySelectorAll('.mobile-nav-link').forEach(link => {
+        document.querySelectorAll('.nav-link, .mobile-nav-link').forEach(link => {
             const href = link.getAttribute('href');
             if (href === currentPage) {
                 link.classList.add('active');
@@ -2349,7 +1916,7 @@ document.addEventListener('DOMContentLoaded', function() {
             header.style.transform = 'translateY(-20px)';
             
             setTimeout(() => {
-                header.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                header.style.transition = 'all 0.6s ease';
                 header.style.opacity = '1';
                 header.style.transform = 'translateY(0)';
             }, 100);
@@ -2363,7 +1930,7 @@ document.addEventListener('DOMContentLoaded', function() {
             card.style.transform = 'translateY(20px)';
             
             setTimeout(() => {
-                card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                card.style.transition = 'all 0.3s ease';
                 card.style.opacity = '1';
                 card.style.transform = 'translateY(0)';
             }, index * 100);
@@ -2382,49 +1949,14 @@ document.addEventListener('DOMContentLoaded', function() {
             to { transform: translateX(0); opacity: 1; }
         }
         
-        @keyframes slideOut {
-            from { transform: translateX(0); opacity: 1; }
-            to { transform: translateX(100%); opacity: 0; }
-        }
-        
         .article-card {
             opacity: 0;
             transform: translateY(20px);
-            transition: opacity 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        
-        .article-card.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        
-        .load-more-btn {
-            transition: all 0.3s ease;
-        }
-        
-        .load-more-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
         }
         
         .load-more-btn:disabled {
-            opacity: 0.7;
+            opacity: 0.5;
             cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-        
-        #closeModal:hover {
-            color: var(--gray-800);
-        }
-        
-        .modal-content {
-            animation: modalSlideIn 0.3s ease;
-        }
-        
-        @keyframes modalSlideIn {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
         }
     `;
     document.head.appendChild(style);
