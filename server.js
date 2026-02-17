@@ -2672,7 +2672,7 @@ eventRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (req,
 
         console.log('📡 Executing update on biu_events with:', updateData);
 
-        const result = await db.query('update', 'biu_events', {  // ← FIXED: 'biu_events' instead of 'events'
+        const result = await db.query('update', 'biu_events', {  
             data: updateData,
             where: { id: req.params.id }
         });
@@ -4086,17 +4086,26 @@ if (adminExists) {
             }
             
             // Serve login HTML file
-            const loginPath = path.join(adminDir, 'adlog.html');
+            const loginPath = path.join(__dirname, 'admin', 'adlog.html');
             console.log('Looking for login at:', loginPath);
             console.log('Login exists?', fsSync.existsSync(loginPath));
             
             if (fsSync.existsSync(loginPath)) {
                 let loginHtml = await fs.readFile(loginPath, 'utf8');
                 
+                // Generate CSRF token safely
+                let csrfToken;
+                try {
+                    csrfToken = req.csrfToken();
+                } catch (csrfError) {
+                    console.error('CSRF token error:', csrfError);
+                    csrfToken = 'csrf-error';
+                }
+                
                 loginHtml = loginHtml.replace(
                     '</head>',
                     `<script>
-                        window.CSRF_TOKEN = '${req.csrfToken()}';
+                        window.CSRF_TOKEN = '${csrfToken}';
                     </script>
                     </head>`
                 );
@@ -4104,11 +4113,29 @@ if (adminExists) {
                 res.send(loginHtml);
             } else {
                 console.error('Login file not found at:', loginPath);
-                res.status(404).send('Login page not found');
+                // Try alternate path
+                const altPath = path.join(process.cwd(), 'admin', 'adlog.html');
+                console.log('Trying alternate path:', altPath);
+                
+                if (fsSync.existsSync(altPath)) {
+                    const loginHtml = await fs.readFile(altPath, 'utf8');
+                    return res.send(loginHtml);
+                }
+                
+                res.status(500).send(`
+                    <h1>Admin Login Error</h1>
+                    <p>Login page not found. Expected at: ${loginPath}</p>
+                    <p>Current directory: ${process.cwd()}</p>
+                    <p>__dirname: ${__dirname}</p>
+                `);
             }
         } catch (error) {
             console.error('Login page error:', error);
-            res.status(500).send('Server error');
+            res.status(500).send(`
+                <h1>Admin Login Error</h1>
+                <p>Error: ${error.message}</p>
+                <pre>${error.stack}</pre>
+            `);
         }
     });
     
