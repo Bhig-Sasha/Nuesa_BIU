@@ -572,6 +572,7 @@ if (process.env.FRONTEND_URL && !allowedOrigins.includes(process.env.FRONTEND_UR
 
 allowedOrigins.push('https://nuesa-biu.vercel.app');
 allowedOrigins.push('https://www.nuesa-biu.vercel.app');
+allowedOrigins.push('https://adminbiunuesa.vercel.app');
 
 const corsOptions = {
     origin: function (origin, callback) {
@@ -1094,6 +1095,10 @@ const checkAdminSessionEnhanced = async (req, res, next) => {
             // Clear cookies safely
             const clearAdminCookie = () => {
                 const cookieOptions = {
+                    httpOnly: true,
+                    secure: isProduction,  // Must be true in production
+                    sameSite: 'none',      // ✅ Critical change for cross-domain
+                    maxAge: 8 * 60 * 60 * 1000,
                     path: '/'
                 };
                 
@@ -1520,8 +1525,8 @@ async function adminLoginHandler(req, res) {
 
         const cookieOptions = {
             httpOnly: true,
-            secure: isProduction,
-            sameSite: 'strict',
+            secure: isProduction,  // Must be true in production
+            sameSite: 'none',      // ✅ CRITICAL: Allows cross-domain cookies
             maxAge: 8 * 60 * 60 * 1000,
             path: '/'
         };
