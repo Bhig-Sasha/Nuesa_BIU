@@ -1303,7 +1303,7 @@
     </footer>
 
     <script>
-    // Members Page JavaScript - Clean version with no mock data
+    // Members Page JavaScript - Fixed version with proper ordering
     document.addEventListener('DOMContentLoaded', function() {
         // Configuration - Live backend only
         const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
@@ -1364,7 +1364,7 @@
             });
         }
 
-        // Load members from API - no fallbacks, no mock data
+        // Load members from API
         async function loadMembersData() {
             if (isLoading) return;
             
@@ -1419,7 +1419,6 @@
             }
         }
 
-        // Render executive members
         // Render executive members with proper ordering
         function renderExecutives() {
             const executiveGrid = document.getElementById('executiveGrid');
@@ -1430,20 +1429,28 @@
                 return;
             }
             
-            // Define the exact order of positions
-            const positionOrder = [
-                'president',
-                'vice president',
-                'secretary general',
-                'assistant secretary general',
-                'financial secretary',
-                'director of sport',
-                'assistant director of sport',
-                'director of welfare',
-                'director of social',
-                'assistant director of social',
-                'academic officer'
-            ];
+            // Define the exact order of positions with priority scores
+            const positionPriority = {
+                'president': 1,
+                'vice president': 2,
+                'secretary general': 3,
+                'assistant secretary general': 4,
+                'financial secretary': 5,
+                'director of sport': 6,
+                'assistant director of sport': 7,
+                'director of welfare': 8,
+                'director of social': 9,
+                'assistant director of social': 10,
+                'academic officer': 11,
+                'treasurer': 12,
+                'public relations officer': 13,
+                'welfare director': 8,
+                'social director': 9,
+                'sport director': 6,
+                'assistant welfare director': 10,
+                'assistant social director': 10,
+                'assistant sport director': 7
+            };
             
             // Filter for executive positions (case insensitive)
             const executives = membersData.filter(member => 
@@ -1452,11 +1459,14 @@
                     member.position.toLowerCase().includes('vice') ||
                     member.position.toLowerCase().includes('secretary') ||
                     member.position.toLowerCase().includes('financial') ||
+                    member.position.toLowerCase().includes('treasurer') ||
                     member.position.toLowerCase().includes('director') ||
                     member.position.toLowerCase().includes('academic') ||
                     member.position.toLowerCase().includes('welfare') ||
                     member.position.toLowerCase().includes('social') ||
-                    member.position.toLowerCase().includes('sport')
+                    member.position.toLowerCase().includes('sport') ||
+                    member.position.toLowerCase().includes('public relations') ||
+                    member.position.toLowerCase().includes('pro')
                 )
             );
             
@@ -1467,25 +1477,36 @@
                 return;
             }
             
-            // Sort executives according to the defined order
+            // Sort executives according to priority
             const sortedExecutives = [...executives].sort((a, b) => {
                 const posA = a.position?.toLowerCase() || '';
                 const posB = b.position?.toLowerCase() || '';
                 
-                // Find indices in the position order array
-                const indexA = positionOrder.findIndex(order => posA.includes(order));
-                const indexB = positionOrder.findIndex(order => posB.includes(order));
+                // Get priority scores
+                let scoreA = 999; // Default high number for unknown positions
+                let scoreB = 999;
                 
-                // If both positions are in our order list, sort by their indices
-                if (indexA !== -1 && indexB !== -1) {
-                    return indexA - indexB;
+                // Find matching priority
+                for (const [key, value] of Object.entries(positionPriority)) {
+                    if (posA.includes(key)) {
+                        scoreA = value;
+                        break;
+                    }
                 }
                 
-                // If only one is in the list, prioritize the one in the list
-                if (indexA !== -1) return -1;
-                if (indexB !== -1) return 1;
+                for (const [key, value] of Object.entries(positionPriority)) {
+                    if (posB.includes(key)) {
+                        scoreB = value;
+                        break;
+                    }
+                }
                 
-                // If neither is in the list, sort alphabetically
+                // Sort by priority score
+                if (scoreA !== scoreB) {
+                    return scoreA - scoreB;
+                }
+                
+                // If same priority, sort alphabetically by position
                 return posA.localeCompare(posB);
             });
             
@@ -1497,9 +1518,17 @@
             container.innerHTML = members.map(member => {
                 // Handle profile image
                 const profileImage = member.profile_image || member.photo || member.avatar;
-                const imageUrl = profileImage ? 
-                    (profileImage.startsWith('http') ? profileImage : `${API_BASE_URL}${profileImage.startsWith('/') ? '' : '/'}${profileImage}`) 
-                    : null;
+                let imageUrl = null;
+                
+                if (profileImage) {
+                    if (profileImage.startsWith('http')) {
+                        imageUrl = profileImage;
+                    } else if (profileImage.startsWith('/')) {
+                        imageUrl = `${API_BASE_URL}${profileImage}`;
+                    } else {
+                        imageUrl = `${API_BASE_URL}/${profileImage}`;
+                    }
+                }
                 
                 // Format position title nicely
                 const position = formatPositionTitle(member.position || 'Member');
@@ -1509,9 +1538,9 @@
                     <div class="member-photo">
                         ${imageUrl ? 
                             `<img src="${imageUrl}" 
-                                alt="${member.full_name || member.name || 'Member'}" 
-                                class="member-photo-image"
-                                onerror="this.onerror=null; this.parentElement.innerHTML=generatePhotoPlaceholder()">` :
+                                  alt="${member.full_name || member.name || 'Member'}" 
+                                  class="member-photo-image"
+                                  onerror="this.onerror=null; this.parentElement.innerHTML=generatePhotoPlaceholder()">` :
                             generatePhotoPlaceholder()
                         }
                     </div>
@@ -1555,25 +1584,36 @@
             const positionMap = {
                 'president': 'President',
                 'vice president': 'Vice President',
+                'vp': 'Vice President',
                 'secretary general': 'Secretary General',
+                'gen sec': 'Secretary General',
                 'assistant secretary general': 'Assistant Secretary General',
+                'asst secretary general': 'Assistant Secretary General',
                 'financial secretary': 'Financial Secretary',
+                'fin sec': 'Financial Secretary',
                 'director of sport': 'Director of Sport',
+                'sport director': 'Director of Sport',
+                'director of sports': 'Director of Sport',
                 'assistant director of sport': 'Assistant Director of Sport',
+                'asst director of sport': 'Assistant Director of Sport',
                 'director of welfare': 'Director of Welfare',
+                'welfare director': 'Director of Welfare',
                 'director of social': 'Director of Social',
+                'social director': 'Director of Social',
                 'assistant director of social': 'Assistant Director of Social',
+                'asst director of social': 'Assistant Director of Social',
                 'academic officer': 'Academic Officer',
                 'treasurer': 'Treasurer',
                 'public relations officer': 'Public Relations Officer',
-                'pro': 'Public Relations Officer'
+                'pro': 'Public Relations Officer',
+                'p.r.o': 'Public Relations Officer'
             };
             
-            const lowerPosition = position.toLowerCase();
+            const lowerPosition = position.toLowerCase().trim();
             
-            // Check if we have a direct mapping
+            // Check for exact matches first
             for (const [key, value] of Object.entries(positionMap)) {
-                if (lowerPosition.includes(key)) {
+                if (lowerPosition === key || lowerPosition.includes(key)) {
                     return value;
                 }
             }
@@ -1584,38 +1624,18 @@
                 .join(' ');
         }
 
-        // Optional: Validate positions in the database
-        function validatePositions() {
-            const requiredPositions = [
-                'President',
-                'Vice President',
-                'Secretary General',
-                'Assistant Secretary General',
-                'Financial Secretary',
-                'Director of Sport',
-                'Assistant Director of Sport',
-                'Director of Welfare',
-                'Director of Social',
-                'Assistant Director of Social',
-                'Academic Officer'
-            ];
-            
-            const existingPositions = membersData
-                .filter(m => m.position)
-                .map(m => formatPositionTitle(m.position));
-            
-            const missingPositions = requiredPositions.filter(
-                pos => !existingPositions.some(existing => existing.toLowerCase() === pos.toLowerCase())
-            );
-            
-            if (missingPositions.length > 0) {
-                console.warn('⚠️ Missing positions in database:', missingPositions);
-            }
+        // Generate photo placeholder
+        function generatePhotoPlaceholder() {
+            return `
+                <div class="photo-placeholder">
+                    <span class="photo-placeholder-text">PHOTO</span>
+                    <div class="photo-placeholder-icon">
+                        <i class="fas fa-user text-gray-300" style="font-size: 1.5rem;"></i>
+                    </div>
+                </div>
+            `;
         }
 
-        // Call this after loading members
-        // validatePositions();
-        
         // Render committees from actual data
         function renderCommittees() {
             const committeeGrid = document.getElementById('committeeGrid');
@@ -1660,6 +1680,9 @@
                 return;
             }
             
+            // Sort committees alphabetically
+            validCommittees.sort((a, b) => a[0].localeCompare(b[0]));
+            
             committeeGrid.innerHTML = validCommittees.map(([committeeName, members]) => {
                 // Find committee head and assistant
                 const head = members.find(m => 
@@ -1674,7 +1697,8 @@
                     m.position && (
                         m.position.toLowerCase().includes('assistant') ||
                         m.position.toLowerCase().includes('asst') ||
-                        m.position.toLowerCase().includes('deputy')
+                        m.position.toLowerCase().includes('deputy') ||
+                        m.position.toLowerCase().includes('vice chair')
                     )
                 );
                 
@@ -1693,7 +1717,7 @@
                                 `<li>• Head: ${head.full_name || head.name}</li>` : ''
                             }
                             ${assistant ? 
-                                `<li>• Asst: ${assistant.full_name || assistant.name}</li>` : ''
+                                `<li>• Assistant: ${assistant.full_name || assistant.name}</li>` : ''
                             }
                             ${otherMembers.length > 0 ? 
                                 `<li>• Members: ${otherMembers.slice(0, 3).map(m => m.full_name || m.name).join(', ')}${otherMembers.length > 3 ? '...' : ''}</li>` : ''
@@ -1714,7 +1738,11 @@
                 'Sports': 'Manages sports activities and inter-department competitions.',
                 'Publicity': 'Handles publicity and communications for all events.',
                 'Financial': 'Manages association finances and fundraising activities.',
-                'Projects': 'Oversees engineering projects and competitions.'
+                'Projects': 'Oversees engineering projects and competitions.',
+                'Disciplinary': 'Maintains order and discipline among members.',
+                'Media': 'Handles photography, videography, and social media content.',
+                'Transport': 'Manages transportation for events and activities.',
+                'Food': 'Coordinates food and refreshments during events.'
             };
             
             return descriptions[committeeName] || `${committeeName} committee responsible for various student activities.`;
@@ -1744,7 +1772,9 @@
                     x: 'fab fa-twitter',
                     github: 'fab fa-github',
                     instagram: 'fab fa-instagram',
-                    facebook: 'fab fa-facebook-f'
+                    facebook: 'fab fa-facebook-f',
+                    whatsapp: 'fab fa-whatsapp',
+                    telegram: 'fab fa-telegram'
                 };
                 
                 return Object.entries(links)
@@ -1833,6 +1863,7 @@
         // Show error state
         function showErrorState(errorMessage) {
             const executiveGrid = document.getElementById('executiveGrid');
+            const committeeGrid = document.getElementById('committeeGrid');
             
             if (executiveGrid) {
                 executiveGrid.innerHTML = `
@@ -1843,6 +1874,19 @@
                         <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem;">
                             ${errorMessage || 'Please check your internet connection.'}
                         </p>
+                        <button class="retry-button" onclick="window.location.reload()">
+                            <i class="fas fa-sync-alt mr-2"></i>Try Again
+                        </button>
+                    </div>
+                `;
+            }
+            
+            if (committeeGrid) {
+                committeeGrid.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i>
+                        <h3>Connection Error</h3>
+                        <p>Unable to load committee data.</p>
                         <button class="retry-button" onclick="window.location.reload()">
                             <i class="fas fa-sync-alt mr-2"></i>Try Again
                         </button>
@@ -1864,7 +1908,7 @@
 
         // Highlight current page
         function highlightCurrentPage() {
-            const currentPage = window.location.pathname.split('/').pop();
+            const currentPage = window.location.pathname.split('/').pop() || 'index.html';
             
             document.querySelectorAll('.desktop-nav .nav-button, .mobile-nav-button').forEach(link => {
                 const href = link.getAttribute('href');
