@@ -1717,6 +1717,20 @@ app.get('/api/admin/session', async (req, res) => {
     }
 });
 
+// TEMPORARY DEBUG ENDPOINT - REMOVE AFTER TESTING
+app.get('/api/debug/admin-files', (req, res) => {
+    const adminDir = path.join(__dirname, 'admin');
+    const files = fsSync.existsSync(adminDir) ? fsSync.readdirSync(adminDir) : [];
+    res.json({
+        adminDirExists: fsSync.existsSync(adminDir),
+        files: files,
+        loginFileExists: fsSync.existsSync(path.join(adminDir, 'adlog.html')),
+        dashFileExists: fsSync.existsSync(path.join(adminDir, 'dash.html')),
+        cwd: process.cwd(),
+        __dirname: __dirname
+    });
+});
+
 // ==================== REGULAR CONTACT FORM ENDPOINT ====================
 app.post('/api/contact/submit', createRateLimiter(10), validate(schemas.contactForm), async (req, res) => {
     try {
