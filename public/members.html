@@ -1302,8 +1302,8 @@
         </div>
     </footer>
 
-    <script>
-    // Members Page JavaScript - COMPLETELY FIXED VERSION
+<script>
+    // Members Page JavaScript - ULTIMATE FIX for assistant positions
     document.addEventListener('DOMContentLoaded', function() {
         // Configuration - Live backend only
         const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
@@ -1316,16 +1316,9 @@
         init();
 
         function init() {
-            // Initialize mobile menu
             initMobileMenu();
-            
-            // Load members data from API only
             loadMembersData();
-            
-            // Attach event listeners
             attachEventListeners();
-            
-            // Highlight current page
             highlightCurrentPage();
         }
 
@@ -1338,7 +1331,6 @@
             
             mobileMenuBtn.addEventListener('click', function() {
                 mobileNav.classList.toggle('open');
-                
                 const icon = this.querySelector('i');
                 if (icon) {
                     if (mobileNav.classList.contains('open')) {
@@ -1351,7 +1343,6 @@
                 }
             });
             
-            // Close mobile menu when clicking outside
             document.addEventListener('click', function(e) {
                 if (!mobileNav.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
                     mobileNav.classList.remove('open');
@@ -1393,22 +1384,25 @@
                 // Handle different response formats
                 if (data && data.status === 'success') {
                     membersData = data.data || [];
-                    console.log(`✅ Loaded ${membersData.length} members from database`);
-                    
-                    if (membersData.length > 0) {
-                        renderExecutives();
-                        renderCommittees();
-                    } else {
-                        showEmptyState('No members found in database');
-                    }
-                } else if (Array.isArray(data) && data.length > 0) {
+                } else if (Array.isArray(data)) {
                     membersData = data;
-                    console.log(`✅ Loaded ${membersData.length} members from database`);
+                } else {
+                    membersData = [];
+                }
+                
+                console.log(`✅ Loaded ${membersData.length} members from database`);
+                
+                // Log all members with their positions for debugging
+                console.log('ALL MEMBERS IN DATABASE:');
+                membersData.forEach((member, index) => {
+                    console.log(`${index + 1}. ${member.full_name || member.name || 'Unnamed'}: "${member.position || 'No position'}"`);
+                });
+                
+                if (membersData.length > 0) {
                     renderExecutives();
                     renderCommittees();
                 } else {
-                    console.log('No members data available');
-                    showEmptyState('No members have been added yet');
+                    showEmptyState('No members found in database');
                 }
                 
             } catch (error) {
@@ -1419,7 +1413,7 @@
             }
         }
 
-        // Render executive members with proper ordering - FIXED VERSION
+        // Render executive members - SIMPLIFIED BUT COMPREHENSIVE
         function renderExecutives() {
             const executiveGrid = document.getElementById('executiveGrid');
             if (!executiveGrid) return;
@@ -1429,188 +1423,154 @@
                 return;
             }
             
-            // Log all members and their positions for debugging
-            console.log('All members in database:', membersData.map(m => ({ 
-                name: m.full_name || m.name, 
-                position: m.position,
-                id: m.id || m._id
-            })));
+            // FIRST, let's log ALL members to see what we're working with
+            console.log('===== STARTING EXECUTIVE RENDERING =====');
             
-            // Define the exact order of positions with comprehensive priority scores
-            const positionPriority = {
-                // President
-                'president': 1,
-                'pres': 1,
-                
-                // Vice President
-                'vice president': 2,
-                'vice-president': 2,
-                'vp': 2,
-                'v.p': 2,
-                'vice pres': 2,
-                
-                // Secretary General
-                'secretary general': 3,
-                'gen sec': 3,
-                'general secretary': 3,
-                
-                // Assistant Secretary General
-                'assistant secretary general': 4,
-                'asst secretary general': 4,
-                'assistant gen sec': 4,
-                'asst gen sec': 4,
-                
-                // Financial Secretary
-                'financial secretary': 5,
-                'fin sec': 5,
-                'finance secretary': 5,
-                
-                // Director of Sport
-                'director of sport': 6,
-                'sport director': 6,
-                'sports director': 6,
-                'director of sports': 6,
-                
-                // Assistant Director of Sport
-                'assistant director of sport': 7,
-                'asst director of sport': 7,
-                'assistant sport director': 7,
-                'asst sport director': 7,
-                'assistant sports director': 7,
-                
-                // Director of Welfare
-                'director of welfare': 8,
-                'welfare director': 8,
-                
-                // Director of Social
-                'director of social': 9,
-                'social director': 9,
-                
-                // Assistant Director of Social
-                'assistant director of social': 10,
-                'asst director of social': 10,
-                'assistant social director': 10,
-                'asst social director': 10,
-                
-                // Academic Officer
-                'academic officer': 11,
-                'academic': 11,
-                
-                // Treasurer
-                'treasurer': 12,
-                
-                // Public Relations Officer
-                'public relations officer': 13,
-                'pro': 13,
-                'p.r.o': 13,
-                'publicity': 13
-            };
+            // Define ALL possible position keywords we want to include
+            // This is intentionally very inclusive
+            const executiveKeywords = [
+                'president',
+                'vice',           // This will catch Vice President
+                'vp',              // Common abbreviation
+                'secretary',
+                'financial',
+                'fin sec',
+                'treasurer',
+                'director',
+                'academic',
+                'welfare',
+                'social',
+                'sport',
+                'public relations',
+                'pro',
+                'assistant',       // CRITICAL - catches ALL assistant positions
+                'asst',            // Common abbreviation for assistant
+                'assist'           // Partial match
+            ];
             
-            // Filter for executive positions - MUCH MORE INCLUSIVE
+            // Filter members - but first, let's see ALL members with positions
+            const membersWithPositions = membersData.filter(m => m.position);
+            console.log(`Members with positions: ${membersWithPositions.length}`);
+            
+            // Now filter for executives - using a very broad filter
             const executives = membersData.filter(member => {
-                if (!member || !member.position) return false;
+                if (!member || !member.position) {
+                    console.log('Member has no position:', member?.full_name || member?.name);
+                    return false;
+                }
                 
                 const pos = member.position.toLowerCase().trim();
                 
-                // Include ALL positions that might be executive-related
-                return (
-                    pos.includes('president') ||
-                    pos.includes('vice') ||        // Critical for Vice President
-                    pos.includes('vp') ||           // Common abbreviation
-                    pos.includes('v.p') ||          // Another abbreviation
-                    pos.includes('secretary') ||
-                    pos.includes('financial') ||
-                    pos.includes('fin sec') ||
-                    pos.includes('treasurer') ||
-                    pos.includes('director') ||
-                    pos.includes('academic') ||
-                    pos.includes('welfare') ||
-                    pos.includes('social') ||
-                    pos.includes('sport') ||
-                    pos.includes('sports') ||
-                    pos.includes('public relations') ||
-                    pos.includes('pro') ||
-                    pos.includes('assistant') ||    // Critical for all assistant positions
-                    pos.includes('asst') ||         // Common abbreviation for assistant
-                    pos.includes('assist')          // Partial match
-                );
+                // Check if position contains ANY of the keywords
+                const isExecutive = executiveKeywords.some(keyword => pos.includes(keyword));
+                
+                if (isExecutive) {
+                    console.log(`✅ INCLUDED: ${member.full_name || member.name} - "${member.position}"`);
+                }
+                
+                return isExecutive;
             });
             
-            console.log('Filtered executives:', executives.map(m => ({ 
-                name: m.full_name || m.name, 
-                position: m.position 
-            })));
+            console.log(`Total executives found: ${executives.length}`);
             
+            // If no executives found with keywords, show ALL members
             if (executives.length === 0) {
-                // If no executives found, show all members
-                console.log('No executives found, showing all members');
+                console.log('⚠️ No executives found with keywords, showing ALL members');
                 renderMemberCards(membersData, executiveGrid);
                 return;
             }
             
-            // Sort executives according to priority
-            const sortedExecutives = [...executives].sort((a, b) => {
+            // Define the EXACT order we want
+            const positionOrder = [
+                // President
+                { keywords: ['president'], name: 'President' },
+                
+                // Vice President - multiple variations
+                { keywords: ['vice president', 'vice-president', 'vp', 'v.p'], name: 'Vice President' },
+                
+                // Secretary General
+                { keywords: ['secretary general', 'gen sec', 'general secretary'], name: 'Secretary General' },
+                
+                // Assistant Secretary General
+                { keywords: ['assistant secretary general', 'asst secretary general', 'assistant gen sec'], name: 'Assistant Secretary General' },
+                
+                // Financial Secretary
+                { keywords: ['financial secretary', 'fin sec'], name: 'Financial Secretary' },
+                
+                // Director of Sport
+                { keywords: ['director of sport', 'sport director', 'sports director'], name: 'Director of Sport' },
+                
+                // Assistant Director of Sport
+                { keywords: ['assistant director of sport', 'asst director of sport', 'assistant sport director'], name: 'Assistant Director of Sport' },
+                
+                // Director of Welfare
+                { keywords: ['director of welfare', 'welfare director'], name: 'Director of Welfare' },
+                
+                // Director of Social
+                { keywords: ['director of social', 'social director'], name: 'Director of Social' },
+                
+                // Assistant Director of Social
+                { keywords: ['assistant director of social', 'asst director of social', 'assistant social director'], name: 'Assistant Director of Social' },
+                
+                // Academic Officer
+                { keywords: ['academic officer', 'academic'], name: 'Academic Officer' },
+                
+                // Treasurer
+                { keywords: ['treasurer'], name: 'Treasurer' },
+                
+                // PRO
+                { keywords: ['public relations', 'pro', 'p.r.o'], name: 'Public Relations Officer' }
+            ];
+            
+            // Create a copy of executives to sort
+            const sortedExecutives = [...executives];
+            
+            // Sort according to position order
+            sortedExecutives.sort((a, b) => {
                 const posA = a.position?.toLowerCase() || '';
                 const posB = b.position?.toLowerCase() || '';
                 
-                // Get priority scores
-                let scoreA = getPositionScore(posA, positionPriority);
-                let scoreB = getPositionScore(posB, positionPriority);
+                // Find the index for each position
+                let indexA = 999;
+                let indexB = 999;
                 
-                // Sort by priority score
-                if (scoreA !== scoreB) {
-                    return scoreA - scoreB;
+                for (let i = 0; i < positionOrder.length; i++) {
+                    const order = positionOrder[i];
+                    // Check if position A matches any keyword for this order
+                    if (order.keywords.some(keyword => posA.includes(keyword))) {
+                        indexA = i;
+                        break;
+                    }
                 }
                 
-                // If same priority, sort alphabetically by name
-                const nameA = a.full_name || a.name || '';
-                const nameB = b.full_name || b.name || '';
-                return nameA.localeCompare(nameB);
+                for (let i = 0; i < positionOrder.length; i++) {
+                    const order = positionOrder[i];
+                    if (order.keywords.some(keyword => posB.includes(keyword))) {
+                        indexB = i;
+                        break;
+                    }
+                }
+                
+                // Special handling for ANY assistant position that wasn't caught
+                if (indexA === 999 && (posA.includes('assistant') || posA.includes('asst'))) {
+                    console.log(`Found assistant position not in order: ${posA}`);
+                    indexA = 15; // Put after all main positions
+                }
+                
+                if (indexB === 999 && (posB.includes('assistant') || posB.includes('asst'))) {
+                    indexB = 15;
+                }
+                
+                return indexA - indexB;
             });
             
-            console.log('Sorted executives:', sortedExecutives.map(m => ({ 
-                name: m.full_name || m.name, 
-                position: m.position,
-                score: getPositionScore(m.position?.toLowerCase() || '', positionPriority)
-            })));
+            // Log the sorted order
+            console.log('===== SORTED EXECUTIVES =====');
+            sortedExecutives.forEach((member, i) => {
+                console.log(`${i + 1}. ${member.full_name || member.name} - "${member.position}"`);
+            });
             
             renderMemberCards(sortedExecutives, executiveGrid);
-        }
-
-        // Helper function to get position score with intelligent matching
-        function getPositionScore(position, priorityMap) {
-            if (!position) return 999;
-            
-            // Check for direct matches first
-            for (const [key, value] of Object.entries(priorityMap)) {
-                if (position.includes(key)) {
-                    return value;
-                }
-            }
-            
-            // Special handling for Vice President
-            if (position.includes('vice') || position.includes('vp') || position.includes('v.p')) {
-                return 2;
-            }
-            
-            // Special handling for Assistant positions
-            if (position.includes('assistant') || position.includes('asst')) {
-                if (position.includes('secretary')) return 4;
-                if (position.includes('sport')) return 7;
-                if (position.includes('social')) return 10;
-                if (position.includes('welfare')) return 9; // Assistant Welfare
-                return 15; // Other assistants
-            }
-            
-            // Handle directors
-            if (position.includes('director')) {
-                if (position.includes('sport')) return 6;
-                if (position.includes('social')) return 9;
-                if (position.includes('welfare')) return 8;
-                return 14; // Other directors
-            }
-            
-            return 999; // Unknown position
         }
 
         // Helper function to render member cards
@@ -1672,106 +1632,104 @@
                 </div>
             `}).join('');
             
-            // Attach click handlers to member cards
             attachMemberCardListeners();
         }
 
-        // Helper function to format position titles nicely - IMPROVED VERSION
+        // Format position titles - SIMPLIFIED AND COMPREHENSIVE
         function formatPositionTitle(position) {
             if (!position) return 'Member';
             
-            const lowerPosition = position.toLowerCase().trim();
+            const lowerPos = position.toLowerCase().trim();
             
-            // Handle Vice President variations
-            if (lowerPosition.includes('vice president') || 
-                lowerPosition.includes('vice-president') ||
-                lowerPosition === 'vp' || 
-                lowerPosition === 'v.p' ||
-                (lowerPosition.includes('vice') && lowerPosition.includes('pres'))) {
-                return 'Vice President';
-            }
-            
-            // Handle President
-            if (lowerPosition.includes('president') && !lowerPosition.includes('vice')) {
+            // President
+            if (lowerPos.includes('president') && !lowerPos.includes('vice')) {
                 return 'President';
             }
             
-            // Handle Secretary General
-            if (lowerPosition.includes('secretary general') || 
-                lowerPosition.includes('general secretary') ||
-                lowerPosition.includes('gen sec')) {
+            // Vice President - catch ALL variations
+            if (lowerPos.includes('vice president') || 
+                lowerPos.includes('vice-president') ||
+                lowerPos === 'vp' || 
+                lowerPos === 'v.p' ||
+                (lowerPos.includes('vice') && lowerPos.includes('pres'))) {
+                return 'Vice President';
+            }
+            
+            // Secretary General
+            if (lowerPos.includes('secretary general') || lowerPos.includes('general secretary')) {
                 return 'Secretary General';
             }
             
-            // Handle Assistant Secretary General
-            if ((lowerPosition.includes('assistant') || lowerPosition.includes('asst')) && 
-                (lowerPosition.includes('secretary') || lowerPosition.includes('gen sec'))) {
+            // Assistant Secretary General
+            if ((lowerPos.includes('assistant') || lowerPos.includes('asst')) && 
+                lowerPos.includes('secretary')) {
                 return 'Assistant Secretary General';
             }
             
-            // Handle Financial Secretary
-            if (lowerPosition.includes('financial secretary') || lowerPosition.includes('fin sec')) {
+            // Financial Secretary
+            if (lowerPos.includes('financial') || lowerPos.includes('fin sec')) {
                 return 'Financial Secretary';
             }
             
-            // Handle Director of Sport
-            if (lowerPosition.includes('director of sport') || 
-                lowerPosition.includes('sport director') ||
-                lowerPosition.includes('sports director')) {
+            // Director of Sport
+            if ((lowerPos.includes('director') || lowerPos.includes('dir')) && 
+                (lowerPos.includes('sport') || lowerPos.includes('sports'))) {
+                
+                // Check if it's assistant
+                if (lowerPos.includes('assistant') || lowerPos.includes('asst')) {
+                    return 'Assistant Director of Sport';
+                }
                 return 'Director of Sport';
             }
             
-            // Handle Assistant Director of Sport
-            if ((lowerPosition.includes('assistant') || lowerPosition.includes('asst')) && 
-                (lowerPosition.includes('sport') || lowerPosition.includes('sports'))) {
-                return 'Assistant Director of Sport';
-            }
-            
-            // Handle Director of Welfare
-            if (lowerPosition.includes('director of welfare') || lowerPosition.includes('welfare director')) {
+            // Director of Welfare
+            if ((lowerPos.includes('director') || lowerPos.includes('dir')) && 
+                lowerPos.includes('welfare')) {
+                
+                if (lowerPos.includes('assistant') || lowerPos.includes('asst')) {
+                    return 'Assistant Director of Welfare';
+                }
                 return 'Director of Welfare';
             }
             
-            // Handle Director of Social
-            if (lowerPosition.includes('director of social') || lowerPosition.includes('social director')) {
+            // Director of Social
+            if ((lowerPos.includes('director') || lowerPos.includes('dir')) && 
+                lowerPos.includes('social')) {
+                
+                if (lowerPos.includes('assistant') || lowerPos.includes('asst')) {
+                    return 'Assistant Director of Social';
+                }
                 return 'Director of Social';
             }
             
-            // Handle Assistant Director of Social
-            if ((lowerPosition.includes('assistant') || lowerPosition.includes('asst')) && 
-                lowerPosition.includes('social')) {
-                return 'Assistant Director of Social';
-            }
-            
-            // Handle Academic Officer
-            if (lowerPosition.includes('academic officer') || lowerPosition.includes('academic')) {
+            // Academic Officer
+            if (lowerPos.includes('academic')) {
                 return 'Academic Officer';
             }
             
-            // Handle Treasurer
-            if (lowerPosition.includes('treasurer')) {
+            // Treasurer
+            if (lowerPos.includes('treasurer')) {
                 return 'Treasurer';
             }
             
-            // Handle Public Relations Officer
-            if (lowerPosition.includes('public relations') || 
-                lowerPosition.includes('pro') || 
-                lowerPosition.includes('p.r.o')) {
+            // Public Relations
+            if (lowerPos.includes('public relations') || lowerPos.includes('pro')) {
                 return 'Public Relations Officer';
             }
             
-            // Handle generic assistant positions
-            if (lowerPosition.includes('assistant') || lowerPosition.includes('asst')) {
-                // Extract the main position
-                const mainPos = lowerPosition.replace(/assistant|asst/g, '').trim();
-                if (mainPos) {
-                    return 'Assistant ' + mainPos.split(' ')
+            // ANY assistant position that wasn't caught above
+            if (lowerPos.includes('assistant') || lowerPos.includes('asst')) {
+                // Extract what they're assistant of
+                let mainRole = lowerPos.replace(/assistant|asst/g, '').trim();
+                if (mainRole) {
+                    return 'Assistant ' + mainRole.split(' ')
                         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
                         .join(' ');
                 }
+                return 'Assistant';
             }
             
-            // If no mapping found, return the original with proper capitalization
+            // Return original with proper capitalization
             return position.split(' ')
                 .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
                 .join(' ');
@@ -1789,7 +1747,7 @@
             `;
         }
 
-        // Render committees from actual data
+        // Render committees
         function renderCommittees() {
             const committeeGrid = document.getElementById('committeeGrid');
             if (!committeeGrid) return;
@@ -1810,15 +1768,12 @@
             
             membersData.forEach(member => {
                 const committee = member.committee || 'General';
-                
                 if (!committeesMap[committee]) {
                     committeesMap[committee] = [];
                 }
-                
                 committeesMap[committee].push(member);
             });
             
-            // Filter out General committee and empty committees
             const validCommittees = Object.entries(committeesMap)
                 .filter(([name, members]) => name && name !== 'General' && members.length > 0);
             
@@ -1833,25 +1788,20 @@
                 return;
             }
             
-            // Sort committees alphabetically
             validCommittees.sort((a, b) => a[0].localeCompare(b[0]));
             
             committeeGrid.innerHTML = validCommittees.map(([committeeName, members]) => {
-                // Find committee head and assistant
                 const head = members.find(m => 
                     m.position && (
                         m.position.toLowerCase().includes('head') ||
-                        m.position.toLowerCase().includes('chair') ||
-                        m.position.toLowerCase().includes('director')
+                        m.position.toLowerCase().includes('chair')
                     )
                 );
                 
                 const assistant = members.find(m => 
                     m.position && (
                         m.position.toLowerCase().includes('assistant') ||
-                        m.position.toLowerCase().includes('asst') ||
-                        m.position.toLowerCase().includes('deputy') ||
-                        m.position.toLowerCase().includes('vice chair')
+                        m.position.toLowerCase().includes('asst')
                     )
                 );
                 
@@ -1859,19 +1809,11 @@
                 
                 return `
                     <div class="committee-card">
-                        <h3 class="committee-title">
-                            ${committeeName} Committee
-                        </h3>
-                        <p class="committee-description">
-                            ${getCommitteeDescription(committeeName)}
-                        </p>
+                        <h3 class="committee-title">${committeeName} Committee</h3>
+                        <p class="committee-description">${getCommitteeDescription(committeeName)}</p>
                         <ul class="committee-members">
-                            ${head ? 
-                                `<li>• Head: ${head.full_name || head.name}</li>` : ''
-                            }
-                            ${assistant ? 
-                                `<li>• Assistant: ${assistant.full_name || assistant.name}</li>` : ''
-                            }
+                            ${head ? `<li>• Head: ${head.full_name || head.name}</li>` : ''}
+                            ${assistant ? `<li>• Assistant: ${assistant.full_name || assistant.name}</li>` : ''}
                             ${otherMembers.length > 0 ? 
                                 `<li>• Members: ${otherMembers.slice(0, 3).map(m => m.full_name || m.name).join(', ')}${otherMembers.length > 3 ? '...' : ''}</li>` : ''
                             }
@@ -1881,40 +1823,25 @@
             }).join('');
         }
 
-        // Get committee description
         function getCommitteeDescription(committeeName) {
             const descriptions = {
                 'Academic': 'Responsible for organizing tutorials, quizzes, and academic competitions.',
-                'Technical': 'Focuses on workshops, skill acquisition, and project exhibitions.',
                 'Social': 'Organizes dinners, freshers welcome, and recreational activities.',
                 'Welfare': 'Ensures the well-being of students and handles complaints.',
                 'Sports': 'Manages sports activities and inter-department competitions.',
                 'Publicity': 'Handles publicity and communications for all events.',
-                'Financial': 'Manages association finances and fundraising activities.',
-                'Projects': 'Oversees engineering projects and competitions.',
-                'Disciplinary': 'Maintains order and discipline among members.',
-                'Media': 'Handles photography, videography, and social media content.',
-                'Transport': 'Manages transportation for events and activities.',
-                'Food': 'Coordinates food and refreshments during events.'
+                'Financial': 'Manages association finances and fundraising activities.'
             };
-            
             return descriptions[committeeName] || `${committeeName} committee responsible for various student activities.`;
         }
 
-        // Render social links
         function renderSocialLinks(socialLinks) {
             if (!socialLinks) return '';
             
             try {
                 let links = socialLinks;
-                
-                // Parse if string
                 if (typeof socialLinks === 'string') {
-                    try {
-                        links = JSON.parse(socialLinks);
-                    } catch {
-                        return '';
-                    }
+                    try { links = JSON.parse(socialLinks); } catch { return ''; }
                 }
                 
                 if (typeof links !== 'object' || Object.keys(links).length === 0) return '';
@@ -1922,44 +1849,31 @@
                 const socialIcons = {
                     linkedin: 'fab fa-linkedin-in',
                     twitter: 'fab fa-twitter',
-                    x: 'fab fa-twitter',
-                    github: 'fab fa-github',
                     instagram: 'fab fa-instagram',
                     facebook: 'fab fa-facebook-f',
-                    whatsapp: 'fab fa-whatsapp',
-                    telegram: 'fab fa-telegram'
+                    whatsapp: 'fab fa-whatsapp'
                 };
                 
                 return Object.entries(links)
                     .filter(([platform, url]) => url && socialIcons[platform])
                     .map(([platform, url]) => 
-                        `<a href="${url}" class="social-link" title="${platform}" target="_blank" rel="noopener noreferrer">
-                            <i class="${socialIcons[platform]}"></i>
-                         </a>`
+                        `<a href="${url}" class="social-link" target="_blank"><i class="${socialIcons[platform]}"></i></a>`
                     ).join('');
-                    
-            } catch (error) {
-                console.error('Error rendering social links:', error);
+            } catch {
                 return '';
             }
         }
 
-        // Attach member card click listeners
         function attachMemberCardListeners() {
             document.querySelectorAll('.member-card').forEach(card => {
                 card.addEventListener('click', function(e) {
-                    // Don't trigger if clicking on a link
                     if (e.target.tagName === 'A' || e.target.closest('a')) return;
-                    
                     const memberId = this.dataset.memberId;
-                    if (memberId) {
-                        window.location.href = `member-profile.html?id=${memberId}`;
-                    }
+                    if (memberId) window.location.href = `member-profile.html?id=${memberId}`;
                 });
             });
         }
 
-        // Show loading state
         function showLoadingState() {
             const executiveGrid = document.getElementById('executiveGrid');
             const committeeGrid = document.getElementById('committeeGrid');
@@ -1969,11 +1883,9 @@
                     <div class="empty-state">
                         <div class="loading-spinner"></div>
                         <h3 style="margin-top: 1rem;">Loading members...</h3>
-                        <p>Please wait while we fetch the data.</p>
                     </div>
                 `;
             }
-            
             if (committeeGrid) {
                 committeeGrid.innerHTML = `
                     <div class="empty-state">
@@ -1984,71 +1896,34 @@
             }
         }
 
-        // Show empty state
         function showEmptyState(message) {
             const executiveGrid = document.getElementById('executiveGrid');
-            const committeeGrid = document.getElementById('committeeGrid');
-            
             if (executiveGrid) {
                 executiveGrid.innerHTML = `
                     <div class="empty-state">
                         <i class="fas fa-users-slash"></i>
                         <h3>No Members Found</h3>
-                        <p>${message || 'No members have been added to the database yet.'}</p>
-                        <button class="retry-button" onclick="window.location.reload()">
-                            <i class="fas fa-sync-alt mr-2"></i>Retry
-                        </button>
-                    </div>
-                `;
-            }
-            
-            if (committeeGrid) {
-                committeeGrid.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-users-slash"></i>
-                        <h3>No Committees Found</h3>
-                        <p>Committee information will appear here when available.</p>
+                        <p>${message || 'No members have been added yet.'}</p>
+                        <button class="retry-button" onclick="window.location.reload()">Retry</button>
                     </div>
                 `;
             }
         }
 
-        // Show error state
         function showErrorState(errorMessage) {
             const executiveGrid = document.getElementById('executiveGrid');
-            const committeeGrid = document.getElementById('committeeGrid');
-            
             if (executiveGrid) {
                 executiveGrid.innerHTML = `
                     <div class="empty-state">
                         <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i>
                         <h3>Connection Error</h3>
-                        <p>Unable to load members data.</p>
-                        <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem;">
-                            ${errorMessage || 'Please check your internet connection.'}
-                        </p>
-                        <button class="retry-button" onclick="window.location.reload()">
-                            <i class="fas fa-sync-alt mr-2"></i>Try Again
-                        </button>
-                    </div>
-                `;
-            }
-            
-            if (committeeGrid) {
-                committeeGrid.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i>
-                        <h3>Connection Error</h3>
-                        <p>Unable to load committee data.</p>
-                        <button class="retry-button" onclick="window.location.reload()">
-                            <i class="fas fa-sync-alt mr-2"></i>Try Again
-                        </button>
+                        <p>${errorMessage || 'Please check your connection.'}</p>
+                        <button class="retry-button" onclick="window.location.reload()">Try Again</button>
                     </div>
                 `;
             }
         }
 
-        // Attach event listeners
         function attachEventListeners() {
             const logoBtn = document.getElementById('logoBtn');
             if (logoBtn) {
@@ -2059,10 +1934,8 @@
             }
         }
 
-        // Highlight current page
         function highlightCurrentPage() {
             const currentPage = window.location.pathname.split('/').pop() || 'index.html';
-            
             document.querySelectorAll('.desktop-nav .nav-button, .mobile-nav-button').forEach(link => {
                 const href = link.getAttribute('href');
                 if (href === currentPage) {
