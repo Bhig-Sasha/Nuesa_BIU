@@ -558,350 +558,349 @@ app.use(compression({
         cspDirectives.upgradeInsecureRequests = [];
     }
 
-    app.use(helmet({
-        contentSecurityPolicy: {
-            directives: cspDirectives,
-            reportOnly: false
-        },
-        crossOriginEmbedderPolicy: false,
-        crossOriginResourcePolicy: { policy: "cross-origin" }
+    app.use(
+        helmet({
+            contentSecurityPolicy: false,
+            crossOriginEmbedderPolicy: false,
+            crossOriginResourcePolicy: { policy: "cross-origin" }
+        })
+    );
+
+    // CSRF Protection (except for API routes)
+    const csrfProtection = csrf({ cookie: true });
+    app.use('/portal', csrfProtection);
+
+    // XSS protection
+    app.use(xss());
+
+    // Parameter pollution protection
+    app.use(hpp({
+        whitelist: ['page', 'limit', 'sort', 'fields']
     }));
 
-// CSRF Protection (except for API routes)
-const csrfProtection = csrf({ cookie: true });
-app.use('/portal', csrfProtection);
+    // Enhanced CORS configuration
+    const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+        .split(',')
+        .map(origin => origin.trim())
+        .filter(origin => origin.length > 0);
 
-// XSS protection
-app.use(xss());
-
-// Parameter pollution protection
-app.use(hpp({
-    whitelist: ['page', 'limit', 'sort', 'fields']
-}));
-
-// Enhanced CORS configuration
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
-    .split(',')
-    .map(origin => origin.trim())
-    .filter(origin => origin.length > 0);
-
-if (process.env.FRONTEND_URL && !allowedOrigins.includes(process.env.FRONTEND_URL)) {
-    allowedOrigins.push(process.env.FRONTEND_URL);
-}
-
-allowedOrigins.push('https://nuesa-biu.vercel.app');
-allowedOrigins.push('https://www.nuesa-biu.vercel.app');
-allowedOrigins.push('https://adminbiunuesa.vercel.app');
-
-const corsOptions = {
-    origin: function (origin, callback) {
-        if (!origin) {
-            return callback(null, true);
-        }
-
-        if (!isProduction) {
-            return callback(null, true);
-        }
-
-        if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            logger.warn(`Blocked by CORS: ${origin}`, { allowedOrigins });
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
-    allowedHeaders: [
-        'Content-Type',
-        'Authorization',
-        'Accept',
-        'Origin',
-        'X-Requested-With',
-        'X-API-Key',
-        'X-Total-Count',
-        'X-Page-Count',
-        'X-CSRF-Token'
-    ],
-    exposedHeaders: [
-        'X-Total-Count',
-        'X-Page-Count',
-        'X-RateLimit-Limit',
-        'X-RateLimit-Remaining',
-        'X-RateLimit-Reset',
-        'X-Request-ID'
-    ],
-    maxAge: 86400,
-    preflightContinue: false,
-    optionsSuccessStatus: 204
-};
-
-app.use(cors(corsOptions));
-
-// Cookie parser middleware
-app.use(cookieParser());
-
-// Enhanced request parsing
-app.use(express.json({
-    limit: process.env.MAX_REQUEST_SIZE || '10mb',
-    verify: (req, res, buf, encoding) => {
-        req.rawBody = buf;
+    if (process.env.FRONTEND_URL && !allowedOrigins.includes(process.env.FRONTEND_URL)) {
+        allowedOrigins.push(process.env.FRONTEND_URL);
     }
-}));
 
-app.use(express.urlencoded({
-    extended: true,
-    limit: process.env.MAX_REQUEST_SIZE || '10mb',
-    parameterLimit: 100
-}));
+    allowedOrigins.push('https://nuesa-biu.vercel.app');
+    allowedOrigins.push('https://www.nuesa-biu.vercel.app');
+    allowedOrigins.push('https://adminbiunuesa.vercel.app');
 
-// Enhanced request logging
-const morganFormat = isProduction ? 'combined' : 'dev';
-app.use(morgan(morganFormat, {
-    stream: {
-        write: (message) => logger.http(message.trim())
-    },
-    skip: (req, res) => req.path === '/api/health' && req.method === 'GET'
-}));
+    const corsOptions = {
+        origin: function (origin, callback) {
+            if (!origin) {
+                return callback(null, true);
+            }
 
-// Request timeout
-app.use(timeout('30s'));
-app.use(haltOnTimedout);
+            if (!isProduction) {
+                return callback(null, true);
+            }
 
-function haltOnTimedout(req, res, next) {
-    if (req.timedout) {
-        logger.error('Request timeout', {
-            requestId: req.id,
-            url: req.url,
-            method: req.method,
-            ip: req.ip,
-            userId: req.user?.id
-        });
-        res.status(503).json({
-            status: 'error',
-            code: 'TIMEOUT',
-            message: 'Request timeout. Please try again.'
-        });
-    } else {
-        next();
-    }
-}
-
-// Enhanced rate limiting with configurable limits
-const createRateLimiter = (max, windowMs = 15 * 60 * 1000, message = 'Too many requests') => {
-    return rateLimit({
-        windowMs,
-        max,
-        message: {
-            status: 'error',
-            code: 'TOO_MANY_REQUESTS',
-            message
+            if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+                callback(null, true);
+            } else {
+                logger.warn(`Blocked by CORS: ${origin}`, { allowedOrigins });
+                callback(new Error('Not allowed by CORS'));
+            }
         },
-        standardHeaders: true,
-        legacyHeaders: false,
-        skipSuccessfulRequests: false,
-        keyGenerator: (req) => {
-            return req.headers['x-forwarded-for'] || req.ip;
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+        allowedHeaders: [
+            'Content-Type',
+            'Authorization',
+            'Accept',
+            'Origin',
+            'X-Requested-With',
+            'X-API-Key',
+            'X-Total-Count',
+            'X-Page-Count',
+            'X-CSRF-Token'
+        ],
+        exposedHeaders: [
+            'X-Total-Count',
+            'X-Page-Count',
+            'X-RateLimit-Limit',
+            'X-RateLimit-Remaining',
+            'X-RateLimit-Reset',
+            'X-Request-ID'
+        ],
+        maxAge: 86400,
+        preflightContinue: false,
+        optionsSuccessStatus: 204
+    };
+
+    app.use(cors(corsOptions));
+
+    // Cookie parser middleware
+    app.use(cookieParser());
+
+    // Enhanced request parsing
+    app.use(express.json({
+        limit: process.env.MAX_REQUEST_SIZE || '10mb',
+        verify: (req, res, buf, encoding) => {
+            req.rawBody = buf;
+        }
+    }));
+
+    app.use(express.urlencoded({
+        extended: true,
+        limit: process.env.MAX_REQUEST_SIZE || '10mb',
+        parameterLimit: 100
+    }));
+
+    // Enhanced request logging
+    const morganFormat = isProduction ? 'combined' : 'dev';
+    app.use(morgan(morganFormat, {
+        stream: {
+            write: (message) => logger.http(message.trim())
         },
-        handler: (req, res) => {
-            logger.warn('Rate limit exceeded', {
+        skip: (req, res) => req.path === '/api/health' && req.method === 'GET'
+    }));
+
+    // Request timeout
+    app.use(timeout('30s'));
+    app.use(haltOnTimedout);
+
+    function haltOnTimedout(req, res, next) {
+        if (req.timedout) {
+            logger.error('Request timeout', {
                 requestId: req.id,
-                ip: req.ip,
                 url: req.url,
-                method: req.method
+                method: req.method,
+                ip: req.ip,
+                userId: req.user?.id
             });
-            res.status(429).json({
+            res.status(503).json({
+                status: 'error',
+                code: 'TIMEOUT',
+                message: 'Request timeout. Please try again.'
+            });
+        } else {
+            next();
+        }
+    }
+
+    // Enhanced rate limiting with configurable limits
+    const createRateLimiter = (max, windowMs = 15 * 60 * 1000, message = 'Too many requests') => {
+        return rateLimit({
+            windowMs,
+            max,
+            message: {
                 status: 'error',
                 code: 'TOO_MANY_REQUESTS',
                 message
-            });
-        }
-    });
-};
+            },
+            standardHeaders: true,
+            legacyHeaders: false,
+            skipSuccessfulRequests: false,
+            keyGenerator: (req) => {
+                return req.headers['x-forwarded-for'] || req.ip;
+            },
+            handler: (req, res) => {
+                logger.warn('Rate limit exceeded', {
+                    requestId: req.id,
+                    ip: req.ip,
+                    url: req.url,
+                    method: req.method
+                });
+                res.status(429).json({
+                    status: 'error',
+                    code: 'TOO_MANY_REQUESTS',
+                    message
+                });
+            }
+        });
+    };
 
-// Apply rate limiting
-app.use('/api/auth/login', createRateLimiter(10, 15 * 60 * 1000, 'Too many login attempts'));
-app.use('/api/admin/login', createRateLimiter(5, 15 * 60 * 1000, 'Too many admin login attempts'));
-app.use('/api/contact/submit', createRateLimiter(10, 15 * 60 * 1000, 'Too many contact form submissions'));
-app.use('/api/', createRateLimiter(200, 15 * 60 * 1000));
+    // Apply rate limiting
+    app.use('/api/auth/login', createRateLimiter(10, 15 * 60 * 1000, 'Too many login attempts'));
+    app.use('/api/admin/login', createRateLimiter(5, 15 * 60 * 1000, 'Too many admin login attempts'));
+    app.use('/api/contact/submit', createRateLimiter(10, 15 * 60 * 1000, 'Too many contact form submissions'));
+    app.use('/api/', createRateLimiter(200, 15 * 60 * 1000));
 
-// Cache middleware with Redis support
-const cacheMiddleware = (duration = 60, tags = []) => {
-    return async (req, res, next) => {
-        if (req.method !== 'GET' || req.headers.authorization) {
-            return next();
-        }
-
-        const key = `cache:${req.originalUrl || req.url}`;
-        
-        try {
-            const cachedResponse = await cacheManager.get(key);
-
-            if (cachedResponse) {
-                return res.json(cachedResponse);
+    // Cache middleware with Redis support
+    const cacheMiddleware = (duration = 60, tags = []) => {
+        return async (req, res, next) => {
+            if (req.method !== 'GET' || req.headers.authorization) {
+                return next();
             }
 
-            const originalSend = res.json;
-            res.json = async function (body) {
-                if (res.statusCode >= 200 && res.statusCode < 300) {
-                    await cacheManager.set(key, body, duration * 1000);
-                    
-                    // Set cache tags for invalidation
-                    if (tags.length > 0) {
-                        for (const tag of tags) {
-                            await cacheManager.set(`tag:${tag}:${key}`, true, duration * 1000);
+            const key = `cache:${req.originalUrl || req.url}`;
+            
+            try {
+                const cachedResponse = await cacheManager.get(key);
+
+                if (cachedResponse) {
+                    return res.json(cachedResponse);
+                }
+
+                const originalSend = res.json;
+                res.json = async function (body) {
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        await cacheManager.set(key, body, duration * 1000);
+                        
+                        // Set cache tags for invalidation
+                        if (tags.length > 0) {
+                            for (const tag of tags) {
+                                await cacheManager.set(`tag:${tag}:${key}`, true, duration * 1000);
+                            }
                         }
                     }
-                }
-                originalSend.call(this, body);
-            };
+                    originalSend.call(this, body);
+                };
 
-            next();
-        } catch (error) {
-            logger.error('Cache middleware error:', { requestId: req.id, error: error.message });
-            next();
-        }
-    };
-};
-
-// Response time middleware
-app.use((req, res, next) => {
-    const start = Date.now();
-    res.on('finish', () => {
-        const duration = Date.now() - start;
-        logger.info('Request completed', {
-            requestId: req.id,
-            method: req.method,
-            url: req.url,
-            status: res.statusCode,
-            duration: `${duration}ms`,
-            userId: req.user?.id
-        });
-    });
-    next();
-});
-
-// ==================== ACCOUNT LOCKOUT SYSTEM ====================
-const loginAttempts = new Map();
-
-async function checkLoginAttempts(identifier) {
-    const attempts = loginAttempts.get(identifier) || { count: 0, lockedUntil: null };
-    
-    // Check if locked
-    if (attempts.lockedUntil && attempts.lockedUntil > Date.now()) {
-        throw new AuthError('Account temporarily locked. Try again later.', 'ACCOUNT_LOCKED');
-    }
-    
-    // Reset if lock expired
-    if (attempts.lockedUntil && attempts.lockedUntil <= Date.now()) {
-        loginAttempts.delete(identifier);
-        return;
-    }
-    
-    return attempts;
-}
-
-async function recordFailedAttempt(identifier) {
-    const attempts = loginAttempts.get(identifier) || { count: 0, lockedUntil: null };
-    attempts.count += 1;
-    
-    // Lock after 5 failed attempts
-    if (attempts.count >= 5) {
-        attempts.lockedUntil = Date.now() + 15 * 60 * 1000; // 15 minutes
-        attempts.count = 0;
-        logger.warn('Account locked due to multiple failed attempts', { identifier });
-    }
-    
-    loginAttempts.set(identifier, attempts);
-}
-
-async function resetLoginAttempts(identifier) {
-    loginAttempts.delete(identifier);
-}
-
-// ==================== ENHANCED FILE UPLOAD ====================
-const uploadDirs = {
-    images: './uploads/images',
-    resources: './uploads/resources',
-    profiles: './uploads/profiles',
-    temp: './uploads/temp'
-};
-
-// Create upload directories
-Object.values(uploadDirs).forEach(dir => {
-    if (!fsSync.existsSync(dir)) {
-        fsSync.mkdirSync(dir, { recursive: true });
-        logger.info(`Created upload directory: ${dir}`);
-    }
-});
-
-// Enhanced storage configuration
-const storage = multer.diskStorage({
-    destination: async function (req, file, cb) {
-        try {
-            const type = file.fieldname;
-            let subDir = '';
-
-            if (type.includes('profile') || type.includes('avatar')) {
-                subDir = 'profiles';
-            } else if (type.includes('image') || /\.(jpg|jpeg|png|gif|webp)$/i.test(file.originalname)) {
-                subDir = 'images';
-            } else {
-                subDir = 'resources';
+                next();
+            } catch (error) {
+                logger.error('Cache middleware error:', { requestId: req.id, error: error.message });
+                next();
             }
-
-            const destDir = path.join(uploadDirs[subDir], new Date().toISOString().split('T')[0]);
-            await fs.mkdir(destDir, { recursive: true });
-            cb(null, destDir);
-        } catch (error) {
-            cb(error);
-        }
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
-        const ext = path.extname(file.originalname).toLowerCase();
-        const safeName = path.basename(file.originalname, ext)
-            .replace(/[^a-zA-Z0-9_-]/g, '_')
-            .substring(0, 50);
-        cb(null, `${safeName}-${uniqueSuffix}${ext}`);
-    }
-});
-
-// File filter with enhanced validation
-const fileFilter = (req, file, cb) => {
-    const allowedMimeTypes = {
-        'image/jpeg': ['.jpg', '.jpeg'],
-        'image/png': ['.png'],
-        'image/gif': ['.gif'],
-        'image/webp': ['.webp'],
-        'application/pdf': ['.pdf'],
-        'application/msword': ['.doc'],
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-        'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
-        'text/plain': ['.txt'],
-        'application/zip': ['.zip'],
-        'application/x-rar-compressed': ['.rar']
+        };
     };
 
-    const allowedExts = Object.values(allowedMimeTypes).flat();
-    const ext = path.extname(file.originalname).toLowerCase();
+    // Response time middleware
+    app.use((req, res, next) => {
+        const start = Date.now();
+        res.on('finish', () => {
+            const duration = Date.now() - start;
+            logger.info('Request completed', {
+                requestId: req.id,
+                method: req.method,
+                url: req.url,
+                status: res.statusCode,
+                duration: `${duration}ms`,
+                userId: req.user?.id
+            });
+        });
+        next();
+    });
 
-    if (!allowedMimeTypes[file.mimetype] || !allowedExts.includes(ext)) {
-        return cb(new Error(`File type ${file.mimetype} with extension ${ext} is not allowed`), false);
+    // ==================== ACCOUNT LOCKOUT SYSTEM ====================
+    const loginAttempts = new Map();
+
+    async function checkLoginAttempts(identifier) {
+        const attempts = loginAttempts.get(identifier) || { count: 0, lockedUntil: null };
+        
+        // Check if locked
+        if (attempts.lockedUntil && attempts.lockedUntil > Date.now()) {
+            throw new AuthError('Account temporarily locked. Try again later.', 'ACCOUNT_LOCKED');
+        }
+        
+        // Reset if lock expired
+        if (attempts.lockedUntil && attempts.lockedUntil <= Date.now()) {
+            loginAttempts.delete(identifier);
+            return;
+        }
+        
+        return attempts;
     }
 
-    cb(null, true);
-};
+    async function recordFailedAttempt(identifier) {
+        const attempts = loginAttempts.get(identifier) || { count: 0, lockedUntil: null };
+        attempts.count += 1;
+        
+        // Lock after 5 failed attempts
+        if (attempts.count >= 5) {
+            attempts.lockedUntil = Date.now() + 15 * 60 * 1000; // 15 minutes
+            attempts.count = 0;
+            logger.warn('Account locked due to multiple failed attempts', { identifier });
+        }
+        
+        loginAttempts.set(identifier, attempts);
+    }
 
-const upload = multer({
-    storage: storage,
-    limits: {
-        fileSize: parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024, // 10MB
-        files: 5
-    },
-    fileFilter: fileFilter
-});
+    async function resetLoginAttempts(identifier) {
+        loginAttempts.delete(identifier);
+    }
+
+    // ==================== ENHANCED FILE UPLOAD ====================
+    const uploadDirs = {
+        images: './uploads/images',
+        resources: './uploads/resources',
+        profiles: './uploads/profiles',
+        temp: './uploads/temp'
+    };
+
+    // Create upload directories
+    Object.values(uploadDirs).forEach(dir => {
+        if (!fsSync.existsSync(dir)) {
+            fsSync.mkdirSync(dir, { recursive: true });
+            logger.info(`Created upload directory: ${dir}`);
+        }
+    });
+
+    // Enhanced storage configuration
+    const storage = multer.diskStorage({
+        destination: async function (req, file, cb) {
+            try {
+                const type = file.fieldname;
+                let subDir = '';
+
+                if (type.includes('profile') || type.includes('avatar')) {
+                    subDir = 'profiles';
+                } else if (type.includes('image') || /\.(jpg|jpeg|png|gif|webp)$/i.test(file.originalname)) {
+                    subDir = 'images';
+                } else {
+                    subDir = 'resources';
+                }
+
+                const destDir = path.join(uploadDirs[subDir], new Date().toISOString().split('T')[0]);
+                await fs.mkdir(destDir, { recursive: true });
+                cb(null, destDir);
+            } catch (error) {
+                cb(error);
+            }
+        },
+        filename: function (req, file, cb) {
+            const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+            const ext = path.extname(file.originalname).toLowerCase();
+            const safeName = path.basename(file.originalname, ext)
+                .replace(/[^a-zA-Z0-9_-]/g, '_')
+                .substring(0, 50);
+            cb(null, `${safeName}-${uniqueSuffix}${ext}`);
+        }
+    });
+
+    // File filter with enhanced validation
+    const fileFilter = (req, file, cb) => {
+        const allowedMimeTypes = {
+            'image/jpeg': ['.jpg', '.jpeg'],
+            'image/png': ['.png'],
+            'image/gif': ['.gif'],
+            'image/webp': ['.webp'],
+            'application/pdf': ['.pdf'],
+            'application/msword': ['.doc'],
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
+            'text/plain': ['.txt'],
+            'application/zip': ['.zip'],
+            'application/x-rar-compressed': ['.rar']
+        };
+
+        const allowedExts = Object.values(allowedMimeTypes).flat();
+        const ext = path.extname(file.originalname).toLowerCase();
+
+        if (!allowedMimeTypes[file.mimetype] || !allowedExts.includes(ext)) {
+            return cb(new Error(`File type ${file.mimetype} with extension ${ext} is not allowed`), false);
+        }
+
+        cb(null, true);
+    };
+
+    const upload = multer({
+        storage: storage,
+        limits: {
+            fileSize: parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024, // 10MB
+            files: 5
+        },
+        fileFilter: fileFilter
+    });
 
 // ==================== VALIDATION SCHEMAS ====================
 const schemas = {
@@ -4001,7 +4000,8 @@ if (publicExists) {
 
 // ==================== HIDDEN ADMIN ROUTING ====================
 if (adminExists) {
-    console.log('✅ Admin folder found. Setting up hidden admin routes...');
+    console.log('✅ Admin folder found at:', adminDir);
+    console.log('📄 Files in admin folder:', fsSync.readdirSync(adminDir));
     
     // CSRF token endpoint for admin forms
     app.get('/api/csrf-token', csrfProtection, (req, res) => {
@@ -4020,6 +4020,9 @@ if (adminExists) {
             
             // Serve dashboard HTML file
             const dashPath = path.join(adminDir, 'dash.html');
+            console.log('Looking for dashboard at:', dashPath);
+            console.log('Dashboard exists?', fsSync.existsSync(dashPath));
+            
             if (fsSync.existsSync(dashPath)) {
                 // Read and inject user data
                 let dashHtml = await fs.readFile(dashPath, 'utf8');
@@ -4043,22 +4046,31 @@ if (adminExists) {
                 
                 res.send(dashHtml);
             } else {
+                console.error('Dashboard file not found at:', dashPath);
                 res.status(404).send('Dashboard not found');
             }
         } catch (error) {
+            console.error('Dashboard error:', error);
             res.status(500).send('Server error');
         }
     });
     
-    // 2. HIDDEN ADMIN LOGIN PAGE - NO FALLBACK
+    // 2. HIDDEN ADMIN LOGIN PAGE
     app.get('/portal/login', csrfProtection, async (req, res) => {
         try {
+            console.log('Accessing /portal/login');
+            console.log('isAdmin?', req.isAdmin);
+            
             if (req.isAdmin) {
+                console.log('User is admin, redirecting to /portal/system');
                 return res.redirect('/portal/system');
             }
             
             // Serve login HTML file
             const loginPath = path.join(adminDir, 'adlog.html');
+            console.log('Looking for login at:', loginPath);
+            console.log('Login exists?', fsSync.existsSync(loginPath));
+            
             if (fsSync.existsSync(loginPath)) {
                 let loginHtml = await fs.readFile(loginPath, 'utf8');
                 
@@ -4072,9 +4084,11 @@ if (adminExists) {
                 
                 res.send(loginHtml);
             } else {
+                console.error('Login file not found at:', loginPath);
                 res.status(404).send('Login page not found');
             }
         } catch (error) {
+            console.error('Login page error:', error);
             res.status(500).send('Server error');
         }
     });
