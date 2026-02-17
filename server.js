@@ -1717,20 +1717,6 @@ app.get('/api/admin/session', async (req, res) => {
     }
 });
 
-// TEMPORARY DEBUG ENDPOINT - REMOVE AFTER TESTING
-app.get('/api/debug/admin-files', (req, res) => {
-    const adminDir = path.join(__dirname, 'admin');
-    const files = fsSync.existsSync(adminDir) ? fsSync.readdirSync(adminDir) : [];
-    res.json({
-        adminDirExists: fsSync.existsSync(adminDir),
-        files: files,
-        loginFileExists: fsSync.existsSync(path.join(adminDir, 'adlog.html')),
-        dashFileExists: fsSync.existsSync(path.join(adminDir, 'dash.html')),
-        cwd: process.cwd(),
-        __dirname: __dirname
-    });
-});
-
 // ==================== REGULAR CONTACT FORM ENDPOINT ====================
 app.post('/api/contact/submit', createRateLimiter(10), validate(schemas.contactForm), async (req, res) => {
     try {
@@ -4077,60 +4063,86 @@ if (adminExists) {
     // 2. HIDDEN ADMIN LOGIN PAGE
     app.get('/portal/login', csrfProtection, async (req, res) => {
         try {
-            console.log('Accessing /portal/login');
-            console.log('isAdmin?', req.isAdmin);
+            console.log('🔐 Accessing /portal/login at:', new Date().toISOString());
+            console.log('🔐 isAdmin?', req.isAdmin);
+            console.log('🔐 Request ID:', req.id);
             
             if (req.isAdmin) {
-                console.log('User is admin, redirecting to /portal/system');
+                console.log('🔐 User is admin, redirecting to /portal/system');
                 return res.redirect('/portal/system');
             }
             
-            // Serve login HTML file
-            const loginPath = path.join(__dirname, 'admin', 'adlog.html');
-            console.log('Looking for login at:', loginPath);
-            console.log('Login exists?', fsSync.existsSync(loginPath));
+            // Try multiple possible paths for the login file
+            const possiblePaths = [
+                path.join(__dirname, 'admin', 'adlog.html'),
+                path.join(process.cwd(), 'admin', 'adlog.html'),
+                path.join(__dirname, '../admin', 'adlog.html'),
+                path.join('/opt/render/project/src/admin', 'adlog.html') // Render's typical path
+            ];
             
-            if (fsSync.existsSync(loginPath)) {
-                let loginHtml = await fs.readFile(loginPath, 'utf8');
-                
-                // Generate CSRF token safely
-                let csrfToken;
-                try {
-                    csrfToken = req.csrfToken();
-                } catch (csrfError) {
-                    console.error('CSRF token error:', csrfError);
-                    csrfToken = 'csrf-error';
+            console.log('🔐 Searching for login file in:');
+            let loginPath = null;
+            let loginHtml = null;
+            
+            for (const testPath of possiblePaths) {
+                console.log(`🔐 Checking: ${testPath}`);
+                if (fsSync.existsSync(testPath)) {
+                    loginPath = testPath;
+                    console.log(`✅ Found login file at: ${loginPath}`);
+                    loginHtml = await fs.readFile(loginPath, 'utf8');
+                    break;
                 }
+            }
+            
+            if (!loginHtml) {
+                console.error('❌ Login file not found in any location');
                 
-                loginHtml = loginHtml.replace(
-                    '</head>',
-                    `<script>
-                        window.CSRF_TOKEN = '${csrfToken}';
-                    </script>
-                    </head>`
-                );
+                // List all files in the project directory to help debug
+                const projectFiles = fsSync.readdirSync(process.cwd());
+                const adminDirExists = fsSync.existsSync(path.join(process.cwd(), 'admin'));
+                const adminFiles = adminDirExists ? fsSync.readdirSync(path.join(process.cwd(), 'admin')) : [];
                 
-                res.send(loginHtml);
-            } else {
-                console.error('Login file not found at:', loginPath);
-                // Try alternate path
-                const altPath = path.join(process.cwd(), 'admin', 'adlog.html');
-                console.log('Trying alternate path:', altPath);
-                
-                if (fsSync.existsSync(altPath)) {
-                    const loginHtml = await fs.readFile(altPath, 'utf8');
-                    return res.send(loginHtml);
-                }
-                
-                res.status(500).send(`
+                return res.status(500).send(`
                     <h1>Admin Login Error</h1>
-                    <p>Login page not found. Expected at: ${loginPath}</p>
-                    <p>Current directory: ${process.cwd()}</p>
-                    <p>__dirname: ${__dirname}</p>
+                    <p>Login page (adlog.html) not found.</p>
+                    <h3>Debug Information:</h3>
+                    <ul>
+                        <li><strong>__dirname:</strong> ${__dirname}</li>
+                        <li><strong>process.cwd():</strong> ${process.cwd()}</li>
+                        <li><strong>admin directory exists:</strong> ${adminDirExists}</li>
+                        <li><strong>files in admin:</strong> ${adminFiles.join(', ') || 'none'}</li>
+                        <li><strong>files in project root:</strong> ${projectFiles.slice(0, 10).join(', ')}...</li>
+                    </ul>
+                    <p>Please check your deployment structure.</p>
                 `);
             }
+            
+            // Generate CSRF token
+            let csrfToken;
+            try {
+                csrfToken = req.csrfToken();
+                console.log('✅ CSRF token generated successfully');
+            } catch (csrfError) {
+                console.error('❌ CSRF token error:', csrfError);
+                csrfToken = 'error-generating-token';
+            }
+            
+            // Inject the token into the HTML
+            loginHtml = loginHtml.replace(
+                '</head>',
+                `<script>
+                    window.CSRF_TOKEN = '${csrfToken}';
+                    window.API_BASE_URL = '${req.protocol}://${req.get('host')}';
+                    console.log('Admin page loaded with CSRF token');
+                </script>
+                </head>`
+            );
+            
+            console.log('✅ Sending login page');
+            res.send(loginHtml);
+            
         } catch (error) {
-            console.error('Login page error:', error);
+            console.error('❌ Login page error:', error);
             res.status(500).send(`
                 <h1>Admin Login Error</h1>
                 <p>Error: ${error.message}</p>
@@ -4497,6 +4509,69 @@ app.get('/api', (req, res) => {
             docs: '/api/docs'
         },
         requestId: req.id
+    });
+});
+
+// ==================== TEMPORARY DEBUG ENDPOINTS ====================
+// ADD THIS BEFORE startServer() function
+
+app.get('/api/debug/admin-files', (req, res) => {
+    try {
+        const adminDir = path.join(__dirname, 'admin');
+        const publicDir = path.join(__dirname, 'public');
+        
+        const adminExists = fsSync.existsSync(adminDir);
+        const publicExists = fsSync.existsSync(publicDir);
+        
+        let adminFiles = [];
+        let publicFiles = [];
+        
+        if (adminExists) {
+            adminFiles = fsSync.readdirSync(adminDir);
+        }
+        
+        if (publicExists) {
+            publicFiles = fsSync.readdirSync(publicDir);
+        }
+        
+        res.json({
+            success: true,
+            paths: {
+                __dirname: __dirname,
+                cwd: process.cwd(),
+                adminDir: adminDir,
+                publicDir: publicDir
+            },
+            exists: {
+                adminDir: adminExists,
+                publicDir: publicExists,
+                adlogHtml: adminExists ? fsSync.existsSync(path.join(adminDir, 'adlog.html')) : false,
+                dashHtml: adminExists ? fsSync.existsSync(path.join(adminDir, 'dash.html')) : false
+            },
+            files: {
+                admin: adminFiles,
+                public: publicFiles
+            },
+            environment: {
+                NODE_ENV: process.env.NODE_ENV,
+                isProduction: isProduction
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            stack: error.stack
+        });
+    }
+});
+
+// Also add a simple test endpoint
+app.get('/api/debug/test', (req, res) => {
+    res.json({ 
+        message: 'Debug endpoint working',
+        timestamp: new Date().toISOString(),
+        requestId: req.id 
     });
 });
 
