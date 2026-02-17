@@ -1303,7 +1303,7 @@
     </footer>
 
     <script>
-    // Members Page JavaScript - Fixed version with proper ordering
+    // Members Page JavaScript - COMPLETELY FIXED VERSION
     document.addEventListener('DOMContentLoaded', function() {
         // Configuration - Live backend only
         const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
@@ -1419,7 +1419,7 @@
             }
         }
 
-        // Render executive members with proper ordering
+        // Render executive members with proper ordering - FIXED VERSION
         function renderExecutives() {
             const executiveGrid = document.getElementById('executiveGrid');
             if (!executiveGrid) return;
@@ -1429,51 +1429,122 @@
                 return;
             }
             
-            // Define the exact order of positions with priority scores
+            // Log all members and their positions for debugging
+            console.log('All members in database:', membersData.map(m => ({ 
+                name: m.full_name || m.name, 
+                position: m.position,
+                id: m.id || m._id
+            })));
+            
+            // Define the exact order of positions with comprehensive priority scores
             const positionPriority = {
+                // President
                 'president': 1,
+                'pres': 1,
+                
+                // Vice President
                 'vice president': 2,
+                'vice-president': 2,
+                'vp': 2,
+                'v.p': 2,
+                'vice pres': 2,
+                
+                // Secretary General
                 'secretary general': 3,
+                'gen sec': 3,
+                'general secretary': 3,
+                
+                // Assistant Secretary General
                 'assistant secretary general': 4,
+                'asst secretary general': 4,
+                'assistant gen sec': 4,
+                'asst gen sec': 4,
+                
+                // Financial Secretary
                 'financial secretary': 5,
+                'fin sec': 5,
+                'finance secretary': 5,
+                
+                // Director of Sport
                 'director of sport': 6,
-                'assistant director of sport': 7,
-                'director of welfare': 8,
-                'director of social': 9,
-                'assistant director of social': 10,
-                'academic officer': 11,
-                'treasurer': 12,
-                'public relations officer': 13,
-                'welfare director': 8,
-                'social director': 9,
                 'sport director': 6,
-                'assistant welfare director': 10,
+                'sports director': 6,
+                'director of sports': 6,
+                
+                // Assistant Director of Sport
+                'assistant director of sport': 7,
+                'asst director of sport': 7,
+                'assistant sport director': 7,
+                'asst sport director': 7,
+                'assistant sports director': 7,
+                
+                // Director of Welfare
+                'director of welfare': 8,
+                'welfare director': 8,
+                
+                // Director of Social
+                'director of social': 9,
+                'social director': 9,
+                
+                // Assistant Director of Social
+                'assistant director of social': 10,
+                'asst director of social': 10,
                 'assistant social director': 10,
-                'assistant sport director': 7
+                'asst social director': 10,
+                
+                // Academic Officer
+                'academic officer': 11,
+                'academic': 11,
+                
+                // Treasurer
+                'treasurer': 12,
+                
+                // Public Relations Officer
+                'public relations officer': 13,
+                'pro': 13,
+                'p.r.o': 13,
+                'publicity': 13
             };
             
-            // Filter for executive positions (case insensitive)
-            const executives = membersData.filter(member => 
-                member.position && (
-                    member.position.toLowerCase().includes('president') ||
-                    member.position.toLowerCase().includes('vice') ||
-                    member.position.toLowerCase().includes('secretary') ||
-                    member.position.toLowerCase().includes('financial') ||
-                    member.position.toLowerCase().includes('treasurer') ||
-                    member.position.toLowerCase().includes('director') ||
-                    member.position.toLowerCase().includes('academic') ||
-                    member.position.toLowerCase().includes('welfare') ||
-                    member.position.toLowerCase().includes('social') ||
-                    member.position.toLowerCase().includes('sport') ||
-                    member.position.toLowerCase().includes('public relations') ||
-                    member.position.toLowerCase().includes('pro')
-                )
-            );
+            // Filter for executive positions - MUCH MORE INCLUSIVE
+            const executives = membersData.filter(member => {
+                if (!member || !member.position) return false;
+                
+                const pos = member.position.toLowerCase().trim();
+                
+                // Include ALL positions that might be executive-related
+                return (
+                    pos.includes('president') ||
+                    pos.includes('vice') ||        // Critical for Vice President
+                    pos.includes('vp') ||           // Common abbreviation
+                    pos.includes('v.p') ||          // Another abbreviation
+                    pos.includes('secretary') ||
+                    pos.includes('financial') ||
+                    pos.includes('fin sec') ||
+                    pos.includes('treasurer') ||
+                    pos.includes('director') ||
+                    pos.includes('academic') ||
+                    pos.includes('welfare') ||
+                    pos.includes('social') ||
+                    pos.includes('sport') ||
+                    pos.includes('sports') ||
+                    pos.includes('public relations') ||
+                    pos.includes('pro') ||
+                    pos.includes('assistant') ||    // Critical for all assistant positions
+                    pos.includes('asst') ||         // Common abbreviation for assistant
+                    pos.includes('assist')          // Partial match
+                );
+            });
+            
+            console.log('Filtered executives:', executives.map(m => ({ 
+                name: m.full_name || m.name, 
+                position: m.position 
+            })));
             
             if (executives.length === 0) {
-                // If no executives found, show first 8 members
-                const membersToDisplay = membersData.slice(0, 8);
-                renderMemberCards(membersToDisplay, executiveGrid);
+                // If no executives found, show all members
+                console.log('No executives found, showing all members');
+                renderMemberCards(membersData, executiveGrid);
                 return;
             }
             
@@ -1483,34 +1554,63 @@
                 const posB = b.position?.toLowerCase() || '';
                 
                 // Get priority scores
-                let scoreA = 999; // Default high number for unknown positions
-                let scoreB = 999;
-                
-                // Find matching priority
-                for (const [key, value] of Object.entries(positionPriority)) {
-                    if (posA.includes(key)) {
-                        scoreA = value;
-                        break;
-                    }
-                }
-                
-                for (const [key, value] of Object.entries(positionPriority)) {
-                    if (posB.includes(key)) {
-                        scoreB = value;
-                        break;
-                    }
-                }
+                let scoreA = getPositionScore(posA, positionPriority);
+                let scoreB = getPositionScore(posB, positionPriority);
                 
                 // Sort by priority score
                 if (scoreA !== scoreB) {
                     return scoreA - scoreB;
                 }
                 
-                // If same priority, sort alphabetically by position
-                return posA.localeCompare(posB);
+                // If same priority, sort alphabetically by name
+                const nameA = a.full_name || a.name || '';
+                const nameB = b.full_name || b.name || '';
+                return nameA.localeCompare(nameB);
             });
             
+            console.log('Sorted executives:', sortedExecutives.map(m => ({ 
+                name: m.full_name || m.name, 
+                position: m.position,
+                score: getPositionScore(m.position?.toLowerCase() || '', positionPriority)
+            })));
+            
             renderMemberCards(sortedExecutives, executiveGrid);
+        }
+
+        // Helper function to get position score with intelligent matching
+        function getPositionScore(position, priorityMap) {
+            if (!position) return 999;
+            
+            // Check for direct matches first
+            for (const [key, value] of Object.entries(priorityMap)) {
+                if (position.includes(key)) {
+                    return value;
+                }
+            }
+            
+            // Special handling for Vice President
+            if (position.includes('vice') || position.includes('vp') || position.includes('v.p')) {
+                return 2;
+            }
+            
+            // Special handling for Assistant positions
+            if (position.includes('assistant') || position.includes('asst')) {
+                if (position.includes('secretary')) return 4;
+                if (position.includes('sport')) return 7;
+                if (position.includes('social')) return 10;
+                if (position.includes('welfare')) return 9; // Assistant Welfare
+                return 15; // Other assistants
+            }
+            
+            // Handle directors
+            if (position.includes('director')) {
+                if (position.includes('sport')) return 6;
+                if (position.includes('social')) return 9;
+                if (position.includes('welfare')) return 8;
+                return 14; // Other directors
+            }
+            
+            return 999; // Unknown position
         }
 
         // Helper function to render member cards
@@ -1576,45 +1676,98 @@
             attachMemberCardListeners();
         }
 
-        // Helper function to format position titles nicely
+        // Helper function to format position titles nicely - IMPROVED VERSION
         function formatPositionTitle(position) {
             if (!position) return 'Member';
             
-            // Common abbreviations and their proper formatting
-            const positionMap = {
-                'president': 'President',
-                'vice president': 'Vice President',
-                'vp': 'Vice President',
-                'secretary general': 'Secretary General',
-                'gen sec': 'Secretary General',
-                'assistant secretary general': 'Assistant Secretary General',
-                'asst secretary general': 'Assistant Secretary General',
-                'financial secretary': 'Financial Secretary',
-                'fin sec': 'Financial Secretary',
-                'director of sport': 'Director of Sport',
-                'sport director': 'Director of Sport',
-                'director of sports': 'Director of Sport',
-                'assistant director of sport': 'Assistant Director of Sport',
-                'asst director of sport': 'Assistant Director of Sport',
-                'director of welfare': 'Director of Welfare',
-                'welfare director': 'Director of Welfare',
-                'director of social': 'Director of Social',
-                'social director': 'Director of Social',
-                'assistant director of social': 'Assistant Director of Social',
-                'asst director of social': 'Assistant Director of Social',
-                'academic officer': 'Academic Officer',
-                'treasurer': 'Treasurer',
-                'public relations officer': 'Public Relations Officer',
-                'pro': 'Public Relations Officer',
-                'p.r.o': 'Public Relations Officer'
-            };
-            
             const lowerPosition = position.toLowerCase().trim();
             
-            // Check for exact matches first
-            for (const [key, value] of Object.entries(positionMap)) {
-                if (lowerPosition === key || lowerPosition.includes(key)) {
-                    return value;
+            // Handle Vice President variations
+            if (lowerPosition.includes('vice president') || 
+                lowerPosition.includes('vice-president') ||
+                lowerPosition === 'vp' || 
+                lowerPosition === 'v.p' ||
+                (lowerPosition.includes('vice') && lowerPosition.includes('pres'))) {
+                return 'Vice President';
+            }
+            
+            // Handle President
+            if (lowerPosition.includes('president') && !lowerPosition.includes('vice')) {
+                return 'President';
+            }
+            
+            // Handle Secretary General
+            if (lowerPosition.includes('secretary general') || 
+                lowerPosition.includes('general secretary') ||
+                lowerPosition.includes('gen sec')) {
+                return 'Secretary General';
+            }
+            
+            // Handle Assistant Secretary General
+            if ((lowerPosition.includes('assistant') || lowerPosition.includes('asst')) && 
+                (lowerPosition.includes('secretary') || lowerPosition.includes('gen sec'))) {
+                return 'Assistant Secretary General';
+            }
+            
+            // Handle Financial Secretary
+            if (lowerPosition.includes('financial secretary') || lowerPosition.includes('fin sec')) {
+                return 'Financial Secretary';
+            }
+            
+            // Handle Director of Sport
+            if (lowerPosition.includes('director of sport') || 
+                lowerPosition.includes('sport director') ||
+                lowerPosition.includes('sports director')) {
+                return 'Director of Sport';
+            }
+            
+            // Handle Assistant Director of Sport
+            if ((lowerPosition.includes('assistant') || lowerPosition.includes('asst')) && 
+                (lowerPosition.includes('sport') || lowerPosition.includes('sports'))) {
+                return 'Assistant Director of Sport';
+            }
+            
+            // Handle Director of Welfare
+            if (lowerPosition.includes('director of welfare') || lowerPosition.includes('welfare director')) {
+                return 'Director of Welfare';
+            }
+            
+            // Handle Director of Social
+            if (lowerPosition.includes('director of social') || lowerPosition.includes('social director')) {
+                return 'Director of Social';
+            }
+            
+            // Handle Assistant Director of Social
+            if ((lowerPosition.includes('assistant') || lowerPosition.includes('asst')) && 
+                lowerPosition.includes('social')) {
+                return 'Assistant Director of Social';
+            }
+            
+            // Handle Academic Officer
+            if (lowerPosition.includes('academic officer') || lowerPosition.includes('academic')) {
+                return 'Academic Officer';
+            }
+            
+            // Handle Treasurer
+            if (lowerPosition.includes('treasurer')) {
+                return 'Treasurer';
+            }
+            
+            // Handle Public Relations Officer
+            if (lowerPosition.includes('public relations') || 
+                lowerPosition.includes('pro') || 
+                lowerPosition.includes('p.r.o')) {
+                return 'Public Relations Officer';
+            }
+            
+            // Handle generic assistant positions
+            if (lowerPosition.includes('assistant') || lowerPosition.includes('asst')) {
+                // Extract the main position
+                const mainPos = lowerPosition.replace(/assistant|asst/g, '').trim();
+                if (mainPos) {
+                    return 'Assistant ' + mainPos.split(' ')
+                        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                        .join(' ');
                 }
             }
             
@@ -1920,6 +2073,6 @@
             });
         }
     });
-    </script>
+</script>
 </body>
 </html>
