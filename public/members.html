@@ -1420,6 +1420,7 @@
         }
 
         // Render executive members
+        // Render executive members with proper ordering
         function renderExecutives() {
             const executiveGrid = document.getElementById('executiveGrid');
             if (!executiveGrid) return;
@@ -1429,40 +1430,88 @@
                 return;
             }
             
-            // Filter for executive positions (you can adjust this based on your data structure)
+            // Define the exact order of positions
+            const positionOrder = [
+                'president',
+                'vice president',
+                'secretary general',
+                'assistant secretary general',
+                'financial secretary',
+                'director of sport',
+                'assistant director of sport',
+                'director of welfare',
+                'director of social',
+                'assistant director of social',
+                'academic officer'
+            ];
+            
+            // Filter for executive positions (case insensitive)
             const executives = membersData.filter(member => 
                 member.position && (
                     member.position.toLowerCase().includes('president') ||
                     member.position.toLowerCase().includes('vice') ||
                     member.position.toLowerCase().includes('secretary') ||
-                    member.position.toLowerCase().includes('treasurer') ||
                     member.position.toLowerCase().includes('financial') ||
-                    member.position.toLowerCase().includes('public') ||
-                    member.position.toLowerCase().includes('social') ||
-                    member.position.toLowerCase().includes('sports') ||
+                    member.position.toLowerCase().includes('director') ||
+                    member.position.toLowerCase().includes('academic') ||
                     member.position.toLowerCase().includes('welfare') ||
-                    member.position.toLowerCase().includes('academic')
+                    member.position.toLowerCase().includes('social') ||
+                    member.position.toLowerCase().includes('sport')
                 )
             );
             
-            // If no executives found with specific positions, show first 8 members
-            const membersToDisplay = executives.length > 0 ? executives : membersData.slice(0, 8);
+            if (executives.length === 0) {
+                // If no executives found, show first 8 members
+                const membersToDisplay = membersData.slice(0, 8);
+                renderMemberCards(membersToDisplay, executiveGrid);
+                return;
+            }
             
-            executiveGrid.innerHTML = membersToDisplay.map(member => {
+            // Sort executives according to the defined order
+            const sortedExecutives = [...executives].sort((a, b) => {
+                const posA = a.position?.toLowerCase() || '';
+                const posB = b.position?.toLowerCase() || '';
+                
+                // Find indices in the position order array
+                const indexA = positionOrder.findIndex(order => posA.includes(order));
+                const indexB = positionOrder.findIndex(order => posB.includes(order));
+                
+                // If both positions are in our order list, sort by their indices
+                if (indexA !== -1 && indexB !== -1) {
+                    return indexA - indexB;
+                }
+                
+                // If only one is in the list, prioritize the one in the list
+                if (indexA !== -1) return -1;
+                if (indexB !== -1) return 1;
+                
+                // If neither is in the list, sort alphabetically
+                return posA.localeCompare(posB);
+            });
+            
+            renderMemberCards(sortedExecutives, executiveGrid);
+        }
+
+        // Helper function to render member cards
+        function renderMemberCards(members, container) {
+            container.innerHTML = members.map(member => {
                 // Handle profile image
                 const profileImage = member.profile_image || member.photo || member.avatar;
                 const imageUrl = profileImage ? 
                     (profileImage.startsWith('http') ? profileImage : `${API_BASE_URL}${profileImage.startsWith('/') ? '' : '/'}${profileImage}`) 
                     : null;
                 
+                // Format position title nicely
+                const position = formatPositionTitle(member.position || 'Member');
+                
                 return `
                 <div class="member-card" data-member-id="${member.id || member._id || ''}">
                     <div class="member-photo">
                         ${imageUrl ? 
                             `<img src="${imageUrl}" 
-                                  alt="${member.full_name || member.name || 'Member'}" 
-                                  class="member-photo-image"
-                                  onerror="this.onerror=null; this.parentElement.innerHTML=generatePhotoPlaceholder()">` :
+                                alt="${member.full_name || member.name || 'Member'}" 
+                                class="member-photo-image"
+                                onerror="this.onerror=null; this.parentElement.innerHTML=generatePhotoPlaceholder()">` :
                             generatePhotoPlaceholder()
                         }
                     </div>
@@ -1471,7 +1520,7 @@
                             ${member.full_name || member.name || 'Unnamed Member'}
                         </h3>
                         <p class="member-position">
-                            ${member.position || 'Member'}
+                            ${position}
                         </p>
                         <p class="member-department">
                             ${member.department || 'Engineering Department'}
@@ -1498,18 +1547,75 @@
             attachMemberCardListeners();
         }
 
-        // Generate photo placeholder
-        function generatePhotoPlaceholder() {
-            return `
-                <div class="photo-placeholder">
-                    <span class="photo-placeholder-text">PHOTO</span>
-                    <div class="photo-placeholder-icon">
-                        <i class="fas fa-user text-gray-300" style="font-size: 1.5rem;"></i>
-                    </div>
-                </div>
-            `;
+        // Helper function to format position titles nicely
+        function formatPositionTitle(position) {
+            if (!position) return 'Member';
+            
+            // Common abbreviations and their proper formatting
+            const positionMap = {
+                'president': 'President',
+                'vice president': 'Vice President',
+                'secretary general': 'Secretary General',
+                'assistant secretary general': 'Assistant Secretary General',
+                'financial secretary': 'Financial Secretary',
+                'director of sport': 'Director of Sport',
+                'assistant director of sport': 'Assistant Director of Sport',
+                'director of welfare': 'Director of Welfare',
+                'director of social': 'Director of Social',
+                'assistant director of social': 'Assistant Director of Social',
+                'academic officer': 'Academic Officer',
+                'treasurer': 'Treasurer',
+                'public relations officer': 'Public Relations Officer',
+                'pro': 'Public Relations Officer'
+            };
+            
+            const lowerPosition = position.toLowerCase();
+            
+            // Check if we have a direct mapping
+            for (const [key, value] of Object.entries(positionMap)) {
+                if (lowerPosition.includes(key)) {
+                    return value;
+                }
+            }
+            
+            // If no mapping found, return the original with proper capitalization
+            return position.split(' ')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                .join(' ');
         }
 
+        // Optional: Validate positions in the database
+        function validatePositions() {
+            const requiredPositions = [
+                'President',
+                'Vice President',
+                'Secretary General',
+                'Assistant Secretary General',
+                'Financial Secretary',
+                'Director of Sport',
+                'Assistant Director of Sport',
+                'Director of Welfare',
+                'Director of Social',
+                'Assistant Director of Social',
+                'Academic Officer'
+            ];
+            
+            const existingPositions = membersData
+                .filter(m => m.position)
+                .map(m => formatPositionTitle(m.position));
+            
+            const missingPositions = requiredPositions.filter(
+                pos => !existingPositions.some(existing => existing.toLowerCase() === pos.toLowerCase())
+            );
+            
+            if (missingPositions.length > 0) {
+                console.warn('⚠️ Missing positions in database:', missingPositions);
+            }
+        }
+
+        // Call this after loading members
+        // validatePositions();
+        
         // Render committees from actual data
         function renderCommittees() {
             const committeeGrid = document.getElementById('committeeGrid');
