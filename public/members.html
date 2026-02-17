@@ -1303,7 +1303,7 @@
     </footer>
 
 <script>
-    // Members Page JavaScript - ULTIMATE FIX for assistant positions
+    // Members Page JavaScript - FIXED for Secretary General Assistant
     document.addEventListener('DOMContentLoaded', function() {
         // Configuration - Live backend only
         const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
@@ -1392,8 +1392,8 @@
                 
                 console.log(`✅ Loaded ${membersData.length} members from database`);
                 
-                // Log all members with their positions for debugging
-                console.log('ALL MEMBERS IN DATABASE:');
+                // Log ALL members with their positions for debugging
+                console.log('===== ALL MEMBERS IN DATABASE =====');
                 membersData.forEach((member, index) => {
                     console.log(`${index + 1}. ${member.full_name || member.name || 'Unnamed'}: "${member.position || 'No position'}"`);
                 });
@@ -1413,7 +1413,7 @@
             }
         }
 
-        // Render executive members - SIMPLIFIED BUT COMPREHENSIVE
+        // Render executive members - COMPREHENSIVE FIX for all assistant positions
         function renderExecutives() {
             const executiveGrid = document.getElementById('executiveGrid');
             if (!executiveGrid) return;
@@ -1423,148 +1423,162 @@
                 return;
             }
             
-            // FIRST, let's log ALL members to see what we're working with
             console.log('===== STARTING EXECUTIVE RENDERING =====');
             
-            // Define ALL possible position keywords we want to include
-            // This is intentionally very inclusive
-            const executiveKeywords = [
-                'president',
-                'vice',           // This will catch Vice President
-                'vp',              // Common abbreviation
-                'secretary',
-                'financial',
-                'fin sec',
-                'treasurer',
-                'director',
-                'academic',
-                'welfare',
-                'social',
-                'sport',
-                'public relations',
-                'pro',
-                'assistant',       // CRITICAL - catches ALL assistant positions
-                'asst',            // Common abbreviation for assistant
-                'assist'           // Partial match
-            ];
-            
-            // Filter members - but first, let's see ALL members with positions
-            const membersWithPositions = membersData.filter(m => m.position);
-            console.log(`Members with positions: ${membersWithPositions.length}`);
-            
-            // Now filter for executives - using a very broad filter
+            // VERY BROAD filter - include anyone with a position
             const executives = membersData.filter(member => {
-                if (!member || !member.position) {
-                    console.log('Member has no position:', member?.full_name || member?.name);
-                    return false;
-                }
+                if (!member || !member.position) return false;
                 
                 const pos = member.position.toLowerCase().trim();
                 
-                // Check if position contains ANY of the keywords
-                const isExecutive = executiveKeywords.some(keyword => pos.includes(keyword));
+                // Include if it has ANY of these words (this is super inclusive)
+                const shouldInclude = 
+                    pos.includes('president') ||
+                    pos.includes('vice') ||
+                    pos.includes('vp') ||
+                    pos.includes('secretary') ||
+                    pos.includes('gen sec') ||
+                    pos.includes('financial') ||
+                    pos.includes('fin sec') ||
+                    pos.includes('treasurer') ||
+                    pos.includes('director') ||
+                    pos.includes('dir') ||
+                    pos.includes('academic') ||
+                    pos.includes('welfare') ||
+                    pos.includes('social') ||
+                    pos.includes('sport') ||
+                    pos.includes('sports') ||
+                    pos.includes('public') ||
+                    pos.includes('pro') ||
+                    pos.includes('assistant') ||      // CRITICAL - catches ALL assistants
+                    pos.includes('asst') ||           // Common abbreviation
+                    pos.includes('assist');           // Partial match
                 
-                if (isExecutive) {
+                if (shouldInclude) {
                     console.log(`✅ INCLUDED: ${member.full_name || member.name} - "${member.position}"`);
                 }
                 
-                return isExecutive;
+                return shouldInclude;
             });
             
             console.log(`Total executives found: ${executives.length}`);
             
-            // If no executives found with keywords, show ALL members
             if (executives.length === 0) {
-                console.log('⚠️ No executives found with keywords, showing ALL members');
+                console.log('⚠️ No executives found, showing ALL members');
                 renderMemberCards(membersData, executiveGrid);
                 return;
             }
             
-            // Define the EXACT order we want
+            // Define position order with MULTIPLE keyword variations for each position
             const positionOrder = [
-                // President
-                { keywords: ['president'], name: 'President' },
-                
-                // Vice President - multiple variations
-                { keywords: ['vice president', 'vice-president', 'vp', 'v.p'], name: 'Vice President' },
-                
-                // Secretary General
-                { keywords: ['secretary general', 'gen sec', 'general secretary'], name: 'Secretary General' },
-                
-                // Assistant Secretary General
-                { keywords: ['assistant secretary general', 'asst secretary general', 'assistant gen sec'], name: 'Assistant Secretary General' },
-                
-                // Financial Secretary
-                { keywords: ['financial secretary', 'fin sec'], name: 'Financial Secretary' },
-                
-                // Director of Sport
-                { keywords: ['director of sport', 'sport director', 'sports director'], name: 'Director of Sport' },
-                
-                // Assistant Director of Sport
-                { keywords: ['assistant director of sport', 'asst director of sport', 'assistant sport director'], name: 'Assistant Director of Sport' },
-                
-                // Director of Welfare
-                { keywords: ['director of welfare', 'welfare director'], name: 'Director of Welfare' },
-                
-                // Director of Social
-                { keywords: ['director of social', 'social director'], name: 'Director of Social' },
-                
-                // Assistant Director of Social
-                { keywords: ['assistant director of social', 'asst director of social', 'assistant social director'], name: 'Assistant Director of Social' },
-                
-                // Academic Officer
-                { keywords: ['academic officer', 'academic'], name: 'Academic Officer' },
-                
-                // Treasurer
-                { keywords: ['treasurer'], name: 'Treasurer' },
-                
-                // PRO
-                { keywords: ['public relations', 'pro', 'p.r.o'], name: 'Public Relations Officer' }
+                {
+                    title: 'President',
+                    keywords: ['president']
+                },
+                {
+                    title: 'Vice President',
+                    keywords: ['vice president', 'vice-president', 'vp', 'v.p', 'vice pres']
+                },
+                {
+                    title: 'Secretary General',
+                    keywords: ['secretary general', 'general secretary', 'gen sec']
+                },
+                {
+                    title: 'Assistant Secretary General',
+                    keywords: [
+                        'assistant secretary general', 
+                        'asst secretary general',
+                        'secretary general assistant',  // THIS IS THE KEY ADDITION
+                        'assistant gen sec',
+                        'deputy secretary general',
+                        'assistant general secretary'
+                    ]
+                },
+                {
+                    title: 'Financial Secretary',
+                    keywords: ['financial secretary', 'fin sec', 'finance secretary']
+                },
+                {
+                    title: 'Director of Sport',
+                    keywords: ['director of sport', 'sport director', 'sports director', 'dir of sport']
+                },
+                {
+                    title: 'Assistant Director of Sport',
+                    keywords: [
+                        'assistant director of sport', 
+                        'asst director of sport',
+                        'assistant sport director',
+                        'deputy director of sport'
+                    ]
+                },
+                {
+                    title: 'Director of Welfare',
+                    keywords: ['director of welfare', 'welfare director', 'dir of welfare']
+                },
+                {
+                    title: 'Director of Social',
+                    keywords: ['director of social', 'social director', 'dir of social']
+                },
+                {
+                    title: 'Assistant Director of Social',
+                    keywords: [
+                        'assistant director of social', 
+                        'asst director of social',
+                        'assistant social director',
+                        'deputy director of social'
+                    ]
+                },
+                {
+                    title: 'Academic Officer',
+                    keywords: ['academic officer', 'academic']
+                },
+                {
+                    title: 'Treasurer',
+                    keywords: ['treasurer']
+                },
+                {
+                    title: 'Public Relations Officer',
+                    keywords: ['public relations', 'pro', 'p.r.o', 'publicity']
+                }
             ];
             
-            // Create a copy of executives to sort
-            const sortedExecutives = [...executives];
-            
-            // Sort according to position order
-            sortedExecutives.sort((a, b) => {
+            // Sort executives according to position order
+            const sortedExecutives = [...executives].sort((a, b) => {
                 const posA = a.position?.toLowerCase() || '';
                 const posB = b.position?.toLowerCase() || '';
                 
-                // Find the index for each position
+                // Find matching order index for A
                 let indexA = 999;
-                let indexB = 999;
-                
                 for (let i = 0; i < positionOrder.length; i++) {
-                    const order = positionOrder[i];
-                    // Check if position A matches any keyword for this order
-                    if (order.keywords.some(keyword => posA.includes(keyword))) {
+                    if (positionOrder[i].keywords.some(keyword => posA.includes(keyword))) {
                         indexA = i;
                         break;
                     }
                 }
                 
+                // Find matching order index for B
+                let indexB = 999;
                 for (let i = 0; i < positionOrder.length; i++) {
-                    const order = positionOrder[i];
-                    if (order.keywords.some(keyword => posB.includes(keyword))) {
+                    if (positionOrder[i].keywords.some(keyword => posB.includes(keyword))) {
                         indexB = i;
                         break;
                     }
                 }
                 
-                // Special handling for ANY assistant position that wasn't caught
-                if (indexA === 999 && (posA.includes('assistant') || posA.includes('asst'))) {
+                // Special handling for ANY assistant position not caught
+                if (indexA === 999 && (posA.includes('assistant') || posA.includes('asst') || posA.includes('deputy'))) {
                     console.log(`Found assistant position not in order: ${posA}`);
-                    indexA = 15; // Put after all main positions
+                    indexA = 14; // After PRO
                 }
                 
-                if (indexB === 999 && (posB.includes('assistant') || posB.includes('asst'))) {
-                    indexB = 15;
+                if (indexB === 999 && (posB.includes('assistant') || posB.includes('asst') || posB.includes('deputy'))) {
+                    indexB = 14;
                 }
                 
                 return indexA - indexB;
             });
             
-            // Log the sorted order
+            // Log the final sorted order
             console.log('===== SORTED EXECUTIVES =====');
             sortedExecutives.forEach((member, i) => {
                 console.log(`${i + 1}. ${member.full_name || member.name} - "${member.position}"`);
@@ -1635,7 +1649,7 @@
             attachMemberCardListeners();
         }
 
-        // Format position titles - SIMPLIFIED AND COMPREHENSIVE
+        // Format position titles - COMPREHENSIVE FIX
         function formatPositionTitle(position) {
             if (!position) return 'Member';
             
@@ -1646,23 +1660,31 @@
                 return 'President';
             }
             
-            // Vice President - catch ALL variations
+            // Vice President
             if (lowerPos.includes('vice president') || 
                 lowerPos.includes('vice-president') ||
                 lowerPos === 'vp' || 
-                lowerPos === 'v.p' ||
-                (lowerPos.includes('vice') && lowerPos.includes('pres'))) {
+                lowerPos === 'v.p') {
                 return 'Vice President';
             }
             
             // Secretary General
-            if (lowerPos.includes('secretary general') || lowerPos.includes('general secretary')) {
+            if (lowerPos.includes('secretary general') || 
+                lowerPos.includes('general secretary') ||
+                lowerPos === 'gen sec') {
                 return 'Secretary General';
             }
             
-            // Assistant Secretary General
-            if ((lowerPos.includes('assistant') || lowerPos.includes('asst')) && 
+            // Assistant Secretary General - THIS NOW CATCHES "Secretary General Assistant"
+            if ((lowerPos.includes('assistant') || lowerPos.includes('asst') || lowerPos.includes('deputy')) && 
                 lowerPos.includes('secretary')) {
+                return 'Assistant Secretary General';
+            }
+            
+            // ALSO check for "Secretary General Assistant" specifically
+            if (lowerPos.includes('secretary general assistant') || 
+                lowerPos.includes('secretary gen assistant') ||
+                (lowerPos.includes('secretary') && lowerPos.includes('assistant') && lowerPos.includes('general'))) {
                 return 'Assistant Secretary General';
             }
             
@@ -1674,8 +1696,6 @@
             // Director of Sport
             if ((lowerPos.includes('director') || lowerPos.includes('dir')) && 
                 (lowerPos.includes('sport') || lowerPos.includes('sports'))) {
-                
-                // Check if it's assistant
                 if (lowerPos.includes('assistant') || lowerPos.includes('asst')) {
                     return 'Assistant Director of Sport';
                 }
@@ -1685,7 +1705,6 @@
             // Director of Welfare
             if ((lowerPos.includes('director') || lowerPos.includes('dir')) && 
                 lowerPos.includes('welfare')) {
-                
                 if (lowerPos.includes('assistant') || lowerPos.includes('asst')) {
                     return 'Assistant Director of Welfare';
                 }
@@ -1695,7 +1714,6 @@
             // Director of Social
             if ((lowerPos.includes('director') || lowerPos.includes('dir')) && 
                 lowerPos.includes('social')) {
-                
                 if (lowerPos.includes('assistant') || lowerPos.includes('asst')) {
                     return 'Assistant Director of Social';
                 }
@@ -1718,9 +1736,13 @@
             }
             
             // ANY assistant position that wasn't caught above
-            if (lowerPos.includes('assistant') || lowerPos.includes('asst')) {
-                // Extract what they're assistant of
-                let mainRole = lowerPos.replace(/assistant|asst/g, '').trim();
+            if (lowerPos.includes('assistant') || lowerPos.includes('asst') || lowerPos.includes('deputy')) {
+                // Try to extract what they're assistant of
+                let mainRole = lowerPos
+                    .replace(/assistant|asst|deputy|\./g, '')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+                
                 if (mainRole) {
                     return 'Assistant ' + mainRole.split(' ')
                         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
@@ -1763,7 +1785,6 @@
                 return;
             }
             
-            // Group members by committee
             const committeesMap = {};
             
             membersData.forEach(member => {
