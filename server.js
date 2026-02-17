@@ -584,13 +584,18 @@ app.use(compression({
         .map(origin => origin.trim())
         .filter(origin => origin.length > 0);
 
+    // Add FRONTEND_URL if set
     if (process.env.FRONTEND_URL && !allowedOrigins.includes(process.env.FRONTEND_URL)) {
         allowedOrigins.push(process.env.FRONTEND_URL);
     }
 
+    // Log the allowed origins in development only
+    if (!isProduction) {
+        console.log('📋 Allowed CORS origins:', allowedOrigins);
+    }
+
     allowedOrigins.push('https://nuesa-biu.vercel.app');
     allowedOrigins.push('https://www.nuesa-biu.vercel.app');
-    allowedOrigins.push('https://adminbiunuesa.vercel.app');
 
     const corsOptions = {
         origin: function (origin, callback) {
