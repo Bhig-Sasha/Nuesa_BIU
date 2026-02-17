@@ -3462,6 +3462,389 @@ try {
 
 console.log('🔧 [R54] Resources router setup complete');
 
+// ==================== ARTICLES/NEWS ROUTES ====================
+console.log('🔧 [A1] Setting up articles/news routes...');
+const articleRouter = express.Router();
+
+// Validation schema for articles
+const articleSchema = Joi.object({
+    title: Joi.string().required(),
+    slug: Joi.string().optional(),
+    content: Joi.string().required(),
+    excerpt: Joi.string().optional(),
+    author: Joi.string().optional(),
+    category: Joi.string().optional(),
+    tags: Joi.array().items(Joi.string()).default([]),
+    status: Joi.string().valid('draft', 'published').default('draft'),
+    is_published: Joi.boolean().default(false),
+    published_at: Joi.date().optional()
+});
+
+// GET all published articles (public)
+articleRouter.get('/', cacheMiddleware(120, ['articles']), async (req, res) => {
+    try {
+        const { 
+            category,
+            tag,
+            limit = 50,
+            page = 1,
+            sort = 'published_at',
+            order = 'desc'
+        } = req.query;
+
+        const offset = (page - 1) * limit;
+        
+        let where = { 
+            status: 'published',
+            is_published: true 
+        };
+        
+        if (category && category !== 'all') {
+            where.category = category;
+        }
+        
+        if (tag) {
+            where.tags = { operator: 'contains', value: [tag] };
+        }
+
+        const [articles, totalCount] = await Promise.all([
+            db.query('select', 'articles', {
+                where,
+                order: { column: sort, ascending: order === 'asc' },
+                limit: parseInt(limit),
+                offset: parseInt(offset)
+            }),
+            db.query('select', 'articles', {
+                where,
+                count: true
+            })
+        ]);
+
+        res.setHeader('X-Total-Count', totalCount.count || 0);
+        res.setHeader('X-Page-Count', Math.ceil((totalCount.count || 0) / limit));
+
+        res.json({
+            status: 'success',
+            data: articles.data,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total: totalCount.count || 0,
+                pages: Math.ceil((totalCount.count || 0) / limit)
+            }
+        });
+    } catch (error) {
+        logger.error('Error fetching articles:', { requestId: req.id, error: error.message });
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch articles'
+        });
+    }
+});
+
+// GET single article by slug or id (public)
+articleRouter.get('/:identifier', cacheMiddleware(300, ['articles']), async (req, res) => {
+    try {
+        const { identifier } = req.params;
+        
+        // Check if identifier is UUID or slug
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+        
+        let where = { status: 'published', is_published: true };
+        if (isUUID) {
+            where.uuid = identifier;
+        } else {
+            where.slug = identifier;
+        }
+
+        const result = await db.query('select', 'articles', { where });
+
+        if (result.data.length === 0) {
+            throw new NotFoundError('Article');
+        }
+
+        res.json({
+            status: 'success',
+            data: result.data[0]
+        });
+    } catch (error) {
+        logger.error('Error fetching article:', { requestId: req.id, error: error.message });
+        
+        if (error instanceof NotFoundError) {
+            return res.status(404).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+        
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch article'
+        });
+    }
+});
+
+// GET articles by category (public)
+articleRouter.get('/category/:category', cacheMiddleware(120, ['articles']), async (req, res) => {
+    try {
+        const result = await db.query('select', 'articles', {
+            where: { 
+                category: req.params.category,
+                status: 'published',
+                is_published: true
+            },
+            order: { column: 'published_at', ascending: false }
+        });
+
+        res.json({
+            status: 'success',
+            data: result.data,
+            count: result.data.length
+        });
+    } catch (error) {
+        logger.error('Error fetching articles by category:', { requestId: req.id, error: error.message });
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch articles'
+        });
+    }
+});
+
+// CREATE article (admin/editor only)
+articleRouter.post('/', verifyToken, requireRole('admin', 'editor'), validate(articleSchema), async (req, res) => {
+    try {
+        const {
+            title, slug, content, excerpt, author,
+            category, tags, status, is_published, published_at
+        } = req.body;
+
+        // Generate slug if not provided
+        let articleSlug = slug;
+        if (!articleSlug) {
+            articleSlug = title
+                .toLowerCase()
+                .replace(/[^\w\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/--+/g, '-')
+                .trim();
+        }
+
+        // Check if slug exists
+        const existing = await db.query('select', 'articles', {
+            where: { slug: articleSlug }
+        });
+
+        if (existing.data.length > 0) {
+            articleSlug = `${articleSlug}-${Date.now()}`;
+        }
+
+        const articleData = {
+            uuid: uuid.v4(),
+            title: title.trim(),
+            slug: articleSlug,
+            content,
+            excerpt: excerpt || null,
+            author: author || req.user.fullName || 'NUESA BIU',
+            category: category || null,
+            tags: tags || [],
+            status: status || 'draft',
+            is_published: is_published || false,
+            published_at: published_at || (is_published ? new Date() : null),
+            created_at: new Date(),
+            updated_at: new Date()
+        };
+
+        const result = await db.query('insert', 'articles', { data: articleData });
+
+        await cacheManager.invalidateByTags(['articles']);
+
+        logger.info('Article created', { 
+            requestId: req.id, 
+            articleId: result.data[0].uuid, 
+            createdBy: req.user.id 
+        });
+
+        res.status(201).json({
+            status: 'success',
+            data: result.data[0],
+            message: 'Article created successfully'
+        });
+    } catch (error) {
+        logger.error('Error creating article:', { requestId: req.id, error: error.message });
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to create article'
+        });
+    }
+});
+
+// UPDATE article
+articleRouter.put('/:uuid', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
+    try {
+        const allowedFields = [
+            'title', 'slug', 'content', 'excerpt', 'author',
+            'category', 'tags', 'status', 'is_published', 'published_at'
+        ];
+        
+        const updateData = {};
+        allowedFields.forEach(field => {
+            if (req.body[field] !== undefined) {
+                updateData[field] = req.body[field];
+            }
+        });
+
+        if (Object.keys(updateData).length === 0) {
+            throw new ValidationError('No fields to update');
+        }
+
+        updateData.updated_at = new Date();
+
+        const result = await db.query('update', 'articles', {
+            data: updateData,
+            where: { uuid: req.params.uuid }
+        });
+
+        if (result.data.length === 0) {
+            throw new NotFoundError('Article');
+        }
+
+        await cacheManager.invalidateByTags(['articles']);
+
+        logger.info('Article updated', { 
+            requestId: req.id, 
+            articleId: req.params.uuid, 
+            updatedBy: req.user.id 
+        });
+
+        res.json({
+            status: 'success',
+            data: result.data[0],
+            message: 'Article updated successfully'
+        });
+    } catch (error) {
+        logger.error('Error updating article:', { requestId: req.id, error: error.message });
+        
+        if (error instanceof NotFoundError) {
+            return res.status(404).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+        
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to update article'
+        });
+    }
+});
+
+// DELETE article
+articleRouter.delete('/:uuid', verifyToken, requireRole('admin'), async (req, res) => {
+    try {
+        const result = await db.query('delete', 'articles', {
+            where: { uuid: req.params.uuid }
+        });
+
+        if (result.data.length === 0) {
+            throw new NotFoundError('Article');
+        }
+
+        await cacheManager.invalidateByTags(['articles']);
+
+        logger.info('Article deleted', { 
+            requestId: req.id, 
+            articleId: req.params.uuid, 
+            deletedBy: req.user.id 
+        });
+
+        res.json({
+            status: 'success',
+            message: 'Article deleted successfully'
+        });
+    } catch (error) {
+        logger.error('Error deleting article:', { requestId: req.id, error: error.message });
+        
+        if (error instanceof NotFoundError) {
+            return res.status(404).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+        
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to delete article'
+        });
+    }
+});
+
+// GET meta data for filtering
+articleRouter.get('/meta/categories', async (req, res) => {
+    try {
+        const result = await db.query('select', 'articles', {
+            select: 'DISTINCT category',
+            where: { 
+                category: { operator: 'isNull', value: false },
+                status: 'published',
+                is_published: true
+            }
+        });
+        
+        const categories = result.data.map(item => item.category).filter(Boolean);
+        
+        res.json({
+            status: 'success',
+            data: categories
+        });
+    } catch (error) {
+        logger.error('Error fetching categories:', { requestId: req.id, error: error.message });
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch categories'
+        });
+    }
+});
+
+articleRouter.get('/meta/tags', async (req, res) => {
+    try {
+        const result = await db.query('select', 'articles', {
+            select: 'tags',
+            where: { 
+                tags: { operator: 'isNull', value: false },
+                status: 'published',
+                is_published: true
+            }
+        });
+        
+        // Flatten and deduplicate tags
+        const allTags = result.data
+            .flatMap(item => item.tags || [])
+            .filter(Boolean);
+        
+        const uniqueTags = [...new Set(allTags)];
+        
+        res.json({
+            status: 'success',
+            data: uniqueTags
+        });
+    } catch (error) {
+        logger.error('Error fetching tags:', { requestId: req.id, error: error.message });
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch tags'
+        });
+    }
+});
+
+// Register the articles router
+try {
+    app.use('/api/articles', articleRouter);
+    app.use('/api/news', articleRouter); // Also support /api/news endpoint
+    console.log('✅ Articles/News router registered at /api/articles and /api/news');
+} catch (error) {
+    console.error('❌ Failed to register articles router:', error.message);
+}
+
 // ==================== FILE MANAGEMENT ROUTES ====================
 app.post('/api/upload', verifyToken, requireRole('admin', 'editor'), upload.single('file'), async (req, res) => {
     try {
