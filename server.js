@@ -526,27 +526,46 @@ app.use(compression({
 }));
 
 // Security headers with enhanced CSP
-app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-            scriptSrc: ["'self'", "'unsafe-inline'"],
-            imgSrc: ["'self'", "data:", "https:", "blob:"],
-            connectSrc: ["'self'", supabaseUrl, process.env.FRONTEND_URL || '', "https://*.supabase.co"],
-            fontSrc: ["'self'", "https://fonts.gstatic.com"],
-            objectSrc: ["'none'"],
-            mediaSrc: ["'self'"],
-            frameSrc: ["'none'"],
-            baseUri: ["'self'"],
-            formAction: ["'self'"],
-            frameAncestors: ["'none'"],
-            upgradeInsecureRequests: isProduction ? [] : null
-        }
-    },
-    crossOriginEmbedderPolicy: false,
-    crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
+    const cspDirectives = {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "https:", "blob:"],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        objectSrc: ["'none'"],
+        mediaSrc: ["'self'"],
+        frameSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        frameAncestors: ["'none'"]
+    };
+
+    // Add allowed origins to connectSrc if they exist
+    if (supabaseUrl) {
+        cspDirectives.connectSrc.push(supabaseUrl);
+    }
+
+    if (process.env.FRONTEND_URL) {
+        cspDirectives.connectSrc.push(process.env.FRONTEND_URL);
+    }
+
+    // Add Supabase wildcard
+    cspDirectives.connectSrc.push("https://*.supabase.co");
+
+    // Handle upgrade insecure requests properly
+    if (isProduction) {
+        cspDirectives.upgradeInsecureRequests = [];
+    }
+
+    app.use(helmet({
+        contentSecurityPolicy: {
+            directives: cspDirectives,
+            reportOnly: false
+        },
+        crossOriginEmbedderPolicy: false,
+        crossOriginResourcePolicy: { policy: "cross-origin" }
+    }));
 
 // CSRF Protection (except for API routes)
 const csrfProtection = csrf({ cookie: true });
@@ -572,6 +591,7 @@ if (process.env.FRONTEND_URL && !allowedOrigins.includes(process.env.FRONTEND_UR
 
 allowedOrigins.push('https://nuesa-biu.vercel.app');
 allowedOrigins.push('https://www.nuesa-biu.vercel.app');
+allowedOrigins.push('https://adminbiunuesa.vercel.app');
 
 const corsOptions = {
     origin: function (origin, callback) {
@@ -1094,6 +1114,10 @@ const checkAdminSessionEnhanced = async (req, res, next) => {
             // Clear cookies safely
             const clearAdminCookie = () => {
                 const cookieOptions = {
+                    httpOnly: true,
+                    secure: isProduction,  // Must be true in production
+                    sameSite: 'none',      // ✅ Critical change for cross-domain
+                    maxAge: 8 * 60 * 60 * 1000,
                     path: '/'
                 };
                 
@@ -1520,8 +1544,8 @@ async function adminLoginHandler(req, res) {
 
         const cookieOptions = {
             httpOnly: true,
-            secure: isProduction,
-            sameSite: 'strict',
+            secure: isProduction,  // Must be true in production
+            sameSite: 'none',      // ✅ CRITICAL: Allows cross-domain cookies
             maxAge: 8 * 60 * 60 * 1000,
             path: '/'
         };
