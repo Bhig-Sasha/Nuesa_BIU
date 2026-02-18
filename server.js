@@ -4003,219 +4003,204 @@ if (publicExists) {
     console.log('✅ Public pages served from /public folder');
 }
 
-// ==================== HIDDEN ADMIN ROUTING ====================
+// ==================== SIMPLIFIED ADMIN ROUTING ====================
 if (adminExists) {
     console.log('✅ Admin folder found at:', adminDir);
     console.log('📄 Files in admin folder:', fsSync.readdirSync(adminDir));
     
-    // CSRF token endpoint for admin forms
-    app.get('/api/csrf-token', csrfProtection, (req, res) => {
-        res.json({
-            status: 'success',
-            csrfToken: req.csrfToken()
-        });
-    });
-    
-    // 1. DISGUISED ADMIN PORTAL
-    app.get('/portal/system', csrfProtection, async (req, res) => {
+    // Simple CSRF token endpoint (optional - can be removed if not needed)
+    app.get('/api/csrf-token', (req, res) => {
         try {
-            if (!req.isAdmin) {
-                return res.status(404).send('Not found');
-            }
-            
-            // Serve dashboard HTML file
-            const dashPath = path.join(adminDir, 'dash.html');
-            console.log('Looking for dashboard at:', dashPath);
-            console.log('Dashboard exists?', fsSync.existsSync(dashPath));
-            
-            if (fsSync.existsSync(dashPath)) {
-                // Read and inject user data
-                let dashHtml = await fs.readFile(dashPath, 'utf8');
-                
-                const userData = {
-                    id: req.admin?.id,
-                    email: req.admin?.email,
-                    fullName: req.admin?.full_name || req.admin?.email?.split('@')[0] || 'Admin',
-                    role: req.admin?.role || 'admin'
-                };
-                
-                dashHtml = dashHtml.replace(
-                    '</head>',
-                    `<script>
-                        window.ADMIN_USER = ${JSON.stringify(userData)};
-                        window.API_BASE_URL = '${req.protocol}://${req.get('host')}';
-                        window.CSRF_TOKEN = '${req.csrfToken()}';
-                    </script>
-                    </head>`
-                );
-                
-                res.send(dashHtml);
-            } else {
-                console.error('Dashboard file not found at:', dashPath);
-                res.status(404).send('Dashboard not found');
-            }
+            // Generate a simple token without the complex CSRF middleware
+            const simpleToken = crypto.randomBytes(32).toString('hex');
+            res.json({
+                status: 'success',
+                csrfToken: simpleToken
+            });
         } catch (error) {
-            console.error('Dashboard error:', error);
-            res.status(500).send('Server error');
+            res.json({
+                status: 'success',
+                csrfToken: 'fallback-token-' + Date.now()
+            });
         }
     });
     
-    // 2. HIDDEN ADMIN LOGIN PAGE
-    app.get('/portal/login', async (req, res) => {
+    // ==================== ADMIN LOGIN PAGE ====================
+    app.get('/admin/login', async (req, res) => {
         try {
-            console.log('🔐 Accessing /portal/login at:', new Date().toISOString());
-            console.log('🔐 isAdmin?', req.isAdmin);
-            console.log('🔐 Request ID:', req.id);
+            console.log('🔐 Admin login page accessed');
             
+            // If already logged in, redirect to dashboard
             if (req.isAdmin) {
-                console.log('🔐 User is admin, redirecting to /portal/system');
-                return res.redirect('/portal/system');
+                console.log('🔐 User already admin, redirecting to dashboard');
+                return res.redirect('/admin/dashboard');
             }
             
-            // Try multiple possible paths for the login file
-            const possiblePaths = [
-                path.join(__dirname, 'admin', 'adlog.html'),
-                path.join(process.cwd(), 'admin', 'adlog.html'),
-                path.join(__dirname, '../admin', 'adlog.html'),
-                path.join('/opt/render/project/src/admin', 'adlog.html')
-            ];
+            // Simple direct path to login file
+            const loginFilePath = path.join(adminDir, 'adlog.html');
+            console.log('🔐 Looking for login file at:', loginFilePath);
             
-            console.log('🔐 Searching for login file in:');
-            let loginPath = null;
-            let loginHtml = null;
-            
-            for (const testPath of possiblePaths) {
-                console.log(`🔐 Checking: ${testPath}`);
-                if (fsSync.existsSync(testPath)) {
-                    loginPath = testPath;
-                    console.log(`✅ Found login file at: ${loginPath}`);
-                    loginHtml = await fs.readFile(loginPath, 'utf8');
-                    break;
-                }
-            }
-            
-            if (!loginHtml) {
-                console.error('❌ Login file not found in any location');
-                
-                // List all files in the project directory to help debug
-                const projectFiles = fsSync.readdirSync(process.cwd());
-                const adminDirExists = fsSync.existsSync(path.join(process.cwd(), 'admin'));
-                const adminFiles = adminDirExists ? fsSync.readdirSync(path.join(process.cwd(), 'admin')) : [];
-                
+            // Check if file exists
+            if (!fsSync.existsSync(loginFilePath)) {
+                console.error('❌ Login file NOT found at:', loginFilePath);
                 return res.status(500).send(`
                     <h1>Admin Login Error</h1>
-                    <p>Login page (adlog.html) not found.</p>
-                    <h3>Debug Information:</h3>
-                    <ul>
-                        <li><strong>__dirname:</strong> ${__dirname}</li>
-                        <li><strong>process.cwd():</strong> ${process.cwd()}</li>
-                        <li><strong>admin directory exists:</strong> ${adminDirExists}</li>
-                        <li><strong>files in admin:</strong> ${adminFiles.join(', ') || 'none'}</li>
-                        <li><strong>files in project root:</strong> ${projectFiles.slice(0, 10).join(', ')}...</li>
-                    </ul>
-                    <p>Please check your deployment structure.</p>
+                    <p>Login file (adlog.html) not found in admin folder.</p>
+                    <p>Expected path: ${loginFilePath}</p>
                 `);
             }
             
-            // Generate CSRF token
-            let csrfToken;
-            try {
-                csrfToken = req.csrfToken();
-                console.log('✅ CSRF token generated successfully');
-            } catch (csrfError) {
-                console.error('❌ CSRF token error:', csrfError);
-                csrfToken = 'error-generating-token';
-            }
+            // Read the file
+            let loginHtml = await fs.readFile(loginFilePath, 'utf8');
             
-            // Inject the token into the HTML
-            loginHtml = loginHtml.replace(
-                '</head>',
-                `<script>
-                    window.CSRF_TOKEN = '${csrfToken}';
+            // Inject minimal configuration
+            const configScript = `
+                <script>
                     window.API_BASE_URL = '${req.protocol}://${req.get('host')}';
-                    console.log('Admin page loaded with CSRF token');
+                    window.ADMIN_LOGIN_PAGE = true;
+                    console.log('✅ Admin login page initialized');
                 </script>
-                </head>`
-            );
+            `;
             
-            console.log('✅ Sending login page');
+            // Insert config before </head>
+            loginHtml = loginHtml.replace('</head>', configScript + '</head>');
+            
+            console.log('✅ Sending admin login page');
             res.send(loginHtml);
             
         } catch (error) {
-            console.error('❌ Login page error:', error);
+            console.error('❌ Admin login page error:', error);
             res.status(500).send(`
-                <h1>Admin Login Error</h1>
+                <h1>Server Error</h1>
+                <p>Error loading admin login page: ${error.message}</p>
+                <pre>${error.stack}</pre>
+            `);
+        }
+    });
+    
+    // ==================== ADMIN DASHBOARD ====================
+    app.get('/admin/dashboard', async (req, res) => {
+        try {
+            console.log('📊 Admin dashboard accessed');
+            
+            // Check if user is admin
+            if (!req.isAdmin) {
+                console.log('📊 Not admin, redirecting to login');
+                return res.redirect('/admin/login');
+            }
+            
+            // Path to dashboard file
+            const dashboardFilePath = path.join(adminDir, 'dash.html');
+            console.log('📊 Looking for dashboard at:', dashboardFilePath);
+            
+            if (!fsSync.existsSync(dashboardFilePath)) {
+                console.error('❌ Dashboard file not found at:', dashboardFilePath);
+                return res.status(500).send('Dashboard file not found');
+            }
+            
+            // Read the file
+            let dashboardHtml = await fs.readFile(dashboardFilePath, 'utf8');
+            
+            // Prepare user data
+            const userData = {
+                id: req.admin?.id || 'unknown',
+                email: req.admin?.email || 'admin@example.com',
+                fullName: req.admin?.full_name || req.admin?.email?.split('@')[0] || 'Admin User',
+                role: req.admin?.role || 'admin',
+                isAuthenticated: true
+            };
+            
+            // Inject user data and config
+            const configScript = `
+                <script>
+                    window.ADMIN_USER = ${JSON.stringify(userData, null, 2)};
+                    window.API_BASE_URL = '${req.protocol}://${req.get('host')}';
+                    window.IS_ADMIN = true;
+                    console.log('✅ Dashboard initialized for:', ${JSON.stringify(userData.fullName)});
+                </script>
+            `;
+            
+            // Insert config before </head>
+            dashboardHtml = dashboardHtml.replace('</head>', configScript + '</head>');
+            
+            console.log('✅ Sending admin dashboard');
+            res.send(dashboardHtml);
+            
+        } catch (error) {
+            console.error('❌ Admin dashboard error:', error);
+            res.status(500).send(`
+                <h1>Dashboard Error</h1>
                 <p>Error: ${error.message}</p>
                 <pre>${error.stack}</pre>
             `);
         }
     });
     
-    // 3. ADMIN LOGOUT
-    app.get('/portal/logout', (req, res) => {
-        // Clear admin cookies
-        const cookieOptions = {
-            path: '/'
-        };
+    // ==================== ADMIN LOGOUT ====================
+    app.get('/admin/logout', (req, res) => {
+        console.log('🚪 Admin logout');
         
-        if (isProduction && process.env.FRONTEND_URL) {
-            try {
-                const frontendUrl = new URL(process.env.FRONTEND_URL);
-                cookieOptions.domain = frontendUrl.hostname;
-            } catch (error) {
-                console.warn('Invalid FRONTEND_URL for cookie clearing:', error);
-            }
-        }
+        // Clear all possible admin cookies
+        const cookieOptions = {
+            path: '/',
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: 'lax'
+        };
         
         res.clearCookie('admin_session', cookieOptions);
         res.clearCookie('admin_token', cookieOptions);
         res.clearCookie('auth_token', cookieOptions);
+        res.clearCookie('token', cookieOptions);
         
-        // Redirect to home page
-        res.redirect('/');
+        // Redirect to login page
+        res.redirect('/admin/login');
     });
     
-    // 4. SERVE ADMIN ASSETS
-    app.get('/assets/:folder/:file', (req, res) => {
+    // ==================== ADMIN API STATUS CHECK ====================
+    app.get('/admin/status', (req, res) => {
+        res.json({
+            status: 'success',
+            isAdmin: req.isAdmin || false,
+            authenticated: !!req.admin,
+            timestamp: new Date().toISOString()
+        });
+    });
+    
+    // ==================== SIMPLE ASSET SERVING ====================
+    app.get('/admin/assets/:filename', (req, res) => {
         try {
-            const { folder, file } = req.params;
+            const { filename } = req.params;
             
-            // Only serve if admin
-            if (!req.isAdmin) {
-                return res.status(404).send('Not found');
+            // Security: Only allow specific file types
+            if (!filename.match(/\.(css|js|png|jpg|jpeg|gif|svg|woff|woff2|ttf)$/i)) {
+                return res.status(403).send('File type not allowed');
             }
             
-            // Sanitize and validate path
-            const filePath = path.join(adminDir, folder, file);
-            const resolvedPath = path.resolve(filePath);
-            const resolvedAdminDir = path.resolve(adminDir);
+            const filePath = path.join(adminDir, filename);
             
-            // Ensure resolved path is within admin directory
-            if (!resolvedPath.startsWith(resolvedAdminDir + path.sep)) {
-                return res.status(403).send('Access denied');
-            }
-            
-            if (fsSync.existsSync(resolvedPath)) {
-                res.sendFile(resolvedPath);
+            if (fsSync.existsSync(filePath)) {
+                res.sendFile(filePath);
             } else {
                 res.status(404).send('File not found');
             }
         } catch (error) {
-            res.status(500).send('Server error');
+            res.status(500).send('Error serving asset');
         }
     });
     
-    // 5. BLOCK DIRECT ACCESS TO ADMIN FOLDER
-    app.all('/admin/*', (req, res) => {
-        res.status(404).send('Not found');
-    });
+    // ==================== REDIRECT OLD PATHS ====================
+    app.get('/portal/login', (req, res) => res.redirect('/admin/login'));
+    app.get('/portal/system', (req, res) => res.redirect('/admin/dashboard'));
+    app.get('/portal/logout', (req, res) => res.redirect('/admin/logout'));
     
-    console.log('✅ Hidden admin system activated:');
-    console.log('   • Admin login: /portal/login');
-    console.log('   • Admin dashboard: /portal/system');
-    console.log('   • Admin logout: /portal/logout');
-    console.log('   • Admin assets: /assets/*');
-    console.log('   • Direct /admin/* routes are blocked');
+    console.log('✅ Simplified admin system activated:');
+    console.log('   • Admin login: /admin/login');
+    console.log('   • Admin dashboard: /admin/dashboard');
+    console.log('   • Admin logout: /admin/logout');
+    console.log('   • Admin assets: /admin/assets/[filename]');
+    console.log('   • Admin status: /admin/status');
+    console.log('   • Old /portal/* paths redirect to new ones');
     
 } else {
     console.log('⚠️ Admin folder not found at:', adminDir);
