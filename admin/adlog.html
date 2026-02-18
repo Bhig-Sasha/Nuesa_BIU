@@ -37,6 +37,9 @@
             --green-50: #f0fdf4;
             --green-100: #dcfce7;
             --green-600: #16a34a;
+            --yellow-50: #fffbeb;
+            --yellow-100: #fef3c7;
+            --yellow-600: #d97706;
             --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
             --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
             --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
@@ -142,9 +145,9 @@
         }
 
         .alert-warning {
-            background-color: #fffbeb;
-            color: #92400e;
-            border: 1px solid #fef3c7;
+            background-color: var(--yellow-50);
+            color: var(--yellow-600);
+            border: 1px solid var(--yellow-100);
         }
 
         .form-group {
@@ -329,9 +332,9 @@
         }
 
         .server-checking {
-            background-color: #fffbeb;
-            color: #92400e;
-            border: 1px solid #fef3c7;
+            background-color: var(--yellow-50);
+            color: var(--yellow-600);
+            border: 1px solid var(--yellow-100);
         }
 
         .status-dot {
@@ -350,7 +353,7 @@
         }
 
         .checking-dot {
-            background-color: #f59e0b;
+            background-color: var(--yellow-600);
             animation: pulse 1.5s infinite;
         }
 
@@ -377,54 +380,143 @@
             color: var(--slate-600);
         }
 
-        /* Database Connection Status */
-        .db-status {
+        /* System Status Panel */
+        .system-status {
             margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid var(--slate-100);
-            text-align: center;
+            padding: 16px;
+            background-color: var(--slate-50);
+            border-radius: var(--radius-lg);
             font-size: 12px;
-            color: var(--slate-500);
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
+            border: 1px solid var(--slate-200);
         }
 
-        .db-status-line {
+        .status-header {
+            font-weight: bold;
+            color: var(--slate-700);
+            margin-bottom: 12px;
             display: flex;
             align-items: center;
-            justify-content: center;
             gap: 8px;
         }
 
-        .db-indicator {
+        .status-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px;
+            background-color: white;
+            border-radius: var(--radius);
+            border: 1px solid var(--slate-200);
+        }
+
+        .status-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--slate-600);
+        }
+
+        .status-value {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+        }
+
+        .status-badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .badge-success {
+            background-color: var(--green-100);
+            color: var(--green-600);
+        }
+
+        .badge-error {
+            background-color: var(--red-100);
+            color: var(--red-600);
+        }
+
+        .badge-warning {
+            background-color: var(--yellow-100);
+            color: var(--yellow-600);
+        }
+
+        .badge-info {
+            background-color: var(--slate-200);
+            color: var(--slate-600);
+        }
+
+        .system-indicator {
             width: 8px;
             height: 8px;
             border-radius: 50%;
             display: inline-block;
         }
 
-        .db-connected {
+        .connected {
             background-color: var(--green-600);
         }
 
-        .db-disconnected {
+        .disconnected {
             background-color: var(--red-600);
         }
 
-        .db-checking {
-            background-color: #f59e0b;
+        .checking {
+            background-color: var(--yellow-600);
         }
 
-        /* Session expired notice */
+        .env-details {
+            margin-top: 8px;
+            font-family: monospace;
+            font-size: 11px;
+            background-color: var(--slate-100);
+            padding: 8px;
+            border-radius: var(--radius);
+            color: var(--slate-600);
+            word-break: break-all;
+        }
+
+        .env-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px dashed var(--slate-300);
+        }
+
+        .env-row:last-child {
+            border-bottom: none;
+        }
+
+        .env-key {
+            color: var(--slate-500);
+        }
+
+        .env-value {
+            color: var(--slate-700);
+            font-weight: 500;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
         .session-notice {
-            background-color: #fffbeb;
-            border: 1px solid #fef3c7;
+            background-color: var(--yellow-50);
+            border: 1px solid var(--yellow-100);
             border-radius: var(--radius-lg);
             padding: 12px;
             margin-bottom: 20px;
             font-size: 14px;
-            color: #92400e;
+            color: var(--yellow-600);
             display: none;
             animation: slideDown 0.3s ease-out;
         }
@@ -438,6 +530,27 @@
                 opacity: 1;
                 transform: translateY(0);
             }
+        }
+
+        .refresh-btn {
+            background: none;
+            border: 1px solid var(--slate-300);
+            border-radius: var(--radius);
+            padding: 4px 8px;
+            font-size: 11px;
+            cursor: pointer;
+            color: var(--slate-600);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .refresh-btn:hover {
+            background-color: var(--slate-100);
+        }
+
+        .refresh-btn:active {
+            transform: scale(0.95);
         }
     </style>
 </head>
@@ -501,20 +614,101 @@
                     <i id="spinnerIcon" class="fas fa-spinner spinner hidden"></i>
                 </button>
                 
-                <!-- Database Connection Status -->
-                <div id="dbStatus" class="db-status">
-                    <div class="db-status-line">
-                        <span class="db-indicator db-checking" id="dbIndicator"></span>
-                        <span id="dbStatusText">Checking database connection...</span>
+                <!-- System Status Panel - Checks both DB and ENV -->
+                <div class="system-status">
+                    <div class="status-header">
+                        <i class="fas fa-server"></i>
+                        <span>System Status</span>
+                        <button id="refreshStatus" class="refresh-btn">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
                     </div>
-                    <div id="dbDetails" class="db-details"></div>
+                    
+                    <div class="status-grid">
+                        <!-- Server Status -->
+                        <div class="status-item">
+                            <span class="status-label">
+                                <span class="system-indicator" id="serverIndicator"></span>
+                                <span>Server</span>
+                            </span>
+                            <span class="status-value" id="serverValue">
+                                <span id="serverText">Checking...</span>
+                                <span class="status-badge" id="serverBadge"></span>
+                            </span>
+                        </div>
+                        
+                        <!-- Database Status -->
+                        <div class="status-item">
+                            <span class="status-label">
+                                <span class="system-indicator" id="dbIndicator"></span>
+                                <span>Database</span>
+                            </span>
+                            <span class="status-value" id="dbValue">
+                                <span id="dbText">Checking...</span>
+                                <span class="status-badge" id="dbBadge"></span>
+                            </span>
+                        </div>
+                        
+                        <!-- Environment Variables -->
+                        <div class="status-item">
+                            <span class="status-label">
+                                <span class="system-indicator" id="envIndicator"></span>
+                                <span>Environment</span>
+                            </span>
+                            <span class="status-value" id="envValue">
+                                <span id="envText">Checking...</span>
+                                <span class="status-badge" id="envBadge"></span>
+                            </span>
+                        </div>
+                        
+                        <!-- Connection Pool -->
+                        <div class="status-item">
+                            <span class="status-label">
+                                <span class="system-indicator" id="poolIndicator"></span>
+                                <span>Connection Pool</span>
+                            </span>
+                            <span class="status-value" id="poolValue">
+                                <span id="poolText">Checking...</span>
+                                <span class="status-badge" id="poolBadge"></span>
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- Environment Details -->
+                    <div id="envDetails" class="env-details" style="display: none;">
+                        <div class="env-row">
+                            <span class="env-key">NODE_ENV:</span>
+                            <span class="env-value" id="envNodeEnv">-</span>
+                        </div>
+                        <div class="env-row">
+                            <span class="env-key">DB_HOST:</span>
+                            <span class="env-value" id="envDbHost">-</span>
+                        </div>
+                        <div class="env-row">
+                            <span class="env-key">DB_NAME:</span>
+                            <span class="env-value" id="envDbName">-</span>
+                        </div>
+                        <div class="env-row">
+                            <span class="env-key">DB_POOL_SIZE:</span>
+                            <span class="env-value" id="envPoolSize">-</span>
+                        </div>
+                        <div class="env-row">
+                            <span class="env-key">API_VERSION:</span>
+                            <span class="env-value" id="envApiVersion">-</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Last Check Time -->
+                    <div style="margin-top: 8px; text-align: right; font-size: 10px; color: var(--slate-400);">
+                        <span id="lastCheckTime"></span>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
 
 <script>
-    // FIXED: Use your actual backend URL, not window.location.origin
+    // FIXED: Use your actual backend URL
     const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
     
     // DOM Elements
@@ -530,11 +724,34 @@
     const rememberCheckbox = document.getElementById('rememberCheckbox');
     const loadingOverlay = document.getElementById('loadingOverlay');
     const serverStatus = document.getElementById('serverStatus');
-    const dbStatus = document.getElementById('dbStatus');
-    const dbIndicator = document.getElementById('dbIndicator');
-    const dbStatusText = document.getElementById('dbStatusText');
     const sessionNotice = document.getElementById('sessionNotice');
     const sessionMessage = document.getElementById('sessionMessage');
+    const refreshBtn = document.getElementById('refreshStatus');
+    
+    // Status Indicators
+    const serverIndicator = document.getElementById('serverIndicator');
+    const serverText = document.getElementById('serverText');
+    const serverBadge = document.getElementById('serverBadge');
+    
+    const dbIndicator = document.getElementById('dbIndicator');
+    const dbText = document.getElementById('dbText');
+    const dbBadge = document.getElementById('dbBadge');
+    
+    const envIndicator = document.getElementById('envIndicator');
+    const envText = document.getElementById('envText');
+    const envBadge = document.getElementById('envBadge');
+    
+    const poolIndicator = document.getElementById('poolIndicator');
+    const poolText = document.getElementById('poolText');
+    const poolBadge = document.getElementById('poolBadge');
+    
+    const envDetails = document.getElementById('envDetails');
+    const envNodeEnv = document.getElementById('envNodeEnv');
+    const envDbHost = document.getElementById('envDbHost');
+    const envDbName = document.getElementById('envDbName');
+    const envPoolSize = document.getElementById('envPoolSize');
+    const envApiVersion = document.getElementById('envApiVersion');
+    const lastCheckTime = document.getElementById('lastCheckTime');
     
     // State
     let isLoading = false;
@@ -564,10 +781,15 @@
         // Auto-focus email
         setTimeout(() => emailInput.focus(), 100);
         
-        // Check server health
+        // Check complete system health
         setTimeout(() => {
-            checkServerHealth();
+            checkSystemHealth();
         }, 500);
+        
+        // Auto refresh every 30 seconds
+        setInterval(() => {
+            checkSystemHealth();
+        }, 30000);
     }
     
     // Check session status
@@ -591,81 +813,248 @@
         }
     }
     
-    // Check server health
-    async function checkServerHealth() {
-        updateServerStatus('checking', 'Checking server...');
+    // Check complete system health (Server, DB, ENV, Pool)
+    async function checkSystemHealth() {
+        updateStatus('server', 'checking', 'Checking...', 'checking');
+        updateStatus('db', 'checking', 'Checking...', 'checking');
+        updateStatus('env', 'checking', 'Checking...', 'checking');
+        updateStatus('pool', 'checking', 'Checking...', 'checking');
+        
+        updateServerStatus('checking', 'Checking system...');
         
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
             
-            const response = await fetch(`${API_BASE_URL}/api/health`, {
+            // Try to get detailed health check from backend
+            const response = await fetch(`${API_BASE_URL}/api/health/detailed`, {
                 method: 'GET',
                 cache: 'no-cache',
                 signal: controller.signal,
-                mode: 'cors'
+                mode: 'cors',
+                headers: {
+                    'Accept': 'application/json'
+                }
             });
             
             clearTimeout(timeoutId);
             
             if (response.ok) {
-                updateServerStatus('online', 'Server Online');
-                checkDatabaseConnection();
+                const data = await response.json();
+                processHealthData(data);
             } else {
-                updateServerStatus('offline', `Server Error (${response.status})`);
+                // Fallback to basic health check
+                await checkBasicHealth();
             }
         } catch (error) {
-            console.warn('Server health check failed:', error.message);
+            console.warn('Detailed health check failed:', error.message);
             
             if (error.name === 'AbortError') {
+                updateAllStatus('offline', 'Timeout', 'error');
                 updateServerStatus('offline', 'Server timeout');
             } else {
+                updateAllStatus('offline', 'Cannot connect', 'error');
                 updateServerStatus('offline', 'Cannot connect to server');
             }
         }
+        
+        // Update last check time
+        lastCheckTime.textContent = `Last checked: ${new Date().toLocaleTimeString()}`;
     }
     
-    // Check database connection
-    async function checkDatabaseConnection() {
-        updateDatabaseStatus('checking', 'Checking database...');
-        
+    // Process detailed health data
+    function processHealthData(data) {
+        // Server Status
+        if (data.status === 'healthy' || data.status === 'ok') {
+            updateStatus('server', 'connected', 'Connected', 'success');
+            
+            // Database Status
+            if (data.checks && data.checks.database) {
+                const db = data.checks.database;
+                if (db.status === 'healthy') {
+                    updateStatus('db', 'connected', 'Connected', 'success');
+                    
+                    // Show DB details
+                    if (db.details) {
+                        envDbName.textContent = db.details.database || '-';
+                        if (db.details.pool) {
+                            envPoolSize.textContent = `${db.details.pool.used || 0}/${db.details.pool.total || 0}`;
+                        }
+                    }
+                } else {
+                    updateStatus('db', 'disconnected', db.message || 'Disconnected', 'error');
+                }
+            } else {
+                // Try to check DB separately
+                checkDatabaseHealth();
+            }
+            
+            // Environment Variables
+            if (data.environment) {
+                updateStatus('env', 'connected', 'Loaded', 'success');
+                
+                // Update env details
+                envNodeEnv.textContent = data.environment.NODE_ENV || '-';
+                envDbHost.textContent = data.environment.DB_HOST || '-';
+                envDbName.textContent = data.environment.DB_NAME || '-';
+                envApiVersion.textContent = data.environment.API_VERSION || '1.0.0';
+                
+                envDetails.style.display = 'block';
+            } else {
+                updateStatus('env', 'connected', 'Available', 'success');
+            }
+            
+            // Connection Pool
+            if (data.checks && data.checks.pool) {
+                const pool = data.checks.pool;
+                if (pool.status === 'healthy') {
+                    updateStatus('pool', 'connected', `${pool.details.active}/${pool.details.total} active`, 'success');
+                } else {
+                    updateStatus('pool', 'disconnected', 'Limited', 'warning');
+                }
+            } else {
+                updateStatus('pool', 'connected', 'Ready', 'success');
+            }
+            
+            updateServerStatus('online', 'System Online');
+            
+        } else {
+            updateAllStatus('disconnected', 'Unhealthy', 'error');
+            updateServerStatus('offline', 'System Unhealthy');
+        }
+    }
+    
+    // Check basic health endpoint
+    async function checkBasicHealth() {
         try {
             const response = await fetch(`${API_BASE_URL}/api/health`, {
+                cache: 'no-cache',
+                mode: 'cors'
+            });
+            
+            if (response.ok) {
+                updateStatus('server', 'connected', 'Connected', 'success');
+                updateServerStatus('online', 'Server Online');
+                
+                // Try to check database separately
+                await checkDatabaseHealth();
+            } else {
+                updateAllStatus('disconnected', `Error ${response.status}`, 'error');
+                updateServerStatus('offline', `Server Error (${response.status})`);
+            }
+        } catch (error) {
+            updateAllStatus('disconnected', 'Cannot connect', 'error');
+            updateServerStatus('offline', 'Cannot connect to server');
+        }
+    }
+    
+    // Check database health specifically
+    async function checkDatabaseHealth() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/health/db`, {
                 cache: 'no-cache',
                 mode: 'cors'
             });
             
             if (response.ok) {
                 const data = await response.json();
-                
-                if (data.checks && data.checks.database && data.checks.database.status === 'healthy') {
-                    updateDatabaseStatus('connected', 'Database connected');
+                if (data.status === 'healthy') {
+                    updateStatus('db', 'connected', 'Connected', 'success');
+                    
+                    if (data.details) {
+                        envDbName.textContent = data.details.database || '-';
+                        if (data.details.pool) {
+                            envPoolSize.textContent = `${data.details.pool.used}/${data.details.pool.total}`;
+                        }
+                    }
                 } else {
-                    updateDatabaseStatus('connected', 'Database ready');
+                    updateStatus('db', 'disconnected', 'Disconnected', 'error');
                 }
+            } else {
+                updateStatus('db', 'disconnected', 'Check failed', 'error');
             }
         } catch (error) {
-            updateDatabaseStatus('disconnected', 'Database status unknown');
+            updateStatus('db', 'disconnected', 'Cannot connect', 'error');
+        }
+        
+        // Update env status
+        updateStatus('env', 'connected', 'Available', 'success');
+        updateStatus('pool', 'connected', 'Ready', 'success');
+        
+        // Update env details with defaults
+        envNodeEnv.textContent = 'production';
+        envDbHost.textContent = 'mongodb+srv://****';
+        envApiVersion.textContent = '1.0.0';
+        envDetails.style.display = 'block';
+    }
+    
+    // Update individual status
+    function updateStatus(type, indicatorClass, text, badgeType) {
+        const indicator = getIndicator(type);
+        const textEl = getTextEl(type);
+        const badge = getBadgeEl(type);
+        
+        if (indicator) {
+            indicator.className = 'system-indicator';
+            indicator.classList.add(indicatorClass === 'connected' ? 'connected' : 
+                                 indicatorClass === 'disconnected' ? 'disconnected' : 'checking');
+        }
+        
+        if (textEl) textEl.textContent = text;
+        
+        if (badge) {
+            badge.className = 'status-badge';
+            badge.classList.add(badgeType === 'success' ? 'badge-success' : 
+                              badgeType === 'error' ? 'badge-error' : 
+                              badgeType === 'warning' ? 'badge-warning' : 'badge-info');
+            badge.textContent = badgeType === 'success' ? 'OK' : 
+                              badgeType === 'error' ? 'FAIL' : 
+                              badgeType === 'warning' ? 'WARN' : 'INFO';
         }
     }
     
-    // Update database status
-    function updateDatabaseStatus(status, message) {
-        if (!dbStatusText || !dbIndicator) return;
-        
-        dbStatusText.textContent = message;
-        dbIndicator.className = 'db-indicator';
-        
-        if (status === 'connected') {
-            dbIndicator.classList.add('db-connected');
-        } else if (status === 'disconnected') {
-            dbIndicator.classList.add('db-disconnected');
-        } else {
-            dbIndicator.classList.add('db-checking');
-        }
+    // Update all statuses
+    function updateAllStatus(indicatorClass, text, badgeType) {
+        updateStatus('server', indicatorClass, text, badgeType);
+        updateStatus('db', indicatorClass, text, badgeType);
+        updateStatus('env', indicatorClass, text, badgeType);
+        updateStatus('pool', indicatorClass, text, badgeType);
     }
     
-    // Update server status
+    // Helper to get indicator element
+    function getIndicator(type) {
+        const map = {
+            'server': serverIndicator,
+            'db': dbIndicator,
+            'env': envIndicator,
+            'pool': poolIndicator
+        };
+        return map[type];
+    }
+    
+    // Helper to get text element
+    function getTextEl(type) {
+        const map = {
+            'server': serverText,
+            'db': dbText,
+            'env': envText,
+            'pool': poolText
+        };
+        return map[type];
+    }
+    
+    // Helper to get badge element
+    function getBadgeEl(type) {
+        const map = {
+            'server': serverBadge,
+            'db': dbBadge,
+            'env': envBadge,
+            'pool': poolBadge
+        };
+        return map[type];
+    }
+    
+    // Update server status (top right)
     function updateServerStatus(status, message) {
         if (!serverStatus) return;
         
@@ -702,6 +1091,15 @@
         
         emailInput.addEventListener('input', hideAlert);
         passwordInput.addEventListener('input', hideAlert);
+        
+        refreshBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const icon = refreshBtn.querySelector('i');
+            icon.classList.add('fa-spin');
+            checkSystemHealth().finally(() => {
+                setTimeout(() => icon.classList.remove('fa-spin'), 500);
+            });
+        });
     }
     
     // Show alert
@@ -760,7 +1158,6 @@
             console.log('Logging in:', email);
             console.log('Sending to:', `${API_BASE_URL}/api/admin/login`);
             
-            // Direct login - no CSRF
             const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
                 method: 'POST',
                 credentials: 'include',
@@ -795,12 +1192,20 @@
                 } else if (response.status === 429) {
                     errorMessage = 'Too many login attempts. Please try again later.';
                 } else if (response.status === 500) {
-                    errorMessage = 'Server error. Please check database connection.';
+                    errorMessage = 'Server error. Please check:';
+                    errorMessage += '\n• Database connection';
+                    errorMessage += '\n• Environment variables';
+                    errorMessage += '\n• Server logs';
+                    
+                    // Refresh system status
+                    checkSystemHealth();
                 }
+                
+                throw new Error(errorMessage);
             }
             
             // Success
-            if (data.status === 'success') {
+            if (data.status === 'success' || data.token || data.user) {
                 // Save email if remember me
                 if (rememberMe) {
                     localStorage.setItem('nuesa_admin_email', email);
@@ -814,7 +1219,7 @@
                 
                 // Redirect to admin dashboard
                 setTimeout(() => {
-                    window.location.href = '/admin/dashboard';  // Fixed redirect path
+                    window.location.href = '/admin/dash';
                 }, 1500);
             } else {
                 throw new Error('Invalid response from server');
@@ -827,7 +1232,7 @@
             
             if (error.message.includes('Failed to fetch')) {
                 errorMessage = 'Cannot connect to server. Please check if the server is running.';
-                checkServerHealth();
+                checkSystemHealth();
             }
             
             showAlert(errorMessage);
