@@ -1933,18 +1933,17 @@ app.use('/api/auth', authRouter);
 // ADMIN AUTHENTICATION HANDLER
 // ============================================================
 
-/**
- * Handle admin login requests
- */
 async function adminLoginHandler(req, res) {
     const requestId = req.id || 'unknown';
-    console.log(`[${requestId}] Admin login attempt for:`, req.body.email);
+    console.log(`\n🔐 [${requestId}] ========== ADMIN LOGIN DEBUG ==========`);
+    console.log(`[${requestId}] Email:`, req.body.email);
     
     try {
         const { email, password, rememberMe } = req.body;
 
         // Validate input
         if (!email || !password) {
+            console.log(`[${requestId}] ❌ Missing fields`);
             return res.status(400).json({
                 status: 'error',
                 code: 'MISSING_FIELDS',
@@ -1952,14 +1951,34 @@ async function adminLoginHandler(req, res) {
             });
         }
 
+        console.log(`[${requestId}] ✅ Input validation passed`);
+
+        // Test database connection first
+        console.log(`[${requestId}] Testing database connection...`);
+        try {
+            const testQuery = await supabase.from('users').select('count').limit(1);
+            console.log(`[${requestId}] Database connection:`, testQuery.error ? 'FAILED' : 'OK');
+            if (testQuery.error) {
+                console.error(`[${requestId}] Database error:`, testQuery.error);
+            }
+        } catch (dbConnError) {
+            console.error(`[${requestId}] Database connection error:`, dbConnError.message);
+        }
+
         // Get user from database
+        console.log(`[${requestId}] Querying for user:`, email.toLowerCase().trim());
         const result = await db.query('select', 'users', {
             where: { email: email.toLowerCase().trim() },
             select: 'id, email, full_name, role, department, is_active, password_hash, created_at, last_login'
         });
 
+        console.log(`[${requestId}] Query result:`, {
+            dataLength: result.data.length,
+            hasError: !!result.error
+        });
+
         if (result.data.length === 0) {
-            console.log(`[${requestId}] User not found:`, email);
+            console.log(`[${requestId}] ❌ User not found`);
             return res.status(401).json({
                 status: 'error',
                 code: 'INVALID_CREDENTIALS',
@@ -1968,10 +1987,17 @@ async function adminLoginHandler(req, res) {
         }
 
         const user = result.data[0];
-        console.log(`[${requestId}] User found:`, { id: user.id, role: user.role, is_active: user.is_active });
+        console.log(`[${requestId}] ✅ User found:`, { 
+            id: user.id, 
+            role: user.role, 
+            is_active: user.is_active,
+            hash_exists: !!user.password_hash,
+            hash_length: user.password_hash?.length
+        });
 
         // Check if account is active
         if (!user.is_active) {
+            console.log(`[${requestId}] ❌ Account inactive`);
             return res.status(401).json({
                 status: 'error',
                 code: 'ACCOUNT_INACTIVE',
@@ -1981,7 +2007,7 @@ async function adminLoginHandler(req, res) {
 
         // Check if user has admin role
         if (user.role !== 'admin') {
-            console.log(`[${requestId}] User is not admin:`, user.role);
+            console.log(`[${requestId}] ❌ Not admin:`, user.role);
             return res.status(401).json({
                 status: 'error',
                 code: 'INVALID_CREDENTIALS',
@@ -1990,9 +2016,14 @@ async function adminLoginHandler(req, res) {
         }
 
         // Verify password
+        console.log(`[${requestId}] Verifying password...`);
+        console.log(`[${requestId}] Hash from DB:`, user.password_hash.substring(0, 20) + '...');
+        
         const validPassword = await bcrypt.compare(password, user.password_hash);
+        console.log(`[${requestId}] Password valid:`, validPassword);
+        
         if (!validPassword) {
-            console.log(`[${requestId}] Invalid password for user:`, user.id);
+            console.log(`[${requestId}] ❌ Invalid password`);
             return res.status(401).json({
                 status: 'error',
                 code: 'INVALID_CREDENTIALS',
@@ -2000,11 +2031,15 @@ async function adminLoginHandler(req, res) {
             });
         }
 
+        console.log(`[${requestId}] ✅ Password verified`);
+
         // Update last login
+        console.log(`[${requestId}] Updating last_login...`);
         await db.query('update', 'users', {
             data: { last_login: new Date() },
             where: { id: user.id }
         });
+        console.log(`[${requestId}] ✅ Last login updated`);
 
         // Create token payload
         const tokenPayload = {
@@ -2013,9 +2048,14 @@ async function adminLoginHandler(req, res) {
             role: user.role,
             fullName: user.full_name
         };
+        console.log(`[${requestId}] Token payload created`);
 
         // Generate JWT token
+        console.log(`[${requestId}] Generating JWT token...`);
+        console.log(`[${requestId}] JWT_SECRET exists:`, !!process.env.JWT_SECRET);
+        
         const token = authService.generateAdminToken(tokenPayload);
+        console.log(`[${requestId}] ✅ Token generated (length: ${token.length})`);
 
         // Set cookie
         const cookieOptions = {
@@ -2028,6 +2068,7 @@ async function adminLoginHandler(req, res) {
         
         res.cookie('admin_session', token, cookieOptions);
         res.cookie('auth_token', token, cookieOptions);
+        console.log(`[${requestId}] ✅ Cookies set`);
 
         // Return success
         const userResponse = {
@@ -2039,7 +2080,9 @@ async function adminLoginHandler(req, res) {
             lastLogin: user.last_login
         };
 
-        console.log(`[${requestId}] Admin login successful for:`, user.email);
+        console.log(`[${requestId}] ✅ Admin login successful for:`, user.email);
+        console.log(`[${requestId}] ========== DEBUG END ==========\n`);
+        
         res.json({
             status: 'success',
             data: {
@@ -2050,7 +2093,14 @@ async function adminLoginHandler(req, res) {
         });
 
     } catch (error) {
-        console.error(`[${requestId}] Admin login error:`, error);
+        console.error(`❌ [${requestId}] ADMIN LOGIN ERROR:`, {
+            message: error.message,
+            stack: error.stack,
+            name: error.name,
+            code: error.code
+        });
+        console.log(`[${requestId}] ========== DEBUG END (WITH ERROR) ==========\n`);
+        
         res.status(500).json({
             status: 'error',
             code: 'INTERNAL_ERROR',
