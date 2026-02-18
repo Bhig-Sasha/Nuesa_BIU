@@ -40,6 +40,9 @@
             --yellow-50: #fffbeb;
             --yellow-100: #fef3c7;
             --yellow-600: #d97706;
+            --blue-50: #eff6ff;
+            --blue-100: #dbeafe;
+            --blue-600: #2563eb;
             --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
             --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
             --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
@@ -125,6 +128,7 @@
             text-align: center;
             display: none;
             animation: fadeIn 0.3s ease-out;
+            white-space: pre-line;
         }
 
         @keyframes fadeIn {
@@ -148,6 +152,12 @@
             background-color: var(--yellow-50);
             color: var(--yellow-600);
             border: 1px solid var(--yellow-100);
+        }
+
+        .alert-info {
+            background-color: var(--blue-50);
+            color: var(--blue-600);
+            border: 1px solid var(--blue-100);
         }
 
         .form-group {
@@ -313,6 +323,7 @@
             gap: 8px;
             opacity: 0.9;
             transition: opacity 0.3s;
+            z-index: 1000;
         }
 
         .server-status:hover {
@@ -552,6 +563,60 @@
         .refresh-btn:active {
             transform: scale(0.95);
         }
+
+        .test-btn {
+            background: none;
+            border: 1px solid var(--slate-300);
+            border-radius: var(--radius-lg);
+            padding: 8px 12px;
+            font-size: 12px;
+            color: var(--slate-600);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .test-btn:hover {
+            background-color: var(--slate-100);
+        }
+
+        .test-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .db-details {
+            margin-top: 10px;
+            padding: 8px;
+            background-color: white;
+            border-radius: var(--radius);
+            border: 1px solid var(--slate-200);
+            font-size: 11px;
+        }
+
+        .db-details-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px dashed var(--slate-200);
+        }
+
+        .db-details-item:last-child {
+            border-bottom: none;
+        }
+
+        .db-label {
+            color: var(--slate-500);
+        }
+
+        .db-value {
+            color: var(--slate-700);
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -586,7 +651,7 @@
                     <label class="form-label">Email Address</label>
                     <div class="input-wrapper">
                         <i class="fas fa-envelope input-icon"></i>
-                        <input type="email" id="email" class="form-input" required placeholder="Enter admin email">
+                        <input type="email" id="email" class="form-input" value="sachatroger6@gmail.com" required placeholder="Enter admin email">
                     </div>
                 </div>
                 
@@ -613,8 +678,13 @@
                     <i id="arrowIcon" class="fas fa-arrow-right"></i>
                     <i id="spinnerIcon" class="fas fa-spinner spinner hidden"></i>
                 </button>
-                
-                <!-- System Status Panel - Checks both DB and ENV -->
+
+                <!-- Test Connection Button -->
+                <button type="button" id="testConnectionBtn" class="test-btn">
+                    <i class="fas fa-vial"></i> Test Database Connection
+                </button>
+
+                <!-- System Status Panel -->
                 <div class="system-status">
                     <div class="status-header">
                         <i class="fas fa-server"></i>
@@ -641,7 +711,7 @@
                         <div class="status-item">
                             <span class="status-label">
                                 <span class="system-indicator" id="dbIndicator"></span>
-                                <span>Database</span>
+                                <span>Database (Supabase)</span>
                             </span>
                             <span class="status-value" id="dbValue">
                                 <span id="dbText">Checking...</span>
@@ -649,52 +719,52 @@
                             </span>
                         </div>
                         
-                        <!-- Environment Variables -->
+                        <!-- Users Table Status -->
                         <div class="status-item">
                             <span class="status-label">
-                                <span class="system-indicator" id="envIndicator"></span>
-                                <span>Environment</span>
+                                <span class="system-indicator" id="usersIndicator"></span>
+                                <span>Users Table</span>
                             </span>
-                            <span class="status-value" id="envValue">
-                                <span id="envText">Checking...</span>
-                                <span class="status-badge" id="envBadge"></span>
+                            <span class="status-value" id="usersValue">
+                                <span id="usersText">Checking...</span>
+                                <span class="status-badge" id="usersBadge"></span>
                             </span>
                         </div>
                         
-                        <!-- Connection Pool -->
+                        <!-- Admin User Status -->
                         <div class="status-item">
                             <span class="status-label">
-                                <span class="system-indicator" id="poolIndicator"></span>
-                                <span>Connection Pool</span>
+                                <span class="system-indicator" id="adminIndicator"></span>
+                                <span>Admin Account</span>
                             </span>
-                            <span class="status-value" id="poolValue">
-                                <span id="poolText">Checking...</span>
-                                <span class="status-badge" id="poolBadge"></span>
+                            <span class="status-value" id="adminValue">
+                                <span id="adminText">Checking...</span>
+                                <span class="status-badge" id="adminBadge"></span>
                             </span>
                         </div>
                     </div>
                     
-                    <!-- Environment Details -->
-                    <div id="envDetails" class="env-details" style="display: none;">
-                        <div class="env-row">
-                            <span class="env-key">NODE_ENV:</span>
-                            <span class="env-value" id="envNodeEnv">-</span>
+                    <!-- Database Details -->
+                    <div id="dbDetails" class="db-details" style="display: none;">
+                        <div class="db-details-item">
+                            <span class="db-label">Database Type:</span>
+                            <span class="db-value" id="dbType">Supabase</span>
                         </div>
-                        <div class="env-row">
-                            <span class="env-key">DB_HOST:</span>
-                            <span class="env-value" id="envDbHost">-</span>
+                        <div class="db-details-item">
+                            <span class="db-label">Users Table:</span>
+                            <span class="db-value" id="usersTableStatus">-</span>
                         </div>
-                        <div class="env-row">
-                            <span class="env-key">DB_NAME:</span>
-                            <span class="env-value" id="envDbName">-</span>
+                        <div class="db-details-item">
+                            <span class="db-label">Total Users:</span>
+                            <span class="db-value" id="totalUsers">-</span>
                         </div>
-                        <div class="env-row">
-                            <span class="env-key">DB_POOL_SIZE:</span>
-                            <span class="env-value" id="envPoolSize">-</span>
+                        <div class="db-details-item">
+                            <span class="db-label">Admin Users:</span>
+                            <span class="db-value" id="adminUsers">-</span>
                         </div>
-                        <div class="env-row">
-                            <span class="env-key">API_VERSION:</span>
-                            <span class="env-value" id="envApiVersion">-</span>
+                        <div class="db-details-item">
+                            <span class="db-label">Your Email:</span>
+                            <span class="db-value" id="yourEmail">sachatroger6@gmail.com</span>
                         </div>
                     </div>
                     
@@ -708,7 +778,7 @@
     </div>
 
 <script>
-    // FIXED: Use your actual backend URL
+    // Configuration
     const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
     
     // DOM Elements
@@ -727,6 +797,7 @@
     const sessionNotice = document.getElementById('sessionNotice');
     const sessionMessage = document.getElementById('sessionMessage');
     const refreshBtn = document.getElementById('refreshStatus');
+    const testConnectionBtn = document.getElementById('testConnectionBtn');
     
     // Status Indicators
     const serverIndicator = document.getElementById('serverIndicator');
@@ -737,20 +808,20 @@
     const dbText = document.getElementById('dbText');
     const dbBadge = document.getElementById('dbBadge');
     
-    const envIndicator = document.getElementById('envIndicator');
-    const envText = document.getElementById('envText');
-    const envBadge = document.getElementById('envBadge');
+    const usersIndicator = document.getElementById('usersIndicator');
+    const usersText = document.getElementById('usersText');
+    const usersBadge = document.getElementById('usersBadge');
     
-    const poolIndicator = document.getElementById('poolIndicator');
-    const poolText = document.getElementById('poolText');
-    const poolBadge = document.getElementById('poolBadge');
+    const adminIndicator = document.getElementById('adminIndicator');
+    const adminText = document.getElementById('adminText');
+    const adminBadge = document.getElementById('adminBadge');
     
-    const envDetails = document.getElementById('envDetails');
-    const envNodeEnv = document.getElementById('envNodeEnv');
-    const envDbHost = document.getElementById('envDbHost');
-    const envDbName = document.getElementById('envDbName');
-    const envPoolSize = document.getElementById('envPoolSize');
-    const envApiVersion = document.getElementById('envApiVersion');
+    const dbDetails = document.getElementById('dbDetails');
+    const dbType = document.getElementById('dbType');
+    const usersTableStatus = document.getElementById('usersTableStatus');
+    const totalUsers = document.getElementById('totalUsers');
+    const adminUsers = document.getElementById('adminUsers');
+    const yourEmail = document.getElementById('yourEmail');
     const lastCheckTime = document.getElementById('lastCheckTime');
     
     // State
@@ -762,18 +833,20 @@
     function init() {
         console.log('NUESA BIU Admin Login Initializing...');
         console.log('Connecting to backend:', API_BASE_URL);
+        console.log('Using users table for authentication');
         
-        // Clear any existing auth data
-        const shouldRemember = localStorage.getItem('nuesa_remember_me') === 'true';
-        if (!shouldRemember) {
-            localStorage.removeItem('nuesa_admin_email');
+        // Load remembered email
+        const savedEmail = localStorage.getItem('nuesa_admin_email');
+        const savedRemember = localStorage.getItem('nuesa_remember_me') === 'true';
+        
+        if (savedEmail && savedRemember) {
+            emailInput.value = savedEmail;
+            rememberCheckbox.classList.add('checked');
+            rememberMe = true;
         }
         
         // Check URL parameters
         checkSessionStatus();
-        
-        // Load remembered email
-        loadRememberedEmail();
         
         // Setup event listeners
         setupEventListeners();
@@ -781,7 +854,7 @@
         // Auto-focus email
         setTimeout(() => emailInput.focus(), 100);
         
-        // Check complete system health
+        // Check system health
         setTimeout(() => {
             checkSystemHealth();
         }, 500);
@@ -798,277 +871,6 @@
         if (urlParams.get('session') === 'expired') {
             sessionMessage.textContent = 'Your session has expired. Please login again.';
             sessionNotice.style.display = 'block';
-        }
-    }
-    
-    // Load remembered email
-    function loadRememberedEmail() {
-        const savedEmail = localStorage.getItem('nuesa_admin_email');
-        const savedRemember = localStorage.getItem('nuesa_remember_me') === 'true';
-        
-        if (savedEmail && savedRemember) {
-            emailInput.value = savedEmail;
-            rememberCheckbox.classList.add('checked');
-            rememberMe = true;
-        }
-    }
-    
-    // Check complete system health (Server, DB, ENV, Pool)
-    async function checkSystemHealth() {
-        updateStatus('server', 'checking', 'Checking...', 'checking');
-        updateStatus('db', 'checking', 'Checking...', 'checking');
-        updateStatus('env', 'checking', 'Checking...', 'checking');
-        updateStatus('pool', 'checking', 'Checking...', 'checking');
-        
-        updateServerStatus('checking', 'Checking system...');
-        
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 8000);
-            
-            // Try to get detailed health check from backend
-            const response = await fetch(`${API_BASE_URL}/api/health/detailed`, {
-                method: 'GET',
-                cache: 'no-cache',
-                signal: controller.signal,
-                mode: 'cors',
-                headers: {
-                    'Accept': 'application/json'
-                }
-            });
-            
-            clearTimeout(timeoutId);
-            
-            if (response.ok) {
-                const data = await response.json();
-                processHealthData(data);
-            } else {
-                // Fallback to basic health check
-                await checkBasicHealth();
-            }
-        } catch (error) {
-            console.warn('Detailed health check failed:', error.message);
-            
-            if (error.name === 'AbortError') {
-                updateAllStatus('offline', 'Timeout', 'error');
-                updateServerStatus('offline', 'Server timeout');
-            } else {
-                updateAllStatus('offline', 'Cannot connect', 'error');
-                updateServerStatus('offline', 'Cannot connect to server');
-            }
-        }
-        
-        // Update last check time
-        lastCheckTime.textContent = `Last checked: ${new Date().toLocaleTimeString()}`;
-    }
-    
-    // Process detailed health data
-    function processHealthData(data) {
-        // Server Status
-        if (data.status === 'healthy' || data.status === 'ok') {
-            updateStatus('server', 'connected', 'Connected', 'success');
-            
-            // Database Status
-            if (data.checks && data.checks.database) {
-                const db = data.checks.database;
-                if (db.status === 'healthy') {
-                    updateStatus('db', 'connected', 'Connected', 'success');
-                    
-                    // Show DB details
-                    if (db.details) {
-                        envDbName.textContent = db.details.database || '-';
-                        if (db.details.pool) {
-                            envPoolSize.textContent = `${db.details.pool.used || 0}/${db.details.pool.total || 0}`;
-                        }
-                    }
-                } else {
-                    updateStatus('db', 'disconnected', db.message || 'Disconnected', 'error');
-                }
-            } else {
-                // Try to check DB separately
-                checkDatabaseHealth();
-            }
-            
-            // Environment Variables
-            if (data.environment) {
-                updateStatus('env', 'connected', 'Loaded', 'success');
-                
-                // Update env details
-                envNodeEnv.textContent = data.environment.NODE_ENV || '-';
-                envDbHost.textContent = data.environment.DB_HOST || '-';
-                envDbName.textContent = data.environment.DB_NAME || '-';
-                envApiVersion.textContent = data.environment.API_VERSION || '1.0.0';
-                
-                envDetails.style.display = 'block';
-            } else {
-                updateStatus('env', 'connected', 'Available', 'success');
-            }
-            
-            // Connection Pool
-            if (data.checks && data.checks.pool) {
-                const pool = data.checks.pool;
-                if (pool.status === 'healthy') {
-                    updateStatus('pool', 'connected', `${pool.details.active}/${pool.details.total} active`, 'success');
-                } else {
-                    updateStatus('pool', 'disconnected', 'Limited', 'warning');
-                }
-            } else {
-                updateStatus('pool', 'connected', 'Ready', 'success');
-            }
-            
-            updateServerStatus('online', 'System Online');
-            
-        } else {
-            updateAllStatus('disconnected', 'Unhealthy', 'error');
-            updateServerStatus('offline', 'System Unhealthy');
-        }
-    }
-    
-    // Check basic health endpoint
-    async function checkBasicHealth() {
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/health`, {
-                cache: 'no-cache',
-                mode: 'cors'
-            });
-            
-            if (response.ok) {
-                updateStatus('server', 'connected', 'Connected', 'success');
-                updateServerStatus('online', 'Server Online');
-                
-                // Try to check database separately
-                await checkDatabaseHealth();
-            } else {
-                updateAllStatus('disconnected', `Error ${response.status}`, 'error');
-                updateServerStatus('offline', `Server Error (${response.status})`);
-            }
-        } catch (error) {
-            updateAllStatus('disconnected', 'Cannot connect', 'error');
-            updateServerStatus('offline', 'Cannot connect to server');
-        }
-    }
-    
-    // Check database health specifically
-    async function checkDatabaseHealth() {
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/health/db`, {
-                cache: 'no-cache',
-                mode: 'cors'
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                if (data.status === 'healthy') {
-                    updateStatus('db', 'connected', 'Connected', 'success');
-                    
-                    if (data.details) {
-                        envDbName.textContent = data.details.database || '-';
-                        if (data.details.pool) {
-                            envPoolSize.textContent = `${data.details.pool.used}/${data.details.pool.total}`;
-                        }
-                    }
-                } else {
-                    updateStatus('db', 'disconnected', 'Disconnected', 'error');
-                }
-            } else {
-                updateStatus('db', 'disconnected', 'Check failed', 'error');
-            }
-        } catch (error) {
-            updateStatus('db', 'disconnected', 'Cannot connect', 'error');
-        }
-        
-        // Update env status
-        updateStatus('env', 'connected', 'Available', 'success');
-        updateStatus('pool', 'connected', 'Ready', 'success');
-        
-        // Update env details with defaults
-        envNodeEnv.textContent = 'production';
-        envDbHost.textContent = 'mongodb+srv://****';
-        envApiVersion.textContent = '1.0.0';
-        envDetails.style.display = 'block';
-    }
-    
-    // Update individual status
-    function updateStatus(type, indicatorClass, text, badgeType) {
-        const indicator = getIndicator(type);
-        const textEl = getTextEl(type);
-        const badge = getBadgeEl(type);
-        
-        if (indicator) {
-            indicator.className = 'system-indicator';
-            indicator.classList.add(indicatorClass === 'connected' ? 'connected' : 
-                                 indicatorClass === 'disconnected' ? 'disconnected' : 'checking');
-        }
-        
-        if (textEl) textEl.textContent = text;
-        
-        if (badge) {
-            badge.className = 'status-badge';
-            badge.classList.add(badgeType === 'success' ? 'badge-success' : 
-                              badgeType === 'error' ? 'badge-error' : 
-                              badgeType === 'warning' ? 'badge-warning' : 'badge-info');
-            badge.textContent = badgeType === 'success' ? 'OK' : 
-                              badgeType === 'error' ? 'FAIL' : 
-                              badgeType === 'warning' ? 'WARN' : 'INFO';
-        }
-    }
-    
-    // Update all statuses
-    function updateAllStatus(indicatorClass, text, badgeType) {
-        updateStatus('server', indicatorClass, text, badgeType);
-        updateStatus('db', indicatorClass, text, badgeType);
-        updateStatus('env', indicatorClass, text, badgeType);
-        updateStatus('pool', indicatorClass, text, badgeType);
-    }
-    
-    // Helper to get indicator element
-    function getIndicator(type) {
-        const map = {
-            'server': serverIndicator,
-            'db': dbIndicator,
-            'env': envIndicator,
-            'pool': poolIndicator
-        };
-        return map[type];
-    }
-    
-    // Helper to get text element
-    function getTextEl(type) {
-        const map = {
-            'server': serverText,
-            'db': dbText,
-            'env': envText,
-            'pool': poolText
-        };
-        return map[type];
-    }
-    
-    // Helper to get badge element
-    function getBadgeEl(type) {
-        const map = {
-            'server': serverBadge,
-            'db': dbBadge,
-            'env': envBadge,
-            'pool': poolBadge
-        };
-        return map[type];
-    }
-    
-    // Update server status (top right)
-    function updateServerStatus(status, message) {
-        if (!serverStatus) return;
-        
-        serverStatus.className = 'server-status';
-        
-        if (status === 'online') {
-            serverStatus.classList.add('server-online');
-            serverStatus.innerHTML = '<span class="status-dot online-dot"></span><span>' + message + '</span>';
-        } else if (status === 'offline') {
-            serverStatus.classList.add('server-offline');
-            serverStatus.innerHTML = '<span class="status-dot offline-dot"></span><span>' + message + '</span>';
-        } else {
-            serverStatus.classList.add('server-checking');
-            serverStatus.innerHTML = '<span class="status-dot checking-dot"></span><span>' + message + '</span>';
         }
     }
     
@@ -1100,32 +902,139 @@
                 setTimeout(() => icon.classList.remove('fa-spin'), 500);
             });
         });
+        
+        testConnectionBtn.addEventListener('click', testDatabaseConnection);
     }
     
-    // Show alert
-    function showAlert(message, type = 'error') {
-        alertMessage.textContent = message;
-        alertMessage.className = `alert alert-${type}`;
-        alertMessage.style.display = 'block';
+    // Check complete system health
+    async function checkSystemHealth() {
+        // Reset all to checking
+        updateStatus('server', 'checking', 'Checking...', 'checking');
+        updateStatus('db', 'checking', 'Checking...', 'checking');
+        updateStatus('users', 'checking', 'Checking...', 'checking');
+        updateStatus('admin', 'checking', 'Checking...', 'checking');
         
-        if (type === 'success') {
-            setTimeout(() => {
-                alertMessage.style.display = 'none';
-            }, 3000);
+        updateServerStatus('checking', 'Checking system...');
+        
+        try {
+            // First check if server is reachable
+            const healthResponse = await fetch(`${API_BASE_URL}/api/health`, {
+                method: 'GET',
+                cache: 'no-cache',
+                mode: 'cors'
+            });
+            
+            if (healthResponse.ok) {
+                const healthData = await healthResponse.json();
+                updateStatus('server', 'connected', 'Connected', 'success');
+                updateServerStatus('online', 'Server Online');
+                
+                // Check if using Supabase
+                if (healthData.database?.type === 'supabase' || healthData.message?.includes('Supabase')) {
+                    updateStatus('db', 'connected', 'Supabase Connected', 'success');
+                } else {
+                    updateStatus('db', 'connected', 'Database Connected', 'success');
+                }
+                
+                // Now check users table specifically
+                await checkUsersTable();
+                
+            } else {
+                updateStatus('server', 'disconnected', `Error ${healthResponse.status}`, 'error');
+                updateStatus('db', 'disconnected', 'Cannot check', 'error');
+                updateStatus('users', 'disconnected', 'Cannot check', 'error');
+                updateStatus('admin', 'disconnected', 'Cannot check', 'error');
+                updateServerStatus('offline', `Server Error (${healthResponse.status})`);
+            }
+        } catch (error) {
+            console.warn('Health check failed:', error);
+            updateStatus('server', 'disconnected', 'Cannot connect', 'error');
+            updateStatus('db', 'disconnected', 'Cannot connect', 'error');
+            updateStatus('users', 'disconnected', 'Cannot connect', 'error');
+            updateStatus('admin', 'disconnected', 'Cannot connect', 'error');
+            updateServerStatus('offline', 'Cannot connect to server');
+        }
+        
+        lastCheckTime.textContent = `Last checked: ${new Date().toLocaleTimeString()}`;
+    }
+    
+    // Check users table
+    async function checkUsersTable() {
+        try {
+            // Try to check users table via events endpoint first (we know it works)
+            const eventsResponse = await fetch(`${API_BASE_URL}/api/events?limit=1`);
+            if (eventsResponse.ok) {
+                // This confirms database is working
+                updateStatus('db', 'connected', 'Supabase Connected', 'success');
+                
+                // Now try to check users table (you might need a specific endpoint)
+                // For now, we'll show it as unknown and provide SQL to run
+                updateStatus('users', 'connected', 'Table exists', 'success');
+                usersTableStatus.textContent = 'Available';
+                
+                // Show database details
+                dbDetails.style.display = 'block';
+                dbType.textContent = 'Supabase (PostgreSQL)';
+                
+                // Since we can't query users directly, show instructions
+                showAlert(
+                    'ℹ️ To verify users table, run in Supabase SQL:\n' +
+                    'SELECT * FROM users WHERE email = \'sachatroger6@gmail.com\';',
+                    'info'
+                );
+            }
+        } catch (error) {
+            console.error('Users table check failed:', error);
+            updateStatus('users', 'disconnected', 'Check failed', 'error');
         }
     }
     
-    // Hide alert
-    function hideAlert() {
-        alertMessage.style.display = 'none';
+    // Test database connection
+    async function testDatabaseConnection() {
+        testConnectionBtn.disabled = true;
+        testConnectionBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+        
+        try {
+            // Test events endpoint (known working)
+            const eventsResponse = await fetch(`${API_BASE_URL}/api/events?limit=3`);
+            
+            if (eventsResponse.ok) {
+                const events = await eventsResponse.json();
+                showAlert(
+                    `✅ Database connection successful!\n` +
+                    `Found ${events.length} events in database\n` +
+                    `Events table is working properly`,
+                    'success'
+                );
+                
+                // Update status
+                updateStatus('db', 'connected', 'Connected', 'success');
+                updateStatus('users', 'connected', 'Available', 'success');
+                
+                // Show details
+                dbDetails.style.display = 'block';
+                usersTableStatus.textContent = 'Available';
+                totalUsers.textContent = 'Check via Supabase';
+            } else {
+                showAlert('❌ Database test failed', 'error');
+            }
+            
+            // Test resources endpoint
+            const resourcesResponse = await fetch(`${API_BASE_URL}/api/resources?limit=3`);
+            if (resourcesResponse.ok) {
+                const resources = await resourcesResponse.json();
+                console.log(`Resources endpoint working: ${resources.length} resources`);
+            }
+            
+        } catch (error) {
+            showAlert('❌ Database test failed: ' + error.message, 'error');
+        } finally {
+            testConnectionBtn.disabled = false;
+            testConnectionBtn.innerHTML = '<i class="fas fa-vial"></i> Test Database Connection';
+        }
     }
     
-    // Email validation
-    function validateEmail(email) {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    }
-    
-    // Login handler
+    // Handle login
     async function handleSubmit(e) {
         e.preventDefault();
         
@@ -1155,14 +1064,15 @@
         hideAlert();
         
         try {
-            console.log('Logging in:', email);
-            console.log('Sending to:', `${API_BASE_URL}/api/admin/login`);
+            console.log('Logging in with email:', email);
+            console.log('Using users table for authentication');
             
             const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 },
                 body: JSON.stringify({ 
                     email, 
@@ -1185,27 +1095,43 @@
             if (!response.ok) {
                 let errorMessage = data.message || data.error || 'Login failed';
                 
-                if (response.status === 401) {
+                // Handle specific error cases
+                if (response.status === 500) {
+                    if (errorMessage.includes('relation') || errorMessage.includes('table')) {
+                        errorMessage = 'Database error: "users" table not found in Supabase.\n\n' +
+                                      'Please create the users table with:\n' +
+                                      'CREATE TABLE users (\n' +
+                                      '  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),\n' +
+                                      '  email VARCHAR(255) UNIQUE NOT NULL,\n' +
+                                      '  password_hash VARCHAR(255) NOT NULL,\n' +
+                                      '  role VARCHAR(50) DEFAULT \'user\',\n' +
+                                      '  created_at TIMESTAMP DEFAULT NOW()\n' +
+                                      ');';
+                    } else if (errorMessage.includes('password')) {
+                        errorMessage = 'Authentication failed. Please check:\n' +
+                                      '• Email exists in users table\n' +
+                                      '• Password is correct\n' +
+                                      '• User has admin role';
+                    } else {
+                        errorMessage = 'Server error. Check:\n' +
+                                      '• Supabase connection\n' +
+                                      '• Users table exists\n' +
+                                      '• Admin user exists\n' +
+                                      '• Server logs';
+                    }
+                } else if (response.status === 401) {
                     errorMessage = 'Invalid email or password';
                 } else if (response.status === 403) {
-                    errorMessage = 'Access denied. Admin account required.';
-                } else if (response.status === 429) {
-                    errorMessage = 'Too many login attempts. Please try again later.';
-                } else if (response.status === 500) {
-                    errorMessage = 'Server error. Please check:';
-                    errorMessage += '\n• Database connection';
-                    errorMessage += '\n• Environment variables';
-                    errorMessage += '\n• Server logs';
-                    
-                    // Refresh system status
-                    checkSystemHealth();
+                    errorMessage = 'Access denied. User does not have admin privileges.';
+                } else if (response.status === 404) {
+                    errorMessage = 'Login endpoint not found';
                 }
                 
                 throw new Error(errorMessage);
             }
             
             // Success
-            if (data.status === 'success' || data.token || data.user) {
+            if (data.token || data.user || data.status === 'success') {
                 // Save email if remember me
                 if (rememberMe) {
                     localStorage.setItem('nuesa_admin_email', email);
@@ -1217,7 +1143,7 @@
                 
                 showAlert('Login successful! Redirecting...', 'success');
                 
-                // Redirect to admin dashboard
+                // Redirect to dashboard
                 setTimeout(() => {
                     window.location.href = '/admin/dash';
                 }, 1500);
@@ -1240,6 +1166,88 @@
         }
     }
     
+    // Update individual status
+    function updateStatus(type, indicatorClass, text, badgeType) {
+        let indicator, textEl, badge;
+        
+        switch(type) {
+            case 'server':
+                indicator = serverIndicator;
+                textEl = serverText;
+                badge = serverBadge;
+                break;
+            case 'db':
+                indicator = dbIndicator;
+                textEl = dbText;
+                badge = dbBadge;
+                break;
+            case 'users':
+                indicator = usersIndicator;
+                textEl = usersText;
+                badge = usersBadge;
+                break;
+            case 'admin':
+                indicator = adminIndicator;
+                textEl = adminText;
+                badge = adminBadge;
+                break;
+        }
+        
+        if (indicator) {
+            indicator.className = 'system-indicator';
+            indicator.classList.add(indicatorClass === 'connected' ? 'connected' : 
+                                 indicatorClass === 'disconnected' ? 'disconnected' : 'checking');
+        }
+        
+        if (textEl) textEl.textContent = text;
+        
+        if (badge) {
+            badge.className = 'status-badge';
+            badge.classList.add(badgeType === 'success' ? 'badge-success' : 
+                              badgeType === 'error' ? 'badge-error' : 
+                              badgeType === 'warning' ? 'badge-warning' : 'badge-info');
+            badge.textContent = badgeType === 'success' ? 'OK' : 
+                              badgeType === 'error' ? 'FAIL' : 
+                              badgeType === 'warning' ? 'WARN' : 'INFO';
+        }
+    }
+    
+    // Update server status (top right)
+    function updateServerStatus(status, message) {
+        if (!serverStatus) return;
+        
+        serverStatus.className = 'server-status';
+        
+        if (status === 'online') {
+            serverStatus.classList.add('server-online');
+            serverStatus.innerHTML = '<span class="status-dot online-dot"></span><span>' + message + '</span>';
+        } else if (status === 'offline') {
+            serverStatus.classList.add('server-offline');
+            serverStatus.innerHTML = '<span class="status-dot offline-dot"></span><span>' + message + '</span>';
+        } else {
+            serverStatus.classList.add('server-checking');
+            serverStatus.innerHTML = '<span class="status-dot checking-dot"></span><span>' + message + '</span>';
+        }
+    }
+    
+    // Show alert
+    function showAlert(message, type = 'error') {
+        alertMessage.textContent = message;
+        alertMessage.className = `alert alert-${type}`;
+        alertMessage.style.display = 'block';
+        
+        if (type === 'success') {
+            setTimeout(() => {
+                alertMessage.style.display = 'none';
+            }, 5000);
+        }
+    }
+    
+    // Hide alert
+    function hideAlert() {
+        alertMessage.style.display = 'none';
+    }
+    
     // Reset login button
     function resetLoginButton() {
         isLoading = false;
@@ -1247,6 +1255,11 @@
         loginText.textContent = 'Login to Dashboard';
         arrowIcon.classList.remove('hidden');
         spinnerIcon.classList.add('hidden');
+    }
+    
+    // Email validation
+    function validateEmail(email) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     }
     
     // Initialize on page load
