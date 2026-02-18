@@ -4077,7 +4077,7 @@ if (adminExists) {
                 path.join(__dirname, 'admin', 'adlog.html'),
                 path.join(process.cwd(), 'admin', 'adlog.html'),
                 path.join(__dirname, '../admin', 'adlog.html'),
-                path.join('/opt/render/project/src/admin', 'adlog.html') // Render's typical path
+                path.join('/opt/render/project/src/admin', 'adlog.html')
             ];
             
             console.log('🔐 Searching for login file in:');
@@ -4515,55 +4515,31 @@ app.get('/api', (req, res) => {
 // ==================== TEMPORARY DEBUG ENDPOINTS ====================
 // ADD THIS BEFORE startServer() function
 
-app.get('/api/debug/admin-files', (req, res) => {
-    try {
-        const adminDir = path.join(__dirname, 'admin');
-        const publicDir = path.join(__dirname, 'public');
-        
-        const adminExists = fsSync.existsSync(adminDir);
-        const publicExists = fsSync.existsSync(publicDir);
-        
-        let adminFiles = [];
-        let publicFiles = [];
-        
-        if (adminExists) {
-            adminFiles = fsSync.readdirSync(adminDir);
-        }
-        
-        if (publicExists) {
-            publicFiles = fsSync.readdirSync(publicDir);
-        }
-        
-        res.json({
-            success: true,
-            paths: {
-                __dirname: __dirname,
-                cwd: process.cwd(),
-                adminDir: adminDir,
-                publicDir: publicDir
-            },
-            exists: {
-                adminDir: adminExists,
-                publicDir: publicExists,
-                adlogHtml: adminExists ? fsSync.existsSync(path.join(adminDir, 'adlog.html')) : false,
-                dashHtml: adminExists ? fsSync.existsSync(path.join(adminDir, 'dash.html')) : false
-            },
-            files: {
-                admin: adminFiles,
-                public: publicFiles
-            },
-            environment: {
-                NODE_ENV: process.env.NODE_ENV,
-                isProduction: isProduction
-            }
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message,
-            stack: error.stack
-        });
+// Add this debug endpoint temporarily
+app.get('/api/debug/admin-paths', (req, res) => {
+    const paths = {
+        __dirname: __dirname,
+        cwd: process.cwd(),
+        adminDir: path.join(__dirname, 'admin'),
+        adminDirCwd: path.join(process.cwd(), 'admin'),
+    };
+    
+    const exists = {
+        adminDir: fsSync.existsSync(paths.adminDir),
+        adminDirCwd: fsSync.existsSync(paths.adminDirCwd),
+        adlogInAdmin: fsSync.existsSync(path.join(__dirname, 'admin', 'adlog.html')),
+        adlogInCwd: fsSync.existsSync(path.join(process.cwd(), 'admin', 'adlog.html')),
+    };
+    
+    const files = {};
+    if (exists.adminDir) {
+        files.adminDir = fsSync.readdirSync(paths.adminDir);
     }
+    if (exists.adminDirCwd) {
+        files.adminDirCwd = fsSync.readdirSync(paths.adminDirCwd);
+    }
+    
+    res.json({ paths, exists, files });
 });
 
 // Also add a simple test endpoint
