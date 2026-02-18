@@ -770,7 +770,12 @@ app.use(
  * CSRF Protection (except for API routes)
  */
 const csrfProtection = csrf({ cookie: true });
-app.use('/portal', csrfProtection);
+app.use('/portal', (req, res, next) => {
+    if (req.path === '/login') {
+        return next();
+    }
+    csrfProtection(req, res, next);
+});
 
 /**
  * XSS protection middleware

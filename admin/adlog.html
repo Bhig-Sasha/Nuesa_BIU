@@ -760,21 +760,18 @@
             console.log('Logging in:', email);
             console.log('Sending to:', `${API_BASE_URL}/api/admin/login`);
             
-            // First get CSRF token
-            const tokenResponse = await fetch('/api/admin/csrf-token', {
-                credentials: 'include'
-            });
-            const { csrfToken } = await tokenResponse.json();
-
-            // Then use it in login
+            // Direct login - no CSRF
             const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-Token': csrfToken
+                    'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({ 
+                    email, 
+                    password,
+                    rememberMe: rememberMe 
+                })
             });
             
             console.log('Response status:', response.status);
@@ -797,6 +794,8 @@
                     errorMessage = 'Access denied. Admin account required.';
                 } else if (response.status === 429) {
                     errorMessage = 'Too many login attempts. Please try again later.';
+                } else if (response.status === 500) {
+                    errorMessage = 'Server error. Please check database connection.';
                 }
                 
                 throw new Error(errorMessage);
@@ -817,7 +816,7 @@
                 
                 // Redirect to admin dashboard
                 setTimeout(() => {
-                    window.location.href = '/portal/system';
+                    window.location.href = '/admin/dashboard';  // Fixed redirect path
                 }, 1500);
             } else {
                 throw new Error('Invalid response from server');
