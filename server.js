@@ -4061,7 +4061,7 @@ if (adminExists) {
     });
     
     // 2. HIDDEN ADMIN LOGIN PAGE
-    app.get('/portal/login', csrfProtection, async (req, res) => {
+    app.get('/portal/login', async (req, res) => {
         try {
             console.log('🔐 Accessing /portal/login at:', new Date().toISOString());
             console.log('🔐 isAdmin?', req.isAdmin);
