@@ -1459,57 +1459,70 @@ authRouter.post('/forgot-password', validate(Joi.object({ email: Joi.string().em
 app.use('/api/auth', authRouter);
 
 // ==================== ADMIN AUTH ROUTES ====================
+// ==================== SIMPLIFIED ADMIN LOGIN HANDLER ====================
 async function adminLoginHandler(req, res) {
-    const requestId = req.id;
-    console.log(`[${requestId}] Admin login attempt started`);
+    const requestId = req.id || 'unknown';
+    console.log(`[${requestId}] Admin login attempt for:`, req.body.email);
     
     try {
         const { email, password, rememberMe } = req.body;
-        console.log(`[${requestId}] Login attempt for email:`, email);
 
         // Validate input
-        const { error } = schemas.login.validate({ email, password });
-        if (error) {
-            throw new ValidationError('Validation failed', error.details);
+        if (!email || !password) {
+            return res.status(400).json({
+                status: 'error',
+                code: 'MISSING_FIELDS',
+                message: 'Email and password are required'
+            });
         }
 
-        // Check login attempts
-        await checkLoginAttempts(email.toLowerCase());
-
         // Get user from database
-        console.log(`[${requestId}] Querying database for user...`);
         const result = await db.query('select', 'users', {
             where: { email: email.toLowerCase().trim() },
             select: 'id, email, full_name, role, department, is_active, password_hash, created_at, last_login'
         });
 
         if (result.data.length === 0) {
-            await recordFailedAttempt(email.toLowerCase());
-            throw new AuthError('Invalid credentials');
+            console.log(`[${requestId}] User not found:`, email);
+            return res.status(401).json({
+                status: 'error',
+                code: 'INVALID_CREDENTIALS',
+                message: 'Invalid email or password'
+            });
         }
 
         const user = result.data[0];
+        console.log(`[${requestId}] User found:`, { id: user.id, role: user.role, is_active: user.is_active });
 
         // Check if account is active
         if (!user.is_active) {
-            throw new AuthError('Account is deactivated', 'ACCOUNT_DEACTIVATED');
+            return res.status(401).json({
+                status: 'error',
+                code: 'ACCOUNT_INACTIVE',
+                message: 'Account is deactivated'
+            });
         }
 
         // Check if user has admin role
         if (user.role !== 'admin') {
-            await recordFailedAttempt(email.toLowerCase());
-            throw new AuthError('Invalid credentials');
+            console.log(`[${requestId}] User is not admin:`, user.role);
+            return res.status(401).json({
+                status: 'error',
+                code: 'INVALID_CREDENTIALS',
+                message: 'Invalid email or password'
+            });
         }
 
         // Verify password
         const validPassword = await bcrypt.compare(password, user.password_hash);
         if (!validPassword) {
-            await recordFailedAttempt(email.toLowerCase());
-            throw new AuthError('Invalid credentials');
+            console.log(`[${requestId}] Invalid password for user:`, user.id);
+            return res.status(401).json({
+                status: 'error',
+                code: 'INVALID_CREDENTIALS',
+                message: 'Invalid email or password'
+            });
         }
-
-        // Reset login attempts on success
-        await resetLoginAttempts(email.toLowerCase());
 
         // Update last login
         await db.query('update', 'users', {
@@ -1522,43 +1535,26 @@ async function adminLoginHandler(req, res) {
             userId: user.id,
             email: user.email,
             role: user.role,
-            fullName: user.full_name,
-            sessionType: 'admin_panel',
-            loginTime: Date.now(),
-            jti: uuid.v4()
+            fullName: user.full_name
         };
 
-        // Generate admin session token
+        // Generate JWT token
         const token = jwt.sign(tokenPayload, JWT_SECRET, {
             expiresIn: '8h',
-            issuer: 'nuesa-biu-system',
-            audience: 'nuesa-biu-admin'
+            issuer: 'nuesa-biu-api'
         });
 
         // Set cookie
-        let cookieDomain;
-        if (isProduction && process.env.FRONTEND_URL) {
-            try {
-                const frontendUrl = new URL(process.env.FRONTEND_URL);
-                cookieDomain = frontendUrl.hostname;
-            } catch (error) {
-                logger.error('Invalid FRONTEND_URL:', error);
-            }
-        }
-
         const cookieOptions = {
             httpOnly: true,
-            secure: isProduction,  // Must be true in production
-            sameSite: 'none',      // ✅ CRITICAL: Allows cross-domain cookies
-            maxAge: 8 * 60 * 60 * 1000,
+            secure: isProduction,
+            sameSite: 'lax',
+            maxAge: rememberMe ? 7 * 24 * 60 * 60 * 1000 : 8 * 60 * 60 * 1000,
             path: '/'
         };
-
-        if (cookieDomain) {
-            cookieOptions.domain = cookieDomain;
-        }
-
+        
         res.cookie('admin_session', token, cookieOptions);
+        res.cookie('auth_token', token, cookieOptions);
 
         // Return success
         const userResponse = {
@@ -1570,41 +1566,23 @@ async function adminLoginHandler(req, res) {
             lastLogin: user.last_login
         };
 
-        logger.info('Admin login successful', { userId: user.id, requestId });
+        console.log(`[${requestId}] Admin login successful for:`, user.email);
         res.json({
             status: 'success',
             data: {
                 user: userResponse,
-                token: token,
-                expiresIn: '8h'
+                token: token
             },
             message: 'Login successful'
         });
 
     } catch (error) {
-        console.error(`[${requestId}] Admin login error:`, error.message);
-        
-        // Log the error
-        logger.error('Admin login error', {
-            requestId,
-            error: error.message,
-            code: error.code,
-            name: error.name
-        });
-        
-        // Send appropriate error response
-        const statusCode = error.statusCode || 500;
-        const errorResponse = {
+        console.error(`[${requestId}] Admin login error:`, error);
+        res.status(500).json({
             status: 'error',
-            code: error.code || 'INTERNAL_ERROR',
-            message: error.message || 'Authentication failed'
-        };
-        
-        if (!isProduction && error.stack) {
-            errorResponse.stack = error.stack;
-        }
-        
-        res.status(statusCode).json(errorResponse);
+            code: 'INTERNAL_ERROR',
+            message: 'Login failed. Please try again.'
+        });
     }
 }
 
@@ -4003,6 +3981,48 @@ if (publicExists) {
     console.log('✅ Public pages served from /public folder');
 }
 
+// ==================== EXPLICIT ADMIN LOGIN ENDPOINT ====================
+// Make sure this is BEFORE your hidden admin routing section
+
+// Admin login endpoint - explicitly defined
+app.post('/api/admin/login', async (req, res) => {
+    console.log('📡 Admin login API called at:', new Date().toISOString());
+    console.log('📡 Request body:', { email: req.body.email, password: '***' });
+    
+    try {
+        const { email, password } = req.body;
+        
+        if (!email || !password) {
+            return res.status(400).json({
+                status: 'error',
+                code: 'MISSING_FIELDS',
+                message: 'Email and password are required'
+            });
+        }
+        
+        // Import and use your existing adminLoginHandler
+        // Copy the adminLoginHandler function from your code and call it here
+        await adminLoginHandler(req, res);
+        
+    } catch (error) {
+        console.error('❌ Admin login API error:', error);
+        res.status(500).json({
+            status: 'error',
+            code: 'INTERNAL_ERROR',
+            message: error.message || 'Login failed'
+        });
+    }
+});
+
+// Also add a test endpoint to verify the route works
+app.get('/api/admin/test', (req, res) => {
+    res.json({ 
+        status: 'success', 
+        message: 'Admin API is working',
+        timestamp: new Date().toISOString()
+    });
+});
+
 // ==================== SIMPLIFIED ADMIN ROUTING ====================
 if (adminExists) {
     console.log('✅ Admin folder found at:', adminDir);
@@ -4025,117 +4045,115 @@ if (adminExists) {
         }
     });
     
-    // ==================== ADMIN LOGIN PAGE ====================
-    app.get('/admin/login', async (req, res) => {
-        try {
-            console.log('🔐 Admin login page accessed');
-            
-            // If already logged in, redirect to dashboard
-            if (req.isAdmin) {
-                console.log('🔐 User already admin, redirecting to dashboard');
-                return res.redirect('/admin/dashboard');
-            }
-            
-            // Simple direct path to login file
-            const loginFilePath = path.join(adminDir, 'adlog.html');
-            console.log('🔐 Looking for login file at:', loginFilePath);
-            
-            // Check if file exists
-            if (!fsSync.existsSync(loginFilePath)) {
-                console.error('❌ Login file NOT found at:', loginFilePath);
-                return res.status(500).send(`
-                    <h1>Admin Login Error</h1>
-                    <p>Login file (adlog.html) not found in admin folder.</p>
-                    <p>Expected path: ${loginFilePath}</p>
-                `);
-            }
-            
-            // Read the file
-            let loginHtml = await fs.readFile(loginFilePath, 'utf8');
-            
-            // Inject minimal configuration
-            const configScript = `
-                <script>
-                    window.API_BASE_URL = '${req.protocol}://${req.get('host')}';
-                    window.ADMIN_LOGIN_PAGE = true;
-                    console.log('✅ Admin login page initialized');
-                </script>
-            `;
-            
-            // Insert config before </head>
-            loginHtml = loginHtml.replace('</head>', configScript + '</head>');
-            
-            console.log('✅ Sending admin login page');
-            res.send(loginHtml);
-            
-        } catch (error) {
-            console.error('❌ Admin login page error:', error);
-            res.status(500).send(`
-                <h1>Server Error</h1>
-                <p>Error loading admin login page: ${error.message}</p>
-                <pre>${error.stack}</pre>
-            `);
+    // ==================== SIMPLIFIED ADMIN ROUTES ====================
+
+// 1. ADMIN LOGIN API ENDPOINT (MUST COME FIRST)
+app.post('/api/admin/login', async (req, res) => {
+    await adminLoginHandler(req, res);
+});
+
+// 2. ADMIN LOGIN PAGE
+app.get('/admin/login', async (req, res) => {
+    try {
+        console.log('🔐 Serving admin login page');
+        
+        // If already admin, redirect to dashboard
+        if (req.isAdmin) {
+            return res.redirect('/admin/dashboard');
         }
-    });
-    
-    // ==================== ADMIN DASHBOARD ====================
-    app.get('/admin/dashboard', async (req, res) => {
-        try {
-            console.log('📊 Admin dashboard accessed');
-            
-            // Check if user is admin
-            if (!req.isAdmin) {
-                console.log('📊 Not admin, redirecting to login');
-                return res.redirect('/admin/login');
-            }
-            
-            // Path to dashboard file
-            const dashboardFilePath = path.join(adminDir, 'dash.html');
-            console.log('📊 Looking for dashboard at:', dashboardFilePath);
-            
-            if (!fsSync.existsSync(dashboardFilePath)) {
-                console.error('❌ Dashboard file not found at:', dashboardFilePath);
-                return res.status(500).send('Dashboard file not found');
-            }
-            
-            // Read the file
-            let dashboardHtml = await fs.readFile(dashboardFilePath, 'utf8');
-            
-            // Prepare user data
-            const userData = {
-                id: req.admin?.id || 'unknown',
-                email: req.admin?.email || 'admin@example.com',
-                fullName: req.admin?.full_name || req.admin?.email?.split('@')[0] || 'Admin User',
-                role: req.admin?.role || 'admin',
-                isAuthenticated: true
-            };
-            
-            // Inject user data and config
-            const configScript = `
-                <script>
-                    window.ADMIN_USER = ${JSON.stringify(userData, null, 2)};
-                    window.API_BASE_URL = '${req.protocol}://${req.get('host')}';
-                    window.IS_ADMIN = true;
-                    console.log('✅ Dashboard initialized for:', ${JSON.stringify(userData.fullName)});
-                </script>
-            `;
-            
-            // Insert config before </head>
-            dashboardHtml = dashboardHtml.replace('</head>', configScript + '</head>');
-            
-            console.log('✅ Sending admin dashboard');
-            res.send(dashboardHtml);
-            
-        } catch (error) {
-            console.error('❌ Admin dashboard error:', error);
-            res.status(500).send(`
-                <h1>Dashboard Error</h1>
-                <p>Error: ${error.message}</p>
-                <pre>${error.stack}</pre>
-            `);
+        
+        const loginPath = path.join(__dirname, 'admin', 'adlog.html');
+        
+        if (!fsSync.existsSync(loginPath)) {
+            console.error('❌ Login file missing at:', loginPath);
+            return res.status(500).send('Admin login page not found');
         }
+        
+        let loginHtml = await fs.readFile(loginPath, 'utf8');
+        
+        // Inject basic config
+        const configScript = `
+            <script>
+                window.API_BASE_URL = '${req.protocol}://${req.get('host')}';
+                console.log('✅ Admin login page loaded');
+            </script>
+        `;
+        
+        loginHtml = loginHtml.replace('</head>', configScript + '</head>');
+        res.send(loginHtml);
+        
+    } catch (error) {
+        console.error('❌ Error serving login page:', error);
+        res.status(500).send('Error loading admin login page');
+    }
+});
+
+// 3. ADMIN DASHBOARD
+app.get('/admin/dashboard', async (req, res) => {
+    try {
+        if (!req.isAdmin) {
+            return res.redirect('/admin/login');
+        }
+        
+        const dashPath = path.join(__dirname, 'admin', 'dash.html');
+        
+        if (!fsSync.existsSync(dashPath)) {
+            return res.status(500).send('Dashboard not found');
+        }
+        
+        let dashHtml = await fs.readFile(dashPath, 'utf8');
+        
+        const userData = {
+            id: req.admin?.id,
+            email: req.admin?.email,
+            fullName: req.admin?.full_name || 'Admin',
+            role: req.admin?.role
+        };
+        
+        const configScript = `
+            <script>
+                window.ADMIN_USER = ${JSON.stringify(userData)};
+                window.API_BASE_URL = '${req.protocol}://${req.get('host')}';
+            </script>
+        `;
+        
+        dashHtml = dashHtml.replace('</head>', configScript + '</head>');
+        res.send(dashHtml);
+        
+    } catch (error) {
+        console.error('Dashboard error:', error);
+        res.status(500).send('Error loading dashboard');
+    }
+});
+
+// 4. ADMIN LOGOUT
+app.get('/admin/logout', (req, res) => {
+    res.clearCookie('admin_session', { path: '/' });
+    res.clearCookie('auth_token', { path: '/' });
+    res.redirect('/admin/login');
+});
+
+// 5. ADMIN STATUS CHECK
+app.get('/admin/status', (req, res) => {
+    res.json({
+        isAdmin: req.isAdmin || false,
+        user: req.admin || null
     });
-    
+});
+
+// 6. REDIRECT OLD PORTAL PATHS
+app.get('/portal/login', (req, res) => res.redirect('/admin/login'));
+app.get('/portal/system', (req, res) => res.redirect('/admin/dashboard'));
+app.get('/portal/logout', (req, res) => res.redirect('/admin/logout'));
+
+console.log('✅ Admin routes configured:');
+console.log('   • POST /api/admin/login - Login API');
+console.log('   • GET  /admin/login     - Login page');
+console.log('   • GET  /admin/dashboard  - Dashboard');
+console.log('   • GET  /admin/logout     - Logout');
+console.log('   • GET  /admin/status     - Status check');
+
+
     // ==================== ADMIN LOGOUT ====================
     app.get('/admin/logout', (req, res) => {
         console.log('🚪 Admin logout');
