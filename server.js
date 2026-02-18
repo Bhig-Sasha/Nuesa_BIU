@@ -1,6 +1,24 @@
+/**
+ * ============================================================
+ * NUESA BIU API SERVER
+ * ============================================================
+ * 
+ * Production-ready Express.js server for NUESA BIU (Baze University)
+ * with comprehensive security, caching, logging, and database features.
+ * 
+ * @author NUESA BIU Team
+ * @version 1.0.0
+ * @license MIT
+ */
+
+// ============================================================
+// ENVIRONMENT CONFIGURATION
+// ============================================================
 require('dotenv').config();
 
-// ==================== IMPORTS ====================
+// ============================================================
+// CORE DEPENDENCIES
+// ============================================================
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -31,47 +49,85 @@ const { exec } = require('child_process');
 const util = require('util');
 const execPromise = util.promisify(exec);
 
-// ==================== ENVIRONMENT VALIDATION ====================
-const requiredEnvVars = [
+// ============================================================
+// ENVIRONMENT VALIDATION
+// ============================================================
+
+/**
+ * Required environment variables for the application to run
+ * @type {string[]}
+ */
+const REQUIRED_ENV_VARS = [
     'JWT_SECRET',
     'SUPABASE_URL',
     'SUPABASE_SERVICE_ROLE_KEY'
 ];
 
-const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+/**
+ * Validate that all required environment variables are present
+ * Exit process with error if any are missing
+ */
+const missingEnvVars = REQUIRED_ENV_VARS.filter(varName => !process.env[varName]);
 if (missingEnvVars.length > 0) {
     console.error('❌ ERROR: Missing required environment variables:', missingEnvVars.join(', '));
     process.exit(1);
 }
 
-// ==================== CONFIGURATION ====================
+// ============================================================
+// APPLICATION CONFIGURATION
+// ============================================================
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || 'production';
-const isProduction = NODE_ENV === 'production';
+const IS_PRODUCTION = NODE_ENV === 'production';
 
 // Security Configuration
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRE = process.env.JWT_EXPIRE || '7d';
+const JWT_ADMIN_EXPIRE = process.env.JWT_ADMIN_EXPIRE || '8h';
 
-// ==================== REDIS SETUP (Optional) ====================
+// File Upload Configuration
+const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024; // 10MB default
+const MAX_REQUEST_SIZE = process.env.MAX_REQUEST_SIZE || '10mb';
+
+// ============================================================
+// REDIS CACHE SETUP (Optional)
+// ============================================================
+
+/**
+ * Redis client instance for distributed caching
+ * Falls back to null if Redis is not configured
+ * @type {Redis|null}
+ */
 let redis = null;
 if (process.env.REDIS_URL) {
     try {
         redis = new Redis(process.env.REDIS_URL, {
             maxRetriesPerRequest: 3,
-            retryStrategy: (times) => Math.min(times * 50, 2000)
+            retryStrategy: (times) => Math.min(times * 50, 2000),
+            enableReadyCheck: true,
+            lazyConnect: true
         });
-        console.log('✅ Redis connected successfully');
+        
+        redis.on('connect', () => console.log('✅ Redis connected successfully'));
+        redis.on('error', (err) => console.warn('⚠️ Redis connection error:', err.message));
     } catch (error) {
         console.warn('⚠️ Redis connection failed, using in-memory cache:', error.message);
     }
 }
 
-// ==================== SUPABASE SETUP ====================
+// ============================================================
+// SUPABASE DATABASE SETUP
+// ============================================================
+
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+/**
+ * Supabase client instance configured for server-side operations
+ * Uses service role key for administrative access
+ */
 const supabase = createClient(supabaseUrl, supabaseKey, {
     auth: {
         autoRefreshToken: false,
@@ -93,7 +149,13 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
     }
 });
 
-// ==================== CUSTOM ERROR CLASSES ====================
+// ============================================================
+// CUSTOM ERROR CLASSES
+// ============================================================
+
+/**
+ * Database operation error with additional context
+ */
 class DatabaseError extends Error {
     constructor(message, code, table, operation) {
         super(message);
@@ -106,6 +168,9 @@ class DatabaseError extends Error {
     }
 }
 
+/**
+ * Validation error for request data
+ */
 class ValidationError extends Error {
     constructor(message, errors = []) {
         super(message);
@@ -115,6 +180,9 @@ class ValidationError extends Error {
     }
 }
 
+/**
+ * Resource not found error
+ */
 class NotFoundError extends Error {
     constructor(resource) {
         super(`${resource} not found`);
@@ -123,6 +191,9 @@ class NotFoundError extends Error {
     }
 }
 
+/**
+ * Authentication error
+ */
 class AuthError extends Error {
     constructor(message, code = 'AUTH_ERROR') {
         super(message);
@@ -132,6 +203,9 @@ class AuthError extends Error {
     }
 }
 
+/**
+ * Authorization error (insufficient permissions)
+ */
 class ForbiddenError extends Error {
     constructor(message = 'Access denied') {
         super(message);
@@ -140,7 +214,14 @@ class ForbiddenError extends Error {
     }
 }
 
-// ==================== ENHANCED QUERY HELPER ====================
+// ============================================================
+// DATABASE SERVICE LAYER
+// ============================================================
+
+/**
+ * Enhanced database service with query monitoring and advanced filtering
+ * Provides abstraction over Supabase client with additional features
+ */
 class DatabaseService {
     constructor(supabase) {
         this.supabase = supabase;
@@ -148,6 +229,21 @@ class DatabaseService {
         this.queryTimes = [];
     }
 
+    /**
+     * Execute a database query with enhanced features
+     * @param {string} operation - Query type: 'select', 'insert', 'update', 'upsert', 'delete'
+     * @param {string} table - Database table name
+     * @param {Object} options - Query options
+     * @param {Object} options.data - Data for insert/update operations
+     * @param {string} options.select - Fields to select
+     * @param {Object} options.where - Filter conditions with operators
+     * @param {Object} options.order - Sorting configuration
+     * @param {number} options.limit - Maximum records to return
+     * @param {number} options.offset - Pagination offset
+     * @param {boolean} options.count - Whether to return total count
+     * @returns {Promise<Object>} Query result with metadata
+     * @throws {DatabaseError} When query fails
+     */
     async query(operation, table, options = {}) {
         const startTime = Date.now();
         this.queryCount++;
@@ -165,6 +261,7 @@ class DatabaseService {
 
             let query;
 
+            // Build base query based on operation
             switch (operation) {
                 case 'select':
                     query = this.supabase.from(table).select(select, count ? { count: 'exact' } : {});
@@ -266,6 +363,10 @@ class DatabaseService {
         }
     }
 
+    /**
+     * Get database performance statistics
+     * @returns {Object} Query statistics
+     */
     getStats() {
         const avgQueryTime = this.queryTimes.length > 0 
             ? this.queryTimes.reduce((a, b) => a + b, 0) / this.queryTimes.length 
@@ -281,14 +382,27 @@ class DatabaseService {
 
 const db = new DatabaseService(supabase);
 
-// ==================== ENHANCED LOGGING SETUP ====================
-const logDir = 'logs';
-if (!fsSync.existsSync(logDir)) {
-    fsSync.mkdirSync(logDir, { recursive: true });
+// ============================================================
+// LOGGING SYSTEM
+// ============================================================
+
+/**
+ * Create log directory if it doesn't exist
+ */
+const LOG_DIR = 'logs';
+if (!fsSync.existsSync(LOG_DIR)) {
+    fsSync.mkdirSync(LOG_DIR, { recursive: true });
 }
 
+/**
+ * Winston logger instance with multiple transports
+ * - error.log: Only error-level logs
+ * - combined.log: All logs
+ * - audit.log: Security and audit events
+ * - Console: Development logging with colors
+ */
 const logger = winston.createLogger({
-    level: isProduction ? 'info' : 'debug',
+    level: IS_PRODUCTION ? 'info' : 'debug',
     format: winston.format.combine(
         winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
         winston.format.errors({ stack: true }),
@@ -296,21 +410,24 @@ const logger = winston.createLogger({
     ),
     defaultMeta: { service: 'nuesa-biu-api', environment: NODE_ENV },
     transports: [
+        // Error logs
         new winston.transports.File({
-            filename: `${logDir}/error.log`,
+            filename: `${LOG_DIR}/error.log`,
             level: 'error',
             maxsize: 10 * 1024 * 1024, // 10MB
             maxFiles: 10,
             tailable: true
         }),
+        // Combined logs
         new winston.transports.File({
-            filename: `${logDir}/combined.log`,
+            filename: `${LOG_DIR}/combined.log`,
             maxsize: 20 * 1024 * 1024, // 20MB
             maxFiles: 10,
             tailable: true
         }),
+        // Audit logs for security events
         new winston.transports.File({
-            filename: `${logDir}/audit.log`,
+            filename: `${LOG_DIR}/audit.log`,
             level: 'info',
             maxsize: 10 * 1024 * 1024,
             maxFiles: 5,
@@ -330,7 +447,7 @@ const logger = winston.createLogger({
 });
 
 // Console transport for development
-if (!isProduction) {
+if (!IS_PRODUCTION) {
     logger.add(new winston.transports.Console({
         format: winston.format.combine(
             winston.format.colorize(),
@@ -343,91 +460,13 @@ if (!isProduction) {
     }));
 }
 
-// ==================== ENHANCED CACHE SYSTEM WITH REDIS ====================
-class CacheManager {
-    constructor() {
-        this.caches = new Map();
-        this.redis = redis;
-    }
+// ============================================================
+// CACHE MANAGEMENT SYSTEM
+// ============================================================
 
-    getCache(name, options = {}) {
-        if (!this.caches.has(name)) {
-            this.caches.set(name, new LRUCache(options.maxSize || 100, options.ttl || 300000));
-        }
-        return this.caches.get(name);
-    }
-
-    async get(key, options = {}) {
-        if (this.redis) {
-            const value = await this.redis.get(key);
-            if (value) {
-                return JSON.parse(value);
-            }
-            return null;
-        }
-        return this.caches.get('default')?.get(key) || null;
-    }
-
-    async set(key, value, ttl = 300000) {
-        if (this.redis) {
-            await this.redis.set(key, JSON.stringify(value), 'PX', ttl);
-        } else {
-            if (!this.caches.has('default')) {
-                this.caches.set('default', new LRUCache(100, ttl));
-            }
-            this.caches.get('default').set(key, value, ttl);
-        }
-    }
-
-    async delete(key) {
-        if (this.redis) {
-            await this.redis.del(key);
-        } else {
-            this.caches.forEach(cache => cache.delete(key));
-        }
-    }
-
-    async invalidate(pattern) {
-        if (this.redis) {
-            const keys = await this.redis.keys(pattern);
-            if (keys.length > 0) {
-                await this.redis.del(...keys);
-            }
-        } else {
-            this.caches.forEach((cache, cacheName) => {
-                if (cacheName.match(pattern)) {
-                    cache.clear();
-                }
-            });
-        }
-    }
-
-    async invalidateByTags(tags) {
-        for (const tag of tags) {
-            await this.invalidate(`tag:${tag}:*`);
-        }
-    }
-
-    clearAll() {
-        if (this.redis) {
-            this.redis.flushdb();
-        } else {
-            this.caches.forEach(cache => cache.clear());
-        }
-    }
-
-    getStats() {
-        const stats = {};
-        this.caches.forEach((cache, name) => {
-            stats[name] = cache.getStats();
-        });
-        if (this.redis) {
-            stats.redis = { connected: true };
-        }
-        return stats;
-    }
-}
-
+/**
+ * LRU Cache implementation with TTL support
+ */
 class LRUCache {
     constructor(maxSize = 100, ttl = 300000) {
         this.cache = new Map();
@@ -437,6 +476,12 @@ class LRUCache {
         this.misses = 0;
     }
 
+    /**
+     * Set a value in cache with optional custom TTL
+     * @param {string} key - Cache key
+     * @param {*} value - Value to cache
+     * @param {number} customTTL - Custom TTL in milliseconds
+     */
     set(key, value, customTTL = null) {
         if (this.cache.size >= this.maxSize) {
             const firstKey = this.cache.keys().next().value;
@@ -450,6 +495,11 @@ class LRUCache {
         });
     }
 
+    /**
+     * Get a value from cache
+     * @param {string} key - Cache key
+     * @returns {*} Cached value or null if not found/expired
+     */
     get(key) {
         const item = this.cache.get(key);
         if (!item) {
@@ -468,16 +518,28 @@ class LRUCache {
         return item.value;
     }
 
+    /**
+     * Delete a key from cache
+     * @param {string} key - Cache key
+     * @returns {boolean} True if key was deleted
+     */
     delete(key) {
         return this.cache.delete(key);
     }
 
+    /**
+     * Clear all cache entries
+     */
     clear() {
         this.cache.clear();
         this.hits = 0;
         this.misses = 0;
     }
 
+    /**
+     * Get cache statistics
+     * @returns {Object} Cache stats
+     */
     getStats() {
         const hitRate = this.hits + this.misses > 0 ? this.hits / (this.hits + this.misses) : 0;
         return {
@@ -491,18 +553,153 @@ class LRUCache {
     }
 }
 
+/**
+ * Centralized cache manager with Redis support
+ */
+class CacheManager {
+    constructor() {
+        this.caches = new Map();
+        this.redis = redis;
+    }
+
+    /**
+     * Get or create a named cache
+     * @param {string} name - Cache name
+     * @param {Object} options - Cache options
+     * @returns {LRUCache} Cache instance
+     */
+    getCache(name, options = {}) {
+        if (!this.caches.has(name)) {
+            this.caches.set(name, new LRUCache(options.maxSize || 100, options.ttl || 300000));
+        }
+        return this.caches.get(name);
+    }
+
+    /**
+     * Get value from cache (Redis if available, otherwise memory)
+     * @param {string} key - Cache key
+     * @returns {Promise<*>} Cached value or null
+     */
+    async get(key) {
+        if (this.redis) {
+            const value = await this.redis.get(key);
+            if (value) {
+                return JSON.parse(value);
+            }
+            return null;
+        }
+        return this.caches.get('default')?.get(key) || null;
+    }
+
+    /**
+     * Set value in cache
+     * @param {string} key - Cache key
+     * @param {*} value - Value to cache
+     * @param {number} ttl - TTL in milliseconds
+     */
+    async set(key, value, ttl = 300000) {
+        if (this.redis) {
+            await this.redis.set(key, JSON.stringify(value), 'PX', ttl);
+        } else {
+            if (!this.caches.has('default')) {
+                this.caches.set('default', new LRUCache(100, ttl));
+            }
+            this.caches.get('default').set(key, value, ttl);
+        }
+    }
+
+    /**
+     * Delete a key from cache
+     * @param {string} key - Cache key
+     */
+    async delete(key) {
+        if (this.redis) {
+            await this.redis.del(key);
+        } else {
+            this.caches.forEach(cache => cache.delete(key));
+        }
+    }
+
+    /**
+     * Invalidate all keys matching a pattern
+     * @param {string} pattern - Key pattern (e.g., 'user:*')
+     */
+    async invalidate(pattern) {
+        if (this.redis) {
+            const keys = await this.redis.keys(pattern);
+            if (keys.length > 0) {
+                await this.redis.del(...keys);
+            }
+        } else {
+            this.caches.forEach((cache, cacheName) => {
+                if (cacheName.match(pattern)) {
+                    cache.clear();
+                }
+            });
+        }
+    }
+
+    /**
+     * Invalidate cache entries by tags
+     * @param {string[]} tags - Tags to invalidate
+     */
+    async invalidateByTags(tags) {
+        for (const tag of tags) {
+            await this.invalidate(`tag:${tag}:*`);
+        }
+    }
+
+    /**
+     * Clear all caches
+     */
+    clearAll() {
+        if (this.redis) {
+            this.redis.flushdb();
+        } else {
+            this.caches.forEach(cache => cache.clear());
+        }
+    }
+
+    /**
+     * Get cache statistics
+     * @returns {Object} Cache stats by name
+     */
+    getStats() {
+        const stats = {};
+        this.caches.forEach((cache, name) => {
+            stats[name] = cache.getStats();
+        });
+        if (this.redis) {
+            stats.redis = { connected: true };
+        }
+        return stats;
+    }
+}
+
 const cacheManager = new CacheManager();
 const userCache = cacheManager.getCache('users', { maxSize: 200, ttl: 300000 });
 const dataCache = cacheManager.getCache('data', { maxSize: 100, ttl: 60000 });
 
-// ==================== REQUEST ID MIDDLEWARE ====================
+// ============================================================
+// REQUEST ID MIDDLEWARE
+// ============================================================
+
+/**
+ * Generate unique ID for each request and set response header
+ */
 app.use((req, res, next) => {
     req.id = uuid.v4();
     res.setHeader('X-Request-ID', req.id);
     next();
 });
 
-// ==================== SECURITY HEADERS MIDDLEWARE ====================
+// ============================================================
+// SECURITY HEADERS MIDDLEWARE
+// ============================================================
+
+/**
+ * Set security headers for all responses
+ */
 app.use((req, res, next) => {
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('X-XSS-Protection', '1; mode=block');
@@ -512,10 +709,16 @@ app.use((req, res, next) => {
     next();
 });
 
-// ==================== ENHANCED MIDDLEWARE ====================
+// ============================================================
+// ENHANCED MIDDLEWARE STACK
+// ============================================================
+
 app.set('trust proxy', 1);
 
-// Compression
+/**
+ * Compression middleware
+ * Compress response bodies for all requests except those with x-no-compression header
+ */
 app.use(compression({
     level: 6,
     threshold: 1024,
@@ -525,390 +728,462 @@ app.use(compression({
     }
 }));
 
-// Security headers with enhanced CSP
-    const cspDirectives = {
-        defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", "data:", "https:", "blob:"],
-        connectSrc: ["'self'"],
-        fontSrc: ["'self'", "https://fonts.gstatic.com"],
-        objectSrc: ["'none'"],
-        mediaSrc: ["'self'"],
-        frameSrc: ["'none'"],
-        baseUri: ["'self'"],
-        formAction: ["'self'"],
-        frameAncestors: ["'none'"]
-    };
+/**
+ * Helmet security configuration with custom CSP
+ */
+const CSP_DIRECTIVES = {
+    defaultSrc: ["'self'"],
+    styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+    scriptSrc: ["'self'", "'unsafe-inline'"],
+    imgSrc: ["'self'", "data:", "https:", "blob:"],
+    connectSrc: ["'self'"],
+    fontSrc: ["'self'", "https://fonts.gstatic.com"],
+    objectSrc: ["'none'"],
+    mediaSrc: ["'self'"],
+    frameSrc: ["'none'"],
+    baseUri: ["'self'"],
+    formAction: ["'self'"],
+    frameAncestors: ["'none'"]
+};
 
-    // Add allowed origins to connectSrc if they exist
-    if (supabaseUrl) {
-        cspDirectives.connectSrc.push(supabaseUrl);
+// Add allowed origins to connectSrc if they exist
+if (supabaseUrl) {
+    CSP_DIRECTIVES.connectSrc.push(supabaseUrl);
+}
+
+if (process.env.FRONTEND_URL) {
+    CSP_DIRECTIVES.connectSrc.push(process.env.FRONTEND_URL);
+}
+
+// Add Supabase wildcard
+CSP_DIRECTIVES.connectSrc.push("https://*.supabase.co");
+
+app.use(
+    helmet({
+        contentSecurityPolicy: false, // Disabled for now, would need proper configuration
+        crossOriginEmbedderPolicy: false,
+        crossOriginResourcePolicy: { policy: "cross-origin" }
+    })
+);
+
+/**
+ * CSRF Protection (except for API routes)
+ */
+const csrfProtection = csrf({ cookie: true });
+app.use('/portal', (req, res, next) => {
+    if (req.path === '/login') {
+        return next();
     }
+    csrfProtection(req, res, next);
+});
 
-    if (process.env.FRONTEND_URL) {
-        cspDirectives.connectSrc.push(process.env.FRONTEND_URL);
-    }
+/**
+ * XSS protection middleware
+ */
+app.use(xss());
 
-    // Add Supabase wildcard
-    cspDirectives.connectSrc.push("https://*.supabase.co");
+/**
+ * HTTP Parameter Pollution protection
+ */
+app.use(hpp({
+    whitelist: ['page', 'limit', 'sort', 'fields']
+}));
 
-    // Handle upgrade insecure requests properly
-    if (isProduction) {
-        cspDirectives.upgradeInsecureRequests = [];
-    }
+/**
+ * Enhanced CORS configuration
+ */
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(origin => origin.length > 0);
 
-    app.use(
-        helmet({
-            contentSecurityPolicy: false,
-            crossOriginEmbedderPolicy: false,
-            crossOriginResourcePolicy: { policy: "cross-origin" }
-        })
-    );
+// Add FRONTEND_URL if set
+if (process.env.FRONTEND_URL && !ALLOWED_ORIGINS.includes(process.env.FRONTEND_URL)) {
+    ALLOWED_ORIGINS.push(process.env.FRONTEND_URL);
+}
 
-    // CSRF Protection (except for API routes)
-    const csrfProtection = csrf({ cookie: true });
-    app.use('/portal', csrfProtection);
+// Add production domains
+ALLOWED_ORIGINS.push('https://nuesa-biu.vercel.app');
+ALLOWED_ORIGINS.push('https://www.nuesa-biu.vercel.app');
 
-    // XSS protection
-    app.use(xss());
-
-    // Parameter pollution protection
-    app.use(hpp({
-        whitelist: ['page', 'limit', 'sort', 'fields']
-    }));
-
-    // Enhanced CORS configuration
-    const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
-        .split(',')
-        .map(origin => origin.trim())
-        .filter(origin => origin.length > 0);
-
-    // Add FRONTEND_URL if set
-    if (process.env.FRONTEND_URL && !allowedOrigins.includes(process.env.FRONTEND_URL)) {
-        allowedOrigins.push(process.env.FRONTEND_URL);
-    }
-
-    // Log the allowed origins in development only
-    if (!isProduction) {
-        console.log('📋 Allowed CORS origins:', allowedOrigins);
-    }
-
-    allowedOrigins.push('https://nuesa-biu.vercel.app');
-    allowedOrigins.push('https://www.nuesa-biu.vercel.app');
-
-    const corsOptions = {
-        origin: function (origin, callback) {
-            if (!origin) {
-                return callback(null, true);
-            }
-
-            if (!isProduction) {
-                return callback(null, true);
-            }
-
-            if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
-                callback(null, true);
-            } else {
-                logger.warn(`Blocked by CORS: ${origin}`, { allowedOrigins });
-                callback(new Error('Not allowed by CORS'));
-            }
-        },
-        credentials: true,
-        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
-        allowedHeaders: [
-            'Content-Type',
-            'Authorization',
-            'Accept',
-            'Origin',
-            'X-Requested-With',
-            'X-API-Key',
-            'X-Total-Count',
-            'X-Page-Count',
-            'X-CSRF-Token'
-        ],
-        exposedHeaders: [
-            'X-Total-Count',
-            'X-Page-Count',
-            'X-RateLimit-Limit',
-            'X-RateLimit-Remaining',
-            'X-RateLimit-Reset',
-            'X-Request-ID'
-        ],
-        maxAge: 86400,
-        preflightContinue: false,
-        optionsSuccessStatus: 204
-    };
-
-    app.use(cors(corsOptions));
-
-    // Cookie parser middleware
-    app.use(cookieParser());
-
-    // Enhanced request parsing
-    app.use(express.json({
-        limit: process.env.MAX_REQUEST_SIZE || '10mb',
-        verify: (req, res, buf, encoding) => {
-            req.rawBody = buf;
+const corsOptions = {
+    origin: function (origin, callback) {
+        if (!origin) {
+            return callback(null, true);
         }
-    }));
 
-    app.use(express.urlencoded({
-        extended: true,
-        limit: process.env.MAX_REQUEST_SIZE || '10mb',
-        parameterLimit: 100
-    }));
+        if (!IS_PRODUCTION) {
+            return callback(null, true);
+        }
 
-    // Enhanced request logging
-    const morganFormat = isProduction ? 'combined' : 'dev';
-    app.use(morgan(morganFormat, {
-        stream: {
-            write: (message) => logger.http(message.trim())
-        },
-        skip: (req, res) => req.path === '/api/health' && req.method === 'GET'
-    }));
-
-    // Request timeout
-    app.use(timeout('30s'));
-    app.use(haltOnTimedout);
-
-    function haltOnTimedout(req, res, next) {
-        if (req.timedout) {
-            logger.error('Request timeout', {
-                requestId: req.id,
-                url: req.url,
-                method: req.method,
-                ip: req.ip,
-                userId: req.user?.id
-            });
-            res.status(503).json({
-                status: 'error',
-                code: 'TIMEOUT',
-                message: 'Request timeout. Please try again.'
-            });
+        if (ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin)) {
+            callback(null, true);
         } else {
-            next();
+            logger.warn(`Blocked by CORS: ${origin}`, { allowedOrigins: ALLOWED_ORIGINS });
+            callback(new Error('Not allowed by CORS'));
         }
-    }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+    allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'Accept',
+        'Origin',
+        'X-Requested-With',
+        'X-API-Key',
+        'X-Total-Count',
+        'X-Page-Count',
+        'X-CSRF-Token'
+    ],
+    exposedHeaders: [
+        'X-Total-Count',
+        'X-Page-Count',
+        'X-RateLimit-Limit',
+        'X-RateLimit-Remaining',
+        'X-RateLimit-Reset',
+        'X-Request-ID'
+    ],
+    maxAge: 86400,
+    preflightContinue: false,
+    optionsSuccessStatus: 204
+};
 
-    // Enhanced rate limiting with configurable limits
-    const createRateLimiter = (max, windowMs = 15 * 60 * 1000, message = 'Too many requests') => {
-        return rateLimit({
-            windowMs,
-            max,
-            message: {
+app.use(cors(corsOptions));
+
+/**
+ * Cookie parser middleware
+ */
+app.use(cookieParser());
+
+/**
+ * Enhanced request parsing with raw body capture
+ */
+app.use(express.json({
+    limit: MAX_REQUEST_SIZE,
+    verify: (req, res, buf, encoding) => {
+        req.rawBody = buf;
+    }
+}));
+
+app.use(express.urlencoded({
+    extended: true,
+    limit: MAX_REQUEST_SIZE,
+    parameterLimit: 100
+}));
+
+/**
+ * Request logging with Morgan
+ */
+const morganFormat = IS_PRODUCTION ? 'combined' : 'dev';
+app.use(morgan(morganFormat, {
+    stream: {
+        write: (message) => logger.http(message.trim())
+    },
+    skip: (req, res) => req.path === '/api/health' && req.method === 'GET'
+}));
+
+/**
+ * Request timeout middleware
+ */
+app.use(timeout('30s'));
+app.use(haltOnTimedout);
+
+/**
+ * Handle request timeouts
+ */
+function haltOnTimedout(req, res, next) {
+    if (req.timedout) {
+        logger.error('Request timeout', {
+            requestId: req.id,
+            url: req.url,
+            method: req.method,
+            ip: req.ip,
+            userId: req.user?.id
+        });
+        res.status(503).json({
+            status: 'error',
+            code: 'TIMEOUT',
+            message: 'Request timeout. Please try again.'
+        });
+    } else {
+        next();
+    }
+}
+
+/**
+ * Create rate limiter with configurable options
+ * @param {number} max - Maximum requests per window
+ * @param {number} windowMs - Time window in milliseconds
+ * @param {string} message - Error message
+ * @returns {Function} Rate limiter middleware
+ */
+const createRateLimiter = (max, windowMs = 15 * 60 * 1000, message = 'Too many requests') => {
+    return rateLimit({
+        windowMs,
+        max,
+        message: {
+            status: 'error',
+            code: 'TOO_MANY_REQUESTS',
+            message
+        },
+        standardHeaders: true,
+        legacyHeaders: false,
+        skipSuccessfulRequests: false,
+        keyGenerator: (req) => {
+            return req.headers['x-forwarded-for'] || req.ip;
+        },
+        handler: (req, res) => {
+            logger.warn('Rate limit exceeded', {
+                requestId: req.id,
+                ip: req.ip,
+                url: req.url,
+                method: req.method
+            });
+            res.status(429).json({
                 status: 'error',
                 code: 'TOO_MANY_REQUESTS',
                 message
-            },
-            standardHeaders: true,
-            legacyHeaders: false,
-            skipSuccessfulRequests: false,
-            keyGenerator: (req) => {
-                return req.headers['x-forwarded-for'] || req.ip;
-            },
-            handler: (req, res) => {
-                logger.warn('Rate limit exceeded', {
-                    requestId: req.id,
-                    ip: req.ip,
-                    url: req.url,
-                    method: req.method
-                });
-                res.status(429).json({
-                    status: 'error',
-                    code: 'TOO_MANY_REQUESTS',
-                    message
-                });
-            }
-        });
-    };
+            });
+        }
+    });
+};
 
-    // Apply rate limiting
-    app.use('/api/auth/login', createRateLimiter(10, 15 * 60 * 1000, 'Too many login attempts'));
-    app.use('/api/admin/login', createRateLimiter(5, 15 * 60 * 1000, 'Too many admin login attempts'));
-    app.use('/api/contact/submit', createRateLimiter(10, 15 * 60 * 1000, 'Too many contact form submissions'));
-    app.use('/api/', createRateLimiter(200, 15 * 60 * 1000));
+/**
+ * Apply rate limiting to specific routes
+ */
+app.use('/api/auth/login', createRateLimiter(10, 15 * 60 * 1000, 'Too many login attempts'));
+app.use('/api/admin/login', createRateLimiter(5, 15 * 60 * 1000, 'Too many admin login attempts'));
+app.use('/api/contact/submit', createRateLimiter(10, 15 * 60 * 1000, 'Too many contact form submissions'));
+app.use('/api/', createRateLimiter(200, 15 * 60 * 1000));
 
-    // Cache middleware with Redis support
-    const cacheMiddleware = (duration = 60, tags = []) => {
-        return async (req, res, next) => {
-            if (req.method !== 'GET' || req.headers.authorization) {
-                return next();
+/**
+ * Cache middleware with tag support
+ * @param {number} duration - Cache duration in seconds
+ * @param {string[]} tags - Cache tags for invalidation
+ * @returns {Function} Cache middleware
+ */
+const cacheMiddleware = (duration = 60, tags = []) => {
+    return async (req, res, next) => {
+        if (req.method !== 'GET' || req.headers.authorization) {
+            return next();
+        }
+
+        const key = `cache:${req.originalUrl || req.url}`;
+        
+        try {
+            const cachedResponse = await cacheManager.get(key);
+
+            if (cachedResponse) {
+                return res.json(cachedResponse);
             }
 
-            const key = `cache:${req.originalUrl || req.url}`;
-            
-            try {
-                const cachedResponse = await cacheManager.get(key);
-
-                if (cachedResponse) {
-                    return res.json(cachedResponse);
-                }
-
-                const originalSend = res.json;
-                res.json = async function (body) {
-                    if (res.statusCode >= 200 && res.statusCode < 300) {
-                        await cacheManager.set(key, body, duration * 1000);
-                        
-                        // Set cache tags for invalidation
-                        if (tags.length > 0) {
-                            for (const tag of tags) {
-                                await cacheManager.set(`tag:${tag}:${key}`, true, duration * 1000);
-                            }
+            const originalSend = res.json;
+            res.json = async function (body) {
+                if (res.statusCode >= 200 && res.statusCode < 300) {
+                    await cacheManager.set(key, body, duration * 1000);
+                    
+                    // Set cache tags for invalidation
+                    if (tags.length > 0) {
+                        for (const tag of tags) {
+                            await cacheManager.set(`tag:${tag}:${key}`, true, duration * 1000);
                         }
                     }
-                    originalSend.call(this, body);
-                };
-
-                next();
-            } catch (error) {
-                logger.error('Cache middleware error:', { requestId: req.id, error: error.message });
-                next();
-            }
-        };
-    };
-
-    // Response time middleware
-    app.use((req, res, next) => {
-        const start = Date.now();
-        res.on('finish', () => {
-            const duration = Date.now() - start;
-            logger.info('Request completed', {
-                requestId: req.id,
-                method: req.method,
-                url: req.url,
-                status: res.statusCode,
-                duration: `${duration}ms`,
-                userId: req.user?.id
-            });
-        });
-        next();
-    });
-
-    // ==================== ACCOUNT LOCKOUT SYSTEM ====================
-    const loginAttempts = new Map();
-
-    async function checkLoginAttempts(identifier) {
-        const attempts = loginAttempts.get(identifier) || { count: 0, lockedUntil: null };
-        
-        // Check if locked
-        if (attempts.lockedUntil && attempts.lockedUntil > Date.now()) {
-            throw new AuthError('Account temporarily locked. Try again later.', 'ACCOUNT_LOCKED');
-        }
-        
-        // Reset if lock expired
-        if (attempts.lockedUntil && attempts.lockedUntil <= Date.now()) {
-            loginAttempts.delete(identifier);
-            return;
-        }
-        
-        return attempts;
-    }
-
-    async function recordFailedAttempt(identifier) {
-        const attempts = loginAttempts.get(identifier) || { count: 0, lockedUntil: null };
-        attempts.count += 1;
-        
-        // Lock after 5 failed attempts
-        if (attempts.count >= 5) {
-            attempts.lockedUntil = Date.now() + 15 * 60 * 1000; // 15 minutes
-            attempts.count = 0;
-            logger.warn('Account locked due to multiple failed attempts', { identifier });
-        }
-        
-        loginAttempts.set(identifier, attempts);
-    }
-
-    async function resetLoginAttempts(identifier) {
-        loginAttempts.delete(identifier);
-    }
-
-    // ==================== ENHANCED FILE UPLOAD ====================
-    const uploadDirs = {
-        images: './uploads/images',
-        resources: './uploads/resources',
-        profiles: './uploads/profiles',
-        temp: './uploads/temp'
-    };
-
-    // Create upload directories
-    Object.values(uploadDirs).forEach(dir => {
-        if (!fsSync.existsSync(dir)) {
-            fsSync.mkdirSync(dir, { recursive: true });
-            logger.info(`Created upload directory: ${dir}`);
-        }
-    });
-
-    // Enhanced storage configuration
-    const storage = multer.diskStorage({
-        destination: async function (req, file, cb) {
-            try {
-                const type = file.fieldname;
-                let subDir = '';
-
-                if (type.includes('profile') || type.includes('avatar')) {
-                    subDir = 'profiles';
-                } else if (type.includes('image') || /\.(jpg|jpeg|png|gif|webp)$/i.test(file.originalname)) {
-                    subDir = 'images';
-                } else {
-                    subDir = 'resources';
                 }
+                originalSend.call(this, body);
+            };
 
-                const destDir = path.join(uploadDirs[subDir], new Date().toISOString().split('T')[0]);
-                await fs.mkdir(destDir, { recursive: true });
-                cb(null, destDir);
-            } catch (error) {
-                cb(error);
-            }
-        },
-        filename: function (req, file, cb) {
-            const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
-            const ext = path.extname(file.originalname).toLowerCase();
-            const safeName = path.basename(file.originalname, ext)
-                .replace(/[^a-zA-Z0-9_-]/g, '_')
-                .substring(0, 50);
-            cb(null, `${safeName}-${uniqueSuffix}${ext}`);
+            next();
+        } catch (error) {
+            logger.error('Cache middleware error:', { requestId: req.id, error: error.message });
+            next();
         }
+    };
+};
+
+/**
+ * Response time tracking middleware
+ */
+app.use((req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        logger.info('Request completed', {
+            requestId: req.id,
+            method: req.method,
+            url: req.url,
+            status: res.statusCode,
+            duration: `${duration}ms`,
+            userId: req.user?.id
+        });
     });
+    next();
+});
 
-    // File filter with enhanced validation
-    const fileFilter = (req, file, cb) => {
-        const allowedMimeTypes = {
-            'image/jpeg': ['.jpg', '.jpeg'],
-            'image/png': ['.png'],
-            'image/gif': ['.gif'],
-            'image/webp': ['.webp'],
-            'application/pdf': ['.pdf'],
-            'application/msword': ['.doc'],
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-            'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
-            'text/plain': ['.txt'],
-            'application/zip': ['.zip'],
-            'application/x-rar-compressed': ['.rar']
-        };
+// ============================================================
+// ACCOUNT LOCKOUT SYSTEM
+// ============================================================
 
-        const allowedExts = Object.values(allowedMimeTypes).flat();
-        const ext = path.extname(file.originalname).toLowerCase();
+/**
+ * In-memory store for login attempts
+ * In production, this should be replaced with Redis
+ */
+const loginAttempts = new Map();
 
-        if (!allowedMimeTypes[file.mimetype] || !allowedExts.includes(ext)) {
-            return cb(new Error(`File type ${file.mimetype} with extension ${ext} is not allowed`), false);
+/**
+ * Check if an account is locked due to too many failed attempts
+ * @param {string} identifier - Email or user identifier
+ * @throws {AuthError} If account is locked
+ */
+async function checkLoginAttempts(identifier) {
+    const attempts = loginAttempts.get(identifier) || { count: 0, lockedUntil: null };
+    
+    // Check if locked
+    if (attempts.lockedUntil && attempts.lockedUntil > Date.now()) {
+        throw new AuthError('Account temporarily locked. Try again later.', 'ACCOUNT_LOCKED');
+    }
+    
+    // Reset if lock expired
+    if (attempts.lockedUntil && attempts.lockedUntil <= Date.now()) {
+        loginAttempts.delete(identifier);
+        return;
+    }
+    
+    return attempts;
+}
+
+/**
+ * Record a failed login attempt
+ * @param {string} identifier - Email or user identifier
+ */
+async function recordFailedAttempt(identifier) {
+    const attempts = loginAttempts.get(identifier) || { count: 0, lockedUntil: null };
+    attempts.count += 1;
+    
+    // Lock after 5 failed attempts
+    if (attempts.count >= 5) {
+        attempts.lockedUntil = Date.now() + 15 * 60 * 1000; // 15 minutes
+        attempts.count = 0;
+        logger.warn('Account locked due to multiple failed attempts', { identifier });
+    }
+    
+    loginAttempts.set(identifier, attempts);
+}
+
+/**
+ * Reset login attempts on successful login
+ * @param {string} identifier - Email or user identifier
+ */
+async function resetLoginAttempts(identifier) {
+    loginAttempts.delete(identifier);
+}
+
+// ============================================================
+// FILE UPLOAD CONFIGURATION
+// ============================================================
+
+/**
+ * Upload directories configuration
+ */
+const UPLOAD_DIRS = {
+    images: './uploads/images',
+    resources: './uploads/resources',
+    profiles: './uploads/profiles',
+    temp: './uploads/temp'
+};
+
+// Create upload directories
+Object.values(UPLOAD_DIRS).forEach(dir => {
+    if (!fsSync.existsSync(dir)) {
+        fsSync.mkdirSync(dir, { recursive: true });
+        logger.info(`Created upload directory: ${dir}`);
+    }
+});
+
+/**
+ * Enhanced storage configuration for multer
+ */
+const storage = multer.diskStorage({
+    destination: async function (req, file, cb) {
+        try {
+            const type = file.fieldname;
+            let subDir = '';
+
+            if (type.includes('profile') || type.includes('avatar')) {
+                subDir = 'profiles';
+            } else if (type.includes('image') || /\.(jpg|jpeg|png|gif|webp)$/i.test(file.originalname)) {
+                subDir = 'images';
+            } else {
+                subDir = 'resources';
+            }
+
+            const destDir = path.join(UPLOAD_DIRS[subDir], new Date().toISOString().split('T')[0]);
+            await fs.mkdir(destDir, { recursive: true });
+            cb(null, destDir);
+        } catch (error) {
+            cb(error);
         }
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+        const ext = path.extname(file.originalname).toLowerCase();
+        const safeName = path.basename(file.originalname, ext)
+            .replace(/[^a-zA-Z0-9_-]/g, '_')
+            .substring(0, 50);
+        cb(null, `${safeName}-${uniqueSuffix}${ext}`);
+    }
+});
 
-        cb(null, true);
+/**
+ * File filter with enhanced validation
+ */
+const fileFilter = (req, file, cb) => {
+    const allowedMimeTypes = {
+        'image/jpeg': ['.jpg', '.jpeg'],
+        'image/png': ['.png'],
+        'image/gif': ['.gif'],
+        'image/webp': ['.webp'],
+        'application/pdf': ['.pdf'],
+        'application/msword': ['.doc'],
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
+        'text/plain': ['.txt'],
+        'application/zip': ['.zip'],
+        'application/x-rar-compressed': ['.rar']
     };
 
-    const upload = multer({
-        storage: storage,
-        limits: {
-            fileSize: parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024, // 10MB
-            files: 5
-        },
-        fileFilter: fileFilter
-    });
+    const allowedExts = Object.values(allowedMimeTypes).flat();
+    const ext = path.extname(file.originalname).toLowerCase();
 
-// ==================== VALIDATION SCHEMAS ====================
+    if (!allowedMimeTypes[file.mimetype] || !allowedExts.includes(ext)) {
+        return cb(new Error(`File type ${file.mimetype} with extension ${ext} is not allowed`), false);
+    }
+
+    cb(null, true);
+};
+
+/**
+ * Multer upload instance with configuration
+ */
+const upload = multer({
+    storage: storage,
+    limits: {
+        fileSize: MAX_FILE_SIZE,
+        files: 5
+    },
+    fileFilter: fileFilter
+});
+
+// ============================================================
+// VALIDATION SCHEMAS
+// ============================================================
+
+/**
+ * Joi validation schemas for request data
+ */
 const schemas = {
+    // Authentication schemas
     login: Joi.object({
         email: Joi.string().email().required(),
         password: Joi.string().min(8).required(),
@@ -923,6 +1198,7 @@ const schemas = {
         role: Joi.string().valid('member', 'editor', 'admin').default('member')
     }),
     
+    // User management schemas
     createUser: Joi.object({
         email: Joi.string().email().required(),
         password: Joi.string().min(8).required(),
@@ -945,6 +1221,7 @@ const schemas = {
         newPassword: Joi.string().min(8).required()
     }),
     
+    // Member management schemas
     createMember: Joi.object({
         full_name: Joi.string().required(),
         position: Joi.string().required(),
@@ -959,15 +1236,34 @@ const schemas = {
         social_links: Joi.object().default({})
     }),
     
+    // Contact form schema
     contactForm: Joi.object({
         name: Joi.string().min(2).max(100).required(),
         email: Joi.string().email().required(),
         message: Joi.string().min(10).max(1000).required(),
         subject: Joi.string().max(200).optional()
+    }),
+    
+    // Article schema
+    article: Joi.object({
+        title: Joi.string().required(),
+        slug: Joi.string().optional(),
+        content: Joi.string().required(),
+        excerpt: Joi.string().optional(),
+        author: Joi.string().optional(),
+        category: Joi.string().optional(),
+        tags: Joi.array().items(Joi.string()).default([]),
+        status: Joi.string().valid('draft', 'published').default('draft'),
+        is_published: Joi.boolean().default(false),
+        published_at: Joi.date().optional()
     })
 };
 
-// Validation middleware
+/**
+ * Validation middleware factory
+ * @param {Joi.Schema} schema - Joi validation schema
+ * @returns {Function} Express middleware
+ */
 const validate = (schema) => {
     return (req, res, next) => {
         const { error } = schema.validate(req.body);
@@ -978,13 +1274,25 @@ const validate = (schema) => {
     };
 };
 
-// ==================== ENHANCED AUTHENTICATION ====================
+// ============================================================
+// AUTHENTICATION SERVICE
+// ============================================================
+
+/**
+ * Authentication service handling JWT and user authentication
+ */
 class AuthService {
     constructor() {
         this.secret = JWT_SECRET;
         this.expire = JWT_EXPIRE;
+        this.adminExpire = JWT_ADMIN_EXPIRE;
     }
 
+    /**
+     * Generate JWT token for regular users
+     * @param {Object} payload - Token payload
+     * @returns {string} JWT token
+     */
     generateToken(payload) {
         return jwt.sign(payload, this.secret, {
             expiresIn: this.expire,
@@ -994,17 +1302,44 @@ class AuthService {
         });
     }
 
+    /**
+     * Generate JWT token for admin users
+     * @param {Object} payload - Token payload
+     * @returns {string} JWT token
+     */
+    generateAdminToken(payload) {
+        return jwt.sign(payload, this.secret, {
+            expiresIn: this.adminExpire,
+            issuer: 'nuesa-biu-system',
+            audience: 'nuesa-biu-admin',
+            jwtid: uuid.v4()
+        });
+    }
+
+    /**
+     * Verify and decode JWT token
+     * @param {string} token - JWT token
+     * @returns {Object} Decoded payload
+     * @throws {AuthError} If token is invalid
+     */
     verifyToken(token) {
         try {
             return jwt.verify(token, this.secret, {
-                issuer: 'nuesa-biu-api',
-                audience: 'nuesa-biu-client'
+                issuer: ['nuesa-biu-api', 'nuesa-biu-system'],
+                audience: ['nuesa-biu-client', 'nuesa-biu-admin']
             });
         } catch (error) {
             throw new AuthError('Invalid token', error.name);
         }
     }
 
+    /**
+     * Authenticate user with email and password
+     * @param {string} email - User email
+     * @param {string} password - User password
+     * @returns {Promise<Object>} User object without sensitive data
+     * @throws {AuthError} If authentication fails
+     */
     async authenticateUser(email, password) {
         try {
             // Check login attempts
@@ -1050,6 +1385,11 @@ class AuthService {
         }
     }
 
+    /**
+     * Create user response object (remove sensitive data)
+     * @param {Object} user - Raw user object from database
+     * @returns {Object} Sanitized user object
+     */
     createUserResponse(user) {
         return {
             id: user.id,
@@ -1063,6 +1403,11 @@ class AuthService {
         };
     }
 
+    /**
+     * Create token payload from user
+     * @param {Object} user - User object
+     * @returns {Object} Token payload
+     */
     createTokenPayload(user) {
         return {
             userId: user.id,
@@ -1075,7 +1420,14 @@ class AuthService {
 
 const authService = new AuthService();
 
-// ==================== ENHANCED ADMIN AUTH MIDDLEWARE ====================
+// ============================================================
+// ADMIN AUTHENTICATION MIDDLEWARE
+// ============================================================
+
+/**
+ * Check admin session from cookies or headers
+ * Sets req.isAdmin and req.admin if authenticated
+ */
 const checkAdminSessionEnhanced = async (req, res, next) => {
     try {
         // Check multiple token sources
@@ -1119,13 +1471,13 @@ const checkAdminSessionEnhanced = async (req, res, next) => {
             const clearAdminCookie = () => {
                 const cookieOptions = {
                     httpOnly: true,
-                    secure: isProduction,  // Must be true in production
-                    sameSite: 'none',      // ✅ Critical change for cross-domain
+                    secure: IS_PRODUCTION,
+                    sameSite: 'none',
                     maxAge: 8 * 60 * 60 * 1000,
                     path: '/'
                 };
                 
-                if (isProduction && process.env.FRONTEND_URL) {
+                if (IS_PRODUCTION && process.env.FRONTEND_URL) {
                     try {
                         const frontendUrl = new URL(process.env.FRONTEND_URL);
                         cookieOptions.domain = frontendUrl.hostname;
@@ -1166,7 +1518,13 @@ const checkAdminSessionEnhanced = async (req, res, next) => {
 // Apply enhanced session check to all routes
 app.use(checkAdminSessionEnhanced);
 
-// Middleware for regular authentication
+// ============================================================
+// USER AUTHENTICATION MIDDLEWARE
+// ============================================================
+
+/**
+ * Verify JWT token and attach user to request
+ */
 const verifyToken = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
@@ -1233,6 +1591,11 @@ const verifyToken = async (req, res, next) => {
     }
 };
 
+/**
+ * Require specific roles for access
+ * @param {...string} roles - Allowed roles
+ * @returns {Function} Middleware
+ */
 const requireRole = (...roles) => {
     return (req, res, next) => {
         if (!req.user) {
@@ -1247,6 +1610,11 @@ const requireRole = (...roles) => {
     };
 };
 
+/**
+ * Require specific permission
+ * @param {string} permission - Required permission
+ * @returns {Function} Middleware
+ */
 const requirePermission = (permission) => {
     const permissions = {
         admin: ['manage_users', 'manage_content', 'manage_settings', 'view_all'],
@@ -1268,7 +1636,13 @@ const requirePermission = (permission) => {
     };
 };
 
-// ==================== DATABASE INITIALIZATION ====================
+// ============================================================
+// DATABASE INITIALIZATION
+// ============================================================
+
+/**
+ * Initialize database connection and create default admin
+ */
 async function initializeDatabase() {
     try {
         // Test database connection
@@ -1290,6 +1664,9 @@ async function initializeDatabase() {
     }
 }
 
+/**
+ * Create default admin user if it doesn't exist
+ */
 async function createDefaultAdmin() {
     try {
         const adminEmail = process.env.ADMIN_EMAIL;
@@ -1336,15 +1713,49 @@ async function createDefaultAdmin() {
     }
 }
 
+/**
+ * Check database tables (tables should be created via migrations)
+ */
 async function createDefaultTables() {
-    // Note: Tables should be created via Supabase migrations
-    // This is just for logging
     logger.info('Checking database tables...');
 }
 
-// ==================== ENHANCED AUTH ROUTES ====================
+// ============================================================
+// AUTHENTICATION ROUTES
+// ============================================================
+
 const authRouter = express.Router();
 
+/**
+ * @swagger
+ * /api/auth/login:
+ *   post:
+ *     summary: User login
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *                 minLength: 8
+ *               rememberMe:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *       401:
+ *         description: Invalid credentials
+ */
 authRouter.post('/login', validate(schemas.login), async (req, res) => {
     try {
         const { email, password, rememberMe } = req.body;
@@ -1358,11 +1769,11 @@ authRouter.post('/login', validate(schemas.login), async (req, res) => {
         // Set secure cookie
         res.cookie('auth_token', token, {
             httpOnly: true,
-            secure: isProduction,
+            secure: IS_PRODUCTION,
             sameSite: 'strict',
             maxAge: rememberMe ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000,
             path: '/',
-            domain: isProduction ? new URL(process.env.FRONTEND_URL || '').hostname : undefined
+            domain: IS_PRODUCTION ? new URL(process.env.FRONTEND_URL || '').hostname : undefined
         });
 
         res.json({
@@ -1385,6 +1796,18 @@ authRouter.post('/login', validate(schemas.login), async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/auth/logout:
+ *   post:
+ *     summary: User logout
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logout successful
+ */
 authRouter.post('/logout', verifyToken, async (req, res) => {
     try {
         await cacheManager.delete(`user:${req.user.id}`);
@@ -1405,6 +1828,20 @@ authRouter.post('/logout', verifyToken, async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/auth/verify:
+ *   get:
+ *     summary: Verify token validity
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Token is valid
+ *       401:
+ *         description: Invalid or expired token
+ */
 authRouter.get('/verify', verifyToken, async (req, res) => {
     res.json({
         status: 'success',
@@ -1413,6 +1850,18 @@ authRouter.get('/verify', verifyToken, async (req, res) => {
     });
 });
 
+/**
+ * @swagger
+ * /api/auth/refresh:
+ *   post:
+ *     summary: Refresh access token
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Token refreshed successfully
+ */
 authRouter.post('/refresh', verifyToken, async (req, res) => {
     try {
         const newToken = authService.generateToken(
@@ -1436,6 +1885,28 @@ authRouter.post('/refresh', verifyToken, async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/auth/forgot-password:
+ *   post:
+ *     summary: Request password reset
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *     responses:
+ *       200:
+ *         description: Reset email sent if account exists
+ */
 authRouter.post('/forgot-password', validate(Joi.object({ email: Joi.string().email().required() })), async (req, res) => {
     try {
         const { email } = req.body;
@@ -1458,17 +1929,21 @@ authRouter.post('/forgot-password', validate(Joi.object({ email: Joi.string().em
 
 app.use('/api/auth', authRouter);
 
-// ==================== ADMIN AUTH ROUTES ====================
-// ==================== SIMPLIFIED ADMIN LOGIN HANDLER ====================
+// ============================================================
+// ADMIN AUTHENTICATION HANDLER
+// ============================================================
+
 async function adminLoginHandler(req, res) {
     const requestId = req.id || 'unknown';
-    console.log(`[${requestId}] Admin login attempt for:`, req.body.email);
+    console.log(`\n🔐 [${requestId}] ========== ADMIN LOGIN DEBUG ==========`);
+    console.log(`[${requestId}] Email:`, req.body.email);
     
     try {
         const { email, password, rememberMe } = req.body;
 
         // Validate input
         if (!email || !password) {
+            console.log(`[${requestId}] ❌ Missing fields`);
             return res.status(400).json({
                 status: 'error',
                 code: 'MISSING_FIELDS',
@@ -1476,14 +1951,34 @@ async function adminLoginHandler(req, res) {
             });
         }
 
+        console.log(`[${requestId}] ✅ Input validation passed`);
+
+        // Test database connection first
+        console.log(`[${requestId}] Testing database connection...`);
+        try {
+            const testQuery = await supabase.from('users').select('count').limit(1);
+            console.log(`[${requestId}] Database connection:`, testQuery.error ? 'FAILED' : 'OK');
+            if (testQuery.error) {
+                console.error(`[${requestId}] Database error:`, testQuery.error);
+            }
+        } catch (dbConnError) {
+            console.error(`[${requestId}] Database connection error:`, dbConnError.message);
+        }
+
         // Get user from database
+        console.log(`[${requestId}] Querying for user:`, email.toLowerCase().trim());
         const result = await db.query('select', 'users', {
             where: { email: email.toLowerCase().trim() },
             select: 'id, email, full_name, role, department, is_active, password_hash, created_at, last_login'
         });
 
+        console.log(`[${requestId}] Query result:`, {
+            dataLength: result.data.length,
+            hasError: !!result.error
+        });
+
         if (result.data.length === 0) {
-            console.log(`[${requestId}] User not found:`, email);
+            console.log(`[${requestId}] ❌ User not found`);
             return res.status(401).json({
                 status: 'error',
                 code: 'INVALID_CREDENTIALS',
@@ -1492,10 +1987,17 @@ async function adminLoginHandler(req, res) {
         }
 
         const user = result.data[0];
-        console.log(`[${requestId}] User found:`, { id: user.id, role: user.role, is_active: user.is_active });
+        console.log(`[${requestId}] ✅ User found:`, { 
+            id: user.id, 
+            role: user.role, 
+            is_active: user.is_active,
+            hash_exists: !!user.password_hash,
+            hash_length: user.password_hash?.length
+        });
 
         // Check if account is active
         if (!user.is_active) {
+            console.log(`[${requestId}] ❌ Account inactive`);
             return res.status(401).json({
                 status: 'error',
                 code: 'ACCOUNT_INACTIVE',
@@ -1505,7 +2007,7 @@ async function adminLoginHandler(req, res) {
 
         // Check if user has admin role
         if (user.role !== 'admin') {
-            console.log(`[${requestId}] User is not admin:`, user.role);
+            console.log(`[${requestId}] ❌ Not admin:`, user.role);
             return res.status(401).json({
                 status: 'error',
                 code: 'INVALID_CREDENTIALS',
@@ -1514,9 +2016,14 @@ async function adminLoginHandler(req, res) {
         }
 
         // Verify password
+        console.log(`[${requestId}] Verifying password...`);
+        console.log(`[${requestId}] Hash from DB:`, user.password_hash.substring(0, 20) + '...');
+        
         const validPassword = await bcrypt.compare(password, user.password_hash);
+        console.log(`[${requestId}] Password valid:`, validPassword);
+        
         if (!validPassword) {
-            console.log(`[${requestId}] Invalid password for user:`, user.id);
+            console.log(`[${requestId}] ❌ Invalid password`);
             return res.status(401).json({
                 status: 'error',
                 code: 'INVALID_CREDENTIALS',
@@ -1524,11 +2031,15 @@ async function adminLoginHandler(req, res) {
             });
         }
 
+        console.log(`[${requestId}] ✅ Password verified`);
+
         // Update last login
+        console.log(`[${requestId}] Updating last_login...`);
         await db.query('update', 'users', {
             data: { last_login: new Date() },
             where: { id: user.id }
         });
+        console.log(`[${requestId}] ✅ Last login updated`);
 
         // Create token payload
         const tokenPayload = {
@@ -1537,17 +2048,19 @@ async function adminLoginHandler(req, res) {
             role: user.role,
             fullName: user.full_name
         };
+        console.log(`[${requestId}] Token payload created`);
 
         // Generate JWT token
-        const token = jwt.sign(tokenPayload, JWT_SECRET, {
-            expiresIn: '8h',
-            issuer: 'nuesa-biu-api'
-        });
+        console.log(`[${requestId}] Generating JWT token...`);
+        console.log(`[${requestId}] JWT_SECRET exists:`, !!process.env.JWT_SECRET);
+        
+        const token = authService.generateAdminToken(tokenPayload);
+        console.log(`[${requestId}] ✅ Token generated (length: ${token.length})`);
 
         // Set cookie
         const cookieOptions = {
             httpOnly: true,
-            secure: isProduction,
+            secure: IS_PRODUCTION,
             sameSite: 'lax',
             maxAge: rememberMe ? 7 * 24 * 60 * 60 * 1000 : 8 * 60 * 60 * 1000,
             path: '/'
@@ -1555,6 +2068,7 @@ async function adminLoginHandler(req, res) {
         
         res.cookie('admin_session', token, cookieOptions);
         res.cookie('auth_token', token, cookieOptions);
+        console.log(`[${requestId}] ✅ Cookies set`);
 
         // Return success
         const userResponse = {
@@ -1566,7 +2080,9 @@ async function adminLoginHandler(req, res) {
             lastLogin: user.last_login
         };
 
-        console.log(`[${requestId}] Admin login successful for:`, user.email);
+        console.log(`[${requestId}] ✅ Admin login successful for:`, user.email);
+        console.log(`[${requestId}] ========== DEBUG END ==========\n`);
+        
         res.json({
             status: 'success',
             data: {
@@ -1577,7 +2093,14 @@ async function adminLoginHandler(req, res) {
         });
 
     } catch (error) {
-        console.error(`[${requestId}] Admin login error:`, error);
+        console.error(`❌ [${requestId}] ADMIN LOGIN ERROR:`, {
+            message: error.message,
+            stack: error.stack,
+            name: error.name,
+            code: error.code
+        });
+        console.log(`[${requestId}] ========== DEBUG END (WITH ERROR) ==========\n`);
+        
         res.status(500).json({
             status: 'error',
             code: 'INTERNAL_ERROR',
@@ -1586,18 +2109,26 @@ async function adminLoginHandler(req, res) {
     }
 }
 
-// Register admin routes
+// ============================================================
+// ADMIN ROUTES
+// ============================================================
+
+/**
+ * Admin login endpoint
+ */
 app.post('/api/admin/login', createRateLimiter(5), adminLoginHandler);
 app.post('/admin/login', createRateLimiter(5), adminLoginHandler);
 
-// Admin logout endpoint
+/**
+ * Admin logout endpoint
+ */
 app.post('/api/admin/logout', async (req, res) => {
     try {
         const cookieOptions = {
             path: '/'
         };
         
-        if (isProduction && process.env.FRONTEND_URL) {
+        if (IS_PRODUCTION && process.env.FRONTEND_URL) {
             try {
                 const frontendUrl = new URL(process.env.FRONTEND_URL);
                 cookieOptions.domain = frontendUrl.hostname;
@@ -1621,7 +2152,9 @@ app.post('/api/admin/logout', async (req, res) => {
     }
 });
 
-// Admin session verification
+/**
+ * Admin session verification
+ */
 app.get('/api/admin/session', async (req, res) => {
     try {
         const token = req.cookies?.admin_session;
@@ -1695,7 +2228,49 @@ app.get('/api/admin/session', async (req, res) => {
     }
 });
 
-// ==================== REGULAR CONTACT FORM ENDPOINT ====================
+/**
+ * Admin CSRF token endpoint
+ */
+app.get('/api/admin/csrf-token', csrfProtection, (req, res) => {
+    res.json({
+        status: 'success',
+        csrfToken: req.csrfToken()
+    });
+});
+
+// ============================================================
+// PUBLIC CONTACT FORM ENDPOINT
+// ============================================================
+
+/**
+ * @swagger
+ * /api/contact/submit:
+ *   post:
+ *     summary: Submit contact form
+ *     tags: [Public]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *               - message
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               message:
+ *                 type: string
+ *               subject:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Form submitted successfully
+ */
 app.post('/api/contact/submit', createRateLimiter(10), validate(schemas.contactForm), async (req, res) => {
     try {
         const { name, email, message, subject } = req.body;
@@ -1726,9 +2301,45 @@ app.post('/api/contact/submit', createRateLimiter(10), validate(schemas.contactF
     }
 });
 
-// ==================== ENHANCED USER MANAGEMENT ====================
+// ============================================================
+// USER MANAGEMENT ROUTES
+// ============================================================
+
 const userRouter = express.Router();
 
+/**
+ * @swagger
+ * /api/users:
+ *   get:
+ *     summary: Get all users (admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: role
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: department
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of users
+ */
 userRouter.get('/', verifyToken, requireRole('admin'), async (req, res) => {
     try {
         const {
@@ -1790,6 +2401,24 @@ userRouter.get('/', verifyToken, requireRole('admin'), async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/users:
+ *   post:
+ *     summary: Create new user (admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateUser'
+ *     responses:
+ *       201:
+ *         description: User created successfully
+ */
 userRouter.post('/', verifyToken, requireRole('admin'), validate(schemas.createUser), async (req, res) => {
     try {
         const {
@@ -1856,6 +2485,28 @@ userRouter.post('/', verifyToken, requireRole('admin'), validate(schemas.createU
     }
 });
 
+/**
+ * @swagger
+ * /api/users/{id}:
+ *   get:
+ *     summary: Get user by ID
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: User details
+ *       403:
+ *         description: Access denied
+ *       404:
+ *         description: User not found
+ */
 userRouter.get('/:id', verifyToken, async (req, res) => {
     try {
         // Users can view their own profile, admins can view any
@@ -1900,6 +2551,29 @@ userRouter.get('/:id', verifyToken, async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/users/{id}:
+ *   put:
+ *     summary: Update user
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateUser'
+ *     responses:
+ *       200:
+ *         description: User updated successfully
+ */
 userRouter.put('/:id', verifyToken, validate(schemas.updateUser), async (req, res) => {
     try {
         // Check permissions
@@ -1983,6 +2657,24 @@ userRouter.put('/:id', verifyToken, validate(schemas.updateUser), async (req, re
     }
 });
 
+/**
+ * @swagger
+ * /api/users/{id}:
+ *   delete:
+ *     summary: Delete user (admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: User deleted successfully
+ */
 userRouter.delete('/:id', verifyToken, requireRole('admin'), async (req, res) => {
     try {
         if (req.params.id === req.user.id) {
@@ -2032,7 +2724,22 @@ userRouter.delete('/:id', verifyToken, requireRole('admin'), async (req, res) =>
 
 app.use('/api/users', userRouter);
 
-// ==================== PROFILE ROUTES ====================
+// ============================================================
+// PROFILE ROUTES
+// ============================================================
+
+/**
+ * @swagger
+ * /api/profile:
+ *   get:
+ *     summary: Get current user profile
+ *     tags: [Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User profile
+ */
 app.get('/api/profile', verifyToken, async (req, res) => {
     res.json({
         status: 'success',
@@ -2040,6 +2747,29 @@ app.get('/api/profile', verifyToken, async (req, res) => {
     });
 });
 
+/**
+ * @swagger
+ * /api/profile:
+ *   put:
+ *     summary: Update current user profile
+ *     tags: [Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               full_name:
+ *                 type: string
+ *               department:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ */
 app.put('/api/profile', verifyToken, validate(Joi.object({ 
     full_name: Joi.string().min(2).max(100).required(),
     department: Joi.string().optional()
@@ -2076,6 +2806,33 @@ app.put('/api/profile', verifyToken, validate(Joi.object({
     }
 });
 
+/**
+ * @swagger
+ * /api/profile/password:
+ *   put:
+ *     summary: Change user password
+ *     tags: [Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - currentPassword
+ *               - newPassword
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *                 minLength: 8
+ *     responses:
+ *       200:
+ *         description: Password updated successfully
+ */
 app.put('/api/profile/password', verifyToken, validate(schemas.changePassword), async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
@@ -2121,9 +2878,41 @@ app.put('/api/profile/password', verifyToken, validate(schemas.changePassword), 
     }
 });
 
-// ==================== ENHANCED MEMBERS ROUTES ====================
+// ============================================================
+// EXECUTIVE MEMBERS ROUTES
+// ============================================================
+
 const memberRouter = express.Router();
 
+/**
+ * @swagger
+ * /api/members:
+ *   get:
+ *     summary: Get all executive members
+ *     tags: [Members]
+ *     parameters:
+ *       - in: query
+ *         name: committee
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [active, inactive, alumni]
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: order
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *     responses:
+ *       200:
+ *         description: List of members
+ */
 memberRouter.get('/', cacheMiddleware(120, ['members']), async (req, res) => {
     try {
         const { committee, status = 'active', sort = 'display_order', order = 'asc' } = req.query;
@@ -2150,6 +2939,24 @@ memberRouter.get('/', cacheMiddleware(120, ['members']), async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/members/{id}:
+ *   get:
+ *     summary: Get member by ID
+ *     tags: [Members]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Member details
+ *       404:
+ *         description: Member not found
+ */
 memberRouter.get('/:id', cacheMiddleware(300, ['members']), async (req, res) => {
     try {
         const result = await db.query('select', 'executive_members', {
@@ -2181,6 +2988,52 @@ memberRouter.get('/:id', cacheMiddleware(300, ['members']), async (req, res) => 
     }
 });
 
+/**
+ * @swagger
+ * /api/members:
+ *   post:
+ *     summary: Create new member (admin/editor only)
+ *     tags: [Members]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - full_name
+ *               - position
+ *             properties:
+ *               full_name:
+ *                 type: string
+ *               position:
+ *                 type: string
+ *               department:
+ *                 type: string
+ *               level:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               bio:
+ *                 type: string
+ *               committee:
+ *                 type: string
+ *               display_order:
+ *                 type: integer
+ *               status:
+ *                 type: string
+ *                 enum: [active, inactive, alumni]
+ *               profile_image:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       201:
+ *         description: Member created successfully
+ */
 memberRouter.post('/', verifyToken, requireRole('admin', 'editor'), upload.single('profile_image'), validate(schemas.createMember), async (req, res) => {
     try {
         const {
@@ -2228,6 +3081,53 @@ memberRouter.post('/', verifyToken, requireRole('admin', 'editor'), upload.singl
     }
 });
 
+/**
+ * @swagger
+ * /api/members/{id}:
+ *   put:
+ *     summary: Update member
+ *     tags: [Members]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               full_name:
+ *                 type: string
+ *               position:
+ *                 type: string
+ *               department:
+ *                 type: string
+ *               level:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               bio:
+ *                 type: string
+ *               committee:
+ *                 type: string
+ *               display_order:
+ *                 type: integer
+ *               status:
+ *                 type: string
+ *               profile_image:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Member updated successfully
+ */
 memberRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), upload.single('profile_image'), async (req, res) => {
     try {
         const memberData = {};
@@ -2290,6 +3190,24 @@ memberRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), upload.sin
     }
 });
 
+/**
+ * @swagger
+ * /api/members/{id}:
+ *   delete:
+ *     summary: Delete member (admin/editor only)
+ *     tags: [Members]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Member deleted successfully
+ */
 memberRouter.delete('/:id', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
     try {
         const result = await db.query('delete', 'executive_members', {
@@ -2327,12 +3245,15 @@ memberRouter.delete('/:id', verifyToken, requireRole('admin', 'editor'), async (
 
 app.use('/api/members', memberRouter);
 
-// ==================== EVENTS ROUTES (UPDATED TO USE biu_events TABLE) ====================
-console.log('🔧 [1] Starting to define eventRouter...');
-const eventRouter = express.Router();
-console.log('✅ [2] eventRouter created successfully');
+// ============================================================
+// EVENTS ROUTES
+// ============================================================
 
-// Test route to verify router is working
+const eventRouter = express.Router();
+
+/**
+ * Test route for events router
+ */
 eventRouter.get('/test', (req, res) => {
     console.log('📡 [TEST] Test route hit at:', new Date().toISOString());
     res.json({ 
@@ -2342,7 +3263,30 @@ eventRouter.get('/test', (req, res) => {
     });
 });
 
-// GET all events (public) - FIXED: changed from 'events' to 'biu_events'
+/**
+ * @swagger
+ * /api/events:
+ *   get:
+ *     summary: Get all events
+ *     tags: [Events]
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [upcoming, past, all]
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: List of events
+ */
 eventRouter.get('/', cacheMiddleware(120, ['biu_events']), async (req, res) => {
     console.log('📡 [3] GET /api/events called at:', new Date().toISOString());
     console.log('📡 [3a] Query params:', req.query);
@@ -2372,7 +3316,7 @@ eventRouter.get('/', cacheMiddleware(120, ['biu_events']), async (req, res) => {
         console.log('📡 [5] Final where clause:', where);
         console.log('📡 [6] Executing database query on biu_events table...');
 
-        const result = await db.query('select', 'biu_events', {  // ← FIXED: 'biu_events' instead of 'events'
+        const result = await db.query('select', 'biu_events', {
             where,
             order: { column: 'date', ascending: status === 'past' ? false : true },
             limit: parseInt(limit)
@@ -2416,12 +3360,29 @@ eventRouter.get('/', cacheMiddleware(120, ['biu_events']), async (req, res) => {
     }
 });
 
-// GET single event by ID - FIXED: changed from 'events' to 'biu_events'
+/**
+ * @swagger
+ * /api/events/{id}:
+ *   get:
+ *     summary: Get event by ID
+ *     tags: [Events]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Event details
+ *       404:
+ *         description: Event not found
+ */
 eventRouter.get('/:id', cacheMiddleware(300, ['biu_events']), async (req, res) => {
     console.log(`📡 GET /api/events/${req.params.id} called`);
     
     try {
-        const result = await db.query('select', 'biu_events', {  // ← FIXED: 'biu_events' instead of 'events'
+        const result = await db.query('select', 'biu_events', {
             where: { id: req.params.id }
         });
 
@@ -2448,12 +3409,21 @@ eventRouter.get('/:id', cacheMiddleware(300, ['biu_events']), async (req, res) =
     }
 });
 
-// Get upcoming events (status = 'upcoming') - FIXED: changed from 'events' to 'biu_events'
+/**
+ * @swagger
+ * /api/events/status/upcoming:
+ *   get:
+ *     summary: Get upcoming events
+ *     tags: [Events]
+ *     responses:
+ *       200:
+ *         description: List of upcoming events
+ */
 eventRouter.get('/status/upcoming', cacheMiddleware(60, ['biu_events']), async (req, res) => {
     console.log('📡 GET /api/events/status/upcoming called');
     
     try {
-        const result = await db.query('select', 'biu_events', {  // ← FIXED: 'biu_events' instead of 'events'
+        const result = await db.query('select', 'biu_events', {
             where: { status: 'upcoming' },
             order: { column: 'date', ascending: true }
         });
@@ -2473,12 +3443,21 @@ eventRouter.get('/status/upcoming', cacheMiddleware(60, ['biu_events']), async (
     }
 });
 
-// Get past events (status = 'past') - FIXED: changed from 'events' to 'biu_events'
+/**
+ * @swagger
+ * /api/events/status/past:
+ *   get:
+ *     summary: Get past events
+ *     tags: [Events]
+ *     responses:
+ *       200:
+ *         description: List of past events
+ */
 eventRouter.get('/status/past', cacheMiddleware(300, ['biu_events']), async (req, res) => {
     console.log('📡 GET /api/events/status/past called');
     
     try {
-        const result = await db.query('select', 'biu_events', {  // ← FIXED: 'biu_events' instead of 'events'
+        const result = await db.query('select', 'biu_events', {
             where: { status: 'past' },
             order: { column: 'date', ascending: false }
         });
@@ -2498,12 +3477,27 @@ eventRouter.get('/status/past', cacheMiddleware(300, ['biu_events']), async (req
     }
 });
 
-// Get events by category - FIXED: changed from 'events' to 'biu_events'
+/**
+ * @swagger
+ * /api/events/category/{category}:
+ *   get:
+ *     summary: Get events by category
+ *     tags: [Events]
+ *     parameters:
+ *       - in: path
+ *         name: category
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of events in category
+ */
 eventRouter.get('/category/:category', cacheMiddleware(120, ['biu_events']), async (req, res) => {
     console.log(`📡 GET /api/events/category/${req.params.category} called`);
     
     try {
-        const result = await db.query('select', 'biu_events', {  // ← FIXED: 'biu_events' instead of 'events'
+        const result = await db.query('select', 'biu_events', {
             where: { category: req.params.category },
             order: { column: 'date', ascending: true }
         });
@@ -2523,7 +3517,50 @@ eventRouter.get('/category/:category', cacheMiddleware(120, ['biu_events']), asy
     }
 });
 
-// CREATE event (admin/editor only) - FIXED: changed from 'events' to 'biu_events'
+/**
+ * @swagger
+ * /api/events:
+ *   post:
+ *     summary: Create new event (admin/editor only)
+ *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - title
+ *               - date
+ *             properties:
+ *               title:
+ *                 type: string
+ *               date:
+ *                 type: string
+ *                 format: date
+ *               description:
+ *                 type: string
+ *               category:
+ *                 type: string
+ *               start_time:
+ *                 type: string
+ *               end_time:
+ *                 type: string
+ *               location:
+ *                 type: string
+ *               organizer:
+ *                 type: string
+ *               max_participants:
+ *                 type: integer
+ *               status:
+ *                 type: string
+ *                 enum: [upcoming, ongoing, past, cancelled]
+ *     responses:
+ *       201:
+ *         description: Event created successfully
+ */
 eventRouter.post('/', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
     console.log('📡 POST /api/events called');
     console.log('📡 Request body:', req.body);
@@ -2572,7 +3609,7 @@ eventRouter.post('/', verifyToken, requireRole('admin', 'editor'), async (req, r
 
         console.log('📡 Inserting event data into biu_events:', eventData);
 
-        const result = await db.query('insert', 'biu_events', { data: eventData });  // ← FIXED: 'biu_events' instead of 'events'
+        const result = await db.query('insert', 'biu_events', { data: eventData });
 
         console.log('✅ Event created with ID:', result.data[0].id);
 
@@ -2601,7 +3638,50 @@ eventRouter.post('/', verifyToken, requireRole('admin', 'editor'), async (req, r
     }
 });
 
-// UPDATE event - FIXED: changed from 'events' to 'biu_events'
+/**
+ * @swagger
+ * /api/events/{id}:
+ *   put:
+ *     summary: Update event (admin/editor only)
+ *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               date:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               category:
+ *                 type: string
+ *               start_time:
+ *                 type: string
+ *               end_time:
+ *                 type: string
+ *               location:
+ *                 type: string
+ *               organizer:
+ *                 type: string
+ *               max_participants:
+ *                 type: integer
+ *               status:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Event updated successfully
+ */
 eventRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
     console.log(`📡 PUT /api/events/${req.params.id} called`);
     console.log('📡 Update data:', req.body);
@@ -2682,12 +3762,29 @@ eventRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (req,
     }
 });
 
-// DELETE event - FIXED: changed from 'events' to 'biu_events'
+/**
+ * @swagger
+ * /api/events/{id}:
+ *   delete:
+ *     summary: Delete event (admin only)
+ *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Event deleted successfully
+ */
 eventRouter.delete('/:id', verifyToken, requireRole('admin'), async (req, res) => {
     console.log(`📡 DELETE /api/events/${req.params.id} called`);
     
     try {
-        const result = await db.query('delete', 'biu_events', {  // ← FIXED: 'biu_events' instead of 'events'
+        const result = await db.query('delete', 'biu_events', {
             where: { id: req.params.id }
         });
 
@@ -2724,67 +3821,18 @@ eventRouter.delete('/:id', verifyToken, requireRole('admin'), async (req, res) =
     }
 });
 
-// ==================== REGISTER THE ROUTER ====================
-console.log('🔧 [11] Attempting to register /api/events router...');
-console.log('🔧 [11a] Current time:', new Date().toISOString());
-console.log('🔧 [11b] Is eventRouter defined?', eventRouter ? 'Yes' : 'No');
-console.log('🔧 [11c] eventRouter type:', typeof eventRouter);
+app.use('/api/events', eventRouter);
+console.log('✅ [12] /api/events router registered');
 
-// Register the events router
-try {
-    app.use('/api/events', eventRouter);
-    console.log('✅ [12] SUCCESS! /api/events router registered');
-    
-    // Verify the router was registered
-    const registeredRoutes = app._router?.stack
-        .filter(layer => layer.route || layer.name === 'router')
-        .map(layer => {
-            if (layer.route) {
-                return `${Object.keys(layer.route.methods).join(',')} ${layer.route.path}`;
-            }
-            if (layer.name === 'router' && layer.regexp) {
-                return `Router: ${layer.regexp}`;
-            }
-            return null;
-        })
-        .filter(Boolean);
-    
-    console.log('🔧 [13] Currently registered routes:', registeredRoutes);
-    
-} catch (error) {
-    console.error('❌ [ERROR] Failed to register /api/events router:', error.message);
-}
+// ============================================================
+// RESOURCES ROUTES
+// ============================================================
 
-// Improved health check endpoint
-app.get('/api/health', async (req, res) => {
-    try {
-        // Try to query the database
-        const dbStatus = await db.query('select', 'biu_events', { limit: 1 })
-            .then(() => ({ status: 'healthy' }))
-            .catch(err => ({ status: 'unhealthy', error: err.message }));
-
-        res.status(200).json({
-            status: 'healthy',
-            database: dbStatus,
-            uptime: process.uptime(),
-            timestamp: new Date().toISOString(),
-            version: '1.0.0'
-        });
-    } catch (error) {
-        res.status(200).json({ // Always return 200 for health checks
-            status: 'degraded',
-            message: 'Partial service disruption',
-            timestamp: new Date().toISOString()
-        });
-    }
-});
-
-// ==================== RESOURCES ROUTES ====================
-console.log('🔧 [R1] Starting to define resourceRouter...');
 const resourceRouter = express.Router();
-console.log('✅ [R2] resourceRouter created successfully');
 
-// Test route to verify router is working
+/**
+ * Test route for resources router
+ */
 resourceRouter.get('/test', (req, res) => {
     console.log('📡 [TEST] Resources test route hit at:', new Date().toISOString());
     res.json({ 
@@ -2794,7 +3842,45 @@ resourceRouter.get('/test', (req, res) => {
     });
 });
 
-// GET all resources (public)
+/**
+ * @swagger
+ * /api/resources:
+ *   get:
+ *     summary: Get all resources
+ *     tags: [Resources]
+ *     parameters:
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: department
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: level
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: course_code
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: year
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: semester
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: List of resources
+ */
 resourceRouter.get('/', cacheMiddleware(120, ['resources']), async (req, res) => {
     console.log('📡 [R3] GET /api/resources called at:', new Date().toISOString());
     console.log('📡 [R3a] Query params:', req.query);
@@ -2869,12 +3955,6 @@ resourceRouter.get('/', cacheMiddleware(120, ['resources']), async (req, res) =>
         } else {
             console.log('📡 [R8] No resources found');
         }
-        
-        console.log('📡 [R9] Response structure:', {
-            status: 'success',
-            dataCount: result.data.length,
-            hasData: result.data.length > 0
-        });
 
         res.json({
             status: 'success',
@@ -2911,7 +3991,37 @@ resourceRouter.get('/', cacheMiddleware(120, ['resources']), async (req, res) =>
     }
 });
 
-// GET resources by category (for backward compatibility with your frontend)
+/**
+ * @swagger
+ * /api/resources/past-questions:
+ *   get:
+ *     summary: Get past questions (legacy endpoint)
+ *     tags: [Resources]
+ *     parameters:
+ *       - in: query
+ *         name: department
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: level
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: course_code
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: year
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: semester
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of past questions
+ */
 resourceRouter.get('/past-questions', cacheMiddleware(120, ['resources']), async (req, res) => {
     console.log('📡 [R11] GET /api/resources/past-questions called');
     console.log('📡 [R11a] Query params:', req.query);
@@ -2999,7 +4109,24 @@ resourceRouter.get('/past-questions', cacheMiddleware(120, ['resources']), async
     }
 });
 
-// GET single resource by ID
+/**
+ * @swagger
+ * /api/resources/{id}:
+ *   get:
+ *     summary: Get resource by ID
+ *     tags: [Resources]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Resource details
+ *       404:
+ *         description: Resource not found
+ */
 resourceRouter.get('/:id', cacheMiddleware(300, ['resources']), async (req, res) => {
     console.log(`📡 [R18] GET /api/resources/${req.params.id} called`);
     
@@ -3042,7 +4169,49 @@ resourceRouter.get('/:id', cacheMiddleware(300, ['resources']), async (req, res)
     }
 });
 
-// CREATE resource (admin/editor only)
+/**
+ * @swagger
+ * /api/resources:
+ *   post:
+ *     summary: Create new resource (admin/editor only)
+ *     tags: [Resources]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - title
+ *               - category
+ *             properties:
+ *               title:
+ *                 type: string
+ *               category:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               department:
+ *                 type: string
+ *               level:
+ *                 type: integer
+ *               course_code:
+ *                 type: string
+ *               course_title:
+ *                 type: string
+ *               year:
+ *                 type: string
+ *               semester:
+ *                 type: string
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       201:
+ *         description: Resource created successfully
+ */
 resourceRouter.post('/', verifyToken, requireRole('admin', 'editor'), upload.single('file'), async (req, res) => {
     console.log('📡 [R22] POST /api/resources called');
     console.log('📡 [R22a] Request body:', req.body);
@@ -3141,7 +4310,50 @@ resourceRouter.post('/', verifyToken, requireRole('admin', 'editor'), upload.sin
     }
 });
 
-// UPDATE resource
+/**
+ * @swagger
+ * /api/resources/{id}:
+ *   put:
+ *     summary: Update resource (admin/editor only)
+ *     tags: [Resources]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               category:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               department:
+ *                 type: string
+ *               level:
+ *                 type: integer
+ *               course_code:
+ *                 type: string
+ *               course_title:
+ *                 type: string
+ *               year:
+ *                 type: string
+ *               semester:
+ *                 type: string
+ *               file_url:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Resource updated successfully
+ */
 resourceRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
     console.log(`📡 [R28] PUT /api/resources/${req.params.id} called`);
     console.log('📡 [R28a] Update data:', req.body);
@@ -3232,7 +4444,24 @@ resourceRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (r
     }
 });
 
-// DELETE resource
+/**
+ * @swagger
+ * /api/resources/{id}:
+ *   delete:
+ *     summary: Delete resource (admin only)
+ *     tags: [Resources]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Resource deleted successfully
+ */
 resourceRouter.delete('/:id', verifyToken, requireRole('admin'), async (req, res) => {
     console.log(`📡 [R34] DELETE /api/resources/${req.params.id} called`);
     
@@ -3284,7 +4513,22 @@ resourceRouter.delete('/:id', verifyToken, requireRole('admin'), async (req, res
     }
 });
 
-// Increment download count
+/**
+ * @swagger
+ * /api/resources/{id}/download:
+ *   post:
+ *     summary: Increment download count for resource
+ *     tags: [Resources]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Download count updated
+ */
 resourceRouter.post('/:id/download', async (req, res) => {
     console.log(`📡 [R38] POST /api/resources/${req.params.id}/download called`);
     
@@ -3346,7 +4590,16 @@ resourceRouter.post('/:id/download', async (req, res) => {
     }
 });
 
-// Get unique categories for filtering
+/**
+ * @swagger
+ * /api/resources/meta/categories:
+ *   get:
+ *     summary: Get unique resource categories
+ *     tags: [Resources]
+ *     responses:
+ *       200:
+ *         description: List of categories
+ */
 resourceRouter.get('/meta/categories', async (req, res) => {
     console.log('📡 [R44] GET /api/resources/meta/categories called');
     
@@ -3373,7 +4626,16 @@ resourceRouter.get('/meta/categories', async (req, res) => {
     }
 });
 
-// Get unique departments for filtering
+/**
+ * @swagger
+ * /api/resources/meta/departments:
+ *   get:
+ *     summary: Get unique resource departments
+ *     tags: [Resources]
+ *     responses:
+ *       200:
+ *         description: List of departments
+ */
 resourceRouter.get('/meta/departments', async (req, res) => {
     console.log('📡 [R46] GET /api/resources/meta/departments called');
     
@@ -3400,7 +4662,21 @@ resourceRouter.get('/meta/departments', async (req, res) => {
     }
 });
 
-// Get unique course codes for filtering
+/**
+ * @swagger
+ * /api/resources/meta/courses:
+ *   get:
+ *     summary: Get unique course codes with titles
+ *     tags: [Resources]
+ *     parameters:
+ *       - in: query
+ *         name: department
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of courses
+ */
 resourceRouter.get('/meta/courses', async (req, res) => {
     console.log('📡 [R48] GET /api/resources/meta/courses called');
     console.log('📡 [R48a] Query params:', req.query);
@@ -3435,58 +4711,51 @@ resourceRouter.get('/meta/courses', async (req, res) => {
     }
 });
 
-// ==================== REGISTER THE ROUTER ====================
-console.log('🔧 [R51] Attempting to register /api/resources router...');
-console.log('🔧 [R51a] Current time:', new Date().toISOString());
-console.log('🔧 [R51b] Is resourceRouter defined?', resourceRouter ? 'Yes' : 'No');
-console.log('🔧 [R51c] resourceRouter type:', typeof resourceRouter);
+app.use('/api/resources', resourceRouter);
+console.log('✅ [R52] /api/resources router registered');
 
-// Register the resources router
-try {
-    app.use('/api/resources', resourceRouter);
-    console.log('✅ [R52] SUCCESS! /api/resources router registered');
-    
-    // Log all registered routes for verification
-    const registeredRoutes = app._router?.stack
-        .filter(layer => layer.route || layer.name === 'router')
-        .map(layer => {
-            if (layer.route) {
-                return `${Object.keys(layer.route.methods).join(',')} ${layer.route.path}`;
-            }
-            if (layer.name === 'router' && layer.regexp) {
-                return `Router: ${layer.regexp}`;
-            }
-            return null;
-        })
-        .filter(Boolean);
-    
-    console.log('🔧 [R53] Currently registered routes:', registeredRoutes);
-    
-} catch (error) {
-    console.error('❌ [R-ERROR] Failed to register /api/resources router:', error.message);
-}
+// ============================================================
+// ARTICLES/NEWS ROUTES
+// ============================================================
 
-console.log('🔧 [R54] Resources router setup complete');
-
-// ==================== ARTICLES/NEWS ROUTES ====================
-console.log('🔧 [A1] Setting up articles/news routes...');
 const articleRouter = express.Router();
 
-// Validation schema for articles
-const articleSchema = Joi.object({
-    title: Joi.string().required(),
-    slug: Joi.string().optional(),
-    content: Joi.string().required(),
-    excerpt: Joi.string().optional(),
-    author: Joi.string().optional(),
-    category: Joi.string().optional(),
-    tags: Joi.array().items(Joi.string()).default([]),
-    status: Joi.string().valid('draft', 'published').default('draft'),
-    is_published: Joi.boolean().default(false),
-    published_at: Joi.date().optional()
-});
-
-// GET all published articles (public)
+/**
+ * @swagger
+ * /api/articles:
+ *   get:
+ *     summary: Get all published articles
+ *     tags: [Articles]
+ *     parameters:
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: tag
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: order
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *     responses:
+ *       200:
+ *         description: List of articles
+ */
 articleRouter.get('/', cacheMiddleware(120, ['articles']), async (req, res) => {
     try {
         const { 
@@ -3548,7 +4817,24 @@ articleRouter.get('/', cacheMiddleware(120, ['articles']), async (req, res) => {
     }
 });
 
-// GET single article by slug or id (public)
+/**
+ * @swagger
+ * /api/articles/{identifier}:
+ *   get:
+ *     summary: Get article by ID or slug
+ *     tags: [Articles]
+ *     parameters:
+ *       - in: path
+ *         name: identifier
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Article details
+ *       404:
+ *         description: Article not found
+ */
 articleRouter.get('/:identifier', cacheMiddleware(300, ['articles']), async (req, res) => {
     try {
         const { identifier } = req.params;
@@ -3590,7 +4876,22 @@ articleRouter.get('/:identifier', cacheMiddleware(300, ['articles']), async (req
     }
 });
 
-// GET articles by category (public)
+/**
+ * @swagger
+ * /api/articles/category/{category}:
+ *   get:
+ *     summary: Get articles by category
+ *     tags: [Articles]
+ *     parameters:
+ *       - in: path
+ *         name: category
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of articles in category
+ */
 articleRouter.get('/category/:category', cacheMiddleware(120, ['articles']), async (req, res) => {
     try {
         const result = await db.query('select', 'articles', {
@@ -3616,8 +4917,25 @@ articleRouter.get('/category/:category', cacheMiddleware(120, ['articles']), asy
     }
 });
 
-// CREATE article (admin/editor only)
-articleRouter.post('/', verifyToken, requireRole('admin', 'editor'), validate(articleSchema), async (req, res) => {
+/**
+ * @swagger
+ * /api/articles:
+ *   post:
+ *     summary: Create new article (admin/editor only)
+ *     tags: [Articles]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Article'
+ *     responses:
+ *       201:
+ *         description: Article created successfully
+ */
+articleRouter.post('/', verifyToken, requireRole('admin', 'editor'), validate(schemas.article), async (req, res) => {
     try {
         const {
             title, slug, content, excerpt, author,
@@ -3684,7 +5002,29 @@ articleRouter.post('/', verifyToken, requireRole('admin', 'editor'), validate(ar
     }
 });
 
-// UPDATE article
+/**
+ * @swagger
+ * /api/articles/{uuid}:
+ *   put:
+ *     summary: Update article (admin/editor only)
+ *     tags: [Articles]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: uuid
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Article'
+ *     responses:
+ *       200:
+ *         description: Article updated successfully
+ */
 articleRouter.put('/:uuid', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
     try {
         const allowedFields = [
@@ -3744,7 +5084,24 @@ articleRouter.put('/:uuid', verifyToken, requireRole('admin', 'editor'), async (
     }
 });
 
-// DELETE article
+/**
+ * @swagger
+ * /api/articles/{uuid}:
+ *   delete:
+ *     summary: Delete article (admin only)
+ *     tags: [Articles]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: uuid
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Article deleted successfully
+ */
 articleRouter.delete('/:uuid', verifyToken, requireRole('admin'), async (req, res) => {
     try {
         const result = await db.query('delete', 'articles', {
@@ -3784,7 +5141,16 @@ articleRouter.delete('/:uuid', verifyToken, requireRole('admin'), async (req, re
     }
 });
 
-// GET meta data for filtering
+/**
+ * @swagger
+ * /api/articles/meta/categories:
+ *   get:
+ *     summary: Get unique article categories
+ *     tags: [Articles]
+ *     responses:
+ *       200:
+ *         description: List of categories
+ */
 articleRouter.get('/meta/categories', async (req, res) => {
     try {
         const result = await db.query('select', 'articles', {
@@ -3811,6 +5177,16 @@ articleRouter.get('/meta/categories', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/articles/meta/tags:
+ *   get:
+ *     summary: Get unique article tags
+ *     tags: [Articles]
+ *     responses:
+ *       200:
+ *         description: List of tags
+ */
 articleRouter.get('/meta/tags', async (req, res) => {
     try {
         const result = await db.query('select', 'articles', {
@@ -3842,16 +5218,36 @@ articleRouter.get('/meta/tags', async (req, res) => {
     }
 });
 
-// Register the articles router
-try {
-    app.use('/api/articles', articleRouter);
-    app.use('/api/news', articleRouter); // Also support /api/news endpoint
-    console.log('✅ Articles/News router registered at /api/articles and /api/news');
-} catch (error) {
-    console.error('❌ Failed to register articles router:', error.message);
-}
+app.use('/api/articles', articleRouter);
+app.use('/api/news', articleRouter); // Alias for backward compatibility
+console.log('✅ Articles/News router registered at /api/articles and /api/news');
 
-// ==================== FILE MANAGEMENT ROUTES ====================
+// ============================================================
+// FILE MANAGEMENT ROUTES
+// ============================================================
+
+/**
+ * @swagger
+ * /api/upload:
+ *   post:
+ *     summary: Upload a file (admin/editor only)
+ *     tags: [Files]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: File uploaded successfully
+ */
 app.post('/api/upload', verifyToken, requireRole('admin', 'editor'), upload.single('file'), async (req, res) => {
     try {
         if (!req.file) {
@@ -3898,6 +5294,24 @@ app.post('/api/upload', verifyToken, requireRole('admin', 'editor'), upload.sing
     }
 });
 
+/**
+ * @swagger
+ * /api/upload/{filename}:
+ *   delete:
+ *     summary: Delete a file (admin only)
+ *     tags: [Files]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: filename
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: File deleted successfully
+ */
 app.delete('/api/upload/:filename', verifyToken, requireRole('admin'), async (req, res) => {
     try {
         const filePath = path.join(__dirname, 'uploads', req.params.filename);
@@ -3928,7 +5342,42 @@ app.delete('/api/upload/:filename', verifyToken, requireRole('admin'), async (re
     }
 });
 
-// ==================== PUBLIC PAGES ROUTING ====================
+// ============================================================
+// STATIC FILES SERVING
+// ============================================================
+
+/**
+ * Serve uploaded files with proper headers
+ */
+app.use('/uploads', compression(), express.static(path.join(__dirname, 'uploads'), {
+    maxAge: IS_PRODUCTION ? '30d' : '0',
+    setHeaders: (res, filePath) => {
+        const ext = path.extname(filePath).toLowerCase();
+        const mimeType = mime.lookup(ext) || 'application/octet-stream';
+
+        // Security headers for files
+        if (ext.match(/\.(jpg|jpeg|png|gif|webp|svg)$/)) {
+            res.setHeader('Content-Disposition', 'inline');
+        } else {
+            res.setHeader('Content-Disposition', 'attachment');
+        }
+
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Content-Type', mimeType);
+
+        // Cache control
+        if (ext.match(/\.(jpg|jpeg|png|gif|webp|svg)$/)) {
+            res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+        } else if (ext.match(/\.(pdf|docx|xlsx|pptx)$/)) {
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+    }
+}));
+
+// ============================================================
+// PUBLIC PAGES ROUTING
+// ============================================================
+
 const adminDir = path.join(__dirname, 'admin');
 const publicDir = path.join(__dirname, 'public');
 const adminExists = fsSync.existsSync(adminDir);
@@ -3981,62 +5430,13 @@ if (publicExists) {
     console.log('✅ Public pages served from /public folder');
 }
 
-// ==================== EXPLICIT ADMIN LOGIN ENDPOINT ====================
-// Make sure this is BEFORE your hidden admin routing section
+// ============================================================
+// ADMIN INTERFACE ROUTING
+// ============================================================
 
-// Admin login endpoint - explicitly defined
-app.post('/api/admin/login', async (req, res) => {
-    console.log('📡 Admin login API called at:', new Date().toISOString());
-    console.log('📡 Request body:', { email: req.body.email, password: '***' });
-    
-    try {
-        const { email, password } = req.body;
-        
-        if (!email || !password) {
-            return res.status(400).json({
-                status: 'error',
-                code: 'MISSING_FIELDS',
-                message: 'Email and password are required'
-            });
-        }
-        
-        // Import and use your existing adminLoginHandler
-        // Copy the adminLoginHandler function from your code and call it here
-        await adminLoginHandler(req, res);
-        
-    } catch (error) {
-        console.error('❌ Admin login API error:', error);
-        res.status(500).json({
-            status: 'error',
-            code: 'INTERNAL_ERROR',
-            message: error.message || 'Login failed'
-        });
-    }
-});
-
-// Also add a test endpoint to verify the route works
-app.get('/api/admin/test', (req, res) => {
-    res.json({ 
-        status: 'success', 
-        message: 'Admin API is working',
-        timestamp: new Date().toISOString()
-    });
-});
-
-// ==================== SIMPLIFIED ADMIN ROUTING ====================
 if (adminExists) {
     console.log('✅ Admin folder found at:', adminDir);
     console.log('📄 Files in admin folder:', fsSync.readdirSync(adminDir));
-        
-    // Add this to your server
-    app.get('/api/admin/csrf-token', csrfProtection, (req, res) => {
-        res.json({
-            status: 'success',
-            csrfToken: req.csrfToken()
-        });
-    });
-        
-        // ==================== SIMPLIFIED ADMIN ROUTES ====================
 
     // 1. ADMIN LOGIN API ENDPOINT (MUST COME FIRST)
     app.post('/api/admin/login', async (req, res) => {
@@ -4144,39 +5544,7 @@ if (adminExists) {
     console.log('   • GET  /admin/logout     - Logout');
     console.log('   • GET  /admin/status     - Status check');
 
-
-    // ==================== ADMIN LOGOUT ====================
-    app.get('/admin/logout', (req, res) => {
-        console.log('🚪 Admin logout');
-        
-        // Clear all possible admin cookies
-        const cookieOptions = {
-            path: '/',
-            httpOnly: true,
-            secure: isProduction,
-            sameSite: 'lax'
-        };
-        
-        res.clearCookie('admin_session', cookieOptions);
-        res.clearCookie('admin_token', cookieOptions);
-        res.clearCookie('auth_token', cookieOptions);
-        res.clearCookie('token', cookieOptions);
-        
-        // Redirect to login page
-        res.redirect('/admin/login');
-    });
-    
-    // ==================== ADMIN API STATUS CHECK ====================
-    app.get('/admin/status', (req, res) => {
-        res.json({
-            status: 'success',
-            isAdmin: req.isAdmin || false,
-            authenticated: !!req.admin,
-            timestamp: new Date().toISOString()
-        });
-    });
-    
-    // ==================== SIMPLE ASSET SERVING ====================
+    // Simple asset serving for admin
     app.get('/admin/assets/:filename', (req, res) => {
         try {
             const { filename } = req.params;
@@ -4198,25 +5566,101 @@ if (adminExists) {
         }
     });
     
-    // ==================== REDIRECT OLD PATHS ====================
-    app.get('/portal/login', (req, res) => res.redirect('/admin/login'));
-    app.get('/portal/system', (req, res) => res.redirect('/admin/dashboard'));
-    app.get('/portal/logout', (req, res) => res.redirect('/admin/logout'));
-    
-    console.log('✅ Simplified admin system activated:');
-    console.log('   • Admin login: /admin/login');
-    console.log('   • Admin dashboard: /admin/dashboard');
-    console.log('   • Admin logout: /admin/logout');
-    console.log('   • Admin assets: /admin/assets/[filename]');
-    console.log('   • Admin status: /admin/status');
-    console.log('   • Old /portal/* paths redirect to new ones');
-    
 } else {
     console.log('⚠️ Admin folder not found at:', adminDir);
     console.log('⚠️ Please ensure admin folder contains: adlog.html and dash.html');
 }
 
-// ==================== SWAGGER API DOCUMENTATION ====================
+// Add this near your other routes (around line 2000)
+app.post('/api/debug/login-test', async (req, res) => {
+    const { email, password } = req.body;
+    const requestId = req.id;
+    
+    try {
+        console.log(`\n🔍 [${requestId}] DEBUG: Testing login for:`, email);
+        
+        // Step 1: Check if we can connect to database
+        console.log(`[${requestId}] Step 1: Testing database connection...`);
+        const testQuery = await supabase.from('users').select('count').limit(1);
+        console.log(`[${requestId}] Step 1 result:`, testQuery.error ? 'FAILED' : 'OK');
+        
+        // Step 2: Try to find user
+        console.log(`[${requestId}] Step 2: Looking up user...`);
+        const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('id, email, full_name, role, is_active, password_hash')
+            .eq('email', email.toLowerCase().trim());
+        
+        if (userError) {
+            console.log(`[${requestId}] Step 2 error:`, userError);
+            return res.json({ step: 2, error: userError });
+        }
+        
+        console.log(`[${requestId}] Step 2 result: Found ${userData.length} users`);
+        
+        if (userData.length === 0) {
+            return res.json({ step: 2, message: 'User not found' });
+        }
+        
+        const user = userData[0];
+        console.log(`[${requestId}] Step 3: User found - ID: ${user.id}, Role: ${user.role}, Active: ${user.is_active}`);
+        
+        // Step 3: Test password comparison
+        console.log(`[${requestId}] Step 3: Testing password...`);
+        console.log(`[${requestId}] Password hash from DB:`, user.password_hash ? `${user.password_hash.substring(0, 20)}...` : 'MISSING');
+        
+        const isValid = await bcrypt.compare(password, user.password_hash);
+        console.log(`[${requestId}] Step 3 result: Password valid = ${isValid}`);
+        
+        // Step 4: Check JWT
+        console.log(`[${requestId}] Step 4: Testing JWT generation...`);
+        console.log(`[${requestId}] JWT_SECRET exists:`, !!process.env.JWT_SECRET);
+        
+        const token = jwt.sign(
+            { userId: user.id, email: user.email, role: user.role },
+            process.env.JWT_SECRET,
+            { expiresIn: '8h' }
+        );
+        console.log(`[${requestId}] Step 4 result: Token generated (length: ${token.length})`);
+        
+        res.json({
+            success: true,
+            steps: {
+                database: 'OK',
+                userFound: true,
+                userActive: user.is_active,
+                passwordValid: isValid,
+                jwtWorking: true
+            },
+            userInfo: {
+                id: user.id,
+                email: user.email,
+                role: user.role,
+                hashExists: !!user.password_hash
+            }
+        });
+        
+    } catch (error) {
+        console.error(`❌ [${requestId}] DEBUG ERROR:`, {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+        });
+        res.json({
+            success: false,
+            error: {
+                message: error.message,
+                name: error.name,
+                stack: error.stack
+            }
+        });
+    }
+});
+
+// ============================================================
+// SWAGGER API DOCUMENTATION
+// ============================================================
+
 const swaggerOptions = {
     definition: {
         openapi: '3.0.0',
@@ -4231,8 +5675,8 @@ const swaggerOptions = {
         },
         servers: [
             {
-                url: isProduction ? 'https://nuesa-biu-pjp0.onrender.com' : `http://localhost:${PORT}`,
-                description: isProduction ? 'Production server' : 'Development server'
+                url: IS_PRODUCTION ? 'https://nuesa-biu-pjp0.onrender.com' : `http://localhost:${PORT}`,
+                description: IS_PRODUCTION ? 'Production server' : 'Development server'
             }
         ],
         components: {
@@ -4251,8 +5695,24 @@ const swaggerOptions = {
 const swaggerSpecs = swaggerJsdoc(swaggerOptions);
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
-// ==================== SYSTEM ENDPOINTS ====================
-// Enhanced health check
+// ============================================================
+// SYSTEM ENDPOINTS
+// ============================================================
+
+/**
+ * Helper function to format bytes to human-readable format
+ */
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+/**
+ * Check database health
+ */
 async function checkDatabase() {
     try {
         const start = Date.now();
@@ -4264,6 +5724,9 @@ async function checkDatabase() {
     }
 }
 
+/**
+ * Check cache health
+ */
 async function checkCache() {
     try {
         if (redis) {
@@ -4277,6 +5740,9 @@ async function checkCache() {
     }
 }
 
+/**
+ * Check disk space
+ */
 async function checkDiskSpace() {
     try {
         if (process.platform !== 'win32') {
@@ -4300,6 +5766,9 @@ async function checkDiskSpace() {
     }
 }
 
+/**
+ * Check memory usage
+ */
 function checkMemory() {
     const memory = process.memoryUsage();
     return {
@@ -4311,14 +5780,55 @@ function checkMemory() {
     };
 }
 
-function formatBytes(bytes) {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
+/**
+ * Helper functions for metrics (simplified)
+ */
+async function getRequestCount() { return 0; }
+async function getEndpointStats() { return {}; }
+async function getStatusStats() { return {}; }
+async function getAvgResponseTime() { return '0ms'; }
+async function getP95ResponseTime() { return '0ms'; }
 
+/**
+ * @swagger
+ * /api/health:
+ *   get:
+ *     summary: Health check endpoint
+ *     tags: [System]
+ *     responses:
+ *       200:
+ *         description: Server health status
+ */
+app.get('/api/health', async (req, res) => {
+    try {
+        const dbStatus = await checkDatabase();
+
+        res.status(200).json({
+            status: 'healthy',
+            database: dbStatus,
+            uptime: process.uptime(),
+            timestamp: new Date().toISOString(),
+            version: '1.0.0'
+        });
+    } catch (error) {
+        res.status(200).json({ // Always return 200 for health checks
+            status: 'degraded',
+            message: 'Partial service disruption',
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+/**
+ * @swagger
+ * /api/ping:
+ *   get:
+ *     summary: Simple ping endpoint
+ *     tags: [System]
+ *     responses:
+ *       200:
+ *         description: Returns pong
+ */
 app.get('/api/ping', (req, res) => {
     res.json({
         status: 'success',
@@ -4329,10 +5839,20 @@ app.get('/api/ping', (req, res) => {
     });
 });
 
-// Metrics endpoint
+/**
+ * @swagger
+ * /api/metrics:
+ *   get:
+ *     summary: Get system metrics (admin only)
+ *     tags: [System]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: System metrics
+ */
 app.get('/api/metrics', verifyToken, requireRole('admin'), async (req, res) => {
     try {
-        // Get request stats from logs (simplified)
         const metrics = {
             requests: {
                 total: await getRequestCount(),
@@ -4367,28 +5887,18 @@ app.get('/api/metrics', verifyToken, requireRole('admin'), async (req, res) => {
     }
 });
 
-// Helper functions for metrics 
-async function getRequestCount() {
-    // In production, you'd query this from your logs or a database
-    return 0;
-}
-
-async function getEndpointStats() {
-    return {};
-}
-
-async function getStatusStats() {
-    return {};
-}
-
-async function getAvgResponseTime() {
-    return '0ms';
-}
-
-async function getP95ResponseTime() {
-    return '0ms';
-}
-
+/**
+ * @swagger
+ * /api/stats:
+ *   get:
+ *     summary: Get basic statistics (admin only)
+ *     tags: [System]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: System statistics
+ */
 app.get('/api/stats', verifyToken, requireRole('admin'), async (req, res) => {
     try {
         const [users, members, cacheStats] = await Promise.all([
@@ -4417,69 +5927,9 @@ app.get('/api/stats', verifyToken, requireRole('admin'), async (req, res) => {
     }
 });
 
-// Debug endpoints (only in development)
-if (!isProduction) {
-    app.get('/api/debug/env', (req, res) => {
-        res.json({
-            admin_email: process.env.ADMIN_EMAIL ? '✓ Set' : '✗ Missing',
-            admin_password: process.env.ADMIN_PASSWORD ? '✓ Set' : '✗ Missing',
-            jwt_secret: process.env.JWT_SECRET ? '✓ Set' : '✗ Missing',
-            supabase_url: process.env.SUPABASE_URL ? '✓ Set' : '✗ Missing',
-            supabase_key: process.env.SUPABASE_SERVICE_ROLE_KEY ? '✓ Set' : '✗ Missing',
-            node_env: process.env.NODE_ENV,
-            redis: process.env.REDIS_URL ? '✓ Set' : '✗ Missing',
-            requestId: req.id
-        });
-    });
-
-    app.get('/api/debug/db', async (req, res) => {
-        try {
-            const result = await db.query('select', 'users', { limit: 1 });
-            res.json({
-                status: 'connected',
-                message: 'Database connection successful',
-                data: result.data,
-                stats: db.getStats(),
-                requestId: req.id
-            });
-        } catch (error) {
-            res.status(500).json({
-                status: 'error',
-                message: error.message,
-                code: error.code,
-                requestId: req.id
-            });
-        }
-    });
-}
-
-// ==================== STATIC FILES ====================
-app.use('/uploads', compression(), express.static(path.join(__dirname, 'uploads'), {
-    maxAge: isProduction ? '30d' : '0',
-    setHeaders: (res, filePath) => {
-        const ext = path.extname(filePath).toLowerCase();
-        const mimeType = mime.lookup(ext) || 'application/octet-stream';
-
-        // Security headers for files
-        if (ext.match(/\.(jpg|jpeg|png|gif|webp|svg)$/)) {
-            res.setHeader('Content-Disposition', 'inline');
-        } else {
-            res.setHeader('Content-Disposition', 'attachment');
-        }
-
-        res.setHeader('X-Content-Type-Options', 'nosniff');
-        res.setHeader('Content-Type', mimeType);
-
-        // Cache control
-        if (ext.match(/\.(jpg|jpeg|png|gif|webp|svg)$/)) {
-            res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
-        } else if (ext.match(/\.(pdf|docx|xlsx|pptx)$/)) {
-            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-        }
-    }
-}));
-
-// ==================== ROOT ENDPOINTS ====================
+/**
+ * Root API endpoint
+ */
 app.get('/api', (req, res) => {
     res.json({
         message: 'NUESA BIU API Server',
@@ -4506,46 +5956,95 @@ app.get('/api', (req, res) => {
     });
 });
 
-// ==================== TEMPORARY DEBUG ENDPOINTS ====================
-// ADD THIS BEFORE startServer() function
+// ============================================================
+// DEBUG ENDPOINTS (Development Only)
+// ============================================================
 
-// Add this debug endpoint temporarily
-app.get('/api/debug/admin-paths', (req, res) => {
-    const paths = {
-        __dirname: __dirname,
-        cwd: process.cwd(),
-        adminDir: path.join(__dirname, 'admin'),
-        adminDirCwd: path.join(process.cwd(), 'admin'),
-    };
-    
-    const exists = {
-        adminDir: fsSync.existsSync(paths.adminDir),
-        adminDirCwd: fsSync.existsSync(paths.adminDirCwd),
-        adlogInAdmin: fsSync.existsSync(path.join(__dirname, 'admin', 'adlog.html')),
-        adlogInCwd: fsSync.existsSync(path.join(process.cwd(), 'admin', 'adlog.html')),
-    };
-    
-    const files = {};
-    if (exists.adminDir) {
-        files.adminDir = fsSync.readdirSync(paths.adminDir);
-    }
-    if (exists.adminDirCwd) {
-        files.adminDirCwd = fsSync.readdirSync(paths.adminDirCwd);
-    }
-    
-    res.json({ paths, exists, files });
-});
-
-// Also add a simple test endpoint
-app.get('/api/debug/test', (req, res) => {
-    res.json({ 
-        message: 'Debug endpoint working',
-        timestamp: new Date().toISOString(),
-        requestId: req.id 
+if (!IS_PRODUCTION) {
+    /**
+     * Debug: Show environment variables (masked)
+     */
+    app.get('/api/debug/env', (req, res) => {
+        res.json({
+            admin_email: process.env.ADMIN_EMAIL ? '✓ Set' : '✗ Missing',
+            admin_password: process.env.ADMIN_PASSWORD ? '✓ Set' : '✗ Missing',
+            jwt_secret: process.env.JWT_SECRET ? '✓ Set' : '✗ Missing',
+            supabase_url: process.env.SUPABASE_URL ? '✓ Set' : '✗ Missing',
+            supabase_key: process.env.SUPABASE_SERVICE_ROLE_KEY ? '✓ Set' : '✗ Missing',
+            node_env: process.env.NODE_ENV,
+            redis: process.env.REDIS_URL ? '✓ Set' : '✗ Missing',
+            requestId: req.id
+        });
     });
-});
 
-// ==================== 404 HANDLER ====================
+    /**
+     * Debug: Test database connection
+     */
+    app.get('/api/debug/db', async (req, res) => {
+        try {
+            const result = await db.query('select', 'users', { limit: 1 });
+            res.json({
+                status: 'connected',
+                message: 'Database connection successful',
+                data: result.data,
+                stats: db.getStats(),
+                requestId: req.id
+            });
+        } catch (error) {
+            res.status(500).json({
+                status: 'error',
+                message: error.message,
+                code: error.code,
+                requestId: req.id
+            });
+        }
+    });
+
+    /**
+     * Debug: Check admin paths
+     */
+    app.get('/api/debug/admin-paths', (req, res) => {
+        const paths = {
+            __dirname: __dirname,
+            cwd: process.cwd(),
+            adminDir: path.join(__dirname, 'admin'),
+            adminDirCwd: path.join(process.cwd(), 'admin'),
+        };
+        
+        const exists = {
+            adminDir: fsSync.existsSync(paths.adminDir),
+            adminDirCwd: fsSync.existsSync(paths.adminDirCwd),
+            adlogInAdmin: fsSync.existsSync(path.join(__dirname, 'admin', 'adlog.html')),
+            adlogInCwd: fsSync.existsSync(path.join(process.cwd(), 'admin', 'adlog.html')),
+        };
+        
+        const files = {};
+        if (exists.adminDir) {
+            files.adminDir = fsSync.readdirSync(paths.adminDir);
+        }
+        if (exists.adminDirCwd) {
+            files.adminDirCwd = fsSync.readdirSync(paths.adminDirCwd);
+        }
+        
+        res.json({ paths, exists, files });
+    });
+
+    /**
+     * Debug: Simple test endpoint
+     */
+    app.get('/api/debug/test', (req, res) => {
+        res.json({ 
+            message: 'Debug endpoint working',
+            timestamp: new Date().toISOString(),
+            requestId: req.id 
+        });
+    });
+}
+
+// ============================================================
+// 404 HANDLER
+// ============================================================
+
 app.use((req, res) => {
     // For API routes, return JSON
     if (req.path.startsWith('/api/')) {
@@ -4571,7 +6070,10 @@ app.use((req, res) => {
     }
 });
 
-// ==================== ERROR HANDLER ====================
+// ============================================================
+// GLOBAL ERROR HANDLER
+// ============================================================
+
 app.use((err, req, res, next) => {
     logger.error('Unhandled error:', {
         requestId: req.id,
@@ -4590,7 +6092,7 @@ app.use((err, req, res, next) => {
             return res.status(400).json({
                 status: 'error',
                 code: 'FILE_TOO_LARGE',
-                message: `File size too large. Maximum size is ${process.env.MAX_FILE_SIZE || '10MB'}.`,
+                message: `File size too large. Maximum size is ${MAX_FILE_SIZE} bytes.`,
                 requestId: req.id
             });
         }
@@ -4654,19 +6156,25 @@ app.use((err, req, res, next) => {
     }
 
     // Default error response
-    const message = isProduction ? 'Internal server error' : err.message;
+    const message = IS_PRODUCTION ? 'Internal server error' : err.message;
     const statusCode = err.statusCode || 500;
 
     res.status(statusCode).json({
         status: 'error',
         code: 'INTERNAL_ERROR',
         message: message,
-        ...(!isProduction && { stack: err.stack, details: err.message }),
+        ...(!IS_PRODUCTION && { stack: err.stack, details: err.message }),
         requestId: req.id
     });
 });
 
-// ==================== PROCESS EVENT HANDLERS ====================
+// ============================================================
+// PROCESS EVENT HANDLERS
+// ============================================================
+
+/**
+ * Handle unhandled promise rejections
+ */
 process.on('unhandledRejection', (reason, promise) => {
     logger.error('Unhandled Rejection:', {
         reason: reason.message || reason,
@@ -4674,46 +6182,51 @@ process.on('unhandledRejection', (reason, promise) => {
         promise: promise
     });
 
-    if (isProduction) {
+    if (IS_PRODUCTION) {
         logger.error('Unhandled rejection in production, continuing...');
     }
 });
 
+/**
+ * Handle uncaught exceptions
+ */
 process.on('uncaughtException', (error) => {
     logger.error('Uncaught Exception:', {
         error: error.message,
         stack: error.stack
     });
 
-    if (isProduction) {
+    if (IS_PRODUCTION) {
         setTimeout(() => {
             process.exit(1);
         }, 1000);
     }
 });
 
-// Graceful shutdown
+/**
+ * Graceful shutdown on SIGTERM
+ */
 process.on('SIGTERM', () => {
     logger.info('SIGTERM received, starting graceful shutdown');
-    
-    // Close database connections
-    // Close server
     setTimeout(() => {
         process.exit(0);
     }, 1000);
 });
 
+/**
+ * Graceful shutdown on SIGINT
+ */
 process.on('SIGINT', () => {
     logger.info('SIGINT received, starting graceful shutdown');
-    
-    // Close database connections
-    // Close server
     setTimeout(() => {
         process.exit(0);
     }, 1000);
 });
 
-// ==================== SERVER STARTUP ====================
+// ============================================================
+// SERVER STARTUP
+// ============================================================
+
 async function startServer() {
     try {
         await initializeDatabase();
@@ -4721,7 +6234,7 @@ async function startServer() {
         app.listen(PORT, '0.0.0.0', () => {
             console.log(`
 ╔═══════════════════════════════════════════════════════════════════╗
-║     🚀 NUESA BIU API Server Started Successfully!               ║
+║     🚀 NUESA BIU API Server Started Successfully!                 ║
 ╠═══════════════════════════════════════════════════════════════════╣
 ║ 📡 Port: ${PORT}                                                ║
 ║ 🌍 Environment: ${NODE_ENV}                                     ║
@@ -4732,8 +6245,8 @@ async function startServer() {
 ║ 🔒 JWT: ${JWT_SECRET ? 'Set ✓' : 'Missing ✗'}                  ║
 ║ 👑 Admin: ${process.env.ADMIN_EMAIL || 'Not configured'}        ║
 ║ 📚 API Docs: http://localhost:${PORT}/api/docs                  ║
-║ 🔐 Admin Panel: /portal/login                                   ║
-║ 🎭 Dashboard: /portal/system (after login)                      ║
+║ 🔐 Admin Panel: /admin/login                                     ║
+║ 🎭 Dashboard: /admin/dashboard (after login)                     ║
 ╚═══════════════════════════════════════════════════════════════════╝
             `);
 
