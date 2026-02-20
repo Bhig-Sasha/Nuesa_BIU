@@ -1937,8 +1937,6 @@ async function adminLoginHandler(req, res) {
     const requestId = req.id || 'unknown';
     console.log(`\n🔐 [${requestId}] ========== ADMIN LOGIN DEBUG ==========`);
     console.log(`[${requestId}] Email:`, req.body.email);
-    console.log(`[${requestId}] Headers:`, req.headers['content-type']);
-    console.log(`[${requestId}] Body:`, JSON.stringify(req.body));
     
     try {
         const { email, password, rememberMe } = req.body;
@@ -1967,32 +1965,17 @@ async function adminLoginHandler(req, res) {
             console.error(`[${requestId}] Database connection error:`, dbConnError.message);
         }
 
-        // Get user from database
+        // Get user from database - using correct column names
         console.log(`[${requestId}] Querying for user:`, email.toLowerCase().trim());
-        
-        let result;
-        try {
-            result = await db.query('select', 'users', {
-                where: { email: email.toLowerCase().trim() },
-                select: 'id, email, password_hash, full_name, role, department, is_active, created_at, last_login'
-            });
-            console.log(`[${requestId}] Query result:`, {
-                dataLength: result.data.length,
-                hasError: !!result.error
-            });
-        } catch (dbError) {
-            console.error(`[${requestId}] Database query error:`, dbError);
-            console.error(`[${requestId}] Error details:`, {
-                message: dbError.message,
-                code: dbError.code,
-                stack: dbError.stack
-            });
-            return res.status(500).json({
-                status: 'error',
-                code: 'DATABASE_ERROR',
-                message: 'Database error: ' + dbError.message
-            });
-        }
+        const result = await db.query('select', 'users', {
+            where: { email: email.toLowerCase().trim() },
+            select: 'id, email, password_hash, full_name, role, department, is_active, created_at, last_login'
+        });
+
+        console.log(`[${requestId}] Query result:`, {
+            dataLength: result.data.length,
+            hasError: !!result.error
+        });
 
         if (result.data.length === 0) {
             console.log(`[${requestId}] ❌ User not found`);
@@ -2009,8 +1992,7 @@ async function adminLoginHandler(req, res) {
             role: user.role, 
             is_active: user.is_active,
             hash_exists: !!user.password_hash,
-            hash_length: user.password_hash?.length,
-            hash_preview: user.password_hash ? user.password_hash.substring(0, 20) + '...' : 'No hash'
+            hash_length: user.password_hash?.length
         });
 
         // Check if account is active
@@ -2023,9 +2005,10 @@ async function adminLoginHandler(req, res) {
             });
         }
 
-        // Check if user has admin role
+        // Check if user has admin role - using your table's role values
         if (user.role !== 'admin') {
             console.log(`[${requestId}] ❌ Not admin:`, user.role);
+            console.log(`[${requestId}] ℹ️  User role must be 'admin' to access admin panel`);
             return res.status(401).json({
                 status: 'error',
                 code: 'INVALID_CREDENTIALS',
@@ -2035,18 +2018,10 @@ async function adminLoginHandler(req, res) {
 
         // Verify password
         console.log(`[${requestId}] Verifying password...`);
-        let validPassword = false;
-        try {
-            validPassword = await bcrypt.compare(password, user.password_hash);
-            console.log(`[${requestId}] Password valid:`, validPassword);
-        } catch (bcryptError) {
-            console.error(`[${requestId}] Bcrypt error:`, bcryptError);
-            return res.status(500).json({
-                status: 'error',
-                code: 'PASSWORD_VERIFICATION_ERROR',
-                message: 'Error verifying password'
-            });
-        }
+        console.log(`[${requestId}] Hash from DB:`, user.password_hash ? user.password_hash.substring(0, 20) + '...' : 'No hash');
+        
+        const validPassword = await bcrypt.compare(password, user.password_hash);
+        console.log(`[${requestId}] Password valid:`, validPassword);
         
         if (!validPassword) {
             console.log(`[${requestId}] ❌ Invalid password`);
@@ -2061,16 +2036,11 @@ async function adminLoginHandler(req, res) {
 
         // Update last login
         console.log(`[${requestId}] Updating last_login...`);
-        try {
-            await db.query('update', 'users', {
-                data: { last_login: new Date().toISOString() },
-                where: { id: user.id }
-            });
-            console.log(`[${requestId}] ✅ Last login updated`);
-        } catch (updateError) {
-            console.error(`[${requestId}] Failed to update last_login:`, updateError);
-            // Continue anyway - not critical
-        }
+        await db.query('update', 'users', {
+            data: { last_login: new Date().toISOString() },
+            where: { id: user.id }
+        });
+        console.log(`[${requestId}] ✅ Last login updated`);
 
         // Create token payload
         const tokenPayload = {
@@ -2085,20 +2055,10 @@ async function adminLoginHandler(req, res) {
         console.log(`[${requestId}] Generating JWT token...`);
         console.log(`[${requestId}] JWT_SECRET exists:`, !!process.env.JWT_SECRET);
         
-        let token;
-        try {
-            token = authService.generateAdminToken(tokenPayload);
-            console.log(`[${requestId}] ✅ Token generated (length: ${token.length})`);
-        } catch (jwtError) {
-            console.error(`[${requestId}] JWT generation error:`, jwtError);
-            return res.status(500).json({
-                status: 'error',
-                code: 'TOKEN_GENERATION_ERROR',
-                message: 'Error generating authentication token'
-            });
-        }
+        const token = authService.generateAdminToken(tokenPayload);
+        console.log(`[${requestId}] ✅ Token generated (length: ${token.length})`);
 
-        // Set cookie
+        // Set cookie - FIXED: Added domain and sameSite settings
         const cookieOptions = {
             httpOnly: true,
             secure: IS_PRODUCTION,
@@ -2107,11 +2067,21 @@ async function adminLoginHandler(req, res) {
             path: '/'
         };
         
+        // Add domain in production if FRONTEND_URL is set
+        if (IS_PRODUCTION && process.env.FRONTEND_URL) {
+            try {
+                const frontendUrl = new URL(process.env.FRONTEND_URL);
+                cookieOptions.domain = frontendUrl.hostname;
+            } catch (error) {
+                console.warn('Could not parse FRONTEND_URL for cookie domain:', error);
+            }
+        }
+        
         res.cookie('admin_session', token, cookieOptions);
         res.cookie('auth_token', token, cookieOptions);
         console.log(`[${requestId}] ✅ Cookies set`);
 
-        // Return success
+        // Return success - using correct field names
         const userResponse = {
             id: user.id,
             email: user.email,
@@ -2143,16 +2113,25 @@ async function adminLoginHandler(req, res) {
         });
         console.log(`[${requestId}] ========== DEBUG END (WITH ERROR) ==========\n`);
         
+        // Send appropriate error response
+        if (error instanceof AuthError) {
+            return res.status(401).json({
+                status: 'error',
+                code: error.code || 'AUTH_FAILED',
+                message: error.message
+            });
+        }
+        
         res.status(500).json({
             status: 'error',
             code: 'INTERNAL_ERROR',
-            message: 'Server error. Please try again later.'
+            message: 'Login failed. Please try again.'
         });
     }
 }
 
 // ============================================================
-// FIXED: ADMIN ROUTES 
+// FIXED: ADMIN ROUTES
 // ============================================================
 
 /**
