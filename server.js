@@ -5680,19 +5680,14 @@ if (publicExists) {
 }
 
 // ============================================================
-// ADMIN INTERFACE ROUTING
+// ADMIN INTERFACE ROUTING - FIXED
 // ============================================================
 
 if (adminExists) {
     console.log('✅ Admin folder found at:', adminDir);
     console.log('📄 Files in admin folder:', fsSync.readdirSync(adminDir));
 
-    // 1. ADMIN LOGIN API ENDPOINT
-    app.post('/api/admin/login', async (req, res) => {
-        await adminLoginHandler(req, res);
-    });
-
-    // 2. ADMIN LOGIN PAGE
+    // 1. ADMIN LOGIN PAGE (GET)
     app.get('/admin/login', async (req, res) => {
         try {
             console.log('🔐 Serving admin login page');
@@ -5728,7 +5723,7 @@ if (adminExists) {
         }
     });
 
-    // 3. ADMIN DASHBOARD
+    // 2. ADMIN DASHBOARD (GET)
     app.get('/admin/dashboard', async (req, res) => {
         try {
             if (!req.isAdmin) {
@@ -5766,14 +5761,14 @@ if (adminExists) {
         }
     });
 
-    // 4. ADMIN LOGOUT
+    // 3. ADMIN LOGOUT (GET)
     app.get('/admin/logout', (req, res) => {
         res.clearCookie('admin_session', { path: '/' });
         res.clearCookie('auth_token', { path: '/' });
         res.redirect('/admin/login');
     });
 
-    // 5. ADMIN STATUS CHECK
+    // 4. ADMIN STATUS CHECK (GET)
     app.get('/admin/status', (req, res) => {
         res.json({
             isAdmin: req.isAdmin || false,
@@ -5781,14 +5776,7 @@ if (adminExists) {
         });
     });
 
-    console.log('✅ Admin routes configured:');
-    console.log('   • POST /api/admin/login - Login API');
-    console.log('   • GET  /admin/login     - Login page');
-    console.log('   • GET  /admin/dashboard  - Dashboard');
-    console.log('   • GET  /admin/logout     - Logout');
-    console.log('   • GET  /admin/status     - Status check');
-
-    // Simple asset serving for admin
+    // 5. ADMIN ASSETS (GET)
     app.get('/admin/assets/:filename', (req, res) => {
         try {
             const { filename } = req.params;
@@ -5809,6 +5797,13 @@ if (adminExists) {
             res.status(500).send('Error serving asset');
         }
     });
+
+    console.log('✅ Admin routes configured:');
+    console.log('   • GET  /admin/login     - Login page');
+    console.log('   • GET  /admin/dashboard  - Dashboard');
+    console.log('   • GET  /admin/logout     - Logout');
+    console.log('   • GET  /admin/status     - Status check');
+    console.log('   • POST /api/admin/login  - Login API (already defined above)');
     
 } else {
     console.log('⚠️ Admin folder not found at:', adminDir);
