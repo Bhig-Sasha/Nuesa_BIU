@@ -1930,7 +1930,7 @@ authRouter.post('/forgot-password', validate(Joi.object({ email: Joi.string().em
 app.use('/api/auth', authRouter);
 
 // ============================================================
-// ADMIN AUTHENTICATION HANDLER
+// ADMIN AUTHENTICATION HANDLER - FIXED
 // ============================================================
 
 async function adminLoginHandler(req, res) {
@@ -1965,11 +1965,11 @@ async function adminLoginHandler(req, res) {
             console.error(`[${requestId}] Database connection error:`, dbConnError.message);
         }
 
-        // Get user from database
+        // Get user from database - using correct column names
         console.log(`[${requestId}] Querying for user:`, email.toLowerCase().trim());
         const result = await db.query('select', 'users', {
             where: { email: email.toLowerCase().trim() },
-            select: 'id, email, full_name, role, department, is_active, password_hash, created_at, last_login'
+            select: 'id, email, password_hash, full_name, role, department, is_active, created_at, last_login'
         });
 
         console.log(`[${requestId}] Query result:`, {
@@ -2005,9 +2005,10 @@ async function adminLoginHandler(req, res) {
             });
         }
 
-        // Check if user has admin role
+        // Check if user has admin role - using your table's role values
         if (user.role !== 'admin') {
             console.log(`[${requestId}] ❌ Not admin:`, user.role);
+            console.log(`[${requestId}] ℹ️  User role must be 'admin' to access admin panel`);
             return res.status(401).json({
                 status: 'error',
                 code: 'INVALID_CREDENTIALS',
@@ -2017,7 +2018,7 @@ async function adminLoginHandler(req, res) {
 
         // Verify password
         console.log(`[${requestId}] Verifying password...`);
-        console.log(`[${requestId}] Hash from DB:`, user.password_hash.substring(0, 20) + '...');
+        console.log(`[${requestId}] Hash from DB:`, user.password_hash ? user.password_hash.substring(0, 20) + '...' : 'No hash');
         
         const validPassword = await bcrypt.compare(password, user.password_hash);
         console.log(`[${requestId}] Password valid:`, validPassword);
@@ -2036,7 +2037,7 @@ async function adminLoginHandler(req, res) {
         // Update last login
         console.log(`[${requestId}] Updating last_login...`);
         await db.query('update', 'users', {
-            data: { last_login: new Date() },
+            data: { last_login: new Date().toISOString() },
             where: { id: user.id }
         });
         console.log(`[${requestId}] ✅ Last login updated`);
@@ -2057,27 +2058,38 @@ async function adminLoginHandler(req, res) {
         const token = authService.generateAdminToken(tokenPayload);
         console.log(`[${requestId}] ✅ Token generated (length: ${token.length})`);
 
-        // Set cookie
+        // Set cookie - FIXED: Added domain and sameSite settings
         const cookieOptions = {
             httpOnly: true,
             secure: IS_PRODUCTION,
-            sameSite: 'lax',
+            sameSite: IS_PRODUCTION ? 'none' : 'lax',
             maxAge: rememberMe ? 7 * 24 * 60 * 60 * 1000 : 8 * 60 * 60 * 1000,
             path: '/'
         };
+        
+        // Add domain in production if FRONTEND_URL is set
+        if (IS_PRODUCTION && process.env.FRONTEND_URL) {
+            try {
+                const frontendUrl = new URL(process.env.FRONTEND_URL);
+                cookieOptions.domain = frontendUrl.hostname;
+            } catch (error) {
+                console.warn('Could not parse FRONTEND_URL for cookie domain:', error);
+            }
+        }
         
         res.cookie('admin_session', token, cookieOptions);
         res.cookie('auth_token', token, cookieOptions);
         console.log(`[${requestId}] ✅ Cookies set`);
 
-        // Return success
+        // Return success - using correct field names
         const userResponse = {
             id: user.id,
             email: user.email,
             fullName: user.full_name,
             role: user.role,
             department: user.department,
-            lastLogin: user.last_login
+            lastLogin: user.last_login,
+            isActive: user.is_active
         };
 
         console.log(`[${requestId}] ✅ Admin login successful for:`, user.email);
@@ -2101,6 +2113,15 @@ async function adminLoginHandler(req, res) {
         });
         console.log(`[${requestId}] ========== DEBUG END (WITH ERROR) ==========\n`);
         
+        // Send appropriate error response
+        if (error instanceof AuthError) {
+            return res.status(401).json({
+                status: 'error',
+                code: error.code || 'AUTH_FAILED',
+                message: error.message
+            });
+        }
+        
         res.status(500).json({
             status: 'error',
             code: 'INTERNAL_ERROR',
@@ -2110,13 +2131,241 @@ async function adminLoginHandler(req, res) {
 }
 
 // ============================================================
+// FIXED: ADMIN ROUTES - Removed duplicate and fixed rate limiting
+// ============================================================
+
+/**
+ * Admin login endpoint - Single source of truth
+ */
+app.post('/admin/login', createRateLimiter(5, 15 * 60 * 1000, 'Too many admin login attempts'), adminLoginHandler);
+
+/**
+ * API admin login endpoint (redirects to main handler)
+ */
+app.post('/api/admin/login', createRateLimiter(5, 15 * 60 * 1000, 'Too many admin login attempts'), (req, res, next) => {
+    // Just pass through to the same handler
+    adminLoginHandler(req, res);
+});
+
+// ============================================================
+// FIXED: CREATE DEFAULT ADMIN FUNCTION
+// ============================================================
+
+/**
+ * Create default admin user if it doesn't exist
+ */
+async function createDefaultAdmin() {
+    try {
+        const adminEmail = process.env.ADMIN_EMAIL || 'admin@nuesa-biu.com';
+
+        if (!adminEmail) {
+            logger.warn('ADMIN_EMAIL not set, skipping admin creation');
+            return;
+        }
+
+        const result = await db.query('select', 'users', {
+            where: { email: adminEmail },
+            select: 'id'
+        });
+
+        if (result.data.length === 0) {
+            const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123456';
+
+            if (!adminPassword) {
+                logger.warn('ADMIN_PASSWORD not set, skipping admin creation');
+                return;
+            }
+
+            const hashedPassword = await bcrypt.hash(adminPassword, 12);
+
+            const adminData = {
+                email: adminEmail.toLowerCase(),
+                password_hash: hashedPassword,
+                full_name: process.env.ADMIN_FULL_NAME || 'System Administrator',
+                role: 'admin',  // This is critical - must be 'admin'
+                department: process.env.ADMIN_DEPARTMENT || 'Administration',
+                username: (adminEmail.split('@')[0]).toLowerCase(),
+                is_active: true,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+
+            await db.query('insert', 'users', { data: adminData });
+            logger.info(`✅ Admin user created: ${adminEmail} with role 'admin'`);
+            console.log(`✅ Default admin created - Email: ${adminEmail}, Password: ${adminPassword}`);
+        } else {
+            logger.info('Admin user already exists');
+            
+            // Ensure existing admin has correct role
+            const adminCheck = await db.query('select', 'users', {
+                where: { email: adminEmail },
+                select: 'id, role'
+            });
+            
+            if (adminCheck.data.length > 0 && adminCheck.data[0].role !== 'admin') {
+                logger.info(`Updating existing user ${adminEmail} to admin role`);
+                await db.query('update', 'users', {
+                    data: { role: 'admin', updated_at: new Date().toISOString() },
+                    where: { email: adminEmail }
+                });
+                console.log(`✅ Updated ${adminEmail} to admin role`);
+            }
+        }
+    } catch (error) {
+        logger.error('Could not create admin user:', error);
+    }
+}
+
+// ============================================================
+// ADD THIS DEBUG ENDPOINT TO CHECK USERS (Development only)
+// ============================================================
+
+if (!IS_PRODUCTION) {
+    app.get('/api/debug/users', async (req, res) => {
+        try {
+            const result = await db.query('select', 'users', {
+                select: 'id, email, full_name, role, is_active, created_at',
+                limit: 10
+            });
+            
+            res.json({
+                status: 'success',
+                data: result.data,
+                count: result.data.length
+            });
+        } catch (error) {
+            res.status(500).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+    });
+    
+    app.get('/api/debug/check-admin/:email', async (req, res) => {
+        try {
+            const email = req.params.email;
+            const result = await db.query('select', 'users', {
+                where: { email: email.toLowerCase() },
+                select: 'id, email, full_name, role, is_active'
+            });
+            
+            if (result.data.length === 0) {
+                return res.json({
+                    status: 'error',
+                    message: 'User not found',
+                    email: email
+                });
+            }
+            
+            const user = result.data[0];
+            const isAdmin = user.role === 'admin';
+            
+            res.json({
+                status: 'success',
+                data: user,
+                isAdmin: isAdmin,
+                canAccessAdmin: isAdmin && user.is_active,
+                message: isAdmin ? 'User can access admin panel' : 'User needs role="admin" to access admin panel'
+            });
+        } catch (error) {
+            res.status(500).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+    });
+}
+
+// ============================================================
+// FIXED: ADMIN SESSION VERIFICATION
+// ============================================================
+
+/**
+ * Admin session verification
+ */
+app.get('/api/admin/session', async (req, res) => {
+    try {
+        const token = req.cookies?.admin_session;
+        
+        if (!token) {
+            return res.status(401).json({
+                status: 'error',
+                code: 'NO_SESSION',
+                message: 'No active session'
+            });
+        }
+
+        let decoded;
+        try {
+            decoded = jwt.verify(token, JWT_SECRET, {
+                issuer: 'nuesa-biu-system',
+                audience: 'nuesa-biu-admin'
+            });
+        } catch (e) {
+            return res.status(401).json({
+                status: 'error',
+                code: 'INVALID_TOKEN',
+                message: 'Session expired or invalid'
+            });
+        }
+
+        // Get user from database
+        const result = await db.query('select', 'users', {
+            where: { id: decoded.userId },
+            select: 'id, email, full_name, role, is_active, last_login'
+        });
+
+        if (result.data.length === 0 || !result.data[0].is_active) {
+            return res.status(401).json({
+                status: 'error',
+                code: 'USER_NOT_FOUND',
+                message: 'User not found or deactivated'
+            });
+        }
+
+        const user = result.data[0];
+        
+        // Check if user has admin role
+        if (user.role !== 'admin') {
+            return res.status(401).json({
+                status: 'error',
+                code: 'AUTH_FAILED',
+                message: 'Access denied - Admin only'
+            });
+        }
+
+        const userResponse = {
+            id: user.id,
+            email: user.email,
+            fullName: user.full_name,
+            role: user.role,
+            lastLogin: user.last_login,
+            isActive: user.is_active
+        };
+
+        res.json({
+            status: 'success',
+            data: userResponse,
+            message: 'Session is valid'
+        });
+
+    } catch (error) {
+        logger.error('Session verification error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Session verification failed'
+        });
+    }
+});
+
+// ============================================================
 // ADMIN ROUTES
 // ============================================================
 
 /**
  * Admin login endpoint
  */
-app.post('/api/admin/login', createRateLimiter(5), adminLoginHandler);
+app.post('/api/admin/login', createRateLimiter(10), adminLoginHandler);
 app.post('/admin/login', createRateLimiter(5), adminLoginHandler);
 
 /**
