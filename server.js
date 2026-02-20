@@ -5438,7 +5438,7 @@ if (adminExists) {
     console.log('✅ Admin folder found at:', adminDir);
     console.log('📄 Files in admin folder:', fsSync.readdirSync(adminDir));
 
-    // 1. ADMIN LOGIN API ENDPOINT (MUST COME FIRST)
+    // 1. ADMIN LOGIN API ENDPOINT
     app.post('/api/admin/login', async (req, res) => {
         await adminLoginHandler(req, res);
     });
@@ -5531,11 +5531,6 @@ if (adminExists) {
             user: req.admin || null
         });
     });
-
-    // 6. REDIRECT OLD PORTAL PATHS
-    app.get('/portal/login', (req, res) => res.redirect('/admin/login'));
-    app.get('/portal/system', (req, res) => res.redirect('/admin/dashboard'));
-    app.get('/portal/logout', (req, res) => res.redirect('/admin/logout'));
 
     console.log('✅ Admin routes configured:');
     console.log('   • POST /api/admin/login - Login API');
