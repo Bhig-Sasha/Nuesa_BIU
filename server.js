@@ -1930,10 +1930,9 @@ authRouter.post('/forgot-password', validate(Joi.object({ email: Joi.string().em
 app.use('/api/auth', authRouter);
 
 // ============================================================
-// ADMIN AUTHENTICATION HANDLER - FIXED
+// ADMIN AUTHENTICATION HANDLER - FIXED & IMPROVED
 // ============================================================
 
-// Replace your current adminLoginHandler with this debug version
 async function adminLoginHandler(req, res) {
     const requestId = req.id || 'unknown';
     console.log('\n🔐 ========== ADMIN LOGIN DEBUG ==========');
@@ -1941,6 +1940,7 @@ async function adminLoginHandler(req, res) {
     console.log('Request body:', req.body);
     console.log('Email:', req.body?.email);
     console.log('Password provided:', !!req.body?.password);
+    console.log('Content-Type:', req.headers['content-type']);
     
     try {
         const { email, password, rememberMe } = req.body;
@@ -1955,47 +1955,52 @@ async function adminLoginHandler(req, res) {
                 message: 'Email and password are required'
             });
         }
+        
+        // Sanitize email
+        const sanitizedEmail = email.toLowerCase().trim();
         console.log('✅ Input validation passed');
+        console.log('Sanitized email:', sanitizedEmail);
 
         // STEP 2: Check login attempts
         console.log('\n📌 STEP 2: Checking login attempts...');
         try {
-            await checkLoginAttempts(email.toLowerCase());
+            await checkLoginAttempts(sanitizedEmail);
             console.log('✅ Login attempts check passed');
         } catch (error) {
             console.log('❌ Account locked:', error.message);
-            throw error;
+            return res.status(429).json({
+                status: 'error',
+                code: 'ACCOUNT_LOCKED',
+                message: 'Too many failed attempts. Account temporarily locked.'
+            });
         }
 
-        // STEP 3: Test database connection
-        console.log('\n📌 STEP 3: Testing database connection...');
-        try {
-            const testQuery = await supabase.from('users').select('count').limit(1);
-            console.log('Database connection:', testQuery.error ? 'FAILED' : 'OK');
-            if (testQuery.error) {
-                console.error('Database error:', testQuery.error);
-                throw new Error('Database connection failed');
-            }
-        } catch (dbConnError) {
-            console.error('Database connection error:', dbConnError.message);
-            throw new Error('Cannot connect to database');
-        }
+        // STEP 3: Find user directly with Supabase (bypass db.query for debugging)
+        console.log('\n📌 STEP 3: Looking up user in database...');
+        
+        const { data: users, error: userError } = await supabase
+            .from('users')
+            .select('id, email, password_hash, full_name, role, department, is_active, created_at, last_login')
+            .eq('email', sanitizedEmail)
+            .limit(1);
 
-        // STEP 4: Find user
-        console.log('\n📌 STEP 4: Looking up user:', email.toLowerCase().trim());
-        const result = await db.query('select', 'users', {
-            where: { email: email.toLowerCase().trim() },
-            select: 'id, email, password_hash, full_name, role, department, is_active, created_at, last_login'
-        });
+        if (userError) {
+            console.error('❌ Database error:', userError);
+            return res.status(500).json({
+                status: 'error',
+                code: 'DATABASE_ERROR',
+                message: 'Database error occurred'
+            });
+        }
 
         console.log('Query result:', {
-            dataLength: result.data.length,
-            hasError: !!result.error
+            dataLength: users?.length || 0,
+            hasError: !!userError
         });
 
-        if (result.data.length === 0) {
+        if (!users || users.length === 0) {
             console.log('❌ User not found');
-            await recordFailedAttempt(email.toLowerCase());
+            await recordFailedAttempt(sanitizedEmail);
             return res.status(401).json({
                 status: 'error',
                 code: 'INVALID_CREDENTIALS',
@@ -2003,7 +2008,7 @@ async function adminLoginHandler(req, res) {
             });
         }
 
-        const user = result.data[0];
+        const user = users[0];
         console.log('✅ User found:', { 
             id: user.id, 
             role: user.role, 
@@ -2012,8 +2017,8 @@ async function adminLoginHandler(req, res) {
             hash_length: user.password_hash?.length
         });
 
-        // STEP 5: Check if account is active
-        console.log('\n📌 STEP 5: Checking account status...');
+        // STEP 4: Check if account is active
+        console.log('\n📌 STEP 4: Checking account status...');
         if (!user.is_active) {
             console.log('❌ Account inactive');
             return res.status(401).json({
@@ -2024,12 +2029,12 @@ async function adminLoginHandler(req, res) {
         }
         console.log('✅ Account is active');
 
-        // STEP 6: Check if user has admin role
-        console.log('\n📌 STEP 6: Checking admin role...');
+        // STEP 5: Check if user has admin role
+        console.log('\n📌 STEP 5: Checking admin role...');
         console.log('User role:', user.role);
         if (user.role !== 'admin') {
             console.log('❌ Not admin - role is:', user.role);
-            await recordFailedAttempt(email.toLowerCase());
+            await recordFailedAttempt(sanitizedEmail);
             return res.status(401).json({
                 status: 'error',
                 code: 'INVALID_CREDENTIALS',
@@ -2038,16 +2043,27 @@ async function adminLoginHandler(req, res) {
         }
         console.log('✅ User is admin');
 
-        // STEP 7: Verify password
-        console.log('\n📌 STEP 7: Verifying password...');
+        // STEP 6: Verify password
+        console.log('\n📌 STEP 6: Verifying password...');
         console.log('Hash from DB:', user.password_hash ? user.password_hash.substring(0, 20) + '...' : 'No hash');
         
-        const validPassword = await bcrypt.compare(password, user.password_hash);
+        let validPassword = false;
+        try {
+            validPassword = await bcrypt.compare(password, user.password_hash);
+        } catch (bcryptError) {
+            console.error('❌ Bcrypt error:', bcryptError.message);
+            return res.status(500).json({
+                status: 'error',
+                code: 'PASSWORD_VERIFICATION_FAILED',
+                message: 'Password verification failed'
+            });
+        }
+        
         console.log('Password valid:', validPassword);
         
         if (!validPassword) {
             console.log('❌ Invalid password');
-            await recordFailedAttempt(email.toLowerCase());
+            await recordFailedAttempt(sanitizedEmail);
             return res.status(401).json({
                 status: 'error',
                 code: 'INVALID_CREDENTIALS',
@@ -2056,62 +2072,93 @@ async function adminLoginHandler(req, res) {
         }
         console.log('✅ Password verified');
 
-        // STEP 8: Reset login attempts
-        console.log('\n📌 STEP 8: Resetting login attempts...');
-        await resetLoginAttempts(email.toLowerCase());
+        // STEP 7: Reset login attempts
+        console.log('\n📌 STEP 7: Resetting login attempts...');
+        await resetLoginAttempts(sanitizedEmail);
         console.log('✅ Login attempts reset');
 
-        // STEP 9: Update last login
-        console.log('\n📌 STEP 9: Updating last_login...');
+        // STEP 8: Update last login
+        console.log('\n📌 STEP 8: Updating last_login...');
         try {
-            await db.query('update', 'users', {
-                data: { last_login: new Date().toISOString() },
-                where: { id: user.id }
-            });
+            await supabase
+                .from('users')
+                .update({ last_login: new Date().toISOString() })
+                .eq('id', user.id);
             console.log('✅ Last login updated');
         } catch (updateError) {
             console.log('⚠️ Failed to update last login (non-critical):', updateError.message);
         }
 
-        // STEP 10: Create token
-        console.log('\n📌 STEP 10: Generating JWT token...');
+        // STEP 9: Create token
+        console.log('\n📌 STEP 9: Generating JWT token...');
+        
+        if (!process.env.JWT_SECRET) {
+            console.error('❌ JWT_SECRET is not set!');
+            return res.status(500).json({
+                status: 'error',
+                code: 'SERVER_CONFIG_ERROR',
+                message: 'Server configuration error'
+            });
+        }
+        
         const tokenPayload = {
             userId: user.id,
             email: user.email,
             role: user.role,
             fullName: user.full_name
         };
+        
         console.log('Token payload created');
         console.log('JWT_SECRET exists:', !!process.env.JWT_SECRET);
         
-        const token = authService.generateAdminToken(tokenPayload);
+        // Generate token directly (bypass authService for debugging)
+        const token = jwt.sign(
+            tokenPayload,
+            process.env.JWT_SECRET,
+            {
+                expiresIn: rememberMe ? '7d' : '8h',
+                issuer: 'nuesa-biu-system',
+                audience: 'nuesa-biu-admin',
+                jwtid: uuid.v4()
+            }
+        );
+        
         console.log('✅ Token generated (length: ' + token.length + ')');
 
-        // STEP 11: Set cookie
-        console.log('\n📌 STEP 11: Setting cookies...');
+        // STEP 10: Set cookie
+        console.log('\n📌 STEP 10: Setting cookies...');
+        const isProduction = process.env.NODE_ENV === 'production';
+        
         const cookieOptions = {
             httpOnly: true,
-            secure: IS_PRODUCTION,
-            sameSite: IS_PRODUCTION ? 'none' : 'lax',
+            secure: isProduction,
+            sameSite: isProduction ? 'none' : 'lax',
             maxAge: rememberMe ? 7 * 24 * 60 * 60 * 1000 : 8 * 60 * 60 * 1000,
             path: '/'
         };
         
-        if (IS_PRODUCTION && process.env.FRONTEND_URL) {
+        // Only set domain if in production and FRONTEND_URL is valid
+        if (isProduction && process.env.FRONTEND_URL) {
             try {
                 const frontendUrl = new URL(process.env.FRONTEND_URL);
-                cookieOptions.domain = frontendUrl.hostname;
-                console.log('Cookie domain set to:', frontendUrl.hostname);
+                // Don't set domain for localhost
+                if (!frontendUrl.hostname.includes('localhost') && !frontendUrl.hostname.includes('127.0.0.1')) {
+                    cookieOptions.domain = frontendUrl.hostname;
+                    console.log('Cookie domain set to:', frontendUrl.hostname);
+                }
             } catch (error) {
-                console.warn('Could not parse FRONTEND_URL:', error);
+                console.warn('Could not parse FRONTEND_URL:', error.message);
             }
         }
         
+        // Set both admin_session and auth_token for compatibility
         res.cookie('admin_session', token, cookieOptions);
-        console.log('✅ Cookie set (admin_session only)');
+        res.cookie('auth_token', token, cookieOptions);
+        
+        console.log('✅ Cookies set: admin_session and auth_token');
 
-        // STEP 12: Prepare response
-        console.log('\n📌 STEP 12: Preparing response...');
+        // STEP 11: Prepare response
+        console.log('\n📌 STEP 11: Preparing response...');
         const userResponse = {
             id: user.id,
             email: user.email,
@@ -2125,7 +2172,8 @@ async function adminLoginHandler(req, res) {
         console.log('✅ Login successful for:', user.email);
         console.log('========== DEBUG END ==========\n');
         
-        res.json({
+        // Return success response
+        return res.status(200).json({
             status: 'success',
             data: {
                 user: userResponse,
@@ -2143,11 +2191,14 @@ async function adminLoginHandler(req, res) {
         });
         console.log('========== DEBUG END (WITH ERROR) ==========\n');
         
-        res.status(500).json({
+        // Don't expose internal errors in production
+        const isProduction = process.env.NODE_ENV === 'production';
+        
+        return res.status(500).json({
             status: 'error',
             code: 'INTERNAL_ERROR',
             message: 'Login failed. Please try again.',
-            debug: error.message // Only for development
+            ...(!isProduction && { debug: error.message, stack: error.stack })
         });
     }
 }
@@ -5858,6 +5909,11 @@ if (adminExists) {
     console.log('   • GET  /admin/logout     - Logout');
     console.log('   • GET  /admin/status     - Status check');
     console.log('   • POST /api/admin/login  - Login API (already defined above)');
+
+    // Add this debug code to your server.js or admin routes file
+    console.log('Admin Email Check:', process.env.ADMIN_EMAIL);
+    console.log('Admin Password Set:', process.env.ADMIN_PASSWORD ? 'Yes' : 'No');
+    console.log('JWT Secret Set:', process.env.JWT_SECRET ? 'Yes' : 'No');
     
 } else {
     console.log('⚠️ Admin folder not found at:', adminDir);
