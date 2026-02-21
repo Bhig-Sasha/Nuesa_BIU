@@ -1933,52 +1933,69 @@ app.use('/api/auth', authRouter);
 // ADMIN AUTHENTICATION HANDLER - FIXED
 // ============================================================
 
+// Replace your current adminLoginHandler with this debug version
 async function adminLoginHandler(req, res) {
     const requestId = req.id || 'unknown';
-    console.log(`\n🔐 [${requestId}] ========== ADMIN LOGIN DEBUG ==========`);
-    console.log(`[${requestId}] Email:`, req.body.email);
+    console.log('\n🔐 ========== ADMIN LOGIN DEBUG ==========');
+    console.log('Request ID:', requestId);
+    console.log('Request body:', req.body);
+    console.log('Email:', req.body?.email);
+    console.log('Password provided:', !!req.body?.password);
     
     try {
         const { email, password, rememberMe } = req.body;
 
-        // Validate input
+        // STEP 1: Validate input
+        console.log('\n📌 STEP 1: Validating input...');
         if (!email || !password) {
-            console.log(`[${requestId}] ❌ Missing fields`);
+            console.log('❌ Missing email or password');
             return res.status(400).json({
                 status: 'error',
                 code: 'MISSING_FIELDS',
                 message: 'Email and password are required'
             });
         }
+        console.log('✅ Input validation passed');
 
-        console.log(`[${requestId}] ✅ Input validation passed`);
-
-        // Test database connection first
-        console.log(`[${requestId}] Testing database connection...`);
+        // STEP 2: Check login attempts
+        console.log('\n📌 STEP 2: Checking login attempts...');
         try {
-            const testQuery = await supabase.from('users').select('count').limit(1);
-            console.log(`[${requestId}] Database connection:`, testQuery.error ? 'FAILED' : 'OK');
-            if (testQuery.error) {
-                console.error(`[${requestId}] Database error:`, testQuery.error);
-            }
-        } catch (dbConnError) {
-            console.error(`[${requestId}] Database connection error:`, dbConnError.message);
+            await checkLoginAttempts(email.toLowerCase());
+            console.log('✅ Login attempts check passed');
+        } catch (error) {
+            console.log('❌ Account locked:', error.message);
+            throw error;
         }
 
-        // Get user from database - using correct column names
-        console.log(`[${requestId}] Querying for user:`, email.toLowerCase().trim());
+        // STEP 3: Test database connection
+        console.log('\n📌 STEP 3: Testing database connection...');
+        try {
+            const testQuery = await supabase.from('users').select('count').limit(1);
+            console.log('Database connection:', testQuery.error ? 'FAILED' : 'OK');
+            if (testQuery.error) {
+                console.error('Database error:', testQuery.error);
+                throw new Error('Database connection failed');
+            }
+        } catch (dbConnError) {
+            console.error('Database connection error:', dbConnError.message);
+            throw new Error('Cannot connect to database');
+        }
+
+        // STEP 4: Find user
+        console.log('\n📌 STEP 4: Looking up user:', email.toLowerCase().trim());
         const result = await db.query('select', 'users', {
             where: { email: email.toLowerCase().trim() },
             select: 'id, email, password_hash, full_name, role, department, is_active, created_at, last_login'
         });
 
-        console.log(`[${requestId}] Query result:`, {
+        console.log('Query result:', {
             dataLength: result.data.length,
             hasError: !!result.error
         });
 
         if (result.data.length === 0) {
-            console.log(`[${requestId}] ❌ User not found`);
+            console.log('❌ User not found');
+            await recordFailedAttempt(email.toLowerCase());
             return res.status(401).json({
                 status: 'error',
                 code: 'INVALID_CREDENTIALS',
@@ -1987,7 +2004,7 @@ async function adminLoginHandler(req, res) {
         }
 
         const user = result.data[0];
-        console.log(`[${requestId}] ✅ User found:`, { 
+        console.log('✅ User found:', { 
             id: user.id, 
             role: user.role, 
             is_active: user.is_active,
@@ -1995,70 +2012,83 @@ async function adminLoginHandler(req, res) {
             hash_length: user.password_hash?.length
         });
 
-        // Check if account is active
+        // STEP 5: Check if account is active
+        console.log('\n📌 STEP 5: Checking account status...');
         if (!user.is_active) {
-            console.log(`[${requestId}] ❌ Account inactive`);
+            console.log('❌ Account inactive');
             return res.status(401).json({
                 status: 'error',
                 code: 'ACCOUNT_INACTIVE',
                 message: 'Account is deactivated'
             });
         }
+        console.log('✅ Account is active');
 
-        // Check if user has admin role - using your table's role values
+        // STEP 6: Check if user has admin role
+        console.log('\n📌 STEP 6: Checking admin role...');
+        console.log('User role:', user.role);
         if (user.role !== 'admin') {
-            console.log(`[${requestId}] ❌ Not admin:`, user.role);
-            console.log(`[${requestId}] ℹ️  User role must be 'admin' to access admin panel`);
+            console.log('❌ Not admin - role is:', user.role);
+            await recordFailedAttempt(email.toLowerCase());
             return res.status(401).json({
                 status: 'error',
                 code: 'INVALID_CREDENTIALS',
                 message: 'Invalid email or password'
             });
         }
+        console.log('✅ User is admin');
 
-        // Verify password
-        console.log(`[${requestId}] Verifying password...`);
-        console.log(`[${requestId}] Hash from DB:`, user.password_hash ? user.password_hash.substring(0, 20) + '...' : 'No hash');
+        // STEP 7: Verify password
+        console.log('\n📌 STEP 7: Verifying password...');
+        console.log('Hash from DB:', user.password_hash ? user.password_hash.substring(0, 20) + '...' : 'No hash');
         
         const validPassword = await bcrypt.compare(password, user.password_hash);
-        console.log(`[${requestId}] Password valid:`, validPassword);
+        console.log('Password valid:', validPassword);
         
         if (!validPassword) {
-            console.log(`[${requestId}] ❌ Invalid password`);
+            console.log('❌ Invalid password');
+            await recordFailedAttempt(email.toLowerCase());
             return res.status(401).json({
                 status: 'error',
                 code: 'INVALID_CREDENTIALS',
                 message: 'Invalid email or password'
             });
         }
+        console.log('✅ Password verified');
 
-        console.log(`[${requestId}] ✅ Password verified`);
+        // STEP 8: Reset login attempts
+        console.log('\n📌 STEP 8: Resetting login attempts...');
+        await resetLoginAttempts(email.toLowerCase());
+        console.log('✅ Login attempts reset');
 
-        // Update last login
-        console.log(`[${requestId}] Updating last_login...`);
-        await db.query('update', 'users', {
-            data: { last_login: new Date().toISOString() },
-            where: { id: user.id }
-        });
-        console.log(`[${requestId}] ✅ Last login updated`);
+        // STEP 9: Update last login
+        console.log('\n📌 STEP 9: Updating last_login...');
+        try {
+            await db.query('update', 'users', {
+                data: { last_login: new Date().toISOString() },
+                where: { id: user.id }
+            });
+            console.log('✅ Last login updated');
+        } catch (updateError) {
+            console.log('⚠️ Failed to update last login (non-critical):', updateError.message);
+        }
 
-        // Create token payload
+        // STEP 10: Create token
+        console.log('\n📌 STEP 10: Generating JWT token...');
         const tokenPayload = {
             userId: user.id,
             email: user.email,
             role: user.role,
             fullName: user.full_name
         };
-        console.log(`[${requestId}] Token payload created`);
-
-        // Generate JWT token
-        console.log(`[${requestId}] Generating JWT token...`);
-        console.log(`[${requestId}] JWT_SECRET exists:`, !!process.env.JWT_SECRET);
+        console.log('Token payload created');
+        console.log('JWT_SECRET exists:', !!process.env.JWT_SECRET);
         
         const token = authService.generateAdminToken(tokenPayload);
-        console.log(`[${requestId}] ✅ Token generated (length: ${token.length})`);
+        console.log('✅ Token generated (length: ' + token.length + ')');
 
-        // Set cookie - FIXED: Added domain and sameSite settings
+        // STEP 11: Set cookie
+        console.log('\n📌 STEP 11: Setting cookies...');
         const cookieOptions = {
             httpOnly: true,
             secure: IS_PRODUCTION,
@@ -2067,21 +2097,21 @@ async function adminLoginHandler(req, res) {
             path: '/'
         };
         
-        // Add domain in production if FRONTEND_URL is set
         if (IS_PRODUCTION && process.env.FRONTEND_URL) {
             try {
                 const frontendUrl = new URL(process.env.FRONTEND_URL);
                 cookieOptions.domain = frontendUrl.hostname;
+                console.log('Cookie domain set to:', frontendUrl.hostname);
             } catch (error) {
-                console.warn('Could not parse FRONTEND_URL for cookie domain:', error);
+                console.warn('Could not parse FRONTEND_URL:', error);
             }
         }
         
         res.cookie('admin_session', token, cookieOptions);
-        res.cookie('auth_token', token, cookieOptions);
-        console.log(`[${requestId}] ✅ Cookies set`);
+        console.log('✅ Cookie set (admin_session only)');
 
-        // Return success - using correct field names
+        // STEP 12: Prepare response
+        console.log('\n📌 STEP 12: Preparing response...');
         const userResponse = {
             id: user.id,
             email: user.email,
@@ -2092,8 +2122,8 @@ async function adminLoginHandler(req, res) {
             isActive: user.is_active
         };
 
-        console.log(`[${requestId}] ✅ Admin login successful for:`, user.email);
-        console.log(`[${requestId}] ========== DEBUG END ==========\n`);
+        console.log('✅ Login successful for:', user.email);
+        console.log('========== DEBUG END ==========\n');
         
         res.json({
             status: 'success',
@@ -2105,27 +2135,19 @@ async function adminLoginHandler(req, res) {
         });
 
     } catch (error) {
-        console.error(`❌ [${requestId}] ADMIN LOGIN ERROR:`, {
+        console.error('\n❌ ADMIN LOGIN ERROR:', {
             message: error.message,
             stack: error.stack,
             name: error.name,
             code: error.code
         });
-        console.log(`[${requestId}] ========== DEBUG END (WITH ERROR) ==========\n`);
-        
-        // Send appropriate error response
-        if (error instanceof AuthError) {
-            return res.status(401).json({
-                status: 'error',
-                code: error.code || 'AUTH_FAILED',
-                message: error.message
-            });
-        }
+        console.log('========== DEBUG END (WITH ERROR) ==========\n');
         
         res.status(500).json({
             status: 'error',
             code: 'INTERNAL_ERROR',
-            message: 'Login failed. Please try again.'
+            message: 'Login failed. Please try again.',
+            debug: error.message // Only for development
         });
     }
 }
@@ -2485,6 +2507,38 @@ app.get('/api/admin/csrf-token', csrfProtection, (req, res) => {
         status: 'success',
         csrfToken: req.csrfToken()
     });
+});
+
+// Add this temporary endpoint
+app.get('/api/debug/check-admin/:email', async (req, res) => {
+    try {
+        const email = req.params.email;
+        const result = await db.query('select', 'users', {
+            where: { email: email.toLowerCase() },
+            select: 'id, email, full_name, role, is_active'
+        });
+        
+        if (result.data.length === 0) {
+            return res.json({
+                status: 'error',
+                message: 'User not found',
+                email: email
+            });
+        }
+        
+        const user = result.data[0];
+        res.json({
+            status: 'success',
+            data: user,
+            isAdmin: user.role === 'admin',
+            canLogin: user.role === 'admin' && user.is_active
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            message: error.message
+        });
+    }
 });
 
 // ============================================================
