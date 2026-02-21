@@ -2220,6 +2220,142 @@ app.post('/api/admin/login', createRateLimiter(5, 15 * 60 * 1000, 'Too many admi
     adminLoginHandler(req, res);
 });
 
+
+// ============================================================
+// SIMPLE ADMIN LOGIN - WORKS WITH YOUR FRONTEND
+// ============================================================
+
+app.post('/api/admin-login', express.json(), async (req, res) => {
+    console.log('\n🔐 ADMIN LOGIN ATTEMPT:', {
+        email: req.body?.email,
+        timestamp: new Date().toISOString()
+    });
+    
+    try {
+        const { email, password } = req.body;
+
+        // Basic validation
+        if (!email || !password) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Email and password are required'
+            });
+        }
+
+        // Find user in database
+        const { data: users, error } = await supabase
+            .from('users')
+            .select('id, email, password_hash, full_name, role, is_active')
+            .eq('email', email.toLowerCase().trim())
+            .limit(1);
+
+        if (error) {
+            console.error('Database error:', error);
+            return res.status(500).json({
+                status: 'error',
+                message: 'Database error occurred'
+            });
+        }
+
+        // Check if user exists
+        if (!users || users.length === 0) {
+            console.log('❌ User not found:', email);
+            return res.status(401).json({
+                status: 'error',
+                message: 'Invalid email or password'
+            });
+        }
+
+        const user = users[0];
+
+        // Check if user is active
+        if (!user.is_active) {
+            console.log('❌ Account inactive:', email);
+            return res.status(401).json({
+                status: 'error',
+                message: 'Invalid email or password'
+            });
+        }
+
+        // Check if user has admin role
+        if (user.role !== 'admin') {
+            console.log('❌ Not admin - role is:', user.role);
+            return res.status(401).json({
+                status: 'error',
+                message: 'Invalid email or password'
+            });
+        }
+
+        // Verify password
+        const validPassword = await bcrypt.compare(password, user.password_hash);
+        
+        if (!validPassword) {
+            console.log('❌ Invalid password for:', email);
+            return res.status(401).json({
+                status: 'error',
+                message: 'Invalid email or password'
+            });
+        }
+
+        console.log('✅ Password verified for:', email);
+
+        // Generate JWT token
+        const token = jwt.sign(
+            { 
+                userId: user.id, 
+                email: user.email, 
+                role: user.role,
+                fullName: user.full_name 
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        // Update last login (don't wait for it)
+        supabase
+            .from('users')
+            .update({ last_login: new Date().toISOString() })
+            .eq('id', user.id)
+            .then()
+            .catch(err => console.log('Last login update failed:', err.message));
+
+        // Set cookie for session
+        const isProduction = process.env.NODE_ENV === 'production';
+        
+        res.cookie('admin_session', token, {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: isProduction ? 'none' : 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            path: '/'
+        });
+
+        console.log('✅ Login successful for:', user.email);
+
+        // Return success response
+        res.status(200).json({
+            status: 'success',
+            data: {
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    fullName: user.full_name,
+                    role: user.role
+                },
+                token: token
+            },
+            message: 'Login successful'
+        });
+
+    } catch (error) {
+        console.error('❌ Admin login error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Login failed. Please try again.'
+        });
+    }
+});
+
 // ============================================================
 // FIXED: CREATE DEFAULT ADMIN FUNCTION
 // ============================================================
