@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * NUESA BIU API SERVER
+ * NUESA BIU API SERVER - ORGANIZED VERSION
  * ============================================================
  * 
  * Production-ready Express.js server for NUESA BIU (Baze University)
@@ -12,13 +12,11 @@
  */
 
 // ============================================================
-// ENVIRONMENT CONFIGURATION
+// SECTION 1: ENVIRONMENT & CORE DEPENDENCIES
 // ============================================================
+
 require('dotenv').config();
 
-// ============================================================
-// CORE DEPENDENCIES
-// ============================================================
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -50,56 +48,35 @@ const util = require('util');
 const execPromise = util.promisify(exec);
 
 // ============================================================
-// ENVIRONMENT VALIDATION
+// SECTION 2: CONFIGURATION & VALIDATION
 // ============================================================
 
-/**
- * Required environment variables for the application to run
- * @type {string[]}
- */
 const REQUIRED_ENV_VARS = [
     'JWT_SECRET',
     'SUPABASE_URL',
     'SUPABASE_SERVICE_ROLE_KEY'
 ];
 
-/**
- * Validate that all required environment variables are present
- * Exit process with error if any are missing
- */
 const missingEnvVars = REQUIRED_ENV_VARS.filter(varName => !process.env[varName]);
 if (missingEnvVars.length > 0) {
     console.error('❌ ERROR: Missing required environment variables:', missingEnvVars.join(', '));
     process.exit(1);
 }
 
-// ============================================================
-// APPLICATION CONFIGURATION
-// ============================================================
-
 const app = express();
 const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || 'production';
 const IS_PRODUCTION = NODE_ENV === 'production';
-
-// Security Configuration
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRE = process.env.JWT_EXPIRE || '7d';
-const JWT_ADMIN_EXPIRE = process.env.JWT_ADMIN_EXPIRE || '8h';
-
-// File Upload Configuration
-const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024; // 10MB default
+const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024;
 const MAX_REQUEST_SIZE = process.env.MAX_REQUEST_SIZE || '10mb';
 
 // ============================================================
-// REDIS CACHE SETUP (Optional)
+// SECTION 3: DATABASE & CACHE SETUP
 // ============================================================
 
-/**
- * Redis client instance for distributed caching
- * Falls back to null if Redis is not configured
- * @type {Redis|null}
- */
+// Redis Setup
 let redis = null;
 if (process.env.REDIS_URL) {
     try {
@@ -117,17 +94,10 @@ if (process.env.REDIS_URL) {
     }
 }
 
-// ============================================================
-// SUPABASE DATABASE SETUP
-// ============================================================
-
+// Supabase Setup
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-/**
- * Supabase client instance configured for server-side operations
- * Uses service role key for administrative access
- */
 const supabase = createClient(supabaseUrl, supabaseKey, {
     auth: {
         autoRefreshToken: false,
@@ -150,12 +120,9 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
 });
 
 // ============================================================
-// CUSTOM ERROR CLASSES
+// SECTION 4: CUSTOM ERROR CLASSES
 // ============================================================
 
-/**
- * Database operation error with additional context
- */
 class DatabaseError extends Error {
     constructor(message, code, table, operation) {
         super(message);
@@ -168,9 +135,6 @@ class DatabaseError extends Error {
     }
 }
 
-/**
- * Validation error for request data
- */
 class ValidationError extends Error {
     constructor(message, errors = []) {
         super(message);
@@ -180,9 +144,6 @@ class ValidationError extends Error {
     }
 }
 
-/**
- * Resource not found error
- */
 class NotFoundError extends Error {
     constructor(resource) {
         super(`${resource} not found`);
@@ -191,9 +152,6 @@ class NotFoundError extends Error {
     }
 }
 
-/**
- * Authentication error
- */
 class AuthError extends Error {
     constructor(message, code = 'AUTH_ERROR') {
         super(message);
@@ -203,9 +161,6 @@ class AuthError extends Error {
     }
 }
 
-/**
- * Authorization error (insufficient permissions)
- */
 class ForbiddenError extends Error {
     constructor(message = 'Access denied') {
         super(message);
@@ -215,13 +170,9 @@ class ForbiddenError extends Error {
 }
 
 // ============================================================
-// DATABASE SERVICE LAYER
+// SECTION 5: DATABASE SERVICE LAYER
 // ============================================================
 
-/**
- * Enhanced database service with query monitoring and advanced filtering
- * Provides abstraction over Supabase client with additional features
- */
 class DatabaseService {
     constructor(supabase) {
         this.supabase = supabase;
@@ -229,21 +180,6 @@ class DatabaseService {
         this.queryTimes = [];
     }
 
-    /**
-     * Execute a database query with enhanced features
-     * @param {string} operation - Query type: 'select', 'insert', 'update', 'upsert', 'delete'
-     * @param {string} table - Database table name
-     * @param {Object} options - Query options
-     * @param {Object} options.data - Data for insert/update operations
-     * @param {string} options.select - Fields to select
-     * @param {Object} options.where - Filter conditions with operators
-     * @param {Object} options.order - Sorting configuration
-     * @param {number} options.limit - Maximum records to return
-     * @param {number} options.offset - Pagination offset
-     * @param {boolean} options.count - Whether to return total count
-     * @returns {Promise<Object>} Query result with metadata
-     * @throws {DatabaseError} When query fails
-     */
     async query(operation, table, options = {}) {
         const startTime = Date.now();
         this.queryCount++;
@@ -261,7 +197,6 @@ class DatabaseService {
 
             let query;
 
-            // Build base query based on operation
             switch (operation) {
                 case 'select':
                     query = this.supabase.from(table).select(select, count ? { count: 'exact' } : {});
@@ -282,45 +217,23 @@ class DatabaseService {
                     throw new Error(`Unknown operation: ${operation}`);
             }
 
-            // Apply filters with enhanced operators
             if (where && Object.keys(where).length > 0) {
                 for (const [key, value] of Object.entries(where)) {
                     if (Array.isArray(value)) {
                         query = query.in(key, value);
                     } else if (typeof value === 'object' && value.operator) {
                         switch (value.operator) {
-                            case 'like':
-                                query = query.like(key, value.value);
-                                break;
-                            case 'ilike':
-                                query = query.ilike(key, value.value);
-                                break;
-                            case 'gt':
-                                query = query.gt(key, value.value);
-                                break;
-                            case 'lt':
-                                query = query.lt(key, value.value);
-                                break;
-                            case 'gte':
-                                query = query.gte(key, value.value);
-                                break;
-                            case 'lte':
-                                query = query.lte(key, value.value);
-                                break;
-                            case 'neq':
-                                query = query.neq(key, value.value);
-                                break;
-                            case 'contains':
-                                query = query.contains(key, value.value);
-                                break;
-                            case 'overlaps':
-                                query = query.overlaps(key, value.value);
-                                break;
-                            case 'isNull':
-                                query = query.is(key, null);
-                                break;
-                            default:
-                                query = query.eq(key, value.value);
+                            case 'like': query = query.like(key, value.value); break;
+                            case 'ilike': query = query.ilike(key, value.value); break;
+                            case 'gt': query = query.gt(key, value.value); break;
+                            case 'lt': query = query.lt(key, value.value); break;
+                            case 'gte': query = query.gte(key, value.value); break;
+                            case 'lte': query = query.lte(key, value.value); break;
+                            case 'neq': query = query.neq(key, value.value); break;
+                            case 'contains': query = query.contains(key, value.value); break;
+                            case 'overlaps': query = query.overlaps(key, value.value); break;
+                            case 'isNull': query = query.is(key, null); break;
+                            default: query = query.eq(key, value.value);
                         }
                     } else if (value !== undefined && value !== null) {
                         query = query.eq(key, value);
@@ -328,7 +241,6 @@ class DatabaseService {
                 }
             }
 
-            // Apply ordering
             if (order.column) {
                 query = query.order(order.column, {
                     ascending: order.ascending !== false,
@@ -336,13 +248,11 @@ class DatabaseService {
                 });
             }
 
-            // Apply pagination
             if (limit && operation === 'select') {
                 query = query.range(offset, offset + limit - 1);
             }
 
             const result = await query;
-
             const queryTime = Date.now() - startTime;
             this.queryTimes.push(queryTime);
             if (this.queryTimes.length > 100) this.queryTimes.shift();
@@ -363,10 +273,6 @@ class DatabaseService {
         }
     }
 
-    /**
-     * Get database performance statistics
-     * @returns {Object} Query statistics
-     */
     getStats() {
         const avgQueryTime = this.queryTimes.length > 0 
             ? this.queryTimes.reduce((a, b) => a + b, 0) / this.queryTimes.length 
@@ -383,24 +289,14 @@ class DatabaseService {
 const db = new DatabaseService(supabase);
 
 // ============================================================
-// LOGGING SYSTEM
+// SECTION 6: LOGGING SYSTEM
 // ============================================================
 
-/**
- * Create log directory if it doesn't exist
- */
 const LOG_DIR = 'logs';
 if (!fsSync.existsSync(LOG_DIR)) {
     fsSync.mkdirSync(LOG_DIR, { recursive: true });
 }
 
-/**
- * Winston logger instance with multiple transports
- * - error.log: Only error-level logs
- * - combined.log: All logs
- * - audit.log: Security and audit events
- * - Console: Development logging with colors
- */
 const logger = winston.createLogger({
     level: IS_PRODUCTION ? 'info' : 'debug',
     format: winston.format.combine(
@@ -410,22 +306,19 @@ const logger = winston.createLogger({
     ),
     defaultMeta: { service: 'nuesa-biu-api', environment: NODE_ENV },
     transports: [
-        // Error logs
         new winston.transports.File({
             filename: `${LOG_DIR}/error.log`,
             level: 'error',
-            maxsize: 10 * 1024 * 1024, // 10MB
+            maxsize: 10 * 1024 * 1024,
             maxFiles: 10,
             tailable: true
         }),
-        // Combined logs
         new winston.transports.File({
             filename: `${LOG_DIR}/combined.log`,
-            maxsize: 20 * 1024 * 1024, // 20MB
+            maxsize: 20 * 1024 * 1024,
             maxFiles: 10,
             tailable: true
         }),
-        // Audit logs for security events
         new winston.transports.File({
             filename: `${LOG_DIR}/audit.log`,
             level: 'info',
@@ -434,19 +327,13 @@ const logger = winston.createLogger({
             format: winston.format.combine(
                 winston.format.timestamp(),
                 winston.format.printf(({ timestamp, level, message, ...meta }) => {
-                    return JSON.stringify({
-                        timestamp,
-                        level,
-                        message,
-                        ...meta
-                    });
+                    return JSON.stringify({ timestamp, level, message, ...meta });
                 })
             )
         })
     ]
 });
 
-// Console transport for development
 if (!IS_PRODUCTION) {
     logger.add(new winston.transports.Console({
         format: winston.format.combine(
@@ -461,12 +348,9 @@ if (!IS_PRODUCTION) {
 }
 
 // ============================================================
-// CACHE MANAGEMENT SYSTEM
+// SECTION 7: CACHE MANAGEMENT
 // ============================================================
 
-/**
- * LRU Cache implementation with TTL support
- */
 class LRUCache {
     constructor(maxSize = 100, ttl = 300000) {
         this.cache = new Map();
@@ -476,12 +360,6 @@ class LRUCache {
         this.misses = 0;
     }
 
-    /**
-     * Set a value in cache with optional custom TTL
-     * @param {string} key - Cache key
-     * @param {*} value - Value to cache
-     * @param {number} customTTL - Custom TTL in milliseconds
-     */
     set(key, value, customTTL = null) {
         if (this.cache.size >= this.maxSize) {
             const firstKey = this.cache.keys().next().value;
@@ -495,11 +373,6 @@ class LRUCache {
         });
     }
 
-    /**
-     * Get a value from cache
-     * @param {string} key - Cache key
-     * @returns {*} Cached value or null if not found/expired
-     */
     get(key) {
         const item = this.cache.get(key);
         if (!item) {
@@ -518,28 +391,16 @@ class LRUCache {
         return item.value;
     }
 
-    /**
-     * Delete a key from cache
-     * @param {string} key - Cache key
-     * @returns {boolean} True if key was deleted
-     */
     delete(key) {
         return this.cache.delete(key);
     }
 
-    /**
-     * Clear all cache entries
-     */
     clear() {
         this.cache.clear();
         this.hits = 0;
         this.misses = 0;
     }
 
-    /**
-     * Get cache statistics
-     * @returns {Object} Cache stats
-     */
     getStats() {
         const hitRate = this.hits + this.misses > 0 ? this.hits / (this.hits + this.misses) : 0;
         return {
@@ -553,21 +414,12 @@ class LRUCache {
     }
 }
 
-/**
- * Centralized cache manager with Redis support
- */
 class CacheManager {
     constructor() {
         this.caches = new Map();
         this.redis = redis;
     }
 
-    /**
-     * Get or create a named cache
-     * @param {string} name - Cache name
-     * @param {Object} options - Cache options
-     * @returns {LRUCache} Cache instance
-     */
     getCache(name, options = {}) {
         if (!this.caches.has(name)) {
             this.caches.set(name, new LRUCache(options.maxSize || 100, options.ttl || 300000));
@@ -575,28 +427,15 @@ class CacheManager {
         return this.caches.get(name);
     }
 
-    /**
-     * Get value from cache (Redis if available, otherwise memory)
-     * @param {string} key - Cache key
-     * @returns {Promise<*>} Cached value or null
-     */
     async get(key) {
         if (this.redis) {
             const value = await this.redis.get(key);
-            if (value) {
-                return JSON.parse(value);
-            }
+            if (value) return JSON.parse(value);
             return null;
         }
         return this.caches.get('default')?.get(key) || null;
     }
 
-    /**
-     * Set value in cache
-     * @param {string} key - Cache key
-     * @param {*} value - Value to cache
-     * @param {number} ttl - TTL in milliseconds
-     */
     async set(key, value, ttl = 300000) {
         if (this.redis) {
             await this.redis.set(key, JSON.stringify(value), 'PX', ttl);
@@ -608,10 +447,6 @@ class CacheManager {
         }
     }
 
-    /**
-     * Delete a key from cache
-     * @param {string} key - Cache key
-     */
     async delete(key) {
         if (this.redis) {
             await this.redis.del(key);
@@ -620,38 +455,23 @@ class CacheManager {
         }
     }
 
-    /**
-     * Invalidate all keys matching a pattern
-     * @param {string} pattern - Key pattern (e.g., 'user:*')
-     */
     async invalidate(pattern) {
         if (this.redis) {
             const keys = await this.redis.keys(pattern);
-            if (keys.length > 0) {
-                await this.redis.del(...keys);
-            }
+            if (keys.length > 0) await this.redis.del(...keys);
         } else {
             this.caches.forEach((cache, cacheName) => {
-                if (cacheName.match(pattern)) {
-                    cache.clear();
-                }
+                if (cacheName.match(pattern)) cache.clear();
             });
         }
     }
 
-    /**
-     * Invalidate cache entries by tags
-     * @param {string[]} tags - Tags to invalidate
-     */
     async invalidateByTags(tags) {
         for (const tag of tags) {
             await this.invalidate(`tag:${tag}:*`);
         }
     }
 
-    /**
-     * Clear all caches
-     */
     clearAll() {
         if (this.redis) {
             this.redis.flushdb();
@@ -660,18 +480,12 @@ class CacheManager {
         }
     }
 
-    /**
-     * Get cache statistics
-     * @returns {Object} Cache stats by name
-     */
     getStats() {
         const stats = {};
         this.caches.forEach((cache, name) => {
             stats[name] = cache.getStats();
         });
-        if (this.redis) {
-            stats.redis = { connected: true };
-        }
+        if (this.redis) stats.redis = { connected: true };
         return stats;
     }
 }
@@ -681,25 +495,19 @@ const userCache = cacheManager.getCache('users', { maxSize: 200, ttl: 300000 });
 const dataCache = cacheManager.getCache('data', { maxSize: 100, ttl: 60000 });
 
 // ============================================================
-// REQUEST ID MIDDLEWARE
+// SECTION 8: SECURITY MIDDLEWARE SETUP
 // ============================================================
 
-/**
- * Generate unique ID for each request and set response header
- */
+app.set('trust proxy', 1);
+
+// Request ID Middleware
 app.use((req, res, next) => {
     req.id = uuid.v4();
     res.setHeader('X-Request-ID', req.id);
     next();
 });
 
-// ============================================================
-// SECURITY HEADERS MIDDLEWARE
-// ============================================================
-
-/**
- * Set security headers for all responses
- */
+// Security Headers
 app.use((req, res, next) => {
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('X-XSS-Protection', '1; mode=block');
@@ -709,16 +517,7 @@ app.use((req, res, next) => {
     next();
 });
 
-// ============================================================
-// ENHANCED MIDDLEWARE STACK
-// ============================================================
-
-app.set('trust proxy', 1);
-
-/**
- * Compression middleware
- * Compress response bodies for all requests except those with x-no-compression header
- */
+// Compression
 app.use(compression({
     level: 6,
     threshold: 1024,
@@ -728,15 +527,13 @@ app.use(compression({
     }
 }));
 
-/**
- * Helmet security configuration with custom CSP
- */
+// Helmet with custom CSP
 const CSP_DIRECTIVES = {
     defaultSrc: ["'self'"],
     styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
     scriptSrc: ["'self'", "'unsafe-inline'"],
     imgSrc: ["'self'", "data:", "https:", "blob:"],
-    connectSrc: ["'self'"],
+    connectSrc: ["'self'", supabaseUrl, "https://*.supabase.co"],
     fontSrc: ["'self'", "https://fonts.gstatic.com"],
     objectSrc: ["'none'"],
     mediaSrc: ["'self'"],
@@ -746,76 +543,44 @@ const CSP_DIRECTIVES = {
     frameAncestors: ["'none'"]
 };
 
-// Add allowed origins to connectSrc if they exist
-if (supabaseUrl) {
-    CSP_DIRECTIVES.connectSrc.push(supabaseUrl);
-}
-
 if (process.env.FRONTEND_URL) {
     CSP_DIRECTIVES.connectSrc.push(process.env.FRONTEND_URL);
 }
 
-// Add Supabase wildcard
-CSP_DIRECTIVES.connectSrc.push("https://*.supabase.co");
+app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 
-app.use(
-    helmet({
-        contentSecurityPolicy: false, // Disabled for now, would need proper configuration
-        crossOriginEmbedderPolicy: false,
-        crossOriginResourcePolicy: { policy: "cross-origin" }
-    })
-);
-
-/**
- * CSRF Protection (except for API routes)
- */
+// CSRF Protection (except API routes)
 const csrfProtection = csrf({ cookie: true });
 app.use('/portal', (req, res, next) => {
-    if (req.path === '/login') {
-        return next();
-    }
+    if (req.path === '/login') return next();
     csrfProtection(req, res, next);
 });
 
-/**
- * XSS protection middleware
- */
+// XSS & HPP Protection
 app.use(xss());
+app.use(hpp({ whitelist: ['page', 'limit', 'sort', 'fields'] }));
 
-/**
- * HTTP Parameter Pollution protection
- */
-app.use(hpp({
-    whitelist: ['page', 'limit', 'sort', 'fields']
-}));
-
-/**
- * Enhanced CORS configuration
- */
+// CORS Configuration
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
     .split(',')
     .map(origin => origin.trim())
     .filter(origin => origin.length > 0);
 
-// Add FRONTEND_URL if set
 if (process.env.FRONTEND_URL && !ALLOWED_ORIGINS.includes(process.env.FRONTEND_URL)) {
     ALLOWED_ORIGINS.push(process.env.FRONTEND_URL);
 }
 
-// Add production domains
-ALLOWED_ORIGINS.push('https://nuesa-biu.vercel.app');
-ALLOWED_ORIGINS.push('https://www.nuesa-biu.vercel.app');
+ALLOWED_ORIGINS.push('https://nuesa-biu-pjp0.onrender.com');
+ALLOWED_ORIGINS.push('https://www.nuesa-biu-pjp0.onrender.com');
 
 const corsOptions = {
     origin: function (origin, callback) {
-        if (!origin) {
-            return callback(null, true);
-        }
-
-        if (!IS_PRODUCTION) {
-            return callback(null, true);
-        }
-
+        if (!origin) return callback(null, true);
+        if (!IS_PRODUCTION) return callback(null, true);
         if (ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin)) {
             callback(null, true);
         } else {
@@ -826,23 +591,13 @@ const corsOptions = {
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
     allowedHeaders: [
-        'Content-Type',
-        'Authorization',
-        'Accept',
-        'Origin',
-        'X-Requested-With',
-        'X-API-Key',
-        'X-Total-Count',
-        'X-Page-Count',
-        'X-CSRF-Token'
+        'Content-Type', 'Authorization', 'Accept', 'Origin', 
+        'X-Requested-With', 'X-API-Key', 'X-Total-Count', 
+        'X-Page-Count', 'X-CSRF-Token'
     ],
     exposedHeaders: [
-        'X-Total-Count',
-        'X-Page-Count',
-        'X-RateLimit-Limit',
-        'X-RateLimit-Remaining',
-        'X-RateLimit-Reset',
-        'X-Request-ID'
+        'X-Total-Count', 'X-Page-Count', 'X-RateLimit-Limit',
+        'X-RateLimit-Remaining', 'X-RateLimit-Reset', 'X-Request-ID'
     ],
     maxAge: 86400,
     preflightContinue: false,
@@ -850,20 +605,12 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-
-/**
- * Cookie parser middleware
- */
 app.use(cookieParser());
 
-/**
- * Enhanced request parsing with raw body capture
- */
+// Body Parsing
 app.use(express.json({
     limit: MAX_REQUEST_SIZE,
-    verify: (req, res, buf, encoding) => {
-        req.rawBody = buf;
-    }
+    verify: (req, res, buf, encoding) => { req.rawBody = buf; }
 }));
 
 app.use(express.urlencoded({
@@ -872,118 +619,86 @@ app.use(express.urlencoded({
     parameterLimit: 100
 }));
 
-/**
- * Request logging with Morgan
- */
+// Request Logging
 const morganFormat = IS_PRODUCTION ? 'combined' : 'dev';
 app.use(morgan(morganFormat, {
-    stream: {
-        write: (message) => logger.http(message.trim())
-    },
+    stream: { write: (message) => logger.http(message.trim()) },
     skip: (req, res) => req.path === '/api/health' && req.method === 'GET'
 }));
 
-/**
- * Request timeout middleware
- */
+// Timeout Handling
 app.use(timeout('30s'));
-app.use(haltOnTimedout);
-
-/**
- * Handle request timeouts
- */
-function haltOnTimedout(req, res, next) {
+app.use((req, res, next) => {
     if (req.timedout) {
         logger.error('Request timeout', {
-            requestId: req.id,
-            url: req.url,
-            method: req.method,
-            ip: req.ip,
-            userId: req.user?.id
+            requestId: req.id, url: req.url, method: req.method,
+            ip: req.ip, userId: req.user?.id
         });
-        res.status(503).json({
-            status: 'error',
-            code: 'TIMEOUT',
+        return res.status(503).json({
+            status: 'error', code: 'TIMEOUT',
             message: 'Request timeout. Please try again.'
         });
-    } else {
-        next();
     }
-}
+    next();
+});
 
-/**
- * Create rate limiter with configurable options
- * @param {number} max - Maximum requests per window
- * @param {number} windowMs - Time window in milliseconds
- * @param {string} message - Error message
- * @returns {Function} Rate limiter middleware
- */
+// Response Time Tracking
+app.use((req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        logger.info('Request completed', {
+            requestId: req.id, method: req.method, url: req.url,
+            status: res.statusCode, duration: `${duration}ms`, userId: req.user?.id
+        });
+    });
+    next();
+});
+
+// ============================================================
+// SECTION 9: RATE LIMITING & CACHE MIDDLEWARE
+// ============================================================
+
 const createRateLimiter = (max, windowMs = 15 * 60 * 1000, message = 'Too many requests') => {
     return rateLimit({
-        windowMs,
-        max,
-        message: {
-            status: 'error',
-            code: 'TOO_MANY_REQUESTS',
-            message
-        },
+        windowMs, max,
+        message: { status: 'error', code: 'TOO_MANY_REQUESTS', message },
         standardHeaders: true,
         legacyHeaders: false,
         skipSuccessfulRequests: false,
-        keyGenerator: (req) => {
-            return req.headers['x-forwarded-for'] || req.ip;
-        },
+        keyGenerator: (req) => req.headers['x-forwarded-for'] || req.ip,
         handler: (req, res) => {
             logger.warn('Rate limit exceeded', {
-                requestId: req.id,
-                ip: req.ip,
-                url: req.url,
-                method: req.method
+                requestId: req.id, ip: req.ip, url: req.url, method: req.method
             });
             res.status(429).json({
-                status: 'error',
-                code: 'TOO_MANY_REQUESTS',
-                message
+                status: 'error', code: 'TOO_MANY_REQUESTS', message
             });
         }
     });
 };
 
-/**
- * Apply rate limiting to specific routes
- */
+// Apply rate limits
 app.use('/api/auth/login', createRateLimiter(10, 15 * 60 * 1000, 'Too many login attempts'));
-app.use('/api/admin/login', createRateLimiter(5, 15 * 60 * 1000, 'Too many admin login attempts'));
+app.use('/api/admin/login', createRateLimiter(10, 15 * 60 * 1000, 'Too many admin login attempts'));
 app.use('/api/contact/submit', createRateLimiter(10, 15 * 60 * 1000, 'Too many contact form submissions'));
 app.use('/api/', createRateLimiter(200, 15 * 60 * 1000));
 
-/**
- * Cache middleware with tag support
- * @param {number} duration - Cache duration in seconds
- * @param {string[]} tags - Cache tags for invalidation
- * @returns {Function} Cache middleware
- */
+// Cache Middleware
 const cacheMiddleware = (duration = 60, tags = []) => {
     return async (req, res, next) => {
-        if (req.method !== 'GET' || req.headers.authorization) {
-            return next();
-        }
+        if (req.method !== 'GET' || req.headers.authorization) return next();
 
         const key = `cache:${req.originalUrl || req.url}`;
         
         try {
             const cachedResponse = await cacheManager.get(key);
-
-            if (cachedResponse) {
-                return res.json(cachedResponse);
-            }
+            if (cachedResponse) return res.json(cachedResponse);
 
             const originalSend = res.json;
             res.json = async function (body) {
                 if (res.statusCode >= 200 && res.statusCode < 300) {
                     await cacheManager.set(key, body, duration * 1000);
-                    
-                    // Set cache tags for invalidation
                     if (tags.length > 0) {
                         for (const tag of tags) {
                             await cacheManager.set(`tag:${tag}:${key}`, true, duration * 1000);
@@ -992,7 +707,6 @@ const cacheMiddleware = (duration = 60, tags = []) => {
                 }
                 originalSend.call(this, body);
             };
-
             next();
         } catch (error) {
             logger.error('Cache middleware error:', { requestId: req.id, error: error.message });
@@ -1001,49 +715,19 @@ const cacheMiddleware = (duration = 60, tags = []) => {
     };
 };
 
-/**
- * Response time tracking middleware
- */
-app.use((req, res, next) => {
-    const start = Date.now();
-    res.on('finish', () => {
-        const duration = Date.now() - start;
-        logger.info('Request completed', {
-            requestId: req.id,
-            method: req.method,
-            url: req.url,
-            status: res.statusCode,
-            duration: `${duration}ms`,
-            userId: req.user?.id
-        });
-    });
-    next();
-});
-
 // ============================================================
-// ACCOUNT LOCKOUT SYSTEM
+// SECTION 10: ACCOUNT LOCKOUT SYSTEM
 // ============================================================
 
-/**
- * In-memory store for login attempts
- * In production, this should be replaced with Redis
- */
 const loginAttempts = new Map();
 
-/**
- * Check if an account is locked due to too many failed attempts
- * @param {string} identifier - Email or user identifier
- * @throws {AuthError} If account is locked
- */
 async function checkLoginAttempts(identifier) {
     const attempts = loginAttempts.get(identifier) || { count: 0, lockedUntil: null };
     
-    // Check if locked
     if (attempts.lockedUntil && attempts.lockedUntil > Date.now()) {
         throw new AuthError('Account temporarily locked. Try again later.', 'ACCOUNT_LOCKED');
     }
     
-    // Reset if lock expired
     if (attempts.lockedUntil && attempts.lockedUntil <= Date.now()) {
         loginAttempts.delete(identifier);
         return;
@@ -1052,17 +736,12 @@ async function checkLoginAttempts(identifier) {
     return attempts;
 }
 
-/**
- * Record a failed login attempt
- * @param {string} identifier - Email or user identifier
- */
 async function recordFailedAttempt(identifier) {
     const attempts = loginAttempts.get(identifier) || { count: 0, lockedUntil: null };
     attempts.count += 1;
     
-    // Lock after 5 failed attempts
     if (attempts.count >= 5) {
-        attempts.lockedUntil = Date.now() + 15 * 60 * 1000; // 15 minutes
+        attempts.lockedUntil = Date.now() + 15 * 60 * 1000;
         attempts.count = 0;
         logger.warn('Account locked due to multiple failed attempts', { identifier });
     }
@@ -1070,21 +749,14 @@ async function recordFailedAttempt(identifier) {
     loginAttempts.set(identifier, attempts);
 }
 
-/**
- * Reset login attempts on successful login
- * @param {string} identifier - Email or user identifier
- */
 async function resetLoginAttempts(identifier) {
     loginAttempts.delete(identifier);
 }
 
 // ============================================================
-// FILE UPLOAD CONFIGURATION
+// SECTION 11: FILE UPLOAD CONFIGURATION
 // ============================================================
 
-/**
- * Upload directories configuration
- */
 const UPLOAD_DIRS = {
     images: './uploads/images',
     resources: './uploads/resources',
@@ -1092,7 +764,6 @@ const UPLOAD_DIRS = {
     temp: './uploads/temp'
 };
 
-// Create upload directories
 Object.values(UPLOAD_DIRS).forEach(dir => {
     if (!fsSync.existsSync(dir)) {
         fsSync.mkdirSync(dir, { recursive: true });
@@ -1100,9 +771,6 @@ Object.values(UPLOAD_DIRS).forEach(dir => {
     }
 });
 
-/**
- * Enhanced storage configuration for multer
- */
 const storage = multer.diskStorage({
     destination: async function (req, file, cb) {
         try {
@@ -1134,9 +802,6 @@ const storage = multer.diskStorage({
     }
 });
 
-/**
- * File filter with enhanced validation
- */
 const fileFilter = (req, file, cb) => {
     const allowedMimeTypes = {
         'image/jpeg': ['.jpg', '.jpeg'],
@@ -1163,27 +828,17 @@ const fileFilter = (req, file, cb) => {
     cb(null, true);
 };
 
-/**
- * Multer upload instance with configuration
- */
 const upload = multer({
     storage: storage,
-    limits: {
-        fileSize: MAX_FILE_SIZE,
-        files: 5
-    },
+    limits: { fileSize: MAX_FILE_SIZE, files: 5 },
     fileFilter: fileFilter
 });
 
 // ============================================================
-// VALIDATION SCHEMAS
+// SECTION 12: VALIDATION SCHEMAS
 // ============================================================
 
-/**
- * Joi validation schemas for request data
- */
 const schemas = {
-    // Authentication schemas
     login: Joi.object({
         email: Joi.string().email().required(),
         password: Joi.string().min(8).required(),
@@ -1198,7 +853,6 @@ const schemas = {
         role: Joi.string().valid('member', 'editor', 'admin').default('member')
     }),
     
-    // User management schemas
     createUser: Joi.object({
         email: Joi.string().email().required(),
         password: Joi.string().min(8).required(),
@@ -1221,7 +875,6 @@ const schemas = {
         newPassword: Joi.string().min(8).required()
     }),
     
-    // Member management schemas
     createMember: Joi.object({
         full_name: Joi.string().required(),
         position: Joi.string().required(),
@@ -1236,7 +889,6 @@ const schemas = {
         social_links: Joi.object().default({})
     }),
     
-    // Contact form schema
     contactForm: Joi.object({
         name: Joi.string().min(2).max(100).required(),
         email: Joi.string().email().required(),
@@ -1244,7 +896,6 @@ const schemas = {
         subject: Joi.string().max(200).optional()
     }),
     
-    // Article schema
     article: Joi.object({
         title: Joi.string().required(),
         slug: Joi.string().optional(),
@@ -1259,40 +910,24 @@ const schemas = {
     })
 };
 
-/**
- * Validation middleware factory
- * @param {Joi.Schema} schema - Joi validation schema
- * @returns {Function} Express middleware
- */
 const validate = (schema) => {
     return (req, res, next) => {
         const { error } = schema.validate(req.body);
-        if (error) {
-            throw new ValidationError('Validation failed', error.details);
-        }
+        if (error) throw new ValidationError('Validation failed', error.details);
         next();
     };
 };
 
 // ============================================================
-// AUTHENTICATION SERVICE
+// SECTION 13: AUTHENTICATION SERVICE
 // ============================================================
 
-/**
- * Authentication service handling JWT and user authentication
- */
 class AuthService {
     constructor() {
         this.secret = JWT_SECRET;
         this.expire = JWT_EXPIRE;
-        this.adminExpire = JWT_ADMIN_EXPIRE;
     }
 
-    /**
-     * Generate JWT token for regular users
-     * @param {Object} payload - Token payload
-     * @returns {string} JWT token
-     */
     generateToken(payload) {
         return jwt.sign(payload, this.secret, {
             expiresIn: this.expire,
@@ -1302,47 +937,19 @@ class AuthService {
         });
     }
 
-    /**
-     * Generate JWT token for admin users
-     * @param {Object} payload - Token payload
-     * @returns {string} JWT token
-     */
-    generateAdminToken(payload) {
-        return jwt.sign(payload, this.secret, {
-            expiresIn: this.adminExpire,
-            issuer: 'nuesa-biu-system',
-            audience: 'nuesa-biu-admin',
-            jwtid: uuid.v4()
-        });
-    }
-
-    /**
-     * Verify and decode JWT token
-     * @param {string} token - JWT token
-     * @returns {Object} Decoded payload
-     * @throws {AuthError} If token is invalid
-     */
     verifyToken(token) {
         try {
             return jwt.verify(token, this.secret, {
-                issuer: ['nuesa-biu-api', 'nuesa-biu-system'],
-                audience: ['nuesa-biu-client', 'nuesa-biu-admin']
+                issuer: ['nuesa-biu-api'],
+                audience: ['nuesa-biu-client']
             });
         } catch (error) {
             throw new AuthError('Invalid token', error.name);
         }
     }
 
-    /**
-     * Authenticate user with email and password
-     * @param {string} email - User email
-     * @param {string} password - User password
-     * @returns {Promise<Object>} User object without sensitive data
-     * @throws {AuthError} If authentication fails
-     */
     async authenticateUser(email, password) {
         try {
-            // Check login attempts
             await checkLoginAttempts(email.toLowerCase());
 
             const result = await db.query('select', 'users', {
@@ -1357,9 +964,7 @@ class AuthService {
 
             const user = result.data[0];
 
-            if (!user.is_active) {
-                throw new AuthError('Account is deactivated');
-            }
+            if (!user.is_active) throw new AuthError('Account is deactivated');
 
             const validPassword = await bcrypt.compare(password, user.password_hash);
             if (!validPassword) {
@@ -1367,16 +972,13 @@ class AuthService {
                 throw new AuthError('Invalid credentials');
             }
 
-            // Reset login attempts on success
             await resetLoginAttempts(email.toLowerCase());
 
-            // Update last login
             await db.query('update', 'users', {
                 data: { last_login: new Date() },
                 where: { id: user.id }
             });
 
-            // Log successful login
             logger.info('User logged in successfully', { userId: user.id, email: user.email });
 
             return this.createUserResponse(user);
@@ -1385,11 +987,6 @@ class AuthService {
         }
     }
 
-    /**
-     * Create user response object (remove sensitive data)
-     * @param {Object} user - Raw user object from database
-     * @returns {Object} Sanitized user object
-     */
     createUserResponse(user) {
         return {
             id: user.id,
@@ -1403,11 +1000,6 @@ class AuthService {
         };
     }
 
-    /**
-     * Create token payload from user
-     * @param {Object} user - User object
-     * @returns {Object} Token payload
-     */
     createTokenPayload(user) {
         return {
             userId: user.id,
@@ -1421,110 +1013,9 @@ class AuthService {
 const authService = new AuthService();
 
 // ============================================================
-// ADMIN AUTHENTICATION MIDDLEWARE
+// SECTION 14: AUTHENTICATION MIDDLEWARE
 // ============================================================
 
-/**
- * Check admin session from cookies or headers
- * Sets req.isAdmin and req.admin if authenticated
- */
-const checkAdminSessionEnhanced = async (req, res, next) => {
-    try {
-        // Check multiple token sources
-        const token = req.cookies?.admin_session || 
-                     req.cookies?.auth_token ||
-                     req.headers['x-access-token'] ||
-                     req.headers['authorization']?.replace('Bearer ', '');
-        
-        if (!token) {
-            req.isAdmin = false;
-            req.admin = null;
-            return next();
-        }
-        
-        let decoded;
-        try {
-            // Try to verify as admin token first
-            decoded = jwt.verify(token, JWT_SECRET, {
-                issuer: 'nuesa-biu-system',
-                audience: 'nuesa-biu-admin'
-            });
-        } catch (e) {
-            // If not admin token, try regular token
-            try {
-                decoded = jwt.verify(token, JWT_SECRET);
-            } catch (e2) {
-                req.isAdmin = false;
-                req.admin = null;
-                return next();
-            }
-        }
-        
-        // Get user from database
-        const result = await db.query('select', 'users', {
-            where: { id: decoded.userId },
-            select: 'id, email, full_name, role, is_active, last_login'
-        });
-        
-        if (result.data.length === 0 || !result.data[0].is_active) {
-            // Clear cookies safely
-            const clearAdminCookie = () => {
-                const cookieOptions = {
-                    httpOnly: true,
-                    secure: IS_PRODUCTION,
-                    sameSite: 'none',
-                    maxAge: 8 * 60 * 60 * 1000,
-                    path: '/'
-                };
-                
-                if (IS_PRODUCTION && process.env.FRONTEND_URL) {
-                    try {
-                        const frontendUrl = new URL(process.env.FRONTEND_URL);
-                        cookieOptions.domain = frontendUrl.hostname;
-                    } catch (error) {
-                        logger.warn('Invalid FRONTEND_URL for cookie clearing:', error);
-                    }
-                }
-                
-                res.clearCookie('admin_token', cookieOptions);
-                res.clearCookie('admin_session', cookieOptions);
-            };
-            
-            clearAdminCookie();
-            req.isAdmin = false;
-            req.admin = null;
-            return next();
-        }
-        
-        const user = result.data[0];
-        
-        // Check if user has admin role
-        if (user.role === 'admin') {
-            req.admin = user;
-            req.isAdmin = true;
-        } else {
-            req.isAdmin = false;
-            req.admin = null;
-        }
-        
-        next();
-    } catch (error) {
-        req.isAdmin = false;
-        req.admin = null;
-        next();
-    }
-};
-
-// Apply enhanced session check to all routes
-app.use(checkAdminSessionEnhanced);
-
-// ============================================================
-// USER AUTHENTICATION MIDDLEWARE
-// ============================================================
-
-/**
- * Verify JWT token and attach user to request
- */
 const verifyToken = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
@@ -1550,15 +1041,11 @@ const verifyToken = async (req, res, next) => {
             select: 'id, email, full_name, role, department, is_active, created_at, last_login'
         });
 
-        if (result.data.length === 0) {
-            throw new AuthError('User not found', 'USER_NOT_FOUND');
-        }
+        if (result.data.length === 0) throw new AuthError('User not found', 'USER_NOT_FOUND');
 
         const user = authService.createUserResponse(result.data[0]);
 
-        if (!user.isActive) {
-            throw new AuthError('Account deactivated', 'ACCOUNT_DEACTIVATED');
-        }
+        if (!user.isActive) throw new AuthError('Account deactivated', 'ACCOUNT_DEACTIVATED');
 
         await cacheManager.set(cacheKey, user, 300000);
         req.user = user;
@@ -1567,54 +1054,30 @@ const verifyToken = async (req, res, next) => {
         next();
     } catch (error) {
         if (error.name === 'TokenExpiredError') {
-            return res.status(401).json({
-                status: 'error',
-                code: 'TOKEN_EXPIRED',
-                message: 'Token expired'
-            });
+            return res.status(401).json({ status: 'error', code: 'TOKEN_EXPIRED', message: 'Token expired' });
         }
-
         if (error.name === 'JsonWebTokenError') {
-            return res.status(401).json({
-                status: 'error',
-                code: 'INVALID_TOKEN',
-                message: 'Invalid token'
-            });
+            return res.status(401).json({ status: 'error', code: 'INVALID_TOKEN', message: 'Invalid token' });
         }
 
         logger.error('Authentication error:', { requestId: req.id, error: error.message });
         res.status(error.statusCode || 401).json({
-            status: 'error',
-            code: error.code || 'AUTH_FAILED',
+            status: 'error', code: error.code || 'AUTH_FAILED',
             message: error.message || 'Authentication failed'
         });
     }
 };
 
-/**
- * Require specific roles for access
- * @param {...string} roles - Allowed roles
- * @returns {Function} Middleware
- */
 const requireRole = (...roles) => {
     return (req, res, next) => {
-        if (!req.user) {
-            throw new AuthError('Authentication required', 'AUTH_REQUIRED');
-        }
-
+        if (!req.user) throw new AuthError('Authentication required', 'AUTH_REQUIRED');
         if (!roles.includes(req.user.role)) {
             throw new ForbiddenError(`Required roles: ${roles.join(', ')}`);
         }
-
         next();
     };
 };
 
-/**
- * Require specific permission
- * @param {string} permission - Required permission
- * @returns {Function} Middleware
- */
 const requirePermission = (permission) => {
     const permissions = {
         admin: ['manage_users', 'manage_content', 'manage_settings', 'view_all'],
@@ -1623,40 +1086,27 @@ const requirePermission = (permission) => {
     };
 
     return (req, res, next) => {
-        if (!req.user) {
-            throw new AuthError('Authentication required', 'AUTH_REQUIRED');
-        }
-
+        if (!req.user) throw new AuthError('Authentication required', 'AUTH_REQUIRED');
         const userPermissions = permissions[req.user.role] || [];
         if (!userPermissions.includes(permission)) {
             throw new ForbiddenError(`Required permission: ${permission}`);
         }
-
         next();
     };
 };
 
 // ============================================================
-// DATABASE INITIALIZATION
+// SECTION 15: DATABASE INITIALIZATION
 // ============================================================
 
-/**
- * Initialize database connection and create default admin
- */
 async function initializeDatabase() {
     try {
-        // Test database connection
         const { error } = await supabase.from('users').select('count').limit(1);
-
-        if (error) {
-            throw new Error(`Database connection failed: ${error.message}`);
-        }
+        if (error) throw new Error(`Database connection failed: ${error.message}`);
 
         logger.info('Database connected successfully');
-
         await createDefaultAdmin();
         await createDefaultTables();
-
         logger.info('Database initialization complete');
     } catch (error) {
         logger.error('Database initialization failed:', error);
@@ -1664,13 +1114,9 @@ async function initializeDatabase() {
     }
 }
 
-/**
- * Create default admin user if it doesn't exist
- */
 async function createDefaultAdmin() {
     try {
         const adminEmail = process.env.ADMIN_EMAIL;
-
         if (!adminEmail) {
             logger.warn('ADMIN_EMAIL not set, skipping admin creation');
             return;
@@ -1683,14 +1129,12 @@ async function createDefaultAdmin() {
 
         if (result.data.length === 0) {
             const adminPassword = process.env.ADMIN_PASSWORD;
-
             if (!adminPassword) {
                 logger.warn('ADMIN_PASSWORD not set, skipping admin creation');
                 return;
             }
 
             const hashedPassword = await bcrypt.hash(adminPassword, 12);
-
             const adminData = {
                 email: adminEmail,
                 password_hash: hashedPassword,
@@ -1713,16 +1157,15 @@ async function createDefaultAdmin() {
     }
 }
 
-/**
- * Check database tables (tables should be created via migrations)
- */
 async function createDefaultTables() {
     logger.info('Checking database tables...');
 }
 
 // ============================================================
-// AUTHENTICATION ROUTES
+// SECTION 16: ROUTE HANDLERS
 // ============================================================
+
+// --- 16.1 AUTHENTICATION ROUTES (Regular Users) ---
 
 const authRouter = express.Router();
 
@@ -1732,41 +1175,16 @@ const authRouter = express.Router();
  *   post:
  *     summary: User login
  *     tags: [Authentication]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *               - password
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *               password:
- *                 type: string
- *                 minLength: 8
- *               rememberMe:
- *                 type: boolean
- *     responses:
- *       200:
- *         description: Login successful
- *       401:
- *         description: Invalid credentials
  */
 authRouter.post('/login', validate(schemas.login), async (req, res) => {
     try {
         const { email, password, rememberMe } = req.body;
-
         const user = await authService.authenticateUser(email, password);
         const tokenPayload = authService.createTokenPayload(user);
         const token = authService.generateToken(tokenPayload);
 
         await cacheManager.set(`user:${user.id}`, user, rememberMe ? 604800000 : 300000);
 
-        // Set secure cookie
         res.cookie('auth_token', token, {
             httpOnly: true,
             secure: IS_PRODUCTION,
@@ -1778,20 +1196,13 @@ authRouter.post('/login', validate(schemas.login), async (req, res) => {
 
         res.json({
             status: 'success',
-            data: {
-                user,
-                token,
-                expiresIn: JWT_EXPIRE
-            },
+            data: { user, token, expiresIn: JWT_EXPIRE },
             message: 'Login successful'
         });
     } catch (error) {
         logger.error('Login failed:', { email: req.body.email, error: error.message });
-
         res.status(error.statusCode || 500).json({
-            status: 'error',
-            code: error.code || 'LOGIN_FAILED',
-            message: error.message || 'Login failed'
+            status: 'error', code: error.code || 'LOGIN_FAILED', message: error.message || 'Login failed'
         });
     }
 });
@@ -1802,29 +1213,16 @@ authRouter.post('/login', validate(schemas.login), async (req, res) => {
  *   post:
  *     summary: User logout
  *     tags: [Authentication]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Logout successful
  */
 authRouter.post('/logout', verifyToken, async (req, res) => {
     try {
         await cacheManager.delete(`user:${req.user.id}`);
         await cacheManager.invalidate('data:*');
-
         res.clearCookie('auth_token');
-
-        res.json({
-            status: 'success',
-            message: 'Logged out successfully'
-        });
+        res.json({ status: 'success', message: 'Logged out successfully' });
     } catch (error) {
         logger.error('Logout error:', error);
-        res.status(500).json({
-            status: 'error',
-            message: 'Logout failed'
-        });
+        res.status(500).json({ status: 'error', message: 'Logout failed' });
     }
 });
 
@@ -1834,20 +1232,9 @@ authRouter.post('/logout', verifyToken, async (req, res) => {
  *   get:
  *     summary: Verify token validity
  *     tags: [Authentication]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Token is valid
- *       401:
- *         description: Invalid or expired token
  */
 authRouter.get('/verify', verifyToken, async (req, res) => {
-    res.json({
-        status: 'success',
-        data: req.user,
-        message: 'Token is valid'
-    });
+    res.json({ status: 'success', data: req.user, message: 'Token is valid' });
 });
 
 /**
@@ -1856,32 +1243,18 @@ authRouter.get('/verify', verifyToken, async (req, res) => {
  *   post:
  *     summary: Refresh access token
  *     tags: [Authentication]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Token refreshed successfully
  */
 authRouter.post('/refresh', verifyToken, async (req, res) => {
     try {
-        const newToken = authService.generateToken(
-            authService.createTokenPayload(req.user)
-        );
-
+        const newToken = authService.generateToken(authService.createTokenPayload(req.user));
         res.json({
             status: 'success',
-            data: {
-                token: newToken,
-                expiresIn: JWT_EXPIRE
-            },
+            data: { token: newToken, expiresIn: JWT_EXPIRE },
             message: 'Token refreshed successfully'
         });
     } catch (error) {
         logger.error('Token refresh error:', error);
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to refresh token'
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to refresh token' });
     }
 });
 
@@ -1891,116 +1264,62 @@ authRouter.post('/refresh', verifyToken, async (req, res) => {
  *   post:
  *     summary: Request password reset
  *     tags: [Authentication]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *     responses:
- *       200:
- *         description: Reset email sent if account exists
  */
 authRouter.post('/forgot-password', validate(Joi.object({ email: Joi.string().email().required() })), async (req, res) => {
     try {
-        const { email } = req.body;
-
-        // In production, send reset email
-        logger.info('Password reset requested', { email });
-
+        logger.info('Password reset requested', { email: req.body.email });
         res.json({
             status: 'success',
             message: 'If an account exists with this email, you will receive a reset link'
         });
     } catch (error) {
         logger.error('Forgot password error:', error);
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to process request'
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to process request' });
     }
 });
 
 app.use('/api/auth', authRouter);
 
-// ============================================================
-// ADMIN AUTHENTICATION HANDLER - FIXED & IMPROVED
-// ============================================================
+// --- 16.2 ADMIN AUTHENTICATION (Single Endpoint) ---
 
-async function adminLoginHandler(req, res) {
-    const requestId = req.id || 'unknown';
-    console.log('\n🔐 ========== ADMIN LOGIN DEBUG ==========');
-    console.log('Request ID:', requestId);
-    console.log('Request body:', req.body);
-    console.log('Email:', req.body?.email);
-    console.log('Password provided:', !!req.body?.password);
-    console.log('Content-Type:', req.headers['content-type']);
-    
+/**
+ * @swagger
+ * /api/admin/login:
+ *   post:
+ *     summary: Admin login (single endpoint for admin portal)
+ *     tags: [Admin Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, password]
+ *             properties:
+ *               email: { type: string, format: email }
+ *               password: { type: string }
+ *               rememberMe: { type: boolean }
+ *     responses:
+ *       200: { description: Login successful }
+ *       401: { description: Invalid credentials or not admin }
+ *       403: { description: Access denied - not admin role }
+ */
+app.post('/api/admin/login', createRateLimiter(10, 15 * 60 * 1000), validate(schemas.login), async (req, res) => {
     try {
         const { email, password, rememberMe } = req.body;
 
-        // STEP 1: Validate input
-        console.log('\n📌 STEP 1: Validating input...');
-        if (!email || !password) {
-            console.log('❌ Missing email or password');
-            return res.status(400).json({
-                status: 'error',
-                code: 'MISSING_FIELDS',
-                message: 'Email and password are required'
-            });
-        }
-        
-        // Sanitize email
-        const sanitizedEmail = email.toLowerCase().trim();
-        console.log('✅ Input validation passed');
-        console.log('Sanitized email:', sanitizedEmail);
+        // Check login attempts
+        await checkLoginAttempts(email.toLowerCase());
 
-        // STEP 2: Check login attempts
-        console.log('\n📌 STEP 2: Checking login attempts...');
-        try {
-            await checkLoginAttempts(sanitizedEmail);
-            console.log('✅ Login attempts check passed');
-        } catch (error) {
-            console.log('❌ Account locked:', error.message);
-            return res.status(429).json({
-                status: 'error',
-                code: 'ACCOUNT_LOCKED',
-                message: 'Too many failed attempts. Account temporarily locked.'
-            });
-        }
-
-        // STEP 3: Find user directly with Supabase (bypass db.query for debugging)
-        console.log('\n📌 STEP 3: Looking up user in database...');
-        
-        const { data: users, error: userError } = await supabase
-            .from('users')
-            .select('id, email, password_hash, full_name, role, department, is_active, created_at, last_login')
-            .eq('email', sanitizedEmail)
-            .limit(1);
-
-        if (userError) {
-            console.error('❌ Database error:', userError);
-            return res.status(500).json({
-                status: 'error',
-                code: 'DATABASE_ERROR',
-                message: 'Database error occurred'
-            });
-        }
-
-        console.log('Query result:', {
-            dataLength: users?.length || 0,
-            hasError: !!userError
+        // Fetch user
+        const result = await db.query('select', 'users', {
+            where: { email: email.toLowerCase().trim() },
+            select: 'id, email, password_hash, full_name, role, department, is_active, created_at, last_login'
         });
 
-        if (!users || users.length === 0) {
-            console.log('❌ User not found');
-            await recordFailedAttempt(sanitizedEmail);
+        if (result.data.length === 0) {
+            await recordFailedAttempt(email.toLowerCase());
+            logger.warn('Admin login failed - user not found', { email });
             return res.status(401).json({
                 status: 'error',
                 code: 'INVALID_CREDENTIALS',
@@ -2008,729 +1327,132 @@ async function adminLoginHandler(req, res) {
             });
         }
 
-        const user = users[0];
-        console.log('✅ User found:', { 
-            id: user.id, 
-            role: user.role, 
-            is_active: user.is_active,
-            hash_exists: !!user.password_hash,
-            hash_length: user.password_hash?.length
-        });
+        const user = result.data[0];
 
-        // STEP 4: Check if account is active
-        console.log('\n📌 STEP 4: Checking account status...');
-        if (!user.is_active) {
-            console.log('❌ Account inactive');
-            return res.status(401).json({
-                status: 'error',
-                code: 'ACCOUNT_INACTIVE',
-                message: 'Account is deactivated'
-            });
-        }
-        console.log('✅ Account is active');
-
-        // STEP 5: Check if user has admin role
-        console.log('\n📌 STEP 5: Checking admin role...');
-        console.log('User role:', user.role);
+        // STRICT ADMIN CHECK - Only admins can use this endpoint
         if (user.role !== 'admin') {
-            console.log('❌ Not admin - role is:', user.role);
-            await recordFailedAttempt(sanitizedEmail);
-            return res.status(401).json({
+            logger.warn('Admin login failed - not admin', { email, role: user.role });
+            return res.status(403).json({
                 status: 'error',
-                code: 'INVALID_CREDENTIALS',
-                message: 'Invalid email or password'
-            });
-        }
-        console.log('✅ User is admin');
-
-        // STEP 6: Verify password
-        console.log('\n📌 STEP 6: Verifying password...');
-        console.log('Hash from DB:', user.password_hash ? user.password_hash.substring(0, 20) + '...' : 'No hash');
-        
-        let validPassword = false;
-        try {
-            validPassword = await bcrypt.compare(password, user.password_hash);
-        } catch (bcryptError) {
-            console.error('❌ Bcrypt error:', bcryptError.message);
-            return res.status(500).json({
-                status: 'error',
-                code: 'PASSWORD_VERIFICATION_FAILED',
-                message: 'Password verification failed'
-            });
-        }
-        
-        console.log('Password valid:', validPassword);
-        
-        if (!validPassword) {
-            console.log('❌ Invalid password');
-            await recordFailedAttempt(sanitizedEmail);
-            return res.status(401).json({
-                status: 'error',
-                code: 'INVALID_CREDENTIALS',
-                message: 'Invalid email or password'
-            });
-        }
-        console.log('✅ Password verified');
-
-        // STEP 7: Reset login attempts
-        console.log('\n📌 STEP 7: Resetting login attempts...');
-        await resetLoginAttempts(sanitizedEmail);
-        console.log('✅ Login attempts reset');
-
-        // STEP 8: Update last login
-        console.log('\n📌 STEP 8: Updating last_login...');
-        try {
-            await supabase
-                .from('users')
-                .update({ last_login: new Date().toISOString() })
-                .eq('id', user.id);
-            console.log('✅ Last login updated');
-        } catch (updateError) {
-            console.log('⚠️ Failed to update last login (non-critical):', updateError.message);
-        }
-
-        // STEP 9: Create token
-        console.log('\n📌 STEP 9: Generating JWT token...');
-        
-        if (!process.env.JWT_SECRET) {
-            console.error('❌ JWT_SECRET is not set!');
-            return res.status(500).json({
-                status: 'error',
-                code: 'SERVER_CONFIG_ERROR',
-                message: 'Server configuration error'
-            });
-        }
-        
-        const tokenPayload = {
-            userId: user.id,
-            email: user.email,
-            role: user.role,
-            fullName: user.full_name
-        };
-        
-        console.log('Token payload created');
-        console.log('JWT_SECRET exists:', !!process.env.JWT_SECRET);
-        
-        // Generate token directly (bypass authService for debugging)
-        const token = jwt.sign(
-            tokenPayload,
-            process.env.JWT_SECRET,
-            {
-                expiresIn: rememberMe ? '7d' : '8h',
-                issuer: 'nuesa-biu-system',
-                audience: 'nuesa-biu-admin',
-                jwtid: uuid.v4()
-            }
-        );
-        
-        console.log('✅ Token generated (length: ' + token.length + ')');
-
-        // STEP 10: Set cookie
-        console.log('\n📌 STEP 10: Setting cookies...');
-        const isProduction = process.env.NODE_ENV === 'production';
-        
-        const cookieOptions = {
-            httpOnly: true,
-            secure: isProduction,
-            sameSite: isProduction ? 'none' : 'lax',
-            maxAge: rememberMe ? 7 * 24 * 60 * 60 * 1000 : 8 * 60 * 60 * 1000,
-            path: '/'
-        };
-        
-        // Only set domain if in production and FRONTEND_URL is valid
-        if (isProduction && process.env.FRONTEND_URL) {
-            try {
-                const frontendUrl = new URL(process.env.FRONTEND_URL);
-                // Don't set domain for localhost
-                if (!frontendUrl.hostname.includes('localhost') && !frontendUrl.hostname.includes('127.0.0.1')) {
-                    cookieOptions.domain = frontendUrl.hostname;
-                    console.log('Cookie domain set to:', frontendUrl.hostname);
-                }
-            } catch (error) {
-                console.warn('Could not parse FRONTEND_URL:', error.message);
-            }
-        }
-        
-        // Set both admin_session and auth_token for compatibility
-        res.cookie('admin_session', token, cookieOptions);
-        res.cookie('auth_token', token, cookieOptions);
-        
-        console.log('✅ Cookies set: admin_session and auth_token');
-
-        // STEP 11: Prepare response
-        console.log('\n📌 STEP 11: Preparing response...');
-        const userResponse = {
-            id: user.id,
-            email: user.email,
-            fullName: user.full_name,
-            role: user.role,
-            department: user.department,
-            lastLogin: user.last_login,
-            isActive: user.is_active
-        };
-
-        console.log('✅ Login successful for:', user.email);
-        console.log('========== DEBUG END ==========\n');
-        
-        // Return success response
-        return res.status(200).json({
-            status: 'success',
-            data: {
-                user: userResponse,
-                token: token
-            },
-            message: 'Login successful'
-        });
-
-    } catch (error) {
-        console.error('\n❌ ADMIN LOGIN ERROR:', {
-            message: error.message,
-            stack: error.stack,
-            name: error.name,
-            code: error.code
-        });
-        console.log('========== DEBUG END (WITH ERROR) ==========\n');
-        
-        // Don't expose internal errors in production
-        const isProduction = process.env.NODE_ENV === 'production';
-        
-        return res.status(500).json({
-            status: 'error',
-            code: 'INTERNAL_ERROR',
-            message: 'Login failed. Please try again.',
-            ...(!isProduction && { debug: error.message, stack: error.stack })
-        });
-    }
-}
-
-// ============================================================
-// FIXED: ADMIN ROUTES
-// ============================================================
-
-/**
- * Admin login endpoint - Single source of truth
- */
-app.post('/admin/login', createRateLimiter(5, 15 * 60 * 1000, 'Too many admin login attempts'), adminLoginHandler);
-
-/**
- * API admin login endpoint (redirects to main handler)
- */
-app.post('/api/admin/login', createRateLimiter(5, 15 * 60 * 1000, 'Too many admin login attempts'), (req, res, next) => {
-    // Just pass through to the same handler
-    adminLoginHandler(req, res);
-});
-
-
-// ============================================================
-// SIMPLE ADMIN LOGIN - WORKS WITH YOUR FRONTEND
-// ============================================================
-
-app.post('/api/admin-login', express.json(), async (req, res) => {
-    console.log('\n🔐 ADMIN LOGIN ATTEMPT:', {
-        email: req.body?.email,
-        timestamp: new Date().toISOString()
-    });
-    
-    try {
-        const { email, password } = req.body;
-
-        // Basic validation
-        if (!email || !password) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'Email and password are required'
+                code: 'FORBIDDEN',
+                message: 'Access denied. Admin privileges required.'
             });
         }
 
-        // Find user in database
-        const { data: users, error } = await supabase
-            .from('users')
-            .select('id, email, password_hash, full_name, role, is_active')
-            .eq('email', email.toLowerCase().trim())
-            .limit(1);
-
-        if (error) {
-            console.error('Database error:', error);
-            return res.status(500).json({
-                status: 'error',
-                message: 'Database error occurred'
-            });
-        }
-
-        // Check if user exists
-        if (!users || users.length === 0) {
-            console.log('❌ User not found:', email);
-            return res.status(401).json({
-                status: 'error',
-                message: 'Invalid email or password'
-            });
-        }
-
-        const user = users[0];
-
-        // Check if user is active
         if (!user.is_active) {
-            console.log('❌ Account inactive:', email);
+            logger.warn('Admin login failed - account deactivated', { email });
             return res.status(401).json({
                 status: 'error',
-                message: 'Invalid email or password'
-            });
-        }
-
-        // Check if user has admin role
-        if (user.role !== 'admin') {
-            console.log('❌ Not admin - role is:', user.role);
-            return res.status(401).json({
-                status: 'error',
-                message: 'Invalid email or password'
+                code: 'ACCOUNT_DEACTIVATED',
+                message: 'Your account has been deactivated'
             });
         }
 
         // Verify password
         const validPassword = await bcrypt.compare(password, user.password_hash);
-        
         if (!validPassword) {
-            console.log('❌ Invalid password for:', email);
+            await recordFailedAttempt(email.toLowerCase());
+            logger.warn('Admin login failed - invalid password', { email });
             return res.status(401).json({
                 status: 'error',
+                code: 'INVALID_CREDENTIALS',
                 message: 'Invalid email or password'
             });
         }
 
-        console.log('✅ Password verified for:', email);
+        // Reset login attempts
+        await resetLoginAttempts(email.toLowerCase());
 
-        // Generate JWT token
-        const token = jwt.sign(
-            { 
-                userId: user.id, 
-                email: user.email, 
-                role: user.role,
-                fullName: user.full_name 
-            },
-            process.env.JWT_SECRET,
-            { expiresIn: '7d' }
-        );
+        // Update last login
+        await db.query('update', 'users', {
+            data: { last_login: new Date() },
+            where: { id: user.id }
+        });
 
-        // Update last login (don't wait for it)
-        supabase
-            .from('users')
-            .update({ last_login: new Date().toISOString() })
-            .eq('id', user.id)
-            .then()
-            .catch(err => console.log('Last login update failed:', err.message));
+        // Create response
+        const userResponse = authService.createUserResponse(user);
+        const tokenPayload = authService.createTokenPayload(user);
+        const token = authService.generateToken(tokenPayload);
 
-        // Set cookie for session
-        const isProduction = process.env.NODE_ENV === 'production';
-        
-        res.cookie('admin_session', token, {
+        // Set cookie
+        res.cookie('auth_token', token, {
             httpOnly: true,
-            secure: isProduction,
-            sameSite: isProduction ? 'none' : 'lax',
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            secure: IS_PRODUCTION,
+            sameSite: 'strict',
+            maxAge: rememberMe ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000,
             path: '/'
         });
 
-        console.log('✅ Login successful for:', user.email);
+        // Cache user
+        await cacheManager.set(`user:${user.id}`, userResponse, rememberMe ? 604800000 : 300000);
 
-        // Return success response
-        res.status(200).json({
+        logger.info('Admin logged in successfully', { 
+            requestId: req.id, userId: user.id, email: user.email 
+        });
+
+        res.json({
             status: 'success',
             data: {
-                user: {
-                    id: user.id,
-                    email: user.email,
-                    fullName: user.full_name,
-                    role: user.role
-                },
-                token: token
+                user: userResponse,
+                token,
+                expiresIn: JWT_EXPIRE
             },
-            message: 'Login successful'
+            message: 'Admin login successful'
         });
 
     } catch (error) {
-        console.error('❌ Admin login error:', error);
+        logger.error('Admin login error:', { requestId: req.id, error: error.message });
         res.status(500).json({
             status: 'error',
+            code: 'SERVER_ERROR',
             message: 'Login failed. Please try again.'
         });
     }
 });
 
-// ============================================================
-// FIXED: CREATE DEFAULT ADMIN FUNCTION
-// ============================================================
-
 /**
- * Create default admin user if it doesn't exist
+ * @swagger
+ * /api/admin/logout:
+ *   post:
+ *     summary: Admin logout
+ *     tags: [Admin Authentication]
  */
-async function createDefaultAdmin() {
+app.post('/api/admin/logout', verifyToken, async (req, res) => {
     try {
-        const adminEmail = process.env.ADMIN_EMAIL || 'admin@nuesa-biu.com';
-
-        if (!adminEmail) {
-            logger.warn('ADMIN_EMAIL not set, skipping admin creation');
-            return;
-        }
-
-        const result = await db.query('select', 'users', {
-            where: { email: adminEmail },
-            select: 'id'
-        });
-
-        if (result.data.length === 0) {
-            const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123456';
-
-            if (!adminPassword) {
-                logger.warn('ADMIN_PASSWORD not set, skipping admin creation');
-                return;
-            }
-
-            const hashedPassword = await bcrypt.hash(adminPassword, 12);
-
-            const adminData = {
-                email: adminEmail.toLowerCase(),
-                password_hash: hashedPassword,
-                full_name: process.env.ADMIN_FULL_NAME || 'System Administrator',
-                role: 'admin',  // This is critical - must be 'admin'
-                department: process.env.ADMIN_DEPARTMENT || 'Administration',
-                username: (adminEmail.split('@')[0]).toLowerCase(),
-                is_active: true,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            };
-
-            await db.query('insert', 'users', { data: adminData });
-            logger.info(`✅ Admin user created: ${adminEmail} with role 'admin'`);
-            console.log(`✅ Default admin created - Email: ${adminEmail}, Password: ${adminPassword}`);
-        } else {
-            logger.info('Admin user already exists');
-            
-            // Ensure existing admin has correct role
-            const adminCheck = await db.query('select', 'users', {
-                where: { email: adminEmail },
-                select: 'id, role'
-            });
-            
-            if (adminCheck.data.length > 0 && adminCheck.data[0].role !== 'admin') {
-                logger.info(`Updating existing user ${adminEmail} to admin role`);
-                await db.query('update', 'users', {
-                    data: { role: 'admin', updated_at: new Date().toISOString() },
-                    where: { email: adminEmail }
-                });
-                console.log(`✅ Updated ${adminEmail} to admin role`);
-            }
-        }
+        await cacheManager.delete(`user:${req.user.id}`);
+        res.clearCookie('auth_token');
+        logger.info('Admin logged out', { requestId: req.id, userId: req.user.id });
+        res.json({ status: 'success', message: 'Logged out successfully' });
     } catch (error) {
-        logger.error('Could not create admin user:', error);
-    }
-}
-
-// ============================================================
-// ADD THIS DEBUG ENDPOINT TO CHECK USERS (Development only)
-// ============================================================
-
-if (!IS_PRODUCTION) {
-    app.get('/api/debug/users', async (req, res) => {
-        try {
-            const result = await db.query('select', 'users', {
-                select: 'id, email, full_name, role, is_active, created_at',
-                limit: 10
-            });
-            
-            res.json({
-                status: 'success',
-                data: result.data,
-                count: result.data.length
-            });
-        } catch (error) {
-            res.status(500).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-    });
-    
-    app.get('/api/debug/check-admin/:email', async (req, res) => {
-        try {
-            const email = req.params.email;
-            const result = await db.query('select', 'users', {
-                where: { email: email.toLowerCase() },
-                select: 'id, email, full_name, role, is_active'
-            });
-            
-            if (result.data.length === 0) {
-                return res.json({
-                    status: 'error',
-                    message: 'User not found',
-                    email: email
-                });
-            }
-            
-            const user = result.data[0];
-            const isAdmin = user.role === 'admin';
-            
-            res.json({
-                status: 'success',
-                data: user,
-                isAdmin: isAdmin,
-                canAccessAdmin: isAdmin && user.is_active,
-                message: isAdmin ? 'User can access admin panel' : 'User needs role="admin" to access admin panel'
-            });
-        } catch (error) {
-            res.status(500).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-    });
-}
-
-// ============================================================
-// FIXED: ADMIN SESSION VERIFICATION
-// ============================================================
-
-/**
- * Admin session verification
- */
-app.get('/api/admin/session', async (req, res) => {
-    try {
-        const token = req.cookies?.admin_session;
-        
-        if (!token) {
-            return res.status(401).json({
-                status: 'error',
-                code: 'NO_SESSION',
-                message: 'No active session'
-            });
-        }
-
-        let decoded;
-        try {
-            decoded = jwt.verify(token, JWT_SECRET, {
-                issuer: 'nuesa-biu-system',
-                audience: 'nuesa-biu-admin'
-            });
-        } catch (e) {
-            return res.status(401).json({
-                status: 'error',
-                code: 'INVALID_TOKEN',
-                message: 'Session expired or invalid'
-            });
-        }
-
-        // Get user from database
-        const result = await db.query('select', 'users', {
-            where: { id: decoded.userId },
-            select: 'id, email, full_name, role, is_active, last_login'
-        });
-
-        if (result.data.length === 0 || !result.data[0].is_active) {
-            return res.status(401).json({
-                status: 'error',
-                code: 'USER_NOT_FOUND',
-                message: 'User not found or deactivated'
-            });
-        }
-
-        const user = result.data[0];
-        
-        // Check if user has admin role
-        if (user.role !== 'admin') {
-            return res.status(401).json({
-                status: 'error',
-                code: 'AUTH_FAILED',
-                message: 'Access denied - Admin only'
-            });
-        }
-
-        const userResponse = {
-            id: user.id,
-            email: user.email,
-            fullName: user.full_name,
-            role: user.role,
-            lastLogin: user.last_login,
-            isActive: user.is_active
-        };
-
-        res.json({
-            status: 'success',
-            data: userResponse,
-            message: 'Session is valid'
-        });
-
-    } catch (error) {
-        logger.error('Session verification error:', error);
-        res.status(500).json({
-            status: 'error',
-            message: 'Session verification failed'
-        });
-    }
-});
-
-// ============================================================
-// ADMIN ROUTES
-// ============================================================
-
-/**
- * Admin login endpoint
- */
-app.post('/api/admin/login', createRateLimiter(10), adminLoginHandler);
-app.post('/admin/login', createRateLimiter(5), adminLoginHandler);
-
-/**
- * Admin logout endpoint
- */
-app.post('/api/admin/logout', async (req, res) => {
-    try {
-        const cookieOptions = {
-            path: '/'
-        };
-        
-        if (IS_PRODUCTION && process.env.FRONTEND_URL) {
-            try {
-                const frontendUrl = new URL(process.env.FRONTEND_URL);
-                cookieOptions.domain = frontendUrl.hostname;
-            } catch (error) {
-                logger.warn('Invalid FRONTEND_URL for cookie clearing:', error);
-            }
-        }
-        
-        res.clearCookie('admin_session', cookieOptions);
-
-        res.json({
-            status: 'success',
-            message: 'Logged out successfully'
-        });
-    } catch (error) {
-        logger.error('Admin logout error:', error);
-        res.status(500).json({
-            status: 'error',
-            message: 'Logout failed'
-        });
+        logger.error('Admin logout error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Logout failed' });
     }
 });
 
 /**
- * Admin session verification
+ * @swagger
+ * /api/admin/session:
+ *   get:
+ *     summary: Check admin session
+ *     tags: [Admin Authentication]
  */
-app.get('/api/admin/session', async (req, res) => {
+app.get('/api/admin/session', verifyToken, async (req, res) => {
     try {
-        const token = req.cookies?.admin_session;
-        
-        if (!token) {
-            return res.status(401).json({
-                status: 'error',
-                code: 'NO_SESSION',
-                message: 'No active session'
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({
+                status: 'error', code: 'FORBIDDEN', message: 'Not authorized'
             });
         }
-
-        let decoded;
-        try {
-            decoded = jwt.verify(token, JWT_SECRET, {
-                issuer: 'nuesa-biu-system',
-                audience: 'nuesa-biu-admin'
-            });
-        } catch (e) {
-            return res.status(401).json({
-                status: 'error',
-                code: 'INVALID_TOKEN',
-                message: 'Session expired or invalid'
-            });
-        }
-
-        // Get user from database
-        const result = await db.query('select', 'users', {
-            where: { id: decoded.userId },
-            select: 'id, email, full_name, role, is_active, last_login'
-        });
-
-        if (result.data.length === 0 || !result.data[0].is_active) {
-            return res.status(401).json({
-                status: 'error',
-                code: 'USER_NOT_FOUND',
-                message: 'User not found or deactivated'
-            });
-        }
-
-        const user = result.data[0];
-        
-        if (user.role !== 'admin') {
-            return res.status(401).json({
-                status: 'error',
-                code: 'AUTH_FAILED',
-                message: 'Invalid credentials'
-            });
-        }
-
-        const userResponse = {
-            id: user.id,
-            email: user.email,
-            fullName: user.full_name,
-            role: user.role,
-            lastLogin: user.last_login
-        };
-
-        res.json({
-            status: 'success',
-            data: userResponse,
-            message: 'Session is valid'
-        });
-
+        res.json({ status: 'success', data: req.user, message: 'Session valid' });
     } catch (error) {
-        logger.error('Session verification error:', error);
-        res.status(500).json({
-            status: 'error',
-            message: 'Session verification failed'
+        logger.error('Session check error:', { requestId: req.id, error: error.message });
+        res.status(401).json({
+            status: 'error', code: 'INVALID_SESSION', message: 'No valid session'
         });
     }
 });
 
-/**
- * Admin CSRF token endpoint
- */
-app.get('/api/admin/csrf-token', csrfProtection, (req, res) => {
-    res.json({
-        status: 'success',
-        csrfToken: req.csrfToken()
-    });
-});
-
-// Add this temporary endpoint
-app.get('/api/debug/check-admin/:email', async (req, res) => {
-    try {
-        const email = req.params.email;
-        const result = await db.query('select', 'users', {
-            where: { email: email.toLowerCase() },
-            select: 'id, email, full_name, role, is_active'
-        });
-        
-        if (result.data.length === 0) {
-            return res.json({
-                status: 'error',
-                message: 'User not found',
-                email: email
-            });
-        }
-        
-        const user = result.data[0];
-        res.json({
-            status: 'success',
-            data: user,
-            isAdmin: user.role === 'admin',
-            canLogin: user.role === 'admin' && user.is_active
-        });
-    } catch (error) {
-        res.status(500).json({
-            status: 'error',
-            message: error.message
-        });
-    }
-});
-
-// ============================================================
-// PUBLIC CONTACT FORM ENDPOINT
-// ============================================================
+// --- 16.3 PUBLIC ROUTES ---
 
 /**
  * @swagger
@@ -2738,62 +1460,26 @@ app.get('/api/debug/check-admin/:email', async (req, res) => {
  *   post:
  *     summary: Submit contact form
  *     tags: [Public]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - name
- *               - email
- *               - message
- *             properties:
- *               name:
- *                 type: string
- *               email:
- *                 type: string
- *               message:
- *                 type: string
- *               subject:
- *                 type: string
- *     responses:
- *       200:
- *         description: Form submitted successfully
  */
 app.post('/api/contact/submit', createRateLimiter(10), validate(schemas.contactForm), async (req, res) => {
     try {
         const { name, email, message, subject } = req.body;
-
-        // Here you would typically:
-        // 1. Save to database
-        // 2. Send email notification
-        // 3. Trigger any workflow
-
         logger.info('Contact form submitted', { 
-            requestId: req.id,
-            name, 
-            email, 
-            subject: subject || 'No subject' 
+            requestId: req.id, name, email, subject: subject || 'No subject' 
         });
-
         res.json({
             status: 'success',
             message: 'Thank you for your message! We will get back to you soon.'
         });
-
     } catch (error) {
         logger.error('Contact form error:', { requestId: req.id, error: error.message });
         res.status(500).json({
-            status: 'error',
-            message: 'Failed to submit form. Please try again later.'
+            status: 'error', message: 'Failed to submit form. Please try again later.'
         });
     }
 });
 
-// ============================================================
-// USER MANAGEMENT ROUTES
-// ============================================================
+// --- 16.4 USER MANAGEMENT ROUTES ---
 
 const userRouter = express.Router();
 
@@ -2803,56 +1489,16 @@ const userRouter = express.Router();
  *   get:
  *     summary: Get all users (admin only)
  *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *       - in: query
- *         name: role
- *         schema:
- *           type: string
- *       - in: query
- *         name: department
- *         schema:
- *           type: string
- *       - in: query
- *         name: search
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: List of users
  */
 userRouter.get('/', verifyToken, requireRole('admin'), async (req, res) => {
     try {
-        const {
-            page = 1,
-            limit = 20,
-            role,
-            department,
-            search,
-            sort = 'created_at',
-            order = 'desc'
-        } = req.query;
-
+        const { page = 1, limit = 20, role, department, search, sort = 'created_at', order = 'desc' } = req.query;
         const offset = (page - 1) * limit;
-
         let where = {};
+
         if (role && role !== 'all') where.role = role;
         if (department && department !== 'all') where.department = department;
-        if (search) {
-            where = {
-                ...where,
-                full_name: { operator: 'ilike', value: `%${search}%` }
-            };
-        }
+        if (search) where.full_name = { operator: 'ilike', value: `%${search}%` };
 
         const [usersResult, totalResult] = await Promise.all([
             db.query('select', 'users', {
@@ -2862,10 +1508,7 @@ userRouter.get('/', verifyToken, requireRole('admin'), async (req, res) => {
                 limit: parseInt(limit),
                 offset: parseInt(offset)
             }),
-            db.query('select', 'users', {
-                where,
-                count: true
-            })
+            db.query('select', 'users', { where, count: true })
         ]);
 
         res.setHeader('X-Total-Count', totalResult.count || 0);
@@ -2884,10 +1527,7 @@ userRouter.get('/', verifyToken, requireRole('admin'), async (req, res) => {
         });
     } catch (error) {
         logger.error('Error fetching users:', { requestId: req.id, error: error.message });
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch users'
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch users' });
     }
 });
 
@@ -2897,40 +1537,18 @@ userRouter.get('/', verifyToken, requireRole('admin'), async (req, res) => {
  *   post:
  *     summary: Create new user (admin only)
  *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/CreateUser'
- *     responses:
- *       201:
- *         description: User created successfully
  */
 userRouter.post('/', verifyToken, requireRole('admin'), validate(schemas.createUser), async (req, res) => {
     try {
-        const {
-            email,
-            password,
-            full_name,
-            department,
-            role = 'member',
-            is_active = true
-        } = req.body;
+        const { email, password, full_name, department, role = 'member', is_active = true } = req.body;
 
-        // Check existing user
         const existing = await db.query('select', 'users', {
             where: { email: email.toLowerCase() },
             select: 'id'
         });
 
-        if (existing.data.length > 0) {
-            throw new ValidationError('User with this email already exists');
-        }
+        if (existing.data.length > 0) throw new ValidationError('User with this email already exists');
 
-        // Create user
         const hashedPassword = await bcrypt.hash(password, 12);
         const username = email.split('@')[0].toLowerCase();
 
@@ -2947,31 +1565,17 @@ userRouter.post('/', verifyToken, requireRole('admin'), validate(schemas.createU
         };
 
         const result = await db.query('insert', 'users', { data: userData });
-
         const user = authService.createUserResponse(result.data[0]);
 
         logger.info('User created', { requestId: req.id, userId: user.id, createdBy: req.user.id });
 
-        res.status(201).json({
-            status: 'success',
-            data: user,
-            message: 'User created successfully'
-        });
+        res.status(201).json({ status: 'success', data: user, message: 'User created successfully' });
     } catch (error) {
         logger.error('Error creating user:', { requestId: req.id, error: error.message });
-        
         if (error instanceof ValidationError) {
-            return res.status(400).json({
-                status: 'error',
-                code: 'VALIDATION_ERROR',
-                message: error.message
-            });
+            return res.status(400).json({ status: 'error', code: 'VALIDATION_ERROR', message: error.message });
         }
-        
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to create user'
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to create user' });
     }
 });
 
@@ -2981,25 +1585,9 @@ userRouter.post('/', verifyToken, requireRole('admin'), validate(schemas.createU
  *   get:
  *     summary: Get user by ID
  *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: User details
- *       403:
- *         description: Access denied
- *       404:
- *         description: User not found
  */
 userRouter.get('/:id', verifyToken, async (req, res) => {
     try {
-        // Users can view their own profile, admins can view any
         if (req.user.role !== 'admin' && req.user.id !== req.params.id) {
             throw new ForbiddenError('Access denied');
         }
@@ -3009,35 +1597,14 @@ userRouter.get('/:id', verifyToken, async (req, res) => {
             select: 'id, email, full_name, role, department, is_active, created_at, updated_at, last_login, profile_picture'
         });
 
-        if (result.data.length === 0) {
-            throw new NotFoundError('User');
-        }
+        if (result.data.length === 0) throw new NotFoundError('User');
 
-        res.json({
-            status: 'success',
-            data: authService.createUserResponse(result.data[0])
-        });
+        res.json({ status: 'success', data: authService.createUserResponse(result.data[0]) });
     } catch (error) {
         logger.error('Error fetching user:', { requestId: req.id, error: error.message });
-        
-        if (error instanceof NotFoundError) {
-            return res.status(404).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-        
-        if (error instanceof ForbiddenError) {
-            return res.status(403).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-        
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch user'
-        });
+        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
+        if (error instanceof ForbiddenError) return res.status(403).json({ status: 'error', message: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch user' });
     }
 });
 
@@ -3047,53 +1614,25 @@ userRouter.get('/:id', verifyToken, async (req, res) => {
  *   put:
  *     summary: Update user
  *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/UpdateUser'
- *     responses:
- *       200:
- *         description: User updated successfully
  */
 userRouter.put('/:id', verifyToken, validate(schemas.updateUser), async (req, res) => {
     try {
-        // Check permissions
         if (req.user.role !== 'admin' && req.user.id !== req.params.id) {
             throw new ForbiddenError('Access denied');
         }
 
-        const {
-            full_name,
-            department,
-            role,
-            is_active,
-            password
-        } = req.body;
+        const { full_name, department, role, is_active, password } = req.body;
+        const updateData = { updated_at: new Date() };
 
-        // Admins can update role and status
-        const updateData = {
-            full_name: full_name ? full_name.trim() : undefined,
-            department: department !== undefined ? department : undefined,
-            updated_at: new Date()
-        };
+        if (full_name) updateData.full_name = full_name.trim();
+        if (department !== undefined) updateData.department = department;
 
         if (req.user.role === 'admin') {
             if (role !== undefined) updateData.role = role;
             if (is_active !== undefined) updateData.is_active = is_active;
         }
 
-        if (password) {
-            updateData.password_hash = await bcrypt.hash(password, 12);
-        }
+        if (password) updateData.password_hash = await bcrypt.hash(password, 12);
 
         const cleanUpdateData = Object.fromEntries(
             Object.entries(updateData).filter(([_, v]) => v !== undefined)
@@ -3104,17 +1643,12 @@ userRouter.put('/:id', verifyToken, validate(schemas.updateUser), async (req, re
             where: { id: req.params.id }
         });
 
-        if (result.data.length === 0) {
-            throw new NotFoundError('User');
-        }
+        if (result.data.length === 0) throw new NotFoundError('User');
 
-        // Clear caches
         await cacheManager.delete(`user:${req.params.id}`);
         await cacheManager.invalidate('data:*');
 
-        if (req.user.id === req.params.id) {
-            req.user = authService.createUserResponse(result.data[0]);
-        }
+        if (req.user.id === req.params.id) req.user = authService.createUserResponse(result.data[0]);
 
         logger.info('User updated', { requestId: req.id, userId: req.params.id, updatedBy: req.user.id });
 
@@ -3125,25 +1659,9 @@ userRouter.put('/:id', verifyToken, validate(schemas.updateUser), async (req, re
         });
     } catch (error) {
         logger.error('Error updating user:', { requestId: req.id, error: error.message });
-        
-        if (error instanceof NotFoundError) {
-            return res.status(404).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-        
-        if (error instanceof ForbiddenError) {
-            return res.status(403).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-        
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to update user'
-        });
+        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
+        if (error instanceof ForbiddenError) return res.status(403).json({ status: 'error', message: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to update user' });
     }
 });
 
@@ -3153,70 +1671,31 @@ userRouter.put('/:id', verifyToken, validate(schemas.updateUser), async (req, re
  *   delete:
  *     summary: Delete user (admin only)
  *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: User deleted successfully
  */
 userRouter.delete('/:id', verifyToken, requireRole('admin'), async (req, res) => {
     try {
-        if (req.params.id === req.user.id) {
-            throw new ValidationError('Cannot delete your own account');
-        }
+        if (req.params.id === req.user.id) throw new ValidationError('Cannot delete your own account');
 
-        const result = await db.query('delete', 'users', {
-            where: { id: req.params.id }
-        });
-
-        if (result.data.length === 0) {
-            throw new NotFoundError('User');
-        }
+        const result = await db.query('delete', 'users', { where: { id: req.params.id } });
+        if (result.data.length === 0) throw new NotFoundError('User');
 
         await cacheManager.delete(`user:${req.params.id}`);
         await cacheManager.invalidate('data:*');
 
         logger.info('User deleted', { requestId: req.id, userId: req.params.id, deletedBy: req.user.id });
 
-        res.json({
-            status: 'success',
-            message: 'User deleted successfully'
-        });
+        res.json({ status: 'success', message: 'User deleted successfully' });
     } catch (error) {
         logger.error('Error deleting user:', { requestId: req.id, error: error.message });
-        
-        if (error instanceof NotFoundError) {
-            return res.status(404).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-        
-        if (error instanceof ValidationError) {
-            return res.status(400).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-        
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to delete user'
-        });
+        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
+        if (error instanceof ValidationError) return res.status(400).json({ status: 'error', message: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to delete user' });
     }
 });
 
 app.use('/api/users', userRouter);
 
-// ============================================================
-// PROFILE ROUTES
-// ============================================================
+// --- 16.5 PROFILE ROUTES ---
 
 /**
  * @swagger
@@ -3224,17 +1703,9 @@ app.use('/api/users', userRouter);
  *   get:
  *     summary: Get current user profile
  *     tags: [Profile]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: User profile
  */
 app.get('/api/profile', verifyToken, async (req, res) => {
-    res.json({
-        status: 'success',
-        data: req.user
-    });
+    res.json({ status: 'success', data: req.user });
 });
 
 /**
@@ -3243,22 +1714,6 @@ app.get('/api/profile', verifyToken, async (req, res) => {
  *   put:
  *     summary: Update current user profile
  *     tags: [Profile]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               full_name:
- *                 type: string
- *               department:
- *                 type: string
- *     responses:
- *       200:
- *         description: Profile updated successfully
  */
 app.put('/api/profile', verifyToken, validate(Joi.object({ 
     full_name: Joi.string().min(2).max(100).required(),
@@ -3266,7 +1721,6 @@ app.put('/api/profile', verifyToken, validate(Joi.object({
 })), async (req, res) => {
     try {
         const { full_name, department } = req.body;
-
         const updateData = {
             full_name: full_name.trim(),
             department: department || null,
@@ -3282,17 +1736,10 @@ app.put('/api/profile', verifyToken, validate(Joi.object({
         await cacheManager.set(`user:${req.user.id}`, updatedUser, 300000);
         req.user = updatedUser;
 
-        res.json({
-            status: 'success',
-            data: updatedUser,
-            message: 'Profile updated successfully'
-        });
+        res.json({ status: 'success', data: updatedUser, message: 'Profile updated successfully' });
     } catch (error) {
         logger.error('Error updating profile:', { requestId: req.id, error: error.message });
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to update profile'
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to update profile' });
     }
 });
 
@@ -3302,43 +1749,19 @@ app.put('/api/profile', verifyToken, validate(Joi.object({
  *   put:
  *     summary: Change user password
  *     tags: [Profile]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - currentPassword
- *               - newPassword
- *             properties:
- *               currentPassword:
- *                 type: string
- *               newPassword:
- *                 type: string
- *                 minLength: 8
- *     responses:
- *       200:
- *         description: Password updated successfully
  */
 app.put('/api/profile/password', verifyToken, validate(schemas.changePassword), async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
 
-        // Verify current password
         const result = await db.query('select', 'users', {
             where: { id: req.user.id },
             select: 'password_hash'
         });
 
         const validPassword = await bcrypt.compare(currentPassword, result.data[0].password_hash);
-        if (!validPassword) {
-            throw new ValidationError('Current password is incorrect');
-        }
+        if (!validPassword) throw new ValidationError('Current password is incorrect');
 
-        // Update password
         const hashedPassword = await bcrypt.hash(newPassword, 12);
         await db.query('update', 'users', {
             data: { password_hash: hashedPassword, updated_at: new Date() },
@@ -3346,31 +1769,521 @@ app.put('/api/profile/password', verifyToken, validate(schemas.changePassword), 
         });
 
         logger.info('Password updated', { requestId: req.id, userId: req.user.id });
-
-        res.json({
-            status: 'success',
-            message: 'Password updated successfully'
-        });
+        res.json({ status: 'success', message: 'Password updated successfully' });
     } catch (error) {
         logger.error('Error updating password:', { requestId: req.id, error: error.message });
-        
-        if (error instanceof ValidationError) {
-            return res.status(400).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-        
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to update password'
-        });
+        if (error instanceof ValidationError) return res.status(400).json({ status: 'error', message: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to update password' });
     }
 });
 
-// ============================================================
-// EXECUTIVE MEMBERS ROUTES
-// ============================================================
+// --- 16.6 ADMIN DASHBOARD ROUTES ---
+
+const adminRouter = express.Router();
+adminRouter.use(verifyToken);
+adminRouter.use(requireRole('admin'));
+
+/**
+ * @swagger
+ * /api/admin/stats:
+ *   get:
+ *     summary: Get dashboard statistics
+ *     tags: [Admin]
+ */
+adminRouter.get('/stats', async (req, res) => {
+    try {
+        const [users, members, events, resources, articles] = await Promise.allSettled([
+            db.query('select', 'users', { count: true }),
+            db.query('select', 'executive_members', { count: true }),
+            db.query('select', 'biu_events', { count: true }),
+            db.query('select', 'resources', { count: true }),
+            db.query('select', 'articles', { count: true })
+        ]);
+
+        res.json({
+            status: 'success',
+            data: {
+                users: users.status === 'fulfilled' ? users.value.count || 0 : 0,
+                members: members.status === 'fulfilled' ? members.value.count || 0 : 0,
+                events: events.status === 'fulfilled' ? events.value.count || 0 : 0,
+                resources: resources.status === 'fulfilled' ? resources.value.count || 0 : 0,
+                articles: articles.status === 'fulfilled' ? articles.value.count || 0 : 0,
+                uptime: process.uptime(),
+                environment: NODE_ENV
+            }
+        });
+    } catch (error) {
+        logger.error('Admin stats error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to fetch statistics' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/members:
+ *   get:
+ *     summary: Get all members (with filtering)
+ *     tags: [Admin]
+ */
+adminRouter.get('/members', async (req, res) => {
+    try {
+        const { status, committee, search } = req.query;
+        let where = {};
+
+        if (status && status !== 'all') where.status = status;
+        if (committee && committee !== 'all') where.committee = committee;
+        if (search) where.full_name = { operator: 'ilike', value: `%${search}%` };
+
+        const result = await db.query('select', 'executive_members', {
+            where,
+            order: { column: 'display_order', ascending: true }
+        });
+
+        res.json({ status: 'success', data: result.data });
+    } catch (error) {
+        logger.error('Admin members error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to fetch members' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/members/{id}:
+ *   get:
+ *     summary: Get member by ID
+ *     tags: [Admin]
+ */
+adminRouter.get('/members/:id', async (req, res) => {
+    try {
+        const result = await db.query('select', 'executive_members', { where: { id: req.params.id } });
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Member not found' });
+        }
+        res.json({ status: 'success', data: result.data[0] });
+    } catch (error) {
+        logger.error('Admin member fetch error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to fetch member' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/members:
+ *   post:
+ *     summary: Create member
+ *     tags: [Admin]
+ */
+adminRouter.post('/members', upload.single('profile_image'), async (req, res) => {
+    try {
+        const memberData = JSON.parse(req.body.data || '{}');
+        const { full_name, position, department, level, email, phone, bio, committee, display_order, status, social_links } = memberData;
+
+        const newMember = {
+            full_name: full_name?.trim(),
+            position: position?.trim(),
+            department: department?.trim() || null,
+            level: level || null,
+            email: email?.toLowerCase().trim() || null,
+            phone: phone?.trim() || null,
+            bio: bio?.trim() || null,
+            committee: committee?.trim() || null,
+            display_order: display_order || 0,
+            status: status || 'active',
+            social_links: social_links || {},
+            created_at: new Date(),
+            updated_at: new Date()
+        };
+
+        if (req.file) newMember.profile_image = `/uploads/${req.file.filename}`;
+
+        const result = await db.query('insert', 'executive_members', { data: newMember });
+        await cacheManager.invalidateByTags(['members']);
+
+        logger.info('Admin created member', { requestId: req.id, memberId: result.data[0].id });
+
+        res.status(201).json({ status: 'success', data: result.data[0], message: 'Member created successfully' });
+    } catch (error) {
+        logger.error('Admin create member error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to create member' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/members/{id}:
+ *   put:
+ *     summary: Update member
+ *     tags: [Admin]
+ */
+adminRouter.put('/members/:id', upload.single('profile_image'), async (req, res) => {
+    try {
+        const memberData = JSON.parse(req.body.data || '{}');
+        const updateData = {
+            full_name: memberData.full_name?.trim(),
+            position: memberData.position?.trim(),
+            department: memberData.department?.trim(),
+            level: memberData.level,
+            email: memberData.email?.toLowerCase().trim(),
+            phone: memberData.phone?.trim(),
+            bio: memberData.bio?.trim(),
+            committee: memberData.committee?.trim(),
+            display_order: memberData.display_order,
+            status: memberData.status,
+            social_links: memberData.social_links,
+            updated_at: new Date()
+        };
+
+        Object.keys(updateData).forEach(key => 
+            updateData[key] === undefined && delete updateData[key]
+        );
+
+        if (req.file) updateData.profile_image = `/uploads/${req.file.filename}`;
+
+        const result = await db.query('update', 'executive_members', {
+            data: updateData,
+            where: { id: req.params.id }
+        });
+
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Member not found' });
+        }
+
+        await cacheManager.invalidateByTags(['members']);
+        res.json({ status: 'success', data: result.data[0], message: 'Member updated successfully' });
+    } catch (error) {
+        logger.error('Admin update member error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to update member' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/members/{id}:
+ *   delete:
+ *     summary: Delete member
+ *     tags: [Admin]
+ */
+adminRouter.delete('/members/:id', async (req, res) => {
+    try {
+        const result = await db.query('delete', 'executive_members', { where: { id: req.params.id } });
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Member not found' });
+        }
+        await cacheManager.invalidateByTags(['members']);
+        res.json({ status: 'success', message: 'Member deleted successfully' });
+    } catch (error) {
+        logger.error('Admin delete member error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to delete member' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/events:
+ *   get:
+ *     summary: Get all events
+ *     tags: [Admin]
+ */
+adminRouter.get('/events', async (req, res) => {
+    try {
+        const { status, category } = req.query;
+        let where = {};
+
+        if (status && status !== 'all') where.status = status;
+        if (category && category !== 'all') where.category = category;
+
+        const result = await db.query('select', 'biu_events', {
+            where,
+            order: { column: 'date', ascending: true }
+        });
+
+        res.json({ status: 'success', data: result.data });
+    } catch (error) {
+        logger.error('Admin events error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to fetch events' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/events:
+ *   post:
+ *     summary: Create event
+ *     tags: [Admin]
+ */
+adminRouter.post('/events', async (req, res) => {
+    try {
+        const { title, description, date, start_time, end_time, location, category, organizer, max_participants, status } = req.body;
+
+        const eventData = {
+            title: title?.trim(),
+            description: description?.trim(),
+            date,
+            start_time,
+            end_time,
+            location: location?.trim(),
+            category: category?.trim(),
+            organizer: organizer?.trim(),
+            max_participants: max_participants ? parseInt(max_participants) : null,
+            status: status || 'upcoming',
+            created_at: new Date(),
+            updated_at: new Date()
+        };
+
+        const result = await db.query('insert', 'biu_events', { data: eventData });
+        await cacheManager.invalidateByTags(['biu_events']);
+
+        res.status(201).json({ status: 'success', data: result.data[0], message: 'Event created successfully' });
+    } catch (error) {
+        logger.error('Admin create event error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to create event' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/events/{id}:
+ *   put:
+ *     summary: Update event
+ *     tags: [Admin]
+ */
+adminRouter.put('/events/:id', async (req, res) => {
+    try {
+        const { title, description, date, start_time, end_time, location, category, organizer, max_participants, status } = req.body;
+
+        const updateData = {
+            title: title?.trim(),
+            description: description?.trim(),
+            date,
+            start_time,
+            end_time,
+            location: location?.trim(),
+            category: category?.trim(),
+            organizer: organizer?.trim(),
+            max_participants: max_participants ? parseInt(max_participants) : null,
+            status,
+            updated_at: new Date()
+        };
+
+        Object.keys(updateData).forEach(key => 
+            updateData[key] === undefined && delete updateData[key]
+        );
+
+        const result = await db.query('update', 'biu_events', {
+            data: updateData,
+            where: { id: req.params.id }
+        });
+
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Event not found' });
+        }
+
+        await cacheManager.invalidateByTags(['biu_events']);
+        res.json({ status: 'success', data: result.data[0], message: 'Event updated successfully' });
+    } catch (error) {
+        logger.error('Admin update event error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to update event' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/events/{id}:
+ *   delete:
+ *     summary: Delete event
+ *     tags: [Admin]
+ */
+adminRouter.delete('/events/:id', async (req, res) => {
+    try {
+        const result = await db.query('delete', 'biu_events', { where: { id: req.params.id } });
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Event not found' });
+        }
+        await cacheManager.invalidateByTags(['biu_events']);
+        res.json({ status: 'success', message: 'Event deleted successfully' });
+    } catch (error) {
+        logger.error('Admin delete event error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to delete event' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/resources:
+ *   get:
+ *     summary: Get all resources
+ *     tags: [Admin]
+ */
+adminRouter.get('/resources', async (req, res) => {
+    try {
+        const { category, department } = req.query;
+        let where = {};
+
+        if (category && category !== 'all') where.category = category;
+        if (department && department !== 'all') where.department = department;
+
+        const result = await db.query('select', 'resources', {
+            where,
+            order: { column: 'created_at', ascending: false }
+        });
+
+        res.json({ status: 'success', data: result.data });
+    } catch (error) {
+        logger.error('Admin resources error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to fetch resources' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/resources:
+ *   post:
+ *     summary: Upload resource
+ *     tags: [Admin]
+ */
+adminRouter.post('/resources', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ status: 'error', message: 'No file uploaded' });
+        }
+
+        const resourceData = JSON.parse(req.body.data || '{}');
+
+        const newResource = {
+            title: resourceData.title?.trim(),
+            category: resourceData.category?.trim(),
+            description: resourceData.description?.trim(),
+            department: resourceData.department?.trim(),
+            course_code: resourceData.course_code?.trim(),
+            year: resourceData.year,
+            level: resourceData.level ? parseInt(resourceData.level) : null,
+            file_url: `/uploads/${req.file.filename}`,
+            file_size: req.file.size,
+            file_type: req.file.mimetype,
+            download_count: 0,
+            uploaded_by: req.user.id,
+            created_at: new Date()
+        };
+
+        const result = await db.query('insert', 'resources', { data: newResource });
+        await cacheManager.invalidateByTags(['resources']);
+
+        res.status(201).json({ status: 'success', data: result.data[0], message: 'Resource uploaded successfully' });
+    } catch (error) {
+        logger.error('Admin upload resource error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to upload resource' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/resources/{id}:
+ *   delete:
+ *     summary: Delete resource
+ *     tags: [Admin]
+ */
+adminRouter.delete('/resources/:id', async (req, res) => {
+    try {
+        const result = await db.query('delete', 'resources', { where: { id: req.params.id } });
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Resource not found' });
+        }
+        await cacheManager.invalidateByTags(['resources']);
+        res.json({ status: 'success', message: 'Resource deleted successfully' });
+    } catch (error) {
+        logger.error('Admin delete resource error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to delete resource' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/messages:
+ *   get:
+ *     summary: Get all messages (from contact form)
+ *     tags: [Admin]
+ */
+adminRouter.get('/messages', async (req, res) => {
+    try {
+        const result = await db.query('select', 'contact_messages', {
+            order: { column: 'created_at', ascending: false }
+        });
+        res.json({ status: 'success', data: result.data });
+    } catch (error) {
+        logger.error('Admin messages error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to fetch messages' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/messages/{id}/read:
+ *   put:
+ *     summary: Mark message as read
+ *     tags: [Admin]
+ */
+adminRouter.put('/messages/:id/read', async (req, res) => {
+    try {
+        await db.query('update', 'contact_messages', {
+            data: { is_read: true, read_at: new Date() },
+            where: { id: req.params.id }
+        });
+        res.json({ status: 'success', message: 'Message marked as read' });
+    } catch (error) {
+        logger.error('Admin mark message read error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to update message' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/messages/{id}:
+ *   delete:
+ *     summary: Delete message
+ *     tags: [Admin]
+ */
+adminRouter.delete('/messages/:id', async (req, res) => {
+    try {
+        await db.query('delete', 'contact_messages', { where: { id: req.params.id } });
+        res.json({ status: 'success', message: 'Message deleted successfully' });
+    } catch (error) {
+        logger.error('Admin delete message error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to delete message' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/upload:
+ *   post:
+ *     summary: File upload (generic)
+ *     tags: [Admin]
+ */
+adminRouter.post('/upload', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ status: 'error', message: 'No file uploaded' });
+        }
+
+        const fileInfo = {
+            filename: req.file.filename,
+            originalname: req.file.originalname,
+            mimetype: req.file.mimetype,
+            size: req.file.size,
+            url: `/uploads/${req.file.filename}`,
+            uploaded_at: new Date()
+        };
+
+        res.json({ status: 'success', data: fileInfo, message: 'File uploaded successfully' });
+    } catch (error) {
+        logger.error('Admin upload error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to upload file' });
+    }
+});
+
+app.use('/api/admin', adminRouter);
+
+// --- 16.7 MEMBERS ROUTES (Public) ---
 
 const memberRouter = express.Router();
 
@@ -3380,33 +2293,10 @@ const memberRouter = express.Router();
  *   get:
  *     summary: Get all executive members
  *     tags: [Members]
- *     parameters:
- *       - in: query
- *         name: committee
- *         schema:
- *           type: string
- *       - in: query
- *         name: status
- *         schema:
- *           type: string
- *           enum: [active, inactive, alumni]
- *       - in: query
- *         name: sort
- *         schema:
- *           type: string
- *       - in: query
- *         name: order
- *         schema:
- *           type: string
- *           enum: [asc, desc]
- *     responses:
- *       200:
- *         description: List of members
  */
 memberRouter.get('/', cacheMiddleware(120, ['members']), async (req, res) => {
     try {
         const { committee, status = 'active', sort = 'display_order', order = 'asc' } = req.query;
-
         let where = { status };
         if (committee && committee !== 'all') where.committee = committee;
 
@@ -3422,10 +2312,7 @@ memberRouter.get('/', cacheMiddleware(120, ['members']), async (req, res) => {
         });
     } catch (error) {
         logger.error('Error fetching members:', { requestId: req.id, error: error.message });
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch members'
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch members' });
     }
 });
 
@@ -3435,46 +2322,17 @@ memberRouter.get('/', cacheMiddleware(120, ['members']), async (req, res) => {
  *   get:
  *     summary: Get member by ID
  *     tags: [Members]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Member details
- *       404:
- *         description: Member not found
  */
 memberRouter.get('/:id', cacheMiddleware(300, ['members']), async (req, res) => {
     try {
-        const result = await db.query('select', 'executive_members', {
-            where: { id: req.params.id }
-        });
+        const result = await db.query('select', 'executive_members', { where: { id: req.params.id } });
+        if (result.data.length === 0) throw new NotFoundError('Member');
 
-        if (result.data.length === 0) {
-            throw new NotFoundError('Member');
-        }
-
-        res.json({
-            status: 'success',
-            data: result.data[0]
-        });
+        res.json({ status: 'success', data: result.data[0] });
     } catch (error) {
         logger.error('Error fetching member:', { requestId: req.id, error: error.message });
-        
-        if (error instanceof NotFoundError) {
-            return res.status(404).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-        
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch member'
-        });
+        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch member' });
     }
 });
 
@@ -3484,52 +2342,10 @@ memberRouter.get('/:id', cacheMiddleware(300, ['members']), async (req, res) => 
  *   post:
  *     summary: Create new member (admin/editor only)
  *     tags: [Members]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             required:
- *               - full_name
- *               - position
- *             properties:
- *               full_name:
- *                 type: string
- *               position:
- *                 type: string
- *               department:
- *                 type: string
- *               level:
- *                 type: string
- *               email:
- *                 type: string
- *               phone:
- *                 type: string
- *               bio:
- *                 type: string
- *               committee:
- *                 type: string
- *               display_order:
- *                 type: integer
- *               status:
- *                 type: string
- *                 enum: [active, inactive, alumni]
- *               profile_image:
- *                 type: string
- *                 format: binary
- *     responses:
- *       201:
- *         description: Member created successfully
  */
 memberRouter.post('/', verifyToken, requireRole('admin', 'editor'), upload.single('profile_image'), validate(schemas.createMember), async (req, res) => {
     try {
-        const {
-            full_name, position, department, level, email, phone,
-            bio, committee, display_order, status, social_links
-        } = req.body;
+        const { full_name, position, department, level, email, phone, bio, committee, display_order, status, social_links } = req.body;
 
         const memberData = {
             full_name: full_name.trim(),
@@ -3547,27 +2363,17 @@ memberRouter.post('/', verifyToken, requireRole('admin', 'editor'), upload.singl
             updated_at: new Date()
         };
 
-        if (req.file) {
-            memberData.profile_image = `/uploads/${req.file.filename}`;
-        }
+        if (req.file) memberData.profile_image = `/uploads/${req.file.filename}`;
 
         const result = await db.query('insert', 'executive_members', { data: memberData });
-
         await cacheManager.invalidateByTags(['members']);
 
         logger.info('Member created', { requestId: req.id, memberId: result.data[0].id, createdBy: req.user.id });
 
-        res.status(201).json({
-            status: 'success',
-            data: result.data[0],
-            message: 'Member created successfully'
-        });
+        res.status(201).json({ status: 'success', data: result.data[0], message: 'Member created successfully' });
     } catch (error) {
         logger.error('Error creating member:', { requestId: req.id, error: error.message });
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to create member'
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to create member' });
     }
 });
 
@@ -3577,46 +2383,6 @@ memberRouter.post('/', verifyToken, requireRole('admin', 'editor'), upload.singl
  *   put:
  *     summary: Update member
  *     tags: [Members]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               full_name:
- *                 type: string
- *               position:
- *                 type: string
- *               department:
- *                 type: string
- *               level:
- *                 type: string
- *               email:
- *                 type: string
- *               phone:
- *                 type: string
- *               bio:
- *                 type: string
- *               committee:
- *                 type: string
- *               display_order:
- *                 type: integer
- *               status:
- *                 type: string
- *               profile_image:
- *                 type: string
- *                 format: binary
- *     responses:
- *       200:
- *         description: Member updated successfully
  */
 memberRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), upload.single('profile_image'), async (req, res) => {
     try {
@@ -3625,11 +2391,7 @@ memberRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), upload.sin
 
         fields.forEach(field => {
             if (req.body[field] !== undefined) {
-                if (typeof req.body[field] === 'string') {
-                    memberData[field] = req.body[field].trim();
-                } else {
-                    memberData[field] = req.body[field];
-                }
+                memberData[field] = typeof req.body[field] === 'string' ? req.body[field].trim() : req.body[field];
             }
         });
 
@@ -3639,10 +2401,7 @@ memberRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), upload.sin
                 : req.body.social_links;
         }
 
-        if (req.file) {
-            memberData.profile_image = `/uploads/${req.file.filename}`;
-        }
-
+        if (req.file) memberData.profile_image = `/uploads/${req.file.filename}`;
         memberData.updated_at = new Date();
 
         const result = await db.query('update', 'executive_members', {
@@ -3650,33 +2409,16 @@ memberRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), upload.sin
             where: { id: req.params.id }
         });
 
-        if (result.data.length === 0) {
-            throw new NotFoundError('Member');
-        }
+        if (result.data.length === 0) throw new NotFoundError('Member');
 
         await cacheManager.invalidateByTags(['members']);
-
         logger.info('Member updated', { requestId: req.id, memberId: req.params.id, updatedBy: req.user.id });
 
-        res.json({
-            status: 'success',
-            data: result.data[0],
-            message: 'Member updated successfully'
-        });
+        res.json({ status: 'success', data: result.data[0], message: 'Member updated successfully' });
     } catch (error) {
         logger.error('Error updating member:', { requestId: req.id, error: error.message });
-        
-        if (error instanceof NotFoundError) {
-            return res.status(404).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-        
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to update member'
-        });
+        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to update member' });
     }
 });
 
@@ -3686,64 +2428,29 @@ memberRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), upload.sin
  *   delete:
  *     summary: Delete member (admin/editor only)
  *     tags: [Members]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Member deleted successfully
  */
 memberRouter.delete('/:id', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
     try {
-        const result = await db.query('delete', 'executive_members', {
-            where: { id: req.params.id }
-        });
-
-        if (result.data.length === 0) {
-            throw new NotFoundError('Member');
-        }
+        const result = await db.query('delete', 'executive_members', { where: { id: req.params.id } });
+        if (result.data.length === 0) throw new NotFoundError('Member');
 
         await cacheManager.invalidateByTags(['members']);
-
         logger.info('Member deleted', { requestId: req.id, memberId: req.params.id, deletedBy: req.user.id });
 
-        res.json({
-            status: 'success',
-            message: 'Member deleted successfully'
-        });
+        res.json({ status: 'success', message: 'Member deleted successfully' });
     } catch (error) {
         logger.error('Error deleting member:', { requestId: req.id, error: error.message });
-        
-        if (error instanceof NotFoundError) {
-            return res.status(404).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-        
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to delete member'
-        });
+        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to delete member' });
     }
 });
 
 app.use('/api/members', memberRouter);
 
-// ============================================================
-// EVENTS ROUTES
-// ============================================================
+// --- 16.8 EVENTS ROUTES ---
 
 const eventRouter = express.Router();
 
-/**
- * Test route for events router
- */
 eventRouter.get('/test', (req, res) => {
     console.log('📡 [TEST] Test route hit at:', new Date().toISOString());
     res.json({ 
@@ -3759,23 +2466,6 @@ eventRouter.get('/test', (req, res) => {
  *   get:
  *     summary: Get all events
  *     tags: [Events]
- *     parameters:
- *       - in: query
- *         name: status
- *         schema:
- *           type: string
- *           enum: [upcoming, past, all]
- *       - in: query
- *         name: category
- *         schema:
- *           type: string
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: List of events
  */
 eventRouter.get('/', cacheMiddleware(120, ['biu_events']), async (req, res) => {
     console.log('📡 [3] GET /api/events called at:', new Date().toISOString());
@@ -3783,25 +2473,12 @@ eventRouter.get('/', cacheMiddleware(120, ['biu_events']), async (req, res) => {
     console.log('📡 [3b] Request ID:', req.id);
     
     try {
-        const { 
-            status = 'upcoming',
-            category,
-            limit = 50
-        } = req.query;
-
+        const { status = 'upcoming', category, limit = 50 } = req.query;
         console.log('📡 [4] Building where clause with:', { status, category, limit });
         
         let where = {};
-        
-        // Filter by status
-        if (status !== 'all') {
-            where.status = status;
-        }
-        
-        // Filter by category if provided
-        if (category && category !== 'all') {
-            where.category = category;
-        }
+        if (status !== 'all') where.status = status;
+        if (category && category !== 'all') where.category = category;
 
         console.log('📡 [5] Final where clause:', where);
         console.log('📡 [6] Executing database query on biu_events table...');
@@ -3856,46 +2533,23 @@ eventRouter.get('/', cacheMiddleware(120, ['biu_events']), async (req, res) => {
  *   get:
  *     summary: Get event by ID
  *     tags: [Events]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Event details
- *       404:
- *         description: Event not found
  */
 eventRouter.get('/:id', cacheMiddleware(300, ['biu_events']), async (req, res) => {
     console.log(`📡 GET /api/events/${req.params.id} called`);
     
     try {
-        const result = await db.query('select', 'biu_events', {
-            where: { id: req.params.id }
-        });
+        const result = await db.query('select', 'biu_events', { where: { id: req.params.id } });
 
         if (result.data.length === 0) {
             console.log(`📡 Event with id ${req.params.id} not found`);
-            return res.status(404).json({
-                status: 'error',
-                message: 'Event not found'
-            });
+            return res.status(404).json({ status: 'error', message: 'Event not found' });
         }
 
         console.log(`📡 Event found:`, result.data[0].title);
-        res.json({
-            status: 'success',
-            data: result.data[0]
-        });
+        res.json({ status: 'success', data: result.data[0] });
     } catch (error) {
         console.error('❌ Error fetching event:', error.message);
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch event',
-            debug: error.message
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch event', debug: error.message });
     }
 });
 
@@ -3905,9 +2559,6 @@ eventRouter.get('/:id', cacheMiddleware(300, ['biu_events']), async (req, res) =
  *   get:
  *     summary: Get upcoming events
  *     tags: [Events]
- *     responses:
- *       200:
- *         description: List of upcoming events
  */
 eventRouter.get('/status/upcoming', cacheMiddleware(60, ['biu_events']), async (req, res) => {
     console.log('📡 GET /api/events/status/upcoming called');
@@ -3919,17 +2570,10 @@ eventRouter.get('/status/upcoming', cacheMiddleware(60, ['biu_events']), async (
         });
 
         console.log(`📡 Found ${result.data.length} upcoming events`);
-        res.json({
-            status: 'success',
-            data: result.data,
-            count: result.data.length
-        });
+        res.json({ status: 'success', data: result.data, count: result.data.length });
     } catch (error) {
         console.error('❌ Error fetching upcoming events:', error.message);
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch upcoming events'
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch upcoming events' });
     }
 });
 
@@ -3939,9 +2583,6 @@ eventRouter.get('/status/upcoming', cacheMiddleware(60, ['biu_events']), async (
  *   get:
  *     summary: Get past events
  *     tags: [Events]
- *     responses:
- *       200:
- *         description: List of past events
  */
 eventRouter.get('/status/past', cacheMiddleware(300, ['biu_events']), async (req, res) => {
     console.log('📡 GET /api/events/status/past called');
@@ -3953,17 +2594,10 @@ eventRouter.get('/status/past', cacheMiddleware(300, ['biu_events']), async (req
         });
 
         console.log(`📡 Found ${result.data.length} past events`);
-        res.json({
-            status: 'success',
-            data: result.data,
-            count: result.data.length
-        });
+        res.json({ status: 'success', data: result.data, count: result.data.length });
     } catch (error) {
         console.error('❌ Error fetching past events:', error.message);
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch past events'
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch past events' });
     }
 });
 
@@ -3973,15 +2607,6 @@ eventRouter.get('/status/past', cacheMiddleware(300, ['biu_events']), async (req
  *   get:
  *     summary: Get events by category
  *     tags: [Events]
- *     parameters:
- *       - in: path
- *         name: category
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: List of events in category
  */
 eventRouter.get('/category/:category', cacheMiddleware(120, ['biu_events']), async (req, res) => {
     console.log(`📡 GET /api/events/category/${req.params.category} called`);
@@ -3993,17 +2618,10 @@ eventRouter.get('/category/:category', cacheMiddleware(120, ['biu_events']), asy
         });
 
         console.log(`📡 Found ${result.data.length} events in category ${req.params.category}`);
-        res.json({
-            status: 'success',
-            data: result.data,
-            count: result.data.length
-        });
+        res.json({ status: 'success', data: result.data, count: result.data.length });
     } catch (error) {
         console.error('❌ Error fetching events by category:', error.message);
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch events'
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch events' });
     }
 });
 
@@ -4013,68 +2631,16 @@ eventRouter.get('/category/:category', cacheMiddleware(120, ['biu_events']), asy
  *   post:
  *     summary: Create new event (admin/editor only)
  *     tags: [Events]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - title
- *               - date
- *             properties:
- *               title:
- *                 type: string
- *               date:
- *                 type: string
- *                 format: date
- *               description:
- *                 type: string
- *               category:
- *                 type: string
- *               start_time:
- *                 type: string
- *               end_time:
- *                 type: string
- *               location:
- *                 type: string
- *               organizer:
- *                 type: string
- *               max_participants:
- *                 type: integer
- *               status:
- *                 type: string
- *                 enum: [upcoming, ongoing, past, cancelled]
- *     responses:
- *       201:
- *         description: Event created successfully
  */
 eventRouter.post('/', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
     console.log('📡 POST /api/events called');
     console.log('📡 Request body:', req.body);
     
     try {
-        const {
-            title,
-            date,
-            description,
-            category,
-            start_time,
-            end_time,
-            location,
-            organizer,
-            max_participants,
-            status = 'upcoming'
-        } = req.body;
+        const { title, date, description, category, start_time, end_time, location, organizer, max_participants, status = 'upcoming' } = req.body;
 
-        // Validate required fields
-        if (!title || !date) {
-            throw new ValidationError('Title and date are required');
-        }
+        if (!title || !date) throw new ValidationError('Title and date are required');
 
-        // Parse date from DD/MM/YYYY to ISO format for storage
         let formattedDate = date;
         if (typeof date === 'string' && date.includes('/')) {
             const [day, month, year] = date.split('/');
@@ -4105,26 +2671,11 @@ eventRouter.post('/', verifyToken, requireRole('admin', 'editor'), async (req, r
 
         await cacheManager.invalidateByTags(['biu_events']);
 
-        res.status(201).json({
-            status: 'success',
-            data: result.data[0],
-            message: 'Event created successfully'
-        });
+        res.status(201).json({ status: 'success', data: result.data[0], message: 'Event created successfully' });
     } catch (error) {
         console.error('❌ Error creating event:', error.message);
-        
-        if (error instanceof ValidationError) {
-            return res.status(400).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-        
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to create event',
-            debug: error.message
-        });
+        if (error instanceof ValidationError) return res.status(400).json({ status: 'error', message: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to create event', debug: error.message });
     }
 });
 
@@ -4134,55 +2685,15 @@ eventRouter.post('/', verifyToken, requireRole('admin', 'editor'), async (req, r
  *   put:
  *     summary: Update event (admin/editor only)
  *     tags: [Events]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               title:
- *                 type: string
- *               date:
- *                 type: string
- *               description:
- *                 type: string
- *               category:
- *                 type: string
- *               start_time:
- *                 type: string
- *               end_time:
- *                 type: string
- *               location:
- *                 type: string
- *               organizer:
- *                 type: string
- *               max_participants:
- *                 type: integer
- *               status:
- *                 type: string
- *     responses:
- *       200:
- *         description: Event updated successfully
  */
 eventRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
     console.log(`📡 PUT /api/events/${req.params.id} called`);
     console.log('📡 Update data:', req.body);
     
     try {
-        const allowedFields = [
-            'title', 'date', 'description', 'category', 'start_time', 
-            'end_time', 'location', 'organizer', 'max_participants', 'status'
-        ];
-        
+        const allowedFields = ['title', 'date', 'description', 'category', 'start_time', 'end_time', 'location', 'organizer', 'max_participants', 'status'];
         const updateData = {};
+
         allowedFields.forEach(field => {
             if (req.body[field] !== undefined) {
                 if (field === 'date' && req.body[field] && typeof req.body[field] === 'string' && req.body[field].includes('/')) {
@@ -4198,10 +2709,7 @@ eventRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (req,
             }
         });
 
-        if (Object.keys(updateData).length === 0) {
-            throw new ValidationError('No fields to update');
-        }
-
+        if (Object.keys(updateData).length === 0) throw new ValidationError('No fields to update');
         updateData.updated_at = new Date();
 
         console.log('📡 Executing update on biu_events with:', updateData);
@@ -4213,42 +2721,19 @@ eventRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (req,
 
         if (result.data.length === 0) {
             console.log(`📡 Event ${req.params.id} not found`);
-            return res.status(404).json({
-                status: 'error',
-                message: 'Event not found'
-            });
+            return res.status(404).json({ status: 'error', message: 'Event not found' });
         }
 
         console.log('✅ Event updated:', result.data[0].id);
 
         await cacheManager.invalidateByTags(['biu_events']);
 
-        res.json({
-            status: 'success',
-            data: result.data[0],
-            message: 'Event updated successfully'
-        });
+        res.json({ status: 'success', data: result.data[0], message: 'Event updated successfully' });
     } catch (error) {
         console.error('❌ Error updating event:', error.message);
-        
-        if (error instanceof NotFoundError) {
-            return res.status(404).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-        
-        if (error instanceof ValidationError) {
-            return res.status(400).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-        
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to update event'
-        });
+        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
+        if (error instanceof ValidationError) return res.status(400).json({ status: 'error', message: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to update event' });
     }
 });
 
@@ -4258,71 +2743,37 @@ eventRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (req,
  *   delete:
  *     summary: Delete event (admin only)
  *     tags: [Events]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Event deleted successfully
  */
 eventRouter.delete('/:id', verifyToken, requireRole('admin'), async (req, res) => {
     console.log(`📡 DELETE /api/events/${req.params.id} called`);
     
     try {
-        const result = await db.query('delete', 'biu_events', {
-            where: { id: req.params.id }
-        });
+        const result = await db.query('delete', 'biu_events', { where: { id: req.params.id } });
 
         if (result.data.length === 0) {
             console.log(`📡 Event ${req.params.id} not found`);
-            return res.status(404).json({
-                status: 'error',
-                message: 'Event not found'
-            });
+            return res.status(404).json({ status: 'error', message: 'Event not found' });
         }
 
         console.log('✅ Event deleted:', req.params.id);
 
         await cacheManager.invalidateByTags(['biu_events']);
 
-        res.json({
-            status: 'success',
-            message: 'Event deleted successfully'
-        });
+        res.json({ status: 'success', message: 'Event deleted successfully' });
     } catch (error) {
         console.error('❌ Error deleting event:', error.message);
-        
-        if (error instanceof NotFoundError) {
-            return res.status(404).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-        
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to delete event'
-        });
+        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to delete event' });
     }
 });
 
 app.use('/api/events', eventRouter);
 console.log('✅ [12] /api/events router registered');
 
-// ============================================================
-// RESOURCES ROUTES
-// ============================================================
+// --- 16.9 RESOURCES ROUTES ---
 
 const resourceRouter = express.Router();
 
-/**
- * Test route for resources router
- */
 resourceRouter.get('/test', (req, res) => {
     console.log('📡 [TEST] Resources test route hit at:', new Date().toISOString());
     res.json({ 
@@ -4338,38 +2789,6 @@ resourceRouter.get('/test', (req, res) => {
  *   get:
  *     summary: Get all resources
  *     tags: [Resources]
- *     parameters:
- *       - in: query
- *         name: category
- *         schema:
- *           type: string
- *       - in: query
- *         name: department
- *         schema:
- *           type: string
- *       - in: query
- *         name: level
- *         schema:
- *           type: integer
- *       - in: query
- *         name: course_code
- *         schema:
- *           type: string
- *       - in: query
- *         name: year
- *         schema:
- *           type: string
- *       - in: query
- *         name: semester
- *         schema:
- *           type: string
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: List of resources
  */
 resourceRouter.get('/', cacheMiddleware(120, ['resources']), async (req, res) => {
     console.log('📡 [R3] GET /api/resources called at:', new Date().toISOString());
@@ -4377,52 +2796,19 @@ resourceRouter.get('/', cacheMiddleware(120, ['resources']), async (req, res) =>
     console.log('📡 [R3b] Request ID:', req.id);
     
     try {
-        const { 
-            category,
-            department,
-            level,
-            course_code,
-            year,
-            semester,
-            limit = 50
-        } = req.query;
+        const { category, department, level, course_code, year, semester, limit = 50 } = req.query;
 
         console.log('📡 [R4] Building where clause with filters:', { 
             category, department, level, course_code, year, semester, limit 
         });
         
         let where = {};
-        
-        // Apply filters based on query parameters
-        if (category && category !== 'all') {
-            where.category = category;
-            console.log('📡 [R4a] Filter by category:', category);
-        }
-        
-        if (department && department !== 'all') {
-            where.department = department;
-            console.log('📡 [R4b] Filter by department:', department);
-        }
-        
-        if (level) {
-            where.level = parseInt(level);
-            console.log('📡 [R4c] Filter by level:', level);
-        }
-        
-        if (course_code && course_code !== 'all') {
-            where.course_code = course_code;
-            console.log('📡 [R4d] Filter by course_code:', course_code);
-        }
-        
-        if (year && year !== 'all') {
-            where.year = year;
-            console.log('📡 [R4e] Filter by year:', year);
-        }
-        
-        if (semester && semester !== 'all') {
-            where.semester = semester;
-            console.log('📡 [R4f] Filter by semester:', semester);
-        }
+        if (category && category !== 'all') where.category = category;
+        if (department && department !== 'all') where.department = department;
+        if (level) where.level = parseInt(level);
+        if (course_code && course_code !== 'all') where.course_code = course_code;
+        if (year && year !== 'all') where.year = year;
+        if (semester && semester !== 'all') where.semester = semester;
 
         console.log('📡 [R5] Final where clause:', where);
         console.log('📡 [R6] Executing database query on resources table...');
@@ -4446,12 +2832,7 @@ resourceRouter.get('/', cacheMiddleware(120, ['resources']), async (req, res) =>
             console.log('📡 [R8] No resources found');
         }
 
-        res.json({
-            status: 'success',
-            data: result.data,
-            count: result.data.length
-        });
-        
+        res.json({ status: 'success', data: result.data, count: result.data.length });
         console.log('✅ [R10] Resources response sent successfully');
         
     } catch (error) {
@@ -4462,7 +2843,6 @@ resourceRouter.get('/', cacheMiddleware(120, ['resources']), async (req, res) =>
             name: error.name
         });
         
-        // Check for specific database errors
         if (error.message && error.message.includes('relation') && error.message.includes('does not exist')) {
             console.error('❌ [R-DB ERROR] Resources table does not exist!');
             return res.status(500).json({
@@ -4473,11 +2853,7 @@ resourceRouter.get('/', cacheMiddleware(120, ['resources']), async (req, res) =>
         }
         
         logger.error('Error fetching resources:', { requestId: req.id, error: error.message });
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch resources',
-            debug: error.message
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch resources', debug: error.message });
     }
 });
 
@@ -4487,78 +2863,24 @@ resourceRouter.get('/', cacheMiddleware(120, ['resources']), async (req, res) =>
  *   get:
  *     summary: Get past questions (legacy endpoint)
  *     tags: [Resources]
- *     parameters:
- *       - in: query
- *         name: department
- *         schema:
- *           type: string
- *       - in: query
- *         name: level
- *         schema:
- *           type: integer
- *       - in: query
- *         name: course_code
- *         schema:
- *           type: string
- *       - in: query
- *         name: year
- *         schema:
- *           type: string
- *       - in: query
- *         name: semester
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: List of past questions
  */
 resourceRouter.get('/past-questions', cacheMiddleware(120, ['resources']), async (req, res) => {
     console.log('📡 [R11] GET /api/resources/past-questions called');
     console.log('📡 [R11a] Query params:', req.query);
     
     try {
-        const { 
-            department,
-            level,
-            course_code,
-            year,
-            semester,
-            limit = 50
-        } = req.query;
+        const { department, level, course_code, year, semester, limit = 50 } = req.query;
 
         console.log('📡 [R12] Building past questions where clause');
         
-        let where = { 
-            category: 'past-question'
-        };
-        
+        let where = { category: 'past-question' };
         console.log('📡 [R12a] Base category filter: past-question');
         
-        // Apply filters
-        if (department && department !== 'all') {
-            where.department = department;
-            console.log('📡 [R12b] Filter by department:', department);
-        }
-        
-        if (level) {
-            where.level = parseInt(level);
-            console.log('📡 [R12c] Filter by level:', level);
-        }
-        
-        if (course_code && course_code !== 'all') {
-            where.course_code = course_code;
-            console.log('📡 [R12d] Filter by course_code:', course_code);
-        }
-        
-        if (year && year !== 'all') {
-            where.year = year;
-            console.log('📡 [R12e] Filter by year:', year);
-        }
-        
-        if (semester && semester !== 'all') {
-            where.semester = semester;
-            console.log('📡 [R12f] Filter by semester:', semester);
-        }
+        if (department && department !== 'all') where.department = department;
+        if (level) where.level = parseInt(level);
+        if (course_code && course_code !== 'all') where.course_code = course_code;
+        if (year && year !== 'all') where.year = year;
+        if (semester && semester !== 'all') where.semester = semester;
 
         console.log('📡 [R13] Final where clause for past questions:', where);
         console.log('📡 [R14] Executing past questions query...');
@@ -4580,22 +2902,13 @@ resourceRouter.get('/past-questions', cacheMiddleware(120, ['resources']), async
             });
         }
 
-        res.json({
-            status: 'success',
-            data: result.data,
-            count: result.data.length
-        });
-        
+        res.json({ status: 'success', data: result.data, count: result.data.length });
         console.log('✅ [R17] Past questions response sent');
         
     } catch (error) {
         console.error('❌ [R-ERROR] Past questions API error:', error.message);
         logger.error('Error fetching past questions:', { requestId: req.id, error: error.message });
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch past questions',
-            debug: error.message
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch past questions', debug: error.message });
     }
 });
 
@@ -4605,17 +2918,6 @@ resourceRouter.get('/past-questions', cacheMiddleware(120, ['resources']), async
  *   get:
  *     summary: Get resource by ID
  *     tags: [Resources]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Resource details
- *       404:
- *         description: Resource not found
  */
 resourceRouter.get('/:id', cacheMiddleware(300, ['resources']), async (req, res) => {
     console.log(`📡 [R18] GET /api/resources/${req.params.id} called`);
@@ -4623,39 +2925,20 @@ resourceRouter.get('/:id', cacheMiddleware(300, ['resources']), async (req, res)
     try {
         console.log('📡 [R19] Querying for resource ID:', req.params.id);
         
-        const result = await db.query('select', 'resources', {
-            where: { id: req.params.id }
-        });
+        const result = await db.query('select', 'resources', { where: { id: req.params.id } });
 
         if (result.data.length === 0) {
             console.log(`📡 [R20] Resource with id ${req.params.id} not found`);
-            return res.status(404).json({
-                status: 'error',
-                message: 'Resource not found'
-            });
+            return res.status(404).json({ status: 'error', message: 'Resource not found' });
         }
 
         console.log(`📡 [R21] Resource found:`, result.data[0].title);
-        res.json({
-            status: 'success',
-            data: result.data[0]
-        });
+        res.json({ status: 'success', data: result.data[0] });
     } catch (error) {
         console.error('❌ [R-ERROR] Error fetching resource:', error.message);
         logger.error('Error fetching resource:', { requestId: req.id, error: error.message });
-        
-        if (error instanceof NotFoundError) {
-            return res.status(404).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-        
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch resource',
-            debug: error.message
-        });
+        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch resource', debug: error.message });
     }
 });
 
@@ -4665,42 +2948,6 @@ resourceRouter.get('/:id', cacheMiddleware(300, ['resources']), async (req, res)
  *   post:
  *     summary: Create new resource (admin/editor only)
  *     tags: [Resources]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             required:
- *               - title
- *               - category
- *             properties:
- *               title:
- *                 type: string
- *               category:
- *                 type: string
- *               description:
- *                 type: string
- *               department:
- *                 type: string
- *               level:
- *                 type: integer
- *               course_code:
- *                 type: string
- *               course_title:
- *                 type: string
- *               year:
- *                 type: string
- *               semester:
- *                 type: string
- *               file:
- *                 type: string
- *                 format: binary
- *     responses:
- *       201:
- *         description: Resource created successfully
  */
 resourceRouter.post('/', verifyToken, requireRole('admin', 'editor'), upload.single('file'), async (req, res) => {
     console.log('📡 [R22] POST /api/resources called');
@@ -4712,21 +2959,8 @@ resourceRouter.post('/', verifyToken, requireRole('admin', 'editor'), upload.sin
     } : 'No file');
     
     try {
-        const {
-            title,
-            category,
-            description,
-            department,
-            level,
-            course_code,
-            course_title,
-            year,
-            semester,
-            file_type,
-            file_size
-        } = req.body;
+        const { title, category, description, department, level, course_code, course_title, year, semester, file_type, file_size } = req.body;
 
-        // Validate required fields
         if (!title || !category) {
             console.log('❌ [R23] Validation failed: missing title or category');
             throw new ValidationError('Title and category are required');
@@ -4751,7 +2985,6 @@ resourceRouter.post('/', verifyToken, requireRole('admin', 'editor'), upload.sin
 
         console.log('📡 [R24] Prepared resource data:', resourceData);
 
-        // If file was uploaded
         if (req.file) {
             resourceData.file_url = `/uploads/${req.file.filename}`;
             resourceData.file_size = req.file.size;
@@ -4770,33 +3003,14 @@ resourceRouter.post('/', verifyToken, requireRole('admin', 'editor'), upload.sin
 
         await cacheManager.invalidateByTags(['resources']);
 
-        logger.info('Resource created', { 
-            requestId: req.id, 
-            resourceId: result.data[0].id, 
-            createdBy: req.user.id 
-        });
+        logger.info('Resource created', { requestId: req.id, resourceId: result.data[0].id, createdBy: req.user.id });
 
-        res.status(201).json({
-            status: 'success',
-            data: result.data[0],
-            message: 'Resource created successfully'
-        });
+        res.status(201).json({ status: 'success', data: result.data[0], message: 'Resource created successfully' });
     } catch (error) {
         console.error('❌ [R-ERROR] Error creating resource:', error.message);
         logger.error('Error creating resource:', { requestId: req.id, error: error.message });
-        
-        if (error instanceof ValidationError) {
-            return res.status(400).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-        
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to create resource',
-            debug: error.message
-        });
+        if (error instanceof ValidationError) return res.status(400).json({ status: 'error', message: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to create resource', debug: error.message });
     }
 });
 
@@ -4806,56 +3020,15 @@ resourceRouter.post('/', verifyToken, requireRole('admin', 'editor'), upload.sin
  *   put:
  *     summary: Update resource (admin/editor only)
  *     tags: [Resources]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               title:
- *                 type: string
- *               category:
- *                 type: string
- *               description:
- *                 type: string
- *               department:
- *                 type: string
- *               level:
- *                 type: integer
- *               course_code:
- *                 type: string
- *               course_title:
- *                 type: string
- *               year:
- *                 type: string
- *               semester:
- *                 type: string
- *               file_url:
- *                 type: string
- *     responses:
- *       200:
- *         description: Resource updated successfully
  */
 resourceRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
     console.log(`📡 [R28] PUT /api/resources/${req.params.id} called`);
     console.log('📡 [R28a] Update data:', req.body);
     
     try {
-        const allowedFields = [
-            'title', 'category', 'description', 'department', 'level',
-            'course_code', 'course_title', 'year', 'semester', 
-            'file_type', 'file_size', 'file_url'
-        ];
-        
+        const allowedFields = ['title', 'category', 'description', 'department', 'level', 'course_code', 'course_title', 'year', 'semester', 'file_type', 'file_size', 'file_url'];
         const updateData = {};
+
         allowedFields.forEach(field => {
             if (req.body[field] !== undefined) {
                 if (field === 'level' || field === 'file_size') {
@@ -4887,50 +3060,22 @@ resourceRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (r
 
         if (result.data.length === 0) {
             console.log(`📡 [R32] Resource ${req.params.id} not found`);
-            return res.status(404).json({
-                status: 'error',
-                message: 'Resource not found'
-            });
+            return res.status(404).json({ status: 'error', message: 'Resource not found' });
         }
 
         console.log('✅ [R33] Resource updated:', result.data[0].id);
 
         await cacheManager.invalidateByTags(['resources']);
 
-        logger.info('Resource updated', { 
-            requestId: req.id, 
-            resourceId: req.params.id, 
-            updatedBy: req.user.id 
-        });
+        logger.info('Resource updated', { requestId: req.id, resourceId: req.params.id, updatedBy: req.user.id });
 
-        res.json({
-            status: 'success',
-            data: result.data[0],
-            message: 'Resource updated successfully'
-        });
+        res.json({ status: 'success', data: result.data[0], message: 'Resource updated successfully' });
     } catch (error) {
         console.error('❌ [R-ERROR] Error updating resource:', error.message);
         logger.error('Error updating resource:', { requestId: req.id, error: error.message });
-        
-        if (error instanceof NotFoundError) {
-            return res.status(404).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-        
-        if (error instanceof ValidationError) {
-            return res.status(400).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-        
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to update resource',
-            debug: error.message
-        });
+        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
+        if (error instanceof ValidationError) return res.status(400).json({ status: 'error', message: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to update resource', debug: error.message });
     }
 });
 
@@ -4940,17 +3085,6 @@ resourceRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (r
  *   delete:
  *     summary: Delete resource (admin only)
  *     tags: [Resources]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Resource deleted successfully
  */
 resourceRouter.delete('/:id', verifyToken, requireRole('admin'), async (req, res) => {
     console.log(`📡 [R34] DELETE /api/resources/${req.params.id} called`);
@@ -4958,48 +3092,25 @@ resourceRouter.delete('/:id', verifyToken, requireRole('admin'), async (req, res
     try {
         console.log('📡 [R35] Deleting resource:', req.params.id);
         
-        const result = await db.query('delete', 'resources', {
-            where: { id: req.params.id }
-        });
+        const result = await db.query('delete', 'resources', { where: { id: req.params.id } });
 
         if (result.data.length === 0) {
             console.log(`📡 [R36] Resource ${req.params.id} not found`);
-            return res.status(404).json({
-                status: 'error',
-                message: 'Resource not found'
-            });
+            return res.status(404).json({ status: 'error', message: 'Resource not found' });
         }
 
         console.log('✅ [R37] Resource deleted:', req.params.id);
 
         await cacheManager.invalidateByTags(['resources']);
 
-        logger.info('Resource deleted', { 
-            requestId: req.id, 
-            resourceId: req.params.id, 
-            deletedBy: req.user.id 
-        });
+        logger.info('Resource deleted', { requestId: req.id, resourceId: req.params.id, deletedBy: req.user.id });
 
-        res.json({
-            status: 'success',
-            message: 'Resource deleted successfully'
-        });
+        res.json({ status: 'success', message: 'Resource deleted successfully' });
     } catch (error) {
         console.error('❌ [R-ERROR] Error deleting resource:', error.message);
         logger.error('Error deleting resource:', { requestId: req.id, error: error.message });
-        
-        if (error instanceof NotFoundError) {
-            return res.status(404).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-        
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to delete resource',
-            debug: error.message
-        });
+        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to delete resource', debug: error.message });
     }
 });
 
@@ -5009,15 +3120,6 @@ resourceRouter.delete('/:id', verifyToken, requireRole('admin'), async (req, res
  *   post:
  *     summary: Increment download count for resource
  *     tags: [Resources]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Download count updated
  */
 resourceRouter.post('/:id/download', async (req, res) => {
     console.log(`📡 [R38] POST /api/resources/${req.params.id}/download called`);
@@ -5025,7 +3127,6 @@ resourceRouter.post('/:id/download', async (req, res) => {
     try {
         console.log('📡 [R39] Getting current download count for resource:', req.params.id);
         
-        // First get current download count
         const getResult = await db.query('select', 'resources', {
             where: { id: req.params.id },
             select: 'download_count'
@@ -5033,50 +3134,28 @@ resourceRouter.post('/:id/download', async (req, res) => {
 
         if (getResult.data.length === 0) {
             console.log(`📡 [R40] Resource ${req.params.id} not found`);
-            return res.status(404).json({
-                status: 'error',
-                message: 'Resource not found'
-            });
+            return res.status(404).json({ status: 'error', message: 'Resource not found' });
         }
 
         const currentCount = getResult.data[0].download_count || 0;
         console.log(`📡 [R41] Current download count: ${currentCount}`);
         
-        // Update download count
         const newCount = currentCount + 1;
         console.log(`📡 [R42] Updating to: ${newCount}`);
         
         await db.query('update', 'resources', {
-            data: { 
-                download_count: newCount,
-                updated_at: new Date()
-            },
+            data: { download_count: newCount, updated_at: new Date() },
             where: { id: req.params.id }
         });
 
         console.log('✅ [R43] Download count updated');
 
-        res.json({
-            status: 'success',
-            data: { download_count: newCount },
-            message: 'Download count updated'
-        });
+        res.json({ status: 'success', data: { download_count: newCount }, message: 'Download count updated' });
     } catch (error) {
         console.error('❌ [R-ERROR] Error updating download count:', error.message);
         logger.error('Error updating download count:', { requestId: req.id, error: error.message });
-        
-        if (error instanceof NotFoundError) {
-            return res.status(404).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-        
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to update download count',
-            debug: error.message
-        });
+        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to update download count', debug: error.message });
     }
 });
 
@@ -5086,9 +3165,6 @@ resourceRouter.post('/:id/download', async (req, res) => {
  *   get:
  *     summary: Get unique resource categories
  *     tags: [Resources]
- *     responses:
- *       200:
- *         description: List of categories
  */
 resourceRouter.get('/meta/categories', async (req, res) => {
     console.log('📡 [R44] GET /api/resources/meta/categories called');
@@ -5102,17 +3178,11 @@ resourceRouter.get('/meta/categories', async (req, res) => {
         const categories = result.data.map(item => item.category).filter(Boolean);
         console.log(`📡 [R45] Found ${categories.length} unique categories`);
         
-        res.json({
-            status: 'success',
-            data: categories
-        });
+        res.json({ status: 'success', data: categories });
     } catch (error) {
         console.error('❌ [R-ERROR] Error fetching categories:', error.message);
         logger.error('Error fetching categories:', { requestId: req.id, error: error.message });
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch categories'
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch categories' });
     }
 });
 
@@ -5122,9 +3192,6 @@ resourceRouter.get('/meta/categories', async (req, res) => {
  *   get:
  *     summary: Get unique resource departments
  *     tags: [Resources]
- *     responses:
- *       200:
- *         description: List of departments
  */
 resourceRouter.get('/meta/departments', async (req, res) => {
     console.log('📡 [R46] GET /api/resources/meta/departments called');
@@ -5138,17 +3205,11 @@ resourceRouter.get('/meta/departments', async (req, res) => {
         const departments = result.data.map(item => item.department).filter(Boolean);
         console.log(`📡 [R47] Found ${departments.length} unique departments`);
         
-        res.json({
-            status: 'success',
-            data: departments
-        });
+        res.json({ status: 'success', data: departments });
     } catch (error) {
         console.error('❌ [R-ERROR] Error fetching departments:', error.message);
         logger.error('Error fetching departments:', { requestId: req.id, error: error.message });
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch departments'
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch departments' });
     }
 });
 
@@ -5158,14 +3219,6 @@ resourceRouter.get('/meta/departments', async (req, res) => {
  *   get:
  *     summary: Get unique course codes with titles
  *     tags: [Resources]
- *     parameters:
- *       - in: query
- *         name: department
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: List of courses
  */
 resourceRouter.get('/meta/courses', async (req, res) => {
     console.log('📡 [R48] GET /api/resources/meta/courses called');
@@ -5187,26 +3240,18 @@ resourceRouter.get('/meta/courses', async (req, res) => {
         
         console.log(`📡 [R50] Found ${result.data.length} unique courses`);
         
-        res.json({
-            status: 'success',
-            data: result.data
-        });
+        res.json({ status: 'success', data: result.data });
     } catch (error) {
         console.error('❌ [R-ERROR] Error fetching courses:', error.message);
         logger.error('Error fetching courses:', { requestId: req.id, error: error.message });
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch courses'
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch courses' });
     }
 });
 
 app.use('/api/resources', resourceRouter);
 console.log('✅ [R52] /api/resources router registered');
 
-// ============================================================
-// ARTICLES/NEWS ROUTES
-// ============================================================
+// --- 16.10 ARTICLES/NEWS ROUTES ---
 
 const articleRouter = express.Router();
 
@@ -5216,61 +3261,15 @@ const articleRouter = express.Router();
  *   get:
  *     summary: Get all published articles
  *     tags: [Articles]
- *     parameters:
- *       - in: query
- *         name: category
- *         schema:
- *           type: string
- *       - in: query
- *         name: tag
- *         schema:
- *           type: string
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *       - in: query
- *         name: sort
- *         schema:
- *           type: string
- *       - in: query
- *         name: order
- *         schema:
- *           type: string
- *           enum: [asc, desc]
- *     responses:
- *       200:
- *         description: List of articles
  */
 articleRouter.get('/', cacheMiddleware(120, ['articles']), async (req, res) => {
     try {
-        const { 
-            category,
-            tag,
-            limit = 50,
-            page = 1,
-            sort = 'published_at',
-            order = 'desc'
-        } = req.query;
-
+        const { category, tag, limit = 50, page = 1, sort = 'published_at', order = 'desc' } = req.query;
         const offset = (page - 1) * limit;
         
-        let where = { 
-            status: 'published',
-            is_published: true 
-        };
-        
-        if (category && category !== 'all') {
-            where.category = category;
-        }
-        
-        if (tag) {
-            where.tags = { operator: 'contains', value: [tag] };
-        }
+        let where = { status: 'published', is_published: true };
+        if (category && category !== 'all') where.category = category;
+        if (tag) where.tags = { operator: 'contains', value: [tag] };
 
         const [articles, totalCount] = await Promise.all([
             db.query('select', 'articles', {
@@ -5279,10 +3278,7 @@ articleRouter.get('/', cacheMiddleware(120, ['articles']), async (req, res) => {
                 limit: parseInt(limit),
                 offset: parseInt(offset)
             }),
-            db.query('select', 'articles', {
-                where,
-                count: true
-            })
+            db.query('select', 'articles', { where, count: true })
         ]);
 
         res.setHeader('X-Total-Count', totalCount.count || 0);
@@ -5300,10 +3296,7 @@ articleRouter.get('/', cacheMiddleware(120, ['articles']), async (req, res) => {
         });
     } catch (error) {
         logger.error('Error fetching articles:', { requestId: req.id, error: error.message });
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch articles'
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch articles' });
     }
 });
 
@@ -5313,56 +3306,24 @@ articleRouter.get('/', cacheMiddleware(120, ['articles']), async (req, res) => {
  *   get:
  *     summary: Get article by ID or slug
  *     tags: [Articles]
- *     parameters:
- *       - in: path
- *         name: identifier
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Article details
- *       404:
- *         description: Article not found
  */
 articleRouter.get('/:identifier', cacheMiddleware(300, ['articles']), async (req, res) => {
     try {
         const { identifier } = req.params;
-        
-        // Check if identifier is UUID or slug
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
         
         let where = { status: 'published', is_published: true };
-        if (isUUID) {
-            where.uuid = identifier;
-        } else {
-            where.slug = identifier;
-        }
+        if (isUUID) where.uuid = identifier;
+        else where.slug = identifier;
 
         const result = await db.query('select', 'articles', { where });
+        if (result.data.length === 0) throw new NotFoundError('Article');
 
-        if (result.data.length === 0) {
-            throw new NotFoundError('Article');
-        }
-
-        res.json({
-            status: 'success',
-            data: result.data[0]
-        });
+        res.json({ status: 'success', data: result.data[0] });
     } catch (error) {
         logger.error('Error fetching article:', { requestId: req.id, error: error.message });
-        
-        if (error instanceof NotFoundError) {
-            return res.status(404).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-        
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch article'
-        });
+        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch article' });
     }
 });
 
@@ -5372,38 +3333,18 @@ articleRouter.get('/:identifier', cacheMiddleware(300, ['articles']), async (req
  *   get:
  *     summary: Get articles by category
  *     tags: [Articles]
- *     parameters:
- *       - in: path
- *         name: category
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: List of articles in category
  */
 articleRouter.get('/category/:category', cacheMiddleware(120, ['articles']), async (req, res) => {
     try {
         const result = await db.query('select', 'articles', {
-            where: { 
-                category: req.params.category,
-                status: 'published',
-                is_published: true
-            },
+            where: { category: req.params.category, status: 'published', is_published: true },
             order: { column: 'published_at', ascending: false }
         });
 
-        res.json({
-            status: 'success',
-            data: result.data,
-            count: result.data.length
-        });
+        res.json({ status: 'success', data: result.data, count: result.data.length });
     } catch (error) {
         logger.error('Error fetching articles by category:', { requestId: req.id, error: error.message });
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch articles'
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch articles' });
     }
 });
 
@@ -5413,44 +3354,18 @@ articleRouter.get('/category/:category', cacheMiddleware(120, ['articles']), asy
  *   post:
  *     summary: Create new article (admin/editor only)
  *     tags: [Articles]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/Article'
- *     responses:
- *       201:
- *         description: Article created successfully
  */
 articleRouter.post('/', verifyToken, requireRole('admin', 'editor'), validate(schemas.article), async (req, res) => {
     try {
-        const {
-            title, slug, content, excerpt, author,
-            category, tags, status, is_published, published_at
-        } = req.body;
+        const { title, slug, content, excerpt, author, category, tags, status, is_published, published_at } = req.body;
 
-        // Generate slug if not provided
         let articleSlug = slug;
         if (!articleSlug) {
-            articleSlug = title
-                .toLowerCase()
-                .replace(/[^\w\s-]/g, '')
-                .replace(/\s+/g, '-')
-                .replace(/--+/g, '-')
-                .trim();
+            articleSlug = title.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/--+/g, '-').trim();
         }
 
-        // Check if slug exists
-        const existing = await db.query('select', 'articles', {
-            where: { slug: articleSlug }
-        });
-
-        if (existing.data.length > 0) {
-            articleSlug = `${articleSlug}-${Date.now()}`;
-        }
+        const existing = await db.query('select', 'articles', { where: { slug: articleSlug } });
+        if (existing.data.length > 0) articleSlug = `${articleSlug}-${Date.now()}`;
 
         const articleData = {
             uuid: uuid.v4(),
@@ -5469,26 +3384,14 @@ articleRouter.post('/', verifyToken, requireRole('admin', 'editor'), validate(sc
         };
 
         const result = await db.query('insert', 'articles', { data: articleData });
-
         await cacheManager.invalidateByTags(['articles']);
 
-        logger.info('Article created', { 
-            requestId: req.id, 
-            articleId: result.data[0].uuid, 
-            createdBy: req.user.id 
-        });
+        logger.info('Article created', { requestId: req.id, articleId: result.data[0].uuid, createdBy: req.user.id });
 
-        res.status(201).json({
-            status: 'success',
-            data: result.data[0],
-            message: 'Article created successfully'
-        });
+        res.status(201).json({ status: 'success', data: result.data[0], message: 'Article created successfully' });
     } catch (error) {
         logger.error('Error creating article:', { requestId: req.id, error: error.message });
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to create article'
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to create article' });
     }
 });
 
@@ -5498,41 +3401,17 @@ articleRouter.post('/', verifyToken, requireRole('admin', 'editor'), validate(sc
  *   put:
  *     summary: Update article (admin/editor only)
  *     tags: [Articles]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: uuid
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/Article'
- *     responses:
- *       200:
- *         description: Article updated successfully
  */
 articleRouter.put('/:uuid', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
     try {
-        const allowedFields = [
-            'title', 'slug', 'content', 'excerpt', 'author',
-            'category', 'tags', 'status', 'is_published', 'published_at'
-        ];
-        
+        const allowedFields = ['title', 'slug', 'content', 'excerpt', 'author', 'category', 'tags', 'status', 'is_published', 'published_at'];
         const updateData = {};
+
         allowedFields.forEach(field => {
-            if (req.body[field] !== undefined) {
-                updateData[field] = req.body[field];
-            }
+            if (req.body[field] !== undefined) updateData[field] = req.body[field];
         });
 
-        if (Object.keys(updateData).length === 0) {
-            throw new ValidationError('No fields to update');
-        }
-
+        if (Object.keys(updateData).length === 0) throw new ValidationError('No fields to update');
         updateData.updated_at = new Date();
 
         const result = await db.query('update', 'articles', {
@@ -5540,37 +3419,17 @@ articleRouter.put('/:uuid', verifyToken, requireRole('admin', 'editor'), async (
             where: { uuid: req.params.uuid }
         });
 
-        if (result.data.length === 0) {
-            throw new NotFoundError('Article');
-        }
+        if (result.data.length === 0) throw new NotFoundError('Article');
 
         await cacheManager.invalidateByTags(['articles']);
 
-        logger.info('Article updated', { 
-            requestId: req.id, 
-            articleId: req.params.uuid, 
-            updatedBy: req.user.id 
-        });
+        logger.info('Article updated', { requestId: req.id, articleId: req.params.uuid, updatedBy: req.user.id });
 
-        res.json({
-            status: 'success',
-            data: result.data[0],
-            message: 'Article updated successfully'
-        });
+        res.json({ status: 'success', data: result.data[0], message: 'Article updated successfully' });
     } catch (error) {
         logger.error('Error updating article:', { requestId: req.id, error: error.message });
-        
-        if (error instanceof NotFoundError) {
-            return res.status(404).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-        
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to update article'
-        });
+        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to update article' });
     }
 });
 
@@ -5580,54 +3439,21 @@ articleRouter.put('/:uuid', verifyToken, requireRole('admin', 'editor'), async (
  *   delete:
  *     summary: Delete article (admin only)
  *     tags: [Articles]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: uuid
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Article deleted successfully
  */
 articleRouter.delete('/:uuid', verifyToken, requireRole('admin'), async (req, res) => {
     try {
-        const result = await db.query('delete', 'articles', {
-            where: { uuid: req.params.uuid }
-        });
-
-        if (result.data.length === 0) {
-            throw new NotFoundError('Article');
-        }
+        const result = await db.query('delete', 'articles', { where: { uuid: req.params.uuid } });
+        if (result.data.length === 0) throw new NotFoundError('Article');
 
         await cacheManager.invalidateByTags(['articles']);
 
-        logger.info('Article deleted', { 
-            requestId: req.id, 
-            articleId: req.params.uuid, 
-            deletedBy: req.user.id 
-        });
+        logger.info('Article deleted', { requestId: req.id, articleId: req.params.uuid, deletedBy: req.user.id });
 
-        res.json({
-            status: 'success',
-            message: 'Article deleted successfully'
-        });
+        res.json({ status: 'success', message: 'Article deleted successfully' });
     } catch (error) {
         logger.error('Error deleting article:', { requestId: req.id, error: error.message });
-        
-        if (error instanceof NotFoundError) {
-            return res.status(404).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-        
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to delete article'
-        });
+        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to delete article' });
     }
 });
 
@@ -5637,33 +3463,19 @@ articleRouter.delete('/:uuid', verifyToken, requireRole('admin'), async (req, re
  *   get:
  *     summary: Get unique article categories
  *     tags: [Articles]
- *     responses:
- *       200:
- *         description: List of categories
  */
 articleRouter.get('/meta/categories', async (req, res) => {
     try {
         const result = await db.query('select', 'articles', {
             select: 'DISTINCT category',
-            where: { 
-                category: { operator: 'isNull', value: false },
-                status: 'published',
-                is_published: true
-            }
+            where: { category: { operator: 'isNull', value: false }, status: 'published', is_published: true }
         });
         
         const categories = result.data.map(item => item.category).filter(Boolean);
-        
-        res.json({
-            status: 'success',
-            data: categories
-        });
+        res.json({ status: 'success', data: categories });
     } catch (error) {
         logger.error('Error fetching categories:', { requestId: req.id, error: error.message });
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch categories'
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch categories' });
     }
 });
 
@@ -5673,48 +3485,29 @@ articleRouter.get('/meta/categories', async (req, res) => {
  *   get:
  *     summary: Get unique article tags
  *     tags: [Articles]
- *     responses:
- *       200:
- *         description: List of tags
  */
 articleRouter.get('/meta/tags', async (req, res) => {
     try {
         const result = await db.query('select', 'articles', {
             select: 'tags',
-            where: { 
-                tags: { operator: 'isNull', value: false },
-                status: 'published',
-                is_published: true
-            }
+            where: { tags: { operator: 'isNull', value: false }, status: 'published', is_published: true }
         });
         
-        // Flatten and deduplicate tags
-        const allTags = result.data
-            .flatMap(item => item.tags || [])
-            .filter(Boolean);
-        
+        const allTags = result.data.flatMap(item => item.tags || []).filter(Boolean);
         const uniqueTags = [...new Set(allTags)];
         
-        res.json({
-            status: 'success',
-            data: uniqueTags
-        });
+        res.json({ status: 'success', data: uniqueTags });
     } catch (error) {
         logger.error('Error fetching tags:', { requestId: req.id, error: error.message });
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch tags'
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch tags' });
     }
 });
 
 app.use('/api/articles', articleRouter);
-app.use('/api/news', articleRouter); // Alias for backward compatibility
+app.use('/api/news', articleRouter);
 console.log('✅ Articles/News router registered at /api/articles and /api/news');
 
-// ============================================================
-// FILE MANAGEMENT ROUTES
-// ============================================================
+// --- 16.11 FILE MANAGEMENT ROUTES ---
 
 /**
  * @swagger
@@ -5722,27 +3515,10 @@ console.log('✅ Articles/News router registered at /api/articles and /api/news'
  *   post:
  *     summary: Upload a file (admin/editor only)
  *     tags: [Files]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               file:
- *                 type: string
- *                 format: binary
- *     responses:
- *       200:
- *         description: File uploaded successfully
  */
 app.post('/api/upload', verifyToken, requireRole('admin', 'editor'), upload.single('file'), async (req, res) => {
     try {
-        if (!req.file) {
-            throw new ValidationError('No file uploaded');
-        }
+        if (!req.file) throw new ValidationError('No file uploaded');
 
         const fileInfo = {
             filename: req.file.filename,
@@ -5755,32 +3531,13 @@ app.post('/api/upload', verifyToken, requireRole('admin', 'editor'), upload.sing
             uploadedAt: new Date()
         };
 
-        logger.info('File uploaded', { 
-            requestId: req.id, 
-            filename: req.file.filename,
-            size: req.file.size,
-            uploadedBy: req.user.id 
-        });
+        logger.info('File uploaded', { requestId: req.id, filename: req.file.filename, size: req.file.size, uploadedBy: req.user.id });
 
-        res.json({
-            status: 'success',
-            data: fileInfo,
-            message: 'File uploaded successfully'
-        });
+        res.json({ status: 'success', data: fileInfo, message: 'File uploaded successfully' });
     } catch (error) {
         logger.error('Error uploading file:', { requestId: req.id, error: error.message });
-        
-        if (error instanceof ValidationError) {
-            return res.status(400).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-        
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to upload file'
-        });
+        if (error instanceof ValidationError) return res.status(400).json({ status: 'error', message: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to upload file' });
     }
 });
 
@@ -5790,110 +3547,60 @@ app.post('/api/upload', verifyToken, requireRole('admin', 'editor'), upload.sing
  *   delete:
  *     summary: Delete a file (admin only)
  *     tags: [Files]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: filename
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: File deleted successfully
  */
 app.delete('/api/upload/:filename', verifyToken, requireRole('admin'), async (req, res) => {
     try {
         const filePath = path.join(__dirname, 'uploads', req.params.filename);
-
         await fs.access(filePath);
         await fs.unlink(filePath);
 
         logger.info('File deleted', { requestId: req.id, filename: req.params.filename, deletedBy: req.user.id });
 
-        res.json({
-            status: 'success',
-            message: 'File deleted successfully'
-        });
+        res.json({ status: 'success', message: 'File deleted successfully' });
     } catch (error) {
         logger.error('Error deleting file:', { requestId: req.id, error: error.message });
-        
-        if (error.code === 'ENOENT') {
-            return res.status(404).json({
-                status: 'error',
-                message: 'File not found'
-            });
-        }
-        
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to delete file'
-        });
+        if (error.code === 'ENOENT') return res.status(404).json({ status: 'error', message: 'File not found' });
+        res.status(500).json({ status: 'error', message: 'Failed to delete file' });
     }
 });
 
 // ============================================================
-// STATIC FILES SERVING
+// SECTION 17: STATIC FILES & PAGES
 // ============================================================
 
-/**
- * Serve uploaded files with proper headers
- */
+// Serve uploaded files
 app.use('/uploads', compression(), express.static(path.join(__dirname, 'uploads'), {
     maxAge: IS_PRODUCTION ? '30d' : '0',
     setHeaders: (res, filePath) => {
         const ext = path.extname(filePath).toLowerCase();
         const mimeType = mime.lookup(ext) || 'application/octet-stream';
 
-        // Security headers for files
         if (ext.match(/\.(jpg|jpeg|png|gif|webp|svg)$/)) {
             res.setHeader('Content-Disposition', 'inline');
+            res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
         } else {
             res.setHeader('Content-Disposition', 'attachment');
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
         }
 
         res.setHeader('X-Content-Type-Options', 'nosniff');
         res.setHeader('Content-Type', mimeType);
-
-        // Cache control
-        if (ext.match(/\.(jpg|jpeg|png|gif|webp|svg)$/)) {
-            res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
-        } else if (ext.match(/\.(pdf|docx|xlsx|pptx)$/)) {
-            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-        }
     }
 }));
 
-// ============================================================
-// PUBLIC PAGES ROUTING
-// ============================================================
-
-const adminDir = path.join(__dirname, 'admin');
+// Public pages
 const publicDir = path.join(__dirname, 'public');
-const adminExists = fsSync.existsSync(adminDir);
 const publicExists = fsSync.existsSync(publicDir);
 
-// Block direct access to any resources admin sub-path unless user is admin
-app.all('/resources/admin*', (req, res, next) => {
-    if (!req.isAdmin) {
-        return res.status(404).send('Not found');
-    }
-    next();
-});
-
-// Serve static public files first
 if (publicExists) {
     app.use(express.static(publicDir, {
         maxAge: '1d',
         setHeaders: (res, filePath) => {
             res.setHeader('X-Content-Type-Options', 'nosniff');
-            if (filePath.endsWith('.html')) {
-                res.setHeader('Cache-Control', 'public, max-age=3600');
-            }
+            if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'public, max-age=3600');
         }
     }));
     
-    // Define explicit public routes
     const publicRoutes = {
         '/': 'index.html',
         '/index.html': 'index.html',
@@ -5918,146 +3625,39 @@ if (publicExists) {
     });
     
     console.log('✅ Public pages served from /public folder');
-}
-
-// ============================================================
-// ADMIN INTERFACE ROUTING - FIXED
-// ============================================================
-
-if (adminExists) {
-    console.log('✅ Admin folder found at:', adminDir);
-    console.log('📄 Files in admin folder:', fsSync.readdirSync(adminDir));
-
-    // 1. ADMIN LOGIN PAGE (GET)
-    app.get('/admin/login', async (req, res) => {
-        try {
-            console.log('🔐 Serving admin login page');
-            
-            // If already admin, redirect to dashboard
-            if (req.isAdmin) {
-                return res.redirect('/admin/dashboard');
-            }
-            
-            const loginPath = path.join(__dirname, 'admin', 'adlog.html');
-            
-            if (!fsSync.existsSync(loginPath)) {
-                console.error('❌ Login file missing at:', loginPath);
-                return res.status(500).send('Admin login page not found');
-            }
-            
-            let loginHtml = await fs.readFile(loginPath, 'utf8');
-            
-            // Inject basic config
-            const configScript = `
-                <script>
-                    window.API_BASE_URL = '${req.protocol}://${req.get('host')}';
-                    console.log('✅ Admin login page loaded');
-                </script>
-            `;
-            
-            loginHtml = loginHtml.replace('</head>', configScript + '</head>');
-            res.send(loginHtml);
-            
-        } catch (error) {
-            console.error('❌ Error serving login page:', error);
-            res.status(500).send('Error loading admin login page');
-        }
-    });
-
-    // 2. ADMIN DASHBOARD (GET)
-    app.get('/admin/dashboard', async (req, res) => {
-        try {
-            if (!req.isAdmin) {
-                return res.redirect('/admin/login');
-            }
-            
-            const dashPath = path.join(__dirname, 'admin', 'dash.html');
-            
-            if (!fsSync.existsSync(dashPath)) {
-                return res.status(500).send('Dashboard not found');
-            }
-            
-            let dashHtml = await fs.readFile(dashPath, 'utf8');
-            
-            const userData = {
-                id: req.admin?.id,
-                email: req.admin?.email,
-                fullName: req.admin?.full_name || 'Admin',
-                role: req.admin?.role
-            };
-            
-            const configScript = `
-                <script>
-                    window.ADMIN_USER = ${JSON.stringify(userData)};
-                    window.API_BASE_URL = '${req.protocol}://${req.get('host')}';
-                </script>
-            `;
-            
-            dashHtml = dashHtml.replace('</head>', configScript + '</head>');
-            res.send(dashHtml);
-            
-        } catch (error) {
-            console.error('Dashboard error:', error);
-            res.status(500).send('Error loading dashboard');
-        }
-    });
-
-    // 3. ADMIN LOGOUT (GET)
-    app.get('/admin/logout', (req, res) => {
-        res.clearCookie('admin_session', { path: '/' });
-        res.clearCookie('auth_token', { path: '/' });
-        res.redirect('/admin/login');
-    });
-
-    // 4. ADMIN STATUS CHECK (GET)
-    app.get('/admin/status', (req, res) => {
-        res.json({
-            isAdmin: req.isAdmin || false,
-            user: req.admin || null
-        });
-    });
-
-    // 5. ADMIN ASSETS (GET)
-    app.get('/admin/assets/:filename', (req, res) => {
-        try {
-            const { filename } = req.params;
-            
-            // Security: Only allow specific file types
-            if (!filename.match(/\.(css|js|png|jpg|jpeg|gif|svg|woff|woff2|ttf)$/i)) {
-                return res.status(403).send('File type not allowed');
-            }
-            
-            const filePath = path.join(adminDir, filename);
-            
-            if (fsSync.existsSync(filePath)) {
-                res.sendFile(filePath);
-            } else {
-                res.status(404).send('File not found');
-            }
-        } catch (error) {
-            res.status(500).send('Error serving asset');
-        }
-    });
-
-    console.log('✅ Admin routes configured:');
-    console.log('   • GET  /admin/login     - Login page');
-    console.log('   • GET  /admin/dashboard  - Dashboard');
-    console.log('   • GET  /admin/logout     - Logout');
-    console.log('   • GET  /admin/status     - Status check');
-    console.log('   • POST /api/admin/login  - Login API (already defined above)');
-
-    // Add this debug code to your server.js or admin routes file
-    console.log('Admin Email Check:', process.env.ADMIN_EMAIL);
-    console.log('Admin Password Set:', process.env.ADMIN_PASSWORD ? 'Yes' : 'No');
-    console.log('JWT Secret Set:', process.env.JWT_SECRET ? 'Yes' : 'No');
-    
 } else {
-    console.log('⚠️ Admin folder not found at:', adminDir);
-    console.log('⚠️ Please ensure admin folder contains: adlog.html and dash.html');
+    console.log('⚠️ Public folder not found at:', publicDir);
+}
+
+// Admin panel
+const adminDir = path.join(__dirname, 'admin');
+if (fsSync.existsSync(adminDir)) {
+    app.use('/admin', express.static(adminDir, {
+        maxAge: IS_PRODUCTION ? '1h' : '0',
+        setHeaders: (res, filePath) => {
+            res.setHeader('X-Content-Type-Options', 'nosniff');
+        }
+    }));
+
+    app.get('/admin/adlog.html', (req, res) => {
+        res.sendFile(path.join(adminDir, 'adlog.html'));
+    });
+
+    app.get('/admin', (req, res) => {
+        res.redirect('/admin/dashboard');
+    });
+
+    app.get('/admin/dashboard', (req, res) => {
+        res.sendFile(path.join(adminDir, 'dashboard.html'));
+    });
+
+    console.log('✅ Admin panel routes registered at /admin/*');
+} else {
+    console.log('⚠️ Admin directory not found at:', adminDir);
 }
 
 // ============================================================
-// SWAGGER API DOCUMENTATION
+// SECTION 18: API DOCUMENTATION
 // ============================================================
 
 const swaggerOptions = {
@@ -6067,40 +3667,28 @@ const swaggerOptions = {
             title: 'NUESA BIU API',
             version: '1.0.0',
             description: 'API documentation for NUESA BIU application',
-            contact: {
-                name: 'NUESA BIU',
-                email: process.env.ADMIN_EMAIL
-            }
+            contact: { name: 'NUESA BIU', email: process.env.ADMIN_EMAIL }
         },
-        servers: [
-            {
-                url: IS_PRODUCTION ? 'https://nuesa-biu-pjp0.onrender.com' : `http://localhost:${PORT}`,
-                description: IS_PRODUCTION ? 'Production server' : 'Development server'
-            }
-        ],
+        servers: [{
+            url: IS_PRODUCTION ? 'https://nuesa-biu-pjp0.onrender.com' : `http://localhost:${PORT}`,
+            description: IS_PRODUCTION ? 'Production server' : 'Development server'
+        }],
         components: {
             securitySchemes: {
-                bearerAuth: {
-                    type: 'http',
-                    scheme: 'bearer',
-                    bearerFormat: 'JWT'
-                }
+                bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }
             }
         }
     },
-    apis: ['./server.js'], // Path to the API docs
+    apis: ['./server.js'],
 };
 
 const swaggerSpecs = swaggerJsdoc(swaggerOptions);
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
 // ============================================================
-// SYSTEM ENDPOINTS
+// SECTION 19: SYSTEM ENDPOINTS
 // ============================================================
 
-/**
- * Helper function to format bytes to human-readable format
- */
 function formatBytes(bytes) {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -6109,9 +3697,6 @@ function formatBytes(bytes) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-/**
- * Check database health
- */
 async function checkDatabase() {
     try {
         const start = Date.now();
@@ -6123,9 +3708,6 @@ async function checkDatabase() {
     }
 }
 
-/**
- * Check cache health
- */
 async function checkCache() {
     try {
         if (redis) {
@@ -6139,9 +3721,6 @@ async function checkCache() {
     }
 }
 
-/**
- * Check disk space
- */
 async function checkDiskSpace() {
     try {
         if (process.platform !== 'win32') {
@@ -6165,9 +3744,6 @@ async function checkDiskSpace() {
     }
 }
 
-/**
- * Check memory usage
- */
 function checkMemory() {
     const memory = process.memoryUsage();
     return {
@@ -6179,9 +3755,6 @@ function checkMemory() {
     };
 }
 
-/**
- * Helper functions for metrics (simplified)
- */
 async function getRequestCount() { return 0; }
 async function getEndpointStats() { return {}; }
 async function getStatusStats() { return {}; }
@@ -6194,14 +3767,10 @@ async function getP95ResponseTime() { return '0ms'; }
  *   get:
  *     summary: Health check endpoint
  *     tags: [System]
- *     responses:
- *       200:
- *         description: Server health status
  */
 app.get('/api/health', async (req, res) => {
     try {
         const dbStatus = await checkDatabase();
-
         res.status(200).json({
             status: 'healthy',
             database: dbStatus,
@@ -6210,7 +3779,7 @@ app.get('/api/health', async (req, res) => {
             version: '1.0.0'
         });
     } catch (error) {
-        res.status(200).json({ // Always return 200 for health checks
+        res.status(200).json({
             status: 'degraded',
             message: 'Partial service disruption',
             timestamp: new Date().toISOString()
@@ -6224,9 +3793,6 @@ app.get('/api/health', async (req, res) => {
  *   get:
  *     summary: Simple ping endpoint
  *     tags: [System]
- *     responses:
- *       200:
- *         description: Returns pong
  */
 app.get('/api/ping', (req, res) => {
     res.json({
@@ -6244,11 +3810,6 @@ app.get('/api/ping', (req, res) => {
  *   get:
  *     summary: Get system metrics (admin only)
  *     tags: [System]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: System metrics
  */
 app.get('/api/metrics', verifyToken, requireRole('admin'), async (req, res) => {
     try {
@@ -6279,10 +3840,7 @@ app.get('/api/metrics', verifyToken, requireRole('admin'), async (req, res) => {
         });
     } catch (error) {
         logger.error('Error fetching metrics:', { requestId: req.id, error: error.message });
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch metrics'
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch metrics' });
     }
 });
 
@@ -6292,11 +3850,6 @@ app.get('/api/metrics', verifyToken, requireRole('admin'), async (req, res) => {
  *   get:
  *     summary: Get basic statistics (admin only)
  *     tags: [System]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: System statistics
  */
 app.get('/api/stats', verifyToken, requireRole('admin'), async (req, res) => {
     try {
@@ -6319,10 +3872,7 @@ app.get('/api/stats', verifyToken, requireRole('admin'), async (req, res) => {
         });
     } catch (error) {
         logger.error('Error fetching stats:', { requestId: req.id, error: error.message });
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch statistics'
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch statistics' });
     }
 });
 
@@ -6339,11 +3889,12 @@ app.get('/api', (req, res) => {
         documentation: `${req.protocol}://${req.get('host')}/api/docs`,
         endpoints: {
             auth: '/api/auth',
-            admin: '/api/admin',
+            adminAuth: '/api/admin/login',
             users: '/api/users',
             members: '/api/members',
             events: '/api/events',
             resources: '/api/resources',
+            articles: '/api/articles',
             profile: '/api/profile',
             health: '/api/health',
             stats: '/api/stats',
@@ -6356,13 +3907,10 @@ app.get('/api', (req, res) => {
 });
 
 // ============================================================
-// DEBUG ENDPOINTS (Development Only)
+// SECTION 20: DEBUG ENDPOINTS (Development Only)
 // ============================================================
 
 if (!IS_PRODUCTION) {
-    /**
-     * Debug: Show environment variables (masked)
-     */
     app.get('/api/debug/env', (req, res) => {
         res.json({
             admin_email: process.env.ADMIN_EMAIL ? '✓ Set' : '✗ Missing',
@@ -6376,9 +3924,6 @@ if (!IS_PRODUCTION) {
         });
     });
 
-    /**
-     * Debug: Test database connection
-     */
     app.get('/api/debug/db', async (req, res) => {
         try {
             const result = await db.query('select', 'users', { limit: 1 });
@@ -6399,9 +3944,6 @@ if (!IS_PRODUCTION) {
         }
     });
 
-    /**
-     * Debug: Check admin paths
-     */
     app.get('/api/debug/admin-paths', (req, res) => {
         const paths = {
             __dirname: __dirname,
@@ -6418,19 +3960,12 @@ if (!IS_PRODUCTION) {
         };
         
         const files = {};
-        if (exists.adminDir) {
-            files.adminDir = fsSync.readdirSync(paths.adminDir);
-        }
-        if (exists.adminDirCwd) {
-            files.adminDirCwd = fsSync.readdirSync(paths.adminDirCwd);
-        }
+        if (exists.adminDir) files.adminDir = fsSync.readdirSync(paths.adminDir);
+        if (exists.adminDirCwd) files.adminDirCwd = fsSync.readdirSync(paths.adminDirCwd);
         
         res.json({ paths, exists, files });
     });
 
-    /**
-     * Debug: Simple test endpoint
-     */
     app.get('/api/debug/test', (req, res) => {
         res.json({ 
             message: 'Debug endpoint working',
@@ -6441,11 +3976,10 @@ if (!IS_PRODUCTION) {
 }
 
 // ============================================================
-// 404 HANDLER
+// SECTION 21: ERROR HANDLING
 // ============================================================
 
 app.use((req, res) => {
-    // For API routes, return JSON
     if (req.path.startsWith('/api/')) {
         return res.status(404).json({
             status: 'error',
@@ -6456,22 +3990,13 @@ app.use((req, res) => {
         });
     }
     
-    // For HTML routes, serve 404 page if exists, otherwise return JSON
     const notFoundPage = path.join(publicDir, '404.html');
     if (publicExists && fsSync.existsSync(notFoundPage)) {
         res.status(404).sendFile(notFoundPage);
     } else {
-        res.status(404).json({
-            status: 'error',
-            message: 'Page not found',
-            requestId: req.id
-        });
+        res.status(404).json({ status: 'error', message: 'Page not found', requestId: req.id });
     }
 });
-
-// ============================================================
-// GLOBAL ERROR HANDLER
-// ============================================================
 
 app.use((err, req, res, next) => {
     logger.error('Unhandled error:', {
@@ -6485,7 +4010,6 @@ app.use((err, req, res, next) => {
         body: req.body
     });
 
-    // Multer errors
     if (err instanceof multer.MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') {
             return res.status(400).json({
@@ -6503,7 +4027,6 @@ app.use((err, req, res, next) => {
         });
     }
 
-    // Database errors
     if (err instanceof DatabaseError) {
         return res.status(400).json({
             status: 'error',
@@ -6513,7 +4036,6 @@ app.use((err, req, res, next) => {
         });
     }
 
-    // Authentication errors
     if (err instanceof AuthError) {
         return res.status(err.statusCode || 401).json({
             status: 'error',
@@ -6523,7 +4045,6 @@ app.use((err, req, res, next) => {
         });
     }
 
-    // Validation errors
     if (err instanceof ValidationError) {
         return res.status(400).json({
             status: 'error',
@@ -6534,7 +4055,6 @@ app.use((err, req, res, next) => {
         });
     }
 
-    // Not found errors
     if (err instanceof NotFoundError) {
         return res.status(404).json({
             status: 'error',
@@ -6544,7 +4064,6 @@ app.use((err, req, res, next) => {
         });
     }
 
-    // Forbidden errors
     if (err instanceof ForbiddenError) {
         return res.status(403).json({
             status: 'error',
@@ -6554,7 +4073,6 @@ app.use((err, req, res, next) => {
         });
     }
 
-    // Default error response
     const message = IS_PRODUCTION ? 'Internal server error' : err.message;
     const statusCode = err.statusCode || 500;
 
@@ -6568,62 +4086,37 @@ app.use((err, req, res, next) => {
 });
 
 // ============================================================
-// PROCESS EVENT HANDLERS
+// SECTION 22: PROCESS HANDLERS
 // ============================================================
 
-/**
- * Handle unhandled promise rejections
- */
 process.on('unhandledRejection', (reason, promise) => {
     logger.error('Unhandled Rejection:', {
         reason: reason.message || reason,
         stack: reason.stack,
         promise: promise
     });
-
-    if (IS_PRODUCTION) {
-        logger.error('Unhandled rejection in production, continuing...');
-    }
+    if (IS_PRODUCTION) logger.error('Unhandled rejection in production, continuing...');
 });
 
-/**
- * Handle uncaught exceptions
- */
 process.on('uncaughtException', (error) => {
-    logger.error('Uncaught Exception:', {
-        error: error.message,
-        stack: error.stack
-    });
-
+    logger.error('Uncaught Exception:', { error: error.message, stack: error.stack });
     if (IS_PRODUCTION) {
-        setTimeout(() => {
-            process.exit(1);
-        }, 1000);
+        setTimeout(() => process.exit(1), 1000);
     }
 });
 
-/**
- * Graceful shutdown on SIGTERM
- */
 process.on('SIGTERM', () => {
     logger.info('SIGTERM received, starting graceful shutdown');
-    setTimeout(() => {
-        process.exit(0);
-    }, 1000);
+    setTimeout(() => process.exit(0), 1000);
 });
 
-/**
- * Graceful shutdown on SIGINT
- */
 process.on('SIGINT', () => {
     logger.info('SIGINT received, starting graceful shutdown');
-    setTimeout(() => {
-        process.exit(0);
-    }, 1000);
+    setTimeout(() => process.exit(0), 1000);
 });
 
 // ============================================================
-// SERVER STARTUP
+// SECTION 23: SERVER STARTUP
 // ============================================================
 
 async function startServer() {
@@ -6644,8 +4137,7 @@ async function startServer() {
 ║ 🔒 JWT: ${JWT_SECRET ? 'Set ✓' : 'Missing ✗'}                  ║
 ║ 👑 Admin: ${process.env.ADMIN_EMAIL || 'Not configured'}        ║
 ║ 📚 API Docs: http://localhost:${PORT}/api/docs                  ║
-║ 🔐 Admin Panel: /admin/login                                     ║
-║ 🎭 Dashboard: /admin/dashboard (after login)                     ║
+║ 🔐 Admin Login: http://localhost:${PORT}/api/admin/login        ║
 ╚═══════════════════════════════════════════════════════════════════╝
             `);
 
