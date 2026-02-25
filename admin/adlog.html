@@ -395,8 +395,7 @@
         setTimeout(() => emailInput.focus(), 100);
     }
     
-    // Check if user already has an active session
-    async function checkExistingSession() {
+        async function checkExistingSession() {
         try {
             const response = await fetch(`${API_BASE_URL}/api/admin/session`, {
                 method: 'GET',
@@ -406,15 +405,26 @@
                 }
             });
             
-            if (response.ok) {
+            // Only redirect on 200 OK with valid session
+            if (response.status === 200) {
                 const data = await response.json();
                 if (data.status === 'success' && data.data) {
                     console.log('✅ Existing session found, redirecting to dashboard');
                     window.location.href = '/admin/dashboard';
+                    return;
                 }
             }
+            
+            // Log differently based on status
+            if (response.status === 401) {
+                console.log('ℹ️ No active session found - please login');
+            } else if (!response.ok) {
+                console.warn(`Session check returned ${response.status}`);
+            }
+            
         } catch (error) {
-            console.log('No existing session or session expired');
+            // Network errors only
+            console.log('⚠️ Could not check session status:', error.message);
         }
     }
     
@@ -566,7 +576,7 @@
             }
             
             showAlert(errorMessage);
-            resetLoginButton();
+            resetLoginButton(); // You already have this
         }
     }
     
