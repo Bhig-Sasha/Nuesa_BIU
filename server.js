@@ -3,7 +3,7 @@
  * NUESA BIU API SERVER - ORGANIZED VERSION
  * ============================================================
  * 
- * Production-ready Express.js server for NUESA BIU (Baze University)
+ * Production-ready Express.js server for NUESA BIU (Benson Idahosa University)
  * with comprehensive security, caching, logging, and database features.
  * 
  * @author NUESA BIU Team
@@ -3648,7 +3648,7 @@ if (fsSync.existsSync(adminDir)) {
     });
 
     app.get('/admin/dashboard', (req, res) => {
-        res.sendFile(path.join(adminDir, 'dashboard.html'));
+        res.sendFile(path.join(adminDir, 'dash.html'));
     });
 
     console.log('✅ Admin panel routes registered at /admin/*');
@@ -4132,12 +4132,12 @@ async function startServer() {
 ║ 🌍 Environment: ${NODE_ENV}                                     ║
 ║ 🗄️  Database: Supabase                                          ║
 ║ 💾 Cache: ${redis ? 'Redis' : 'In-Memory'}                      ║
-║ 🔗 API URL: http://localhost:${PORT}                            ║
+║ 🔗 API URL: ${BASE_URL}                            ║
 ║ 🌐 Frontend: ${process.env.FRONTEND_URL || 'Not set'}           ║
 ║ 🔒 JWT: ${JWT_SECRET ? 'Set ✓' : 'Missing ✗'}                  ║
 ║ 👑 Admin: ${process.env.ADMIN_EMAIL || 'Not configured'}        ║
-║ 📚 API Docs: http://localhost:${PORT}/api/docs                  ║
-║ 🔐 Admin Login: http://localhost:${PORT}/api/admin/login        ║
+║ 📚 API Docs: ${BASE_URL}/api/docs                 ║
+║ 🔐 Admin Login: ${BASE_URL}/api/admin/login       ║
 ╚═══════════════════════════════════════════════════════════════════╝
             `);
 

@@ -337,7 +337,7 @@
     </div>
 
 <script>
-    // Configuration
+    // Configuration - MOVED TO TOP
     const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
     
     // DOM Elements
@@ -362,6 +362,7 @@
     // Initialize
     function init() {
         console.log('🔐 Admin login page initialized');
+        console.log('🌐 API URL:', API_BASE_URL);
         
         // Check if already logged in
         checkExistingSession();
@@ -395,7 +396,7 @@
         setTimeout(() => emailInput.focus(), 100);
     }
     
-        async function checkExistingSession() {
+    async function checkExistingSession() {
         try {
             const response = await fetch(`${API_BASE_URL}/api/admin/session`, {
                 method: 'GET',
@@ -405,7 +406,6 @@
                 }
             });
             
-            // Only redirect on 200 OK with valid session
             if (response.status === 200) {
                 const data = await response.json();
                 if (data.status === 'success' && data.data) {
@@ -415,7 +415,6 @@
                 }
             }
             
-            // Log differently based on status
             if (response.status === 401) {
                 console.log('ℹ️ No active session found - please login');
             } else if (!response.ok) {
@@ -423,30 +422,8 @@
             }
             
         } catch (error) {
-            // Network errors only
             console.log('⚠️ Could not check session status:', error.message);
         }
-    }
-    
-    // Setup event listeners
-    function setupEventListeners() {
-        loginForm.addEventListener('submit', handleSubmit);
-        
-        rememberCheckbox.addEventListener('click', () => {
-            rememberMe = !rememberMe;
-            rememberCheckbox.classList.toggle('checked');
-        });
-        
-        togglePassword.addEventListener('click', () => {
-            isPasswordVisible = !isPasswordVisible;
-            passwordInput.type = isPasswordVisible ? 'text' : 'password';
-            togglePassword.innerHTML = isPasswordVisible 
-                ? '<i class="fas fa-eye-slash"></i>' 
-                : '<i class="fas fa-eye"></i>';
-        });
-        
-        emailInput.addEventListener('input', hideAlert);
-        passwordInput.addEventListener('input', hideAlert);
     }
     
     // Handle login
@@ -486,9 +463,10 @@
         hideAlert();
         
         try {            
-            const response = await fetch(`${API_BASE_URL}/api/admin-login`, {
+            // FIXED: Correct endpoint with slash
+            const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
                 method: 'POST',
-                credentials: 'include', // CRITICAL for cookies
+                credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
@@ -531,11 +509,10 @@
                 throw new Error(errorMessage);
             }
             
-            // Success - check if we have valid response
+            // Success
             if (data.status === 'success' || (data.data && (data.data.user || data.data.token))) {
                 console.log('✅ Login successful!');
                 
-                // Save email if remember me
                 if (rememberMe) {
                     localStorage.setItem('nuesa_admin_email', email);
                     localStorage.setItem('nuesa_remember_me', 'true');
@@ -544,7 +521,6 @@
                     localStorage.removeItem('nuesa_remember_me');
                 }
                 
-                // Store token in localStorage as backup
                 if (data.data && data.data.token) {
                     localStorage.setItem('adminToken', data.data.token);
                 }
@@ -555,9 +531,8 @@
                 
                 showAlert('Login successful! Redirecting...', 'success');
                 
-                // Redirect to dashboard
                 setTimeout(() => {
-                    window.location.href = '/admin/dashboard'; // FIXED: changed from /admin/dash to /admin/dashboard
+                    window.location.href = '/admin/dashboard';
                 }, 1500);
             } else {
                 console.error('❌ Invalid response format:', data);
@@ -576,13 +551,19 @@
             }
             
             showAlert(errorMessage);
-            resetLoginButton(); // You already have this
+            resetLoginButton();
         }
     }
     
-    // Show alert
+    function resetLoginButton() {
+        isLoading = false;
+        loginButton.disabled = false;
+        loginText.textContent = 'Login to Dashboard';
+        arrowIcon.classList.remove('hidden');
+        spinnerIcon.classList.add('hidden');
+    }
+    
     function showAlert(message, type = 'error') {
-        console.log(`🔔 Alert (${type}):`, message);
         alertMessage.textContent = message;
         alertMessage.className = `alert alert-${type}`;
         alertMessage.style.display = 'block';
@@ -594,26 +575,35 @@
         }
     }
     
-    // Hide alert
     function hideAlert() {
         alertMessage.style.display = 'none';
     }
     
-    // Reset login button
-    function resetLoginButton() {
-        isLoading = false;
-        loginButton.disabled = false;
-        loginText.textContent = 'Login to Dashboard';
-        arrowIcon.classList.remove('hidden');
-        spinnerIcon.classList.add('hidden');
-    }
-    
-    // Email validation
     function validateEmail(email) {
         return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     }
     
-    // Initialize on page load
+    function setupEventListeners() {
+        loginForm.addEventListener('submit', handleSubmit);
+        
+        rememberCheckbox.addEventListener('click', () => {
+            rememberMe = !rememberMe;
+            rememberCheckbox.classList.toggle('checked');
+        });
+        
+        togglePassword.addEventListener('click', () => {
+            isPasswordVisible = !isPasswordVisible;
+            passwordInput.type = isPasswordVisible ? 'text' : 'password';
+            togglePassword.innerHTML = isPasswordVisible 
+                ? '<i class="fas fa-eye-slash"></i>' 
+                : '<i class="fas fa-eye"></i>';
+        });
+        
+        emailInput.addEventListener('input', hideAlert);
+        passwordInput.addEventListener('input', hideAlert);
+    }
+    
+    // Initialize
     document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
