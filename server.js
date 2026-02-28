@@ -1886,7 +1886,16 @@ adminRouter.get('/members/:id', async (req, res) => {
  */
 adminRouter.post('/members', upload.single('profile_image'), async (req, res) => {
     try {
-        const memberData = JSON.parse(req.body.data || '{}');
+        // Parse the data from form-data
+        let memberData;
+        if (req.body.data) {
+            // If data is sent as JSON string
+            memberData = JSON.parse(req.body.data);
+        } else {
+            // If data is sent as form fields
+            memberData = req.body;
+        }
+
         const { full_name, position, department, level, email, phone, bio, committee, display_order, status, social_links } = memberData;
 
         const newMember = {
@@ -1905,17 +1914,32 @@ adminRouter.post('/members', upload.single('profile_image'), async (req, res) =>
             updated_at: new Date()
         };
 
-        if (req.file) newMember.profile_image = `/uploads/${req.file.filename}`;
+        // Add profile image if uploaded
+        if (req.file) {
+            newMember.profile_image = `/uploads/${req.file.filename}`;
+        }
 
         const result = await db.query('insert', 'executive_members', { data: newMember });
         await cacheManager.invalidateByTags(['members']);
 
-        logger.info('Admin created member', { requestId: req.id, memberId: result.data[0].id });
+        logger.info('Admin created member', { 
+            requestId: req.id, 
+            memberId: result.data[0].id,
+            hasPhoto: !!req.file 
+        });
 
-        res.status(201).json({ status: 'success', data: result.data[0], message: 'Member created successfully' });
+        res.status(201).json({ 
+            status: 'success', 
+            data: result.data[0], 
+            message: 'Member created successfully' 
+        });
     } catch (error) {
         logger.error('Admin create member error:', error);
-        res.status(500).json({ status: 'error', message: 'Failed to create member' });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to create member',
+            debug: error.message 
+        });
     }
 });
 
@@ -1928,7 +1952,14 @@ adminRouter.post('/members', upload.single('profile_image'), async (req, res) =>
  */
 adminRouter.put('/members/:id', upload.single('profile_image'), async (req, res) => {
     try {
-        const memberData = JSON.parse(req.body.data || '{}');
+        // Parse the data from form-data
+        let memberData;
+        if (req.body.data) {
+            memberData = JSON.parse(req.body.data);
+        } else {
+            memberData = req.body;
+        }
+
         const updateData = {
             full_name: memberData.full_name?.trim(),
             position: memberData.position?.trim(),
@@ -1949,7 +1980,10 @@ adminRouter.put('/members/:id', upload.single('profile_image'), async (req, res)
             updateData[key] === undefined && delete updateData[key]
         );
 
-        if (req.file) updateData.profile_image = `/uploads/${req.file.filename}`;
+        // Add profile image if uploaded
+        if (req.file) {
+            updateData.profile_image = `/uploads/${req.file.filename}`;
+        }
 
         const result = await db.query('update', 'executive_members', {
             data: updateData,
@@ -1961,10 +1995,25 @@ adminRouter.put('/members/:id', upload.single('profile_image'), async (req, res)
         }
 
         await cacheManager.invalidateByTags(['members']);
-        res.json({ status: 'success', data: result.data[0], message: 'Member updated successfully' });
+        
+        logger.info('Member updated', { 
+            requestId: req.id, 
+            memberId: req.params.id,
+            photoUpdated: !!req.file 
+        });
+
+        res.json({ 
+            status: 'success', 
+            data: result.data[0], 
+            message: 'Member updated successfully' 
+        });
     } catch (error) {
         logger.error('Admin update member error:', error);
-        res.status(500).json({ status: 'error', message: 'Failed to update member' });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to update member',
+            debug: error.message 
+        });
     }
 });
 
@@ -1988,6 +2037,94 @@ adminRouter.delete('/members/:id', async (req, res) => {
         res.status(500).json({ status: 'error', message: 'Failed to delete member' });
     }
 });
+
+// ==================== MEMBER PHOTO UPLOAD ====================
+
+/**
+ * @swagger
+ * /api/admin/members/{id}/photo:
+ *   post:
+ *     summary: Upload member photo
+ *     tags: [Admin]
+ */
+adminRouter.post('/members/:id/photo', upload.single('photo'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'No photo file uploaded' 
+            });
+        }
+
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(req.file.mimetype)) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'Invalid file type. Only JPEG, PNG, GIF, and WEBP are allowed.' 
+            });
+        }
+
+        // Validate file size (max 5MB)
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        if (req.file.size > maxSize) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'File too large. Maximum size is 5MB.' 
+            });
+        }
+
+        // Generate photo URL
+        const photoUrl = `/uploads/${req.file.filename}`;
+
+        // Update member with photo URL
+        const result = await db.query('update', 'executive_members', {
+            data: { 
+                profile_image: photoUrl,
+                updated_at: new Date()
+            },
+            where: { id: req.params.id }
+        });
+
+        if (result.data.length === 0) {
+            return res.status(404).json({ 
+                status: 'error', 
+                message: 'Member not found' 
+            });
+        }
+
+        // Invalidate cache
+        await cacheManager.invalidateByTags(['members']);
+
+        logger.info('Member photo uploaded', { 
+            requestId: req.id, 
+            memberId: req.params.id, 
+            filename: req.file.filename,
+            uploadedBy: req.user.id 
+        });
+
+        res.json({ 
+            status: 'success', 
+            data: { 
+                photo_url: photoUrl,
+                member: result.data[0]
+            }, 
+            message: 'Photo uploaded successfully' 
+        });
+
+    } catch (error) {
+        logger.error('Member photo upload error:', { 
+            requestId: req.id, 
+            error: error.message,
+            memberId: req.params.id 
+        });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to upload photo' 
+        });
+    }
+});
+
 
 // ==================== EVENTS MANAGEMENT ====================
 

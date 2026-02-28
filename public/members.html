@@ -1303,7 +1303,7 @@
     </footer>
 
 <script>
-    // Members Page JavaScript - FIXED for Secretary General Assistant
+    // Members Page JavaScript - FIXED for photo display
     document.addEventListener('DOMContentLoaded', function() {
         // Configuration - Live backend only
         const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
@@ -1392,10 +1392,18 @@
                 
                 console.log(`✅ Loaded ${membersData.length} members from database`);
                 
-                // Log ALL members with their positions for debugging
+                // Log ALL members with their positions and photos for debugging
                 console.log('===== ALL MEMBERS IN DATABASE =====');
                 membersData.forEach((member, index) => {
-                    console.log(`${index + 1}. ${member.full_name || member.name || 'Unnamed'}: "${member.position || 'No position'}"`);
+                    console.log(`${index + 1}. ${member.full_name || member.name || 'Unnamed'}:`);
+                    console.log(`   Position: "${member.position || 'No position'}"`);
+                    console.log(`   Photo fields:`, {
+                        profile_image: member.profile_image,
+                        photo_url: member.photo_url,
+                        photo: member.photo,
+                        avatar: member.avatar,
+                        profile_picture: member.profile_picture
+                    });
                 });
                 
                 if (membersData.length > 0) {
@@ -1413,7 +1421,39 @@
             }
         }
 
-        // Render executive members - COMPREHENSIVE FIX for all assistant positions
+        // Get photo URL from member object - handles all possible field names
+        function getMemberPhotoUrl(member) {
+            // Check all possible photo field names
+            const photoField = member.profile_image || 
+                              member.photo_url || 
+                              member.photo || 
+                              member.avatar || 
+                              member.profile_picture;
+            
+            if (!photoField) return null;
+            
+            console.log(`Processing photo for ${member.full_name || member.name}:`, photoField);
+            
+            // If it's already a full URL
+            if (photoField.startsWith('http')) {
+                return photoField;
+            }
+            
+            // If it starts with /uploads/ (server path)
+            if (photoField.startsWith('/uploads/')) {
+                return `${API_BASE_URL}${photoField}`;
+            }
+            
+            // If it's just a filename
+            if (photoField.includes('/')) {
+                return `${API_BASE_URL}${photoField}`;
+            }
+            
+            // Default: assume it's in uploads directory
+            return `${API_BASE_URL}/uploads/${photoField}`;
+        }
+
+        // Render executive members
         function renderExecutives() {
             const executiveGrid = document.getElementById('executiveGrid');
             if (!executiveGrid) return;
@@ -1425,13 +1465,12 @@
             
             console.log('===== STARTING EXECUTIVE RENDERING =====');
             
-            // VERY BROAD filter - include anyone with a position
+            // Filter for executive members
             const executives = membersData.filter(member => {
                 if (!member || !member.position) return false;
                 
                 const pos = member.position.toLowerCase().trim();
                 
-                // Include if it has ANY of these words (this is super inclusive)
                 const shouldInclude = 
                     pos.includes('president') ||
                     pos.includes('vice') ||
@@ -1450,9 +1489,9 @@
                     pos.includes('sports') ||
                     pos.includes('public') ||
                     pos.includes('pro') ||
-                    pos.includes('assistant') ||      // CRITICAL - catches ALL assistants
-                    pos.includes('asst') ||           // Common abbreviation
-                    pos.includes('assist');           // Partial match
+                    pos.includes('assistant') ||
+                    pos.includes('asst') ||
+                    pos.includes('assist');
                 
                 if (shouldInclude) {
                     console.log(`✅ INCLUDED: ${member.full_name || member.name} - "${member.position}"`);
@@ -1469,7 +1508,7 @@
                 return;
             }
             
-            // Define position order with MULTIPLE keyword variations for each position
+            // Define position order
             const positionOrder = [
                 {
                     title: 'President',
@@ -1488,10 +1527,9 @@
                     keywords: [
                         'assistant secretary general', 
                         'asst secretary general',
-                        'secretary general assistant',  // THIS IS THE KEY ADDITION
+                        'secretary general assistant',
                         'assistant gen sec',
-                        'deputy secretary general',
-                        'assistant general secretary'
+                        'deputy secretary general'
                     ]
                 },
                 {
@@ -1547,7 +1585,6 @@
                 const posA = a.position?.toLowerCase() || '';
                 const posB = b.position?.toLowerCase() || '';
                 
-                // Find matching order index for A
                 let indexA = 999;
                 for (let i = 0; i < positionOrder.length; i++) {
                     if (positionOrder[i].keywords.some(keyword => posA.includes(keyword))) {
@@ -1556,7 +1593,6 @@
                     }
                 }
                 
-                // Find matching order index for B
                 let indexB = 999;
                 for (let i = 0; i < positionOrder.length; i++) {
                     if (positionOrder[i].keywords.some(keyword => posB.includes(keyword))) {
@@ -1565,10 +1601,8 @@
                     }
                 }
                 
-                // Special handling for ANY assistant position not caught
                 if (indexA === 999 && (posA.includes('assistant') || posA.includes('asst') || posA.includes('deputy'))) {
-                    console.log(`Found assistant position not in order: ${posA}`);
-                    indexA = 14; // After PRO
+                    indexA = 14;
                 }
                 
                 if (indexB === 999 && (posB.includes('assistant') || posB.includes('asst') || posB.includes('deputy'))) {
@@ -1582,6 +1616,8 @@
             console.log('===== SORTED EXECUTIVES =====');
             sortedExecutives.forEach((member, i) => {
                 console.log(`${i + 1}. ${member.full_name || member.name} - "${member.position}"`);
+                const photoUrl = getMemberPhotoUrl(member);
+                console.log(`   Photo: ${photoUrl || 'None'}`);
             });
             
             renderMemberCards(sortedExecutives, executiveGrid);
@@ -1590,37 +1626,35 @@
         // Helper function to render member cards
         function renderMemberCards(members, container) {
             container.innerHTML = members.map(member => {
-                // Handle profile image
-                const profileImage = member.profile_image || member.photo || member.avatar;
-                let imageUrl = null;
-                
-                if (profileImage) {
-                    if (profileImage.startsWith('http')) {
-                        imageUrl = profileImage;
-                    } else if (profileImage.startsWith('/')) {
-                        imageUrl = `${API_BASE_URL}${profileImage}`;
-                    } else {
-                        imageUrl = `${API_BASE_URL}/${profileImage}`;
-                    }
-                }
+                // Get photo URL using the helper function
+                const imageUrl = getMemberPhotoUrl(member);
                 
                 // Format position title nicely
                 const position = formatPositionTitle(member.position || 'Member');
+                
+                // Get initials for placeholder
+                const name = member.full_name || member.name || 'Member';
+                const initials = name.split(' ')
+                    .map(n => n.charAt(0))
+                    .join('')
+                    .toUpperCase()
+                    .substring(0, 2);
                 
                 return `
                 <div class="member-card" data-member-id="${member.id || member._id || ''}">
                     <div class="member-photo">
                         ${imageUrl ? 
                             `<img src="${imageUrl}" 
-                                  alt="${member.full_name || member.name || 'Member'}" 
+                                  alt="${name}" 
                                   class="member-photo-image"
-                                  onerror="this.onerror=null; this.parentElement.innerHTML=generatePhotoPlaceholder()">` :
-                            generatePhotoPlaceholder()
+                                  onload="this.style.opacity=1"
+                                  onerror="this.onerror=null; this.parentElement.innerHTML=generatePhotoPlaceholder('${initials}')">` :
+                            generatePhotoPlaceholder(initials)
                         }
                     </div>
                     <div class="member-info">
                         <h3 class="member-name">
-                            ${member.full_name || member.name || 'Unnamed Member'}
+                            ${name}
                         </h3>
                         <p class="member-position">
                             ${position}
@@ -1649,7 +1683,7 @@
             attachMemberCardListeners();
         }
 
-        // Format position titles - COMPREHENSIVE FIX
+        // Format position titles
         function formatPositionTitle(position) {
             if (!position) return 'Member';
             
@@ -1683,7 +1717,7 @@
                 return 'Assistant Secretary General';
             }
             
-            // ALSO check for "Secretary General Assistant" specifically
+            // Secretary General Assistant specifically
             if (lowerPos.includes('secretary general assistant') || 
                 lowerPos.includes('secretary gen assistant') ||
                 (lowerPos.includes('secretary') && lowerPos.includes('assistant') && lowerPos.includes('general'))) {
@@ -1737,9 +1771,8 @@
                 return 'Public Relations Officer';
             }
             
-            // ANY assistant position that wasn't caught above
+            // ANY assistant position
             if (lowerPos.includes('assistant') || lowerPos.includes('asst') || lowerPos.includes('deputy')) {
-                // Try to extract what they're assistant of
                 let mainRole = lowerPos
                     .replace(/assistant|asst|deputy|\./g, '')
                     .replace(/\s+/g, ' ')
@@ -1759,13 +1792,15 @@
                 .join(' ');
         }
 
-        // Generate photo placeholder
-        function generatePhotoPlaceholder() {
+        // Generate photo placeholder with initials
+        function generatePhotoPlaceholder(initials = '') {
             return `
                 <div class="photo-placeholder">
                     <span class="photo-placeholder-text">PHOTO</span>
                     <div class="photo-placeholder-icon">
-                        <i class="fas fa-user text-gray-300" style="font-size: 1.5rem;"></i>
+                        <span style="font-size: 1.5rem; font-weight: bold; color: var(--gray-400);">
+                            ${initials || '👤'}
+                        </span>
                     </div>
                 </div>
             `;

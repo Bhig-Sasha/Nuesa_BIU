@@ -356,6 +356,22 @@
             font-weight: bold;
         }
 
+        .table-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: var(--primary);
+            margin-right: 8px;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
         /* Main Area */
         .main-area {
             padding: 24px;
@@ -2583,6 +2599,7 @@
                             <table class="data-table" id="membersTable">
                                 <thead>
                                     <tr>
+                                        <th>Photo</th>
                                         <th>Name</th>
                                         <th>Position</th>
                                         <th>Department</th>
@@ -2591,38 +2608,46 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    ${members.map(member => `
-                                        <tr>
-                                            <td>
-                                                <div class="table-user">
-                                                    <div class="table-avatar">
-                                                        ${member.full_name?.charAt(0) || '?'}
+                                    ${members.map(member => {
+                                        // Check if member has a photo
+                                        const photoUrl = member.photo_url || member.photo || null;
+                                        const initial = member.full_name?.charAt(0)?.toUpperCase() || '?';
+                                        
+                                        return `
+                                            <tr>
+                                                <td>
+                                                    <div class="table-user">
+                                                        <div class="table-avatar" style="background-image: ${photoUrl ? `url('${photoUrl}')` : 'none'}; background-size: cover; background-position: center;">
+                                                            ${!photoUrl ? initial : ''}
+                                                        </div>
                                                     </div>
+                                                </td>
+                                                <td>
                                                     <div>
                                                         <div style="font-weight: 600;">${member.full_name || 'N/A'}</div>
                                                         <div style="font-size: 12px; color: var(--slate-500);">${member.email || ''}</div>
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td>${member.position || 'N/A'}</td>
-                                            <td>${member.department || 'N/A'}</td>
-                                            <td>
-                                                <span class="status-badge ${member.status === 'active' ? 'badge-success' : 'badge-danger'}">
-                                                    ${member.status || 'inactive'}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div class="action-buttons">
-                                                    <button class="icon-btn icon-btn-primary" onclick="editMember('${member.id}')" title="Edit">
-                                                        <i class="fas fa-edit"></i>
-                                                    </button>
-                                                    <button class="icon-btn icon-btn-danger" onclick="deleteMember('${member.id}')" title="Delete">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    `).join('')}
+                                                </td>
+                                                <td>${member.position || 'N/A'}</td>
+                                                <td>${member.department || 'N/A'}</td>
+                                                <td>
+                                                    <span class="status-badge ${member.status === 'active' ? 'badge-success' : 'badge-danger'}">
+                                                        ${member.status || 'inactive'}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div class="action-buttons">
+                                                        <button class="icon-btn icon-btn-primary" onclick="editMember('${member.id}')" title="Edit">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                        <button class="icon-btn icon-btn-danger" onclick="deleteMember('${member.id}')" title="Delete">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
                                 </tbody>
                             </table>
                         </div>
@@ -2709,6 +2734,15 @@
                 document.getElementById('memberInstagram').value = social.instagram || '';
             }
             
+            // Display existing photo if available
+            const photoPreview = document.getElementById('memberImagePreview');
+            const photoUrl = member.photo_url || member.photo;
+            if (photoUrl) {
+                photoPreview.innerHTML = `<img src="${photoUrl}" alt="Preview" style="width: 100%; height: 100%; object-fit: cover;">`;
+            } else {
+                photoPreview.innerHTML = '<i class="fas fa-user-plus" style="font-size: 48px; color: var(--slate-400);"></i>';
+            }
+            
             showModal('memberModal');
         } catch (error) {
             showToast('Failed to load member details: ' + error.message, 'error');
@@ -2717,6 +2751,19 @@
         }
     }
     
+    // Add this function to handle member photo upload
+    async function uploadMemberPhoto(memberId, file) {
+        const formData = new FormData();
+        formData.append('photo', file);
+        
+        try {
+            const response = await uploadFile(`/api/admin/members/${memberId}/photo`, formData);
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    }
+
     async function saveMember() {
         try {
             const memberData = {
@@ -2756,6 +2803,18 @@
                 response = await put(`/api/admin/members/${currentMemberId}`, memberData);
             } else {
                 response = await post('/api/admin/members', memberData);
+                currentMemberId = response.data?.id || response.id;
+            }
+            
+            // Handle photo upload if a file was selected
+            const photoInput = document.getElementById('memberPhoto');
+            if (photoInput.files && photoInput.files[0] && currentMemberId) {
+                try {
+                    await uploadMemberPhoto(currentMemberId, photoInput.files[0]);
+                } catch (photoError) {
+                    console.error('Photo upload failed:', photoError);
+                    showToast('Member saved but photo upload failed', 'warning');
+                }
             }
             
             showToast(`Member ${currentMemberId ? 'updated' : 'created'} successfully`, 'success');
@@ -3043,7 +3102,7 @@
             showLoading();
             await del(`/api/admin/resources/${resourceId}`);
             showToast('Resource deleted successfully', 'success');
-            await loadContent('resources');
+            await loadContent('re`sources');
         } catch (error) {
             showToast('Failed to delete resource: ' + error.message, 'error');
         } finally {
