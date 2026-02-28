@@ -67,6 +67,9 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || 'production';
 const IS_PRODUCTION = NODE_ENV === 'production';
+const BASE_URL = process.env.API_URL || (IS_PRODUCTION 
+  ? 'https://nuesa-biu-pjp0.onrender.com' 
+  : `http://localhost:${PORT}`);
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRE = process.env.JWT_EXPIRE || '7d';
 const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024;
