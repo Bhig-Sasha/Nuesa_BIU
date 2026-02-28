@@ -2709,7 +2709,9 @@
                 throw new Error('Member not found');
             }
             
-            currentMemberId = memberId;
+            // Store the current member ID globally
+            window.currentMemberId = memberId;
+            
             document.getElementById('memberModalTitle').textContent = 'Edit Member';
             
             // Set form values
@@ -2724,24 +2726,29 @@
             document.getElementById('memberOrder').value = member.display_order || 1;
             document.getElementById('memberStatus').value = member.status || 'active';
             
-            // Set social links if they exist
-            if (member.social_links) {
-                const social = typeof member.social_links === 'string' ? 
-                    JSON.parse(member.social_links) : member.social_links;
-                document.getElementById('memberLinkedIn').value = social.linkedin || '';
-                document.getElementById('memberTwitter').value = social.twitter || '';
-                document.getElementById('memberGitHub').value = social.github || '';
-                document.getElementById('memberInstagram').value = social.instagram || '';
+            // Set social links
+            const social = member.social_links || {};
+            if (typeof social === 'string') {
+                try { social = JSON.parse(social); } catch { social = {}; }
             }
+            document.getElementById('memberLinkedIn').value = social.linkedin || '';
+            document.getElementById('memberTwitter').value = social.twitter || '';
+            document.getElementById('memberGitHub').value = social.github || '';
+            document.getElementById('memberInstagram').value = social.instagram || '';
             
-            // Display existing photo if available
+            // Display existing photo
             const photoPreview = document.getElementById('memberImagePreview');
-            const photoUrl = member.photo_url || member.photo;
-            if (photoUrl) {
-                photoPreview.innerHTML = `<img src="${photoUrl}" alt="Preview" style="width: 100%; height: 100%; object-fit: cover;">`;
+            if (member.profile_image) {
+                const imageUrl = member.profile_image.startsWith('http') 
+                    ? member.profile_image 
+                    : `https://nuesa-biu-pjp0.onrender.com${member.profile_image}`;
+                photoPreview.innerHTML = `<img src="${imageUrl}" alt="Preview" style="width: 100%; height: 100%; object-fit: cover;">`;
             } else {
                 photoPreview.innerHTML = '<i class="fas fa-user-plus" style="font-size: 48px; color: var(--slate-400);"></i>';
             }
+            
+            // Clear the file input
+            document.getElementById('memberPhoto').value = '';
             
             showModal('memberModal');
         } catch (error) {
@@ -2751,7 +2758,6 @@
         }
     }
     
-    // Add this function to handle member photo upload
     async function uploadMemberPhoto(memberId, file) {
         const formData = new FormData();
         formData.append('photo', file);
@@ -2764,66 +2770,189 @@
         }
     }
 
+    function previewMemberImage(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            const preview = document.getElementById('memberImagePreview');
+            if (preview) {
+                preview.innerHTML = `<img src="${e.target.result}" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover;">`;
+            }
+        }
+        
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+async function uploadPhotoOnly(memberId, file) {
+    try {
+        const formData = new FormData();
+        formData.append('photo', file);
+        
+        const token = localStorage.getItem('adminToken') || getCookie('auth_token');
+        
+        const response = await fetch(`https://nuesa-biu-pjp0.onrender.com/api/admin/members/${memberId}/photo`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to upload photo');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Photo upload error:', error);
+        throw error;
+    }
+}
+
     async function saveMember() {
         try {
+            // Show loading state
+            const saveBtn = document.getElementById('saveMember');
+            const originalText = saveBtn.innerHTML;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            saveBtn.disabled = true;
+
+            // Validate required fields
+            const name = document.getElementById('memberName').value;
+            const position = document.getElementById('memberPosition').value;
+            
+            if (!name || !position) {
+                throw new Error('Name and position are required');
+            }
+
+            // Create FormData for file upload
+            const formData = new FormData();
+            
+            // Create member data object
             const memberData = {
-                full_name: document.getElementById('memberName').value.trim(),
-                position: document.getElementById('memberPosition').value,
-                email: document.getElementById('memberEmail').value.trim(),
-                phone: document.getElementById('memberPhone').value.trim(),
-                department: document.getElementById('memberDepartment').value,
-                level: document.getElementById('memberLevel').value,
-                bio: document.getElementById('memberBio').value.trim(),
-                committee: document.getElementById('memberCommittee').value,
+                full_name: name,
+                position: position,
+                department: document.getElementById('memberDepartment').value || null,
+                level: document.getElementById('memberLevel').value || null,
+                email: document.getElementById('memberEmail').value || null,
+                phone: document.getElementById('memberPhone').value || null,
+                bio: document.getElementById('memberBio').value || null,
+                committee: document.getElementById('memberCommittee').value || null,
                 display_order: parseInt(document.getElementById('memberOrder').value) || 1,
-                status: document.getElementById('memberStatus').value,
-                social_links: {
-                    linkedin: document.getElementById('memberLinkedIn').value.trim(),
-                    twitter: document.getElementById('memberTwitter').value.trim(),
-                    github: document.getElementById('memberGitHub').value.trim(),
-                    instagram: document.getElementById('memberInstagram').value.trim()
-                }
+                status: document.getElementById('memberStatus').value || 'active'
             };
+
+            // Handle social links - only include non-empty values
+            const socialLinks = {};
+            const linkedin = document.getElementById('memberLinkedIn').value;
+            const twitter = document.getElementById('memberTwitter').value;
+            const github = document.getElementById('memberGitHub').value;
+            const instagram = document.getElementById('memberInstagram').value;
             
-            // Validation
-            if (!memberData.full_name || !memberData.position || !memberData.department) {
-                showToast('Please fill all required fields', 'error');
-                return;
-            }
+            if (linkedin) socialLinks.linkedin = linkedin;
+            if (twitter) socialLinks.twitter = twitter;
+            if (github) socialLinks.github = github;
+            if (instagram) socialLinks.instagram = instagram;
             
-            if (memberData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(memberData.email)) {
-                showToast('Please enter a valid email address', 'error');
-                return;
-            }
+            memberData.social_links = socialLinks;
+
+            console.log('Sending member data:', memberData); // Debug log
+
+            // Stringify the member data and add to FormData
+            formData.append('data', JSON.stringify(memberData));
             
-            showLoading();
-            
-            let response;
-            if (currentMemberId) {
-                response = await put(`/api/admin/members/${currentMemberId}`, memberData);
-            } else {
-                response = await post('/api/admin/members', memberData);
-                currentMemberId = response.data?.id || response.id;
-            }
-            
-            // Handle photo upload if a file was selected
-            const photoInput = document.getElementById('memberPhoto');
-            if (photoInput.files && photoInput.files[0] && currentMemberId) {
-                try {
-                    await uploadMemberPhoto(currentMemberId, photoInput.files[0]);
-                } catch (photoError) {
-                    console.error('Photo upload failed:', photoError);
-                    showToast('Member saved but photo upload failed', 'warning');
+            // Add photo if selected
+            const photoFile = document.getElementById('memberPhoto').files[0];
+            if (photoFile) {
+                // Validate file type
+                const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+                if (!validTypes.includes(photoFile.type)) {
+                    throw new Error('Please upload a valid image file (JPEG, PNG, GIF, or WEBP)');
                 }
+                
+                // Validate file size (max 5MB)
+                if (photoFile.size > 5 * 1024 * 1024) {
+                    throw new Error('File size too large. Maximum size is 5MB.');
+                }
+                
+                formData.append('profile_image', photoFile);
+                console.log('Photo attached:', photoFile.name, photoFile.type, photoFile.size);
+            }
+
+            // Get auth token - try multiple sources
+            let token = localStorage.getItem('adminToken');
+            if (!token) {
+                // Try to get from cookie
+                token = getCookie('auth_token');
+            }
+            if (!token) {
+                // Try to get from session storage
+                token = sessionStorage.getItem('adminToken');
             }
             
-            showToast(`Member ${currentMemberId ? 'updated' : 'created'} successfully`, 'success');
-            hideModal('memberModal');
+            if (!token) {
+                throw new Error('No authentication token found. Please login again.');
+            }
+
+            console.log('Using token:', token.substring(0, 20) + '...'); // Debug log
+
+            // Determine if we're creating or updating
+            const isEditing = currentMemberId ? true : false;
+            const url = isEditing 
+                ? `https://nuesa-biu-pjp0.onrender.com/api/admin/members/${currentMemberId}`
+                : 'https://nuesa-biu-pjp0.onrender.com/api/admin/members';
+            
+            const method = isEditing ? 'PUT' : 'POST';
+
+            console.log(`Sending ${method} request to ${url}`); // Debug log
+
+            // Send request
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                    // Don't set Content-Type - browser will set it with boundary
+                },
+                body: formData
+            });
+
+            console.log('Response status:', response.status); // Debug log
+
+            // Try to parse response
+            let result;
+            const responseText = await response.text();
+            console.log('Raw response:', responseText); // Debug log
+            
+            try {
+                result = JSON.parse(responseText);
+            } catch (e) {
+                console.error('Failed to parse response:', responseText);
+                throw new Error('Invalid server response');
+            }
+
+            if (!response.ok) {
+                throw new Error(result.message || `Server error: ${response.status}`);
+            }
+
+            // Show success message
+            showToast('Member saved successfully!', 'success');
+            
+            // Close modal and refresh list
+            closeModal();
             await loadContent('members');
+            
         } catch (error) {
-            showToast('Failed to save member: ' + error.message, 'error');
+            console.error('Error saving member:', error);
+            showToast('Error: ' + error.message, 'error');
         } finally {
-            hideLoading();
+            // Restore button state
+            const saveBtn = document.getElementById('saveMember');
+            if (saveBtn) {
+                saveBtn.innerHTML = 'Save Member';
+                saveBtn.disabled = false;
+            }
         }
     }
     
