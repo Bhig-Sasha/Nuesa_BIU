@@ -3676,7 +3676,7 @@ if (fsSync.existsSync(adminDir)) {
     });
 
     app.get('/admin', (req, res) => {
-        res.redirect('/admin/dashboard');
+        res.redirect('/admin/dash.html');
     });
 
     app.get('/admin/dashboard', (req, res) => {

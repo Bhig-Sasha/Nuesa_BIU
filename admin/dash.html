@@ -1791,10 +1791,10 @@
         const cookies = document.cookie ? document.cookie.split(';') : [];
         for (let cookie of cookies) {
             const idx = cookie.indexOf('=');
-            if (idx === -1) continue; // malformed
+            if (idx === -1) continue;
             const name = cookie.slice(0, idx).trim();
             const value = cookie.slice(idx + 1);
-            if (name === 'auth_token') {  
+            if (name === 'auth_token') {
                 try {
                     return decodeURIComponent(value);
                 } catch {
@@ -1802,7 +1802,7 @@
                 }
             }
         }
-        return null;
+        return localStorage.getItem('adminToken');
     }
     
     let authToken = null;
@@ -2109,36 +2109,47 @@ async function uploadFile(endpoint, formData) {
     // ==================== AUTHENTICATION ====================
     async function checkAuth() {
         const token = getAdminToken();
+        console.log('Auth check - token exists:', !!token);
+        
         if (!token) {
-            window.location.href = '/admin/adlog.html'; // Change this to your actual login page
+            console.log('No token found, redirecting to login');
+            window.location.href = '/admin/adlog.html'; // Changed from /portal/login
             return false;
         }
         
         try {
-            // Use the verify endpoint instead of session
+            // Use the verify endpoint with proper Authorization header
             const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
+                method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
                 },
                 credentials: 'include'
             });
             
+            console.log('Auth verify response status:', response.status);
+            
             if (response.ok) {
                 const data = await response.json();
-                if (data.status === 'success' && data.data.role === 'admin') {
+                console.log('Auth verify data:', data);
+                
+                if (data.status === 'success') {
                     currentUser = data.data;
                     updateUserInfo();
                     return true;
                 }
             }
             
-            // If verification fails, redirect to login
+            // If verification fails
+            console.log('Auth verification failed');
             document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-            window.location.href = '/admin/adlog.html';
+            localStorage.removeItem('adminToken');
+            window.location.href = '/admin/adlog.html'; // Changed from /portal/login
             return false;
         } catch (error) {
-            console.error('Auth check failed:', error);
-            window.location.href = '/admin/adlog.html';
+            console.error('Auth check error:', error);
+            window.location.href = '/admin/adlog.html'; // Changed from /portal/login
             return false;
         }
     }
@@ -2148,7 +2159,8 @@ async function uploadFile(endpoint, formData) {
             // Clear auth token cookie
             document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
             localStorage.removeItem('adminToken');
-            window.location.href = '/admin/adlog.html'; // Redirect to login
+            localStorage.removeItem('adminUser');
+            window.location.href = '/admin/adlog.html'; // Redirect to admin login
         }
     }
     
@@ -2193,18 +2205,25 @@ async function uploadFile(endpoint, formData) {
     async function initDashboard() {
         showLoading();
         
-        const isAuthenticated = await checkAuth();
-        
-        if (!isAuthenticated) {
-            return;
+        try {
+            const isAuthenticated = await checkAuth();
+            
+            if (!isAuthenticated) {
+                hideLoading();
+                return;
+            }
+            
+            setupSidebar();
+            setupEventListeners();
+            setupActivityListeners();
+            await loadContent('dashboard');
+            updateConnectionStatus();
+        } catch (error) {
+            console.error('Dashboard initialization error:', error);
+            showToast('Failed to initialize dashboard: ' + error.message, 'error');
+        } finally {
+            hideLoading();
         }
-        
-        setupSidebar();
-        setupEventListeners();
-        setupActivityListeners();
-        await loadContent('dashboard');
-        updateConnectionStatus();
-        hideLoading();
     }
     
     function setupSidebar() {
