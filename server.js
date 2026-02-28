@@ -1836,19 +1836,40 @@ adminRouter.get('/stats', async (req, res) => {
  */
 adminRouter.get('/members', async (req, res) => {
     try {
-        const { status, committee, search } = req.query;
+        const { status, committee, search, page = 1, limit = 50 } = req.query;
         let where = {};
 
         if (status && status !== 'all') where.status = status;
         if (committee && committee !== 'all') where.committee = committee;
-        if (search) where.full_name = { operator: 'ilike', value: `%${search}%` };
+        if (search) {
+            where.full_name = { operator: 'ilike', value: `%${search}%` };
+        }
+
+        const offset = (parseInt(page) - 1) * parseInt(limit);
 
         const result = await db.query('select', 'executive_members', {
             where,
-            order: { column: 'display_order', ascending: true }
+            order: { column: 'display_order', ascending: true },
+            limit: parseInt(limit),
+            offset: parseInt(offset)
         });
 
-        res.json({ status: 'success', data: result.data });
+        // Get total count for pagination
+        const countResult = await db.query('select', 'executive_members', {
+            where,
+            count: true
+        });
+
+        res.json({ 
+            status: 'success', 
+            data: result.data,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total: countResult.count || 0,
+                pages: Math.ceil((countResult.count || 0) / parseInt(limit))
+            }
+        });
     } catch (error) {
         logger.error('Admin members error:', error);
         res.status(500).json({ status: 'error', message: 'Failed to fetch members' });
@@ -1867,9 +1888,11 @@ adminRouter.get('/members/:id', async (req, res) => {
         const result = await db.query('select', 'executive_members', { 
             where: { id: req.params.id } 
         });
+        
         if (result.data.length === 0) {
             return res.status(404).json({ status: 'error', message: 'Member not found' });
         }
+        
         res.json({ status: 'success', data: result.data[0] });
     } catch (error) {
         logger.error('Admin member fetch error:', error);
@@ -1896,22 +1919,54 @@ adminRouter.post('/members', upload.single('profile_image'), async (req, res) =>
             memberData = req.body;
         }
 
-        const { full_name, position, department, level, email, phone, bio, committee, display_order, status, social_links } = memberData;
+        const { 
+            full_name, 
+            position, 
+            department, 
+            level, 
+            email, 
+            phone, 
+            bio, 
+            committee, 
+            display_order, 
+            status, 
+            social_links 
+        } = memberData;
+
+        // Validate required fields
+        if (!full_name || !position) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'Full name and position are required' 
+            });
+        }
+
+        // Parse social_links if it's a string
+        let parsedSocialLinks = {};
+        if (social_links) {
+            try {
+                parsedSocialLinks = typeof social_links === 'string' 
+                    ? JSON.parse(social_links) 
+                    : social_links;
+            } catch (e) {
+                parsedSocialLinks = {};
+            }
+        }
 
         const newMember = {
             full_name: full_name?.trim(),
             position: position?.trim(),
             department: department?.trim() || null,
-            level: level || null,
+            level: level?.trim() || null,
             email: email?.toLowerCase().trim() || null,
             phone: phone?.trim() || null,
             bio: bio?.trim() || null,
             committee: committee?.trim() || null,
-            display_order: display_order || 0,
+            display_order: display_order ? parseInt(display_order) : 0,
             status: status || 'active',
-            social_links: social_links || {},
-            created_at: new Date(),
-            updated_at: new Date()
+            social_links: parsedSocialLinks,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
         };
 
         // Add profile image if uploaded
@@ -1920,6 +1975,8 @@ adminRouter.post('/members', upload.single('profile_image'), async (req, res) =>
         }
 
         const result = await db.query('insert', 'executive_members', { data: newMember });
+        
+        // Invalidate cache
         await cacheManager.invalidateByTags(['members']);
 
         logger.info('Admin created member', { 
@@ -1938,7 +1995,7 @@ adminRouter.post('/members', upload.single('profile_image'), async (req, res) =>
         res.status(500).json({ 
             status: 'error', 
             message: 'Failed to create member',
-            debug: error.message 
+            debug: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 });
@@ -1960,29 +2017,52 @@ adminRouter.put('/members/:id', upload.single('profile_image'), async (req, res)
             memberData = req.body;
         }
 
-        const updateData = {
-            full_name: memberData.full_name?.trim(),
-            position: memberData.position?.trim(),
-            department: memberData.department?.trim(),
-            level: memberData.level,
-            email: memberData.email?.toLowerCase().trim(),
-            phone: memberData.phone?.trim(),
-            bio: memberData.bio?.trim(),
-            committee: memberData.committee?.trim(),
-            display_order: memberData.display_order,
-            status: memberData.status,
-            social_links: memberData.social_links,
-            updated_at: new Date()
-        };
+        // Build update object with only provided fields
+        const updateData = {};
+        
+        // Only add fields that are provided
+        const fields = [
+            'full_name', 'position', 'department', 'level', 
+            'email', 'phone', 'bio', 'committee', 
+            'display_order', 'status', 'social_links'
+        ];
 
-        // Remove undefined fields
-        Object.keys(updateData).forEach(key => 
-            updateData[key] === undefined && delete updateData[key]
-        );
+        fields.forEach(field => {
+            if (memberData[field] !== undefined && memberData[field] !== null) {
+                if (field === 'email') {
+                    updateData[field] = memberData[field]?.toLowerCase().trim();
+                } else if (field === 'display_order') {
+                    updateData[field] = parseInt(memberData[field]);
+                } else if (field === 'social_links') {
+                    try {
+                        updateData[field] = typeof memberData[field] === 'string' 
+                            ? JSON.parse(memberData[field]) 
+                            : memberData[field];
+                    } catch (e) {
+                        updateData[field] = {};
+                    }
+                } else if (typeof memberData[field] === 'string') {
+                    updateData[field] = memberData[field].trim();
+                } else {
+                    updateData[field] = memberData[field];
+                }
+            }
+        });
 
         // Add profile image if uploaded
         if (req.file) {
             updateData.profile_image = `/uploads/${req.file.filename}`;
+        }
+
+        // Always update the updated_at timestamp
+        updateData.updated_at = new Date().toISOString();
+
+        // Only proceed if there's something to update
+        if (Object.keys(updateData).length === 0) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'No fields to update' 
+            });
         }
 
         const result = await db.query('update', 'executive_members', {
@@ -1994,6 +2074,7 @@ adminRouter.put('/members/:id', upload.single('profile_image'), async (req, res)
             return res.status(404).json({ status: 'error', message: 'Member not found' });
         }
 
+        // Invalidate cache
         await cacheManager.invalidateByTags(['members']);
         
         logger.info('Member updated', { 
@@ -2012,7 +2093,7 @@ adminRouter.put('/members/:id', upload.single('profile_image'), async (req, res)
         res.status(500).json({ 
             status: 'error', 
             message: 'Failed to update member',
-            debug: error.message 
+            debug: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 });
@@ -2026,11 +2107,51 @@ adminRouter.put('/members/:id', upload.single('profile_image'), async (req, res)
  */
 adminRouter.delete('/members/:id', async (req, res) => {
     try {
-        const result = await db.query('delete', 'executive_members', { where: { id: req.params.id } });
-        if (result.data.length === 0) {
+        // First check if member exists
+        const checkResult = await db.query('select', 'executive_members', { 
+            where: { id: req.params.id },
+            select: 'id, profile_image'
+        });
+        
+        if (checkResult.data.length === 0) {
             return res.status(404).json({ status: 'error', message: 'Member not found' });
         }
+
+        // Delete the member
+        const result = await db.query('delete', 'executive_members', { 
+            where: { id: req.params.id } 
+        });
+
+        // Optional: Delete the profile image file if it exists
+        const profileImage = checkResult.data[0].profile_image;
+        if (profileImage) {
+            const filename = profileImage.split('/').pop();
+            const filePath = path.join(__dirname, 'uploads', filename);
+            try {
+                await fs.unlink(filePath);
+                logger.info('Profile image deleted', { 
+                    requestId: req.id, 
+                    filename,
+                    memberId: req.params.id 
+                });
+            } catch (fileError) {
+                // Log but don't fail if file doesn't exist
+                logger.warn('Could not delete profile image file', { 
+                    requestId: req.id, 
+                    error: fileError.message 
+                });
+            }
+        }
+
+        // Invalidate cache
         await cacheManager.invalidateByTags(['members']);
+        
+        logger.info('Member deleted', { 
+            requestId: req.id, 
+            memberId: req.params.id, 
+            deletedBy: req.user.id 
+        });
+
         res.json({ status: 'success', message: 'Member deleted successfully' });
     } catch (error) {
         logger.error('Admin delete member error:', error);
@@ -2059,6 +2180,8 @@ adminRouter.post('/members/:id/photo', upload.single('photo'), async (req, res) 
         // Validate file type
         const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
         if (!allowedTypes.includes(req.file.mimetype)) {
+            // Delete the uploaded file if invalid
+            await fs.unlink(req.file.path);
             return res.status(400).json({ 
                 status: 'error', 
                 message: 'Invalid file type. Only JPEG, PNG, GIF, and WEBP are allowed.' 
@@ -2068,10 +2191,47 @@ adminRouter.post('/members/:id/photo', upload.single('photo'), async (req, res) 
         // Validate file size (max 5MB)
         const maxSize = 5 * 1024 * 1024; // 5MB
         if (req.file.size > maxSize) {
+            // Delete the uploaded file if too large
+            await fs.unlink(req.file.path);
             return res.status(400).json({ 
                 status: 'error', 
                 message: 'File too large. Maximum size is 5MB.' 
             });
+        }
+
+        // Check if member exists
+        const checkResult = await db.query('select', 'executive_members', { 
+            where: { id: req.params.id },
+            select: 'id, profile_image'
+        });
+        
+        if (checkResult.data.length === 0) {
+            // Delete the uploaded file if member not found
+            await fs.unlink(req.file.path);
+            return res.status(404).json({ 
+                status: 'error', 
+                message: 'Member not found' 
+            });
+        }
+
+        // Delete old profile image if it exists
+        const oldProfileImage = checkResult.data[0].profile_image;
+        if (oldProfileImage) {
+            const oldFilename = oldProfileImage.split('/').pop();
+            const oldFilePath = path.join(__dirname, 'uploads', oldFilename);
+            try {
+                await fs.unlink(oldFilePath);
+                logger.info('Old profile image deleted', { 
+                    requestId: req.id, 
+                    filename: oldFilename 
+                });
+            } catch (fileError) {
+                // Log but continue if old file doesn't exist
+                logger.warn('Could not delete old profile image', { 
+                    requestId: req.id, 
+                    error: fileError.message 
+                });
+            }
         }
 
         // Generate photo URL
@@ -2081,17 +2241,10 @@ adminRouter.post('/members/:id/photo', upload.single('photo'), async (req, res) 
         const result = await db.query('update', 'executive_members', {
             data: { 
                 profile_image: photoUrl,
-                updated_at: new Date()
+                updated_at: new Date().toISOString()
             },
             where: { id: req.params.id }
         });
-
-        if (result.data.length === 0) {
-            return res.status(404).json({ 
-                status: 'error', 
-                message: 'Member not found' 
-            });
-        }
 
         // Invalidate cache
         await cacheManager.invalidateByTags(['members']);
@@ -2113,11 +2266,24 @@ adminRouter.post('/members/:id/photo', upload.single('photo'), async (req, res) 
         });
 
     } catch (error) {
+        // Clean up uploaded file if there's an error
+        if (req.file && req.file.path) {
+            try {
+                await fs.unlink(req.file.path);
+            } catch (unlinkError) {
+                logger.error('Failed to clean up file after error', { 
+                    requestId: req.id, 
+                    error: unlinkError.message 
+                });
+            }
+        }
+
         logger.error('Member photo upload error:', { 
             requestId: req.id, 
             error: error.message,
             memberId: req.params.id 
         });
+        
         res.status(500).json({ 
             status: 'error', 
             message: 'Failed to upload photo' 
@@ -2125,6 +2291,139 @@ adminRouter.post('/members/:id/photo', upload.single('photo'), async (req, res) 
     }
 });
 
+// ==================== BULK OPERATIONS ====================
+
+/**
+ * @swagger
+ * /api/admin/members/bulk/status:
+ *   patch:
+ *     summary: Update status for multiple members
+ *     tags: [Admin]
+ */
+adminRouter.patch('/members/bulk/status', async (req, res) => {
+    try {
+        const { memberIds, status } = req.body;
+
+        if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'Member IDs array is required' 
+            });
+        }
+
+        if (!status || !['active', 'inactive', 'alumni'].includes(status)) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'Valid status is required (active, inactive, or alumni)' 
+            });
+        }
+
+        const result = await db.query('update', 'executive_members', {
+            data: { 
+                status,
+                updated_at: new Date().toISOString()
+            },
+            where: { 
+                id: { operator: 'in', value: memberIds }
+            }
+        });
+
+        // Invalidate cache
+        await cacheManager.invalidateByTags(['members']);
+
+        logger.info('Bulk status update', { 
+            requestId: req.id, 
+            memberCount: memberIds.length,
+            status,
+            updatedBy: req.user.id 
+        });
+
+        res.json({ 
+            status: 'success', 
+            message: `Updated ${result.data.length} members successfully`,
+            data: result.data
+        });
+    } catch (error) {
+        logger.error('Bulk status update error:', error);
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to update members' 
+        });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/members/bulk/delete:
+ *   delete:
+ *     summary: Delete multiple members
+ *     tags: [Admin]
+ */
+adminRouter.delete('/members/bulk/delete', async (req, res) => {
+    try {
+        const { memberIds } = req.body;
+
+        if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'Member IDs array is required' 
+            });
+        }
+
+        // Get profile images before deletion
+        const imagesResult = await db.query('select', 'executive_members', {
+            where: { 
+                id: { operator: 'in', value: memberIds }
+            },
+            select: 'profile_image'
+        });
+
+        // Delete members
+        const result = await db.query('delete', 'executive_members', {
+            where: { 
+                id: { operator: 'in', value: memberIds }
+            }
+        });
+
+        // Delete profile image files
+        for (const member of imagesResult.data) {
+            if (member.profile_image) {
+                const filename = member.profile_image.split('/').pop();
+                const filePath = path.join(__dirname, 'uploads', filename);
+                try {
+                    await fs.unlink(filePath);
+                } catch (fileError) {
+                    // Log but continue
+                    logger.warn('Could not delete profile image file', { 
+                        requestId: req.id, 
+                        filename,
+                        error: fileError.message 
+                    });
+                }
+            }
+        }
+
+        // Invalidate cache
+        await cacheManager.invalidateByTags(['members']);
+
+        logger.info('Bulk delete', { 
+            requestId: req.id, 
+            memberCount: memberIds.length,
+            deletedBy: req.user.id 
+        });
+
+        res.json({ 
+            status: 'success', 
+            message: `Deleted ${result.data.length} members successfully` 
+        });
+    } catch (error) {
+        logger.error('Bulk delete error:', error);
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to delete members' 
+        });
+    }
+});
 
 // ==================== EVENTS MANAGEMENT ====================
 
