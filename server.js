@@ -4169,7 +4169,7 @@ async function startServer() {
 ║ 🔒 JWT: ${JWT_SECRET ? 'Set ✓' : 'Missing ✗'}                  ║
 ║ 👑 Admin: ${process.env.ADMIN_EMAIL || 'Not configured'}        ║
 ║ 📚 API Docs: ${BASE_URL}/api/docs                 ║
-║ 🔐 Admin Login: ${BASE_URL}/api/admin/login       ║
+║ 🔐 Admin Login: ${BASE_URL}/admin/adlog.html       ║
 ╚═══════════════════════════════════════════════════════════════════╝
             `);
 
