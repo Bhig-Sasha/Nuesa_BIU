@@ -1780,11 +1780,15 @@ app.put('/api/profile/password', verifyToken, validate(schemas.changePassword), 
     }
 });
 
-// --- 16.6 ADMIN DASHBOARD ROUTES ---
+// ============================================================
+// SECTION 16.6: ADMIN DASHBOARD ROUTES (COMPLETE & ORGANIZED)
+// ============================================================
 
 const adminRouter = express.Router();
 adminRouter.use(verifyToken);
 adminRouter.use(requireRole('admin'));
+
+// ==================== DASHBOARD STATS ====================
 
 /**
  * @swagger
@@ -1820,6 +1824,8 @@ adminRouter.get('/stats', async (req, res) => {
         res.status(500).json({ status: 'error', message: 'Failed to fetch statistics' });
     }
 });
+
+// ==================== MEMBERS MANAGEMENT ====================
 
 /**
  * @swagger
@@ -1858,7 +1864,9 @@ adminRouter.get('/members', async (req, res) => {
  */
 adminRouter.get('/members/:id', async (req, res) => {
     try {
-        const result = await db.query('select', 'executive_members', { where: { id: req.params.id } });
+        const result = await db.query('select', 'executive_members', { 
+            where: { id: req.params.id } 
+        });
         if (result.data.length === 0) {
             return res.status(404).json({ status: 'error', message: 'Member not found' });
         }
@@ -1936,6 +1944,7 @@ adminRouter.put('/members/:id', upload.single('profile_image'), async (req, res)
             updated_at: new Date()
         };
 
+        // Remove undefined fields
         Object.keys(updateData).forEach(key => 
             updateData[key] === undefined && delete updateData[key]
         );
@@ -1980,6 +1989,8 @@ adminRouter.delete('/members/:id', async (req, res) => {
     }
 });
 
+// ==================== EVENTS MANAGEMENT ====================
+
 /**
  * @swagger
  * /api/admin/events:
@@ -2004,6 +2015,28 @@ adminRouter.get('/events', async (req, res) => {
     } catch (error) {
         logger.error('Admin events error:', error);
         res.status(500).json({ status: 'error', message: 'Failed to fetch events' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/events/{id}:
+ *   get:
+ *     summary: Get event by ID
+ *     tags: [Admin]
+ */
+adminRouter.get('/events/:id', async (req, res) => {
+    try {
+        const result = await db.query('select', 'biu_events', { 
+            where: { id: req.params.id } 
+        });
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Event not found' });
+        }
+        res.json({ status: 'success', data: result.data[0] });
+    } catch (error) {
+        logger.error('Admin event fetch error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to fetch event' });
     }
 });
 
@@ -2068,6 +2101,7 @@ adminRouter.put('/events/:id', async (req, res) => {
             updated_at: new Date()
         };
 
+        // Remove undefined fields
         Object.keys(updateData).forEach(key => 
             updateData[key] === undefined && delete updateData[key]
         );
@@ -2110,6 +2144,8 @@ adminRouter.delete('/events/:id', async (req, res) => {
     }
 });
 
+// ==================== RESOURCES MANAGEMENT ====================
+
 /**
  * @swagger
  * /api/admin/resources:
@@ -2134,6 +2170,28 @@ adminRouter.get('/resources', async (req, res) => {
     } catch (error) {
         logger.error('Admin resources error:', error);
         res.status(500).json({ status: 'error', message: 'Failed to fetch resources' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/resources/{id}:
+ *   get:
+ *     summary: Get resource by ID
+ *     tags: [Admin]
+ */
+adminRouter.get('/resources/:id', async (req, res) => {
+    try {
+        const result = await db.query('select', 'resources', { 
+            where: { id: req.params.id } 
+        });
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Resource not found' });
+        }
+        res.json({ status: 'success', data: result.data[0] });
+    } catch (error) {
+        logger.error('Admin resource fetch error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to fetch resource' });
     }
 });
 
@@ -2198,35 +2256,8 @@ adminRouter.delete('/resources/:id', async (req, res) => {
         res.status(500).json({ status: 'error', message: 'Failed to delete resource' });
     }
 });
-// Add these to your adminRouter in server.js:
 
-// Get single resource
-adminRouter.get('/resources/:id', async (req, res) => {
-    try {
-        const result = await db.query('select', 'resources', { 
-            where: { id: req.params.id } 
-        });
-        if (result.data.length === 0) {
-            return res.status(404).json({ status: 'error', message: 'Resource not found' });
-        }
-        res.json({ status: 'success', data: result.data[0] });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
-
-// Mark message as read
-adminRouter.put('/messages/:id/read', async (req, res) => {
-    try {
-        await db.query('update', 'contact_messages', {
-            data: { is_read: true, read_at: new Date() },
-            where: { id: req.params.id }
-        });
-        res.json({ status: 'success', message: 'Message marked as read' });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
+// ==================== MESSAGES MANAGEMENT ====================
 
 /**
  * @swagger
@@ -2235,11 +2266,6 @@ adminRouter.put('/messages/:id/read', async (req, res) => {
  *     summary: Get all messages (from contact form)
  *     tags: [Admin]
  */
-// ============================================================
-// ADD THESE MISSING ADMIN ROUTES
-// ============================================================
-
-// Get all contact messages
 adminRouter.get('/messages', async (req, res) => {
     try {
         const result = await db.query('select', 'contact_messages', {
@@ -2248,11 +2274,21 @@ adminRouter.get('/messages', async (req, res) => {
         res.json({ status: 'success', data: result.data });
     } catch (error) {
         logger.error('Admin messages error:', error);
+        // If table doesn't exist, return empty array
+        if (error.message && error.message.includes('relation') && error.message.includes('does not exist')) {
+            return res.json({ status: 'success', data: [] });
+        }
         res.status(500).json({ status: 'error', message: 'Failed to fetch messages' });
     }
 });
 
-// Get single message
+/**
+ * @swagger
+ * /api/admin/messages/{id}:
+ *   get:
+ *     summary: Get message by ID
+ *     tags: [Admin]
+ */
 adminRouter.get('/messages/:id', async (req, res) => {
     try {
         const result = await db.query('select', 'contact_messages', { 
@@ -2268,7 +2304,13 @@ adminRouter.get('/messages/:id', async (req, res) => {
     }
 });
 
-// Mark message as read
+/**
+ * @swagger
+ * /api/admin/messages/{id}/read:
+ *   put:
+ *     summary: Mark message as read
+ *     tags: [Admin]
+ */
 adminRouter.put('/messages/:id/read', async (req, res) => {
     try {
         await db.query('update', 'contact_messages', {
@@ -2282,7 +2324,13 @@ adminRouter.put('/messages/:id/read', async (req, res) => {
     }
 });
 
-// Delete message
+/**
+ * @swagger
+ * /api/admin/messages/{id}:
+ *   delete:
+ *     summary: Delete message
+ *     tags: [Admin]
+ */
 adminRouter.delete('/messages/:id', async (req, res) => {
     try {
         await db.query('delete', 'contact_messages', { where: { id: req.params.id } });
@@ -2293,7 +2341,13 @@ adminRouter.delete('/messages/:id', async (req, res) => {
     }
 });
 
-// Mark all messages as read
+/**
+ * @swagger
+ * /api/admin/messages/mark-all-read:
+ *   post:
+ *     summary: Mark all messages as read
+ *     tags: [Admin]
+ */
 adminRouter.post('/messages/mark-all-read', async (req, res) => {
     try {
         await db.query('update', 'contact_messages', {
@@ -2307,52 +2361,7 @@ adminRouter.post('/messages/mark-all-read', async (req, res) => {
     }
 });
 
-// ============================================================
-// UPDATE YOUR CONTACT FORM SUBMISSION TO SAVE TO DATABASE
-// ============================================================
-
-// Update the existing contact form endpoint (around line 1150)
-app.post('/api/contact/submit', createRateLimiter(10), validate(schemas.contactForm), async (req, res) => {
-    try {
-        const { name, email, message, subject } = req.body;
-        
-        // Save to database
-        const contactData = {
-            name: name.trim(),
-            email: email.toLowerCase().trim(),
-            subject: subject || 'No Subject',
-            message: message.trim(),
-            is_read: false,
-            created_at: new Date()
-        };
-        
-        // Create contact_messages table if it doesn't exist (you might want to do this in initialization)
-        try {
-            await db.query('insert', 'contact_messages', { data: contactData });
-        } catch (dbError) {
-            // If table doesn't exist, create it
-            if (dbError.message.includes('relation') && dbError.message.includes('does not exist')) {
-                logger.warn('contact_messages table does not exist, skipping database save');
-            } else {
-                throw dbError;
-            }
-        }
-        
-        logger.info('Contact form submitted', { 
-            requestId: req.id, name, email, subject: subject || 'No subject' 
-        });
-        
-        res.json({
-            status: 'success',
-            message: 'Thank you for your message! We will get back to you soon.'
-        });
-    } catch (error) {
-        logger.error('Contact form error:', { requestId: req.id, error: error.message });
-        res.status(500).json({
-            status: 'error', message: 'Failed to submit form. Please try again later.'
-        });
-    }
-});
+// ==================== FILE UPLOAD (GENERIC) ====================
 
 /**
  * @swagger
@@ -2383,6 +2392,7 @@ adminRouter.post('/upload', upload.single('file'), async (req, res) => {
     }
 });
 
+// ==================== MOUNT ADMIN ROUTER ====================
 app.use('/api/admin', adminRouter);
 
 // --- 16.7 MEMBERS ROUTES (Public) ---
@@ -3663,6 +3673,53 @@ app.delete('/api/upload/:filename', verifyToken, requireRole('admin'), async (re
         logger.error('Error deleting file:', { requestId: req.id, error: error.message });
         if (error.code === 'ENOENT') return res.status(404).json({ status: 'error', message: 'File not found' });
         res.status(500).json({ status: 'error', message: 'Failed to delete file' });
+    }
+});
+
+// ============================================================
+// UPDATE YOUR CONTACT FORM SUBMISSION TO SAVE TO DATABASE
+// ============================================================
+
+app.post('/api/contact/submit', createRateLimiter(10), validate(schemas.contactForm), async (req, res) => {
+    try {
+        const { name, email, message, subject } = req.body;
+        
+        // Save to database
+        const contactData = {
+            name: name.trim(),
+            email: email.toLowerCase().trim(),
+            subject: subject || 'No Subject',
+            message: message.trim(),
+            is_read: false,
+            created_at: new Date()
+        };
+        
+        // Try to insert into contact_messages table
+        try {
+            await db.query('insert', 'contact_messages', { data: contactData });
+        } catch (dbError) {
+            // If table doesn't exist, log warning but don't fail
+            if (dbError.message && dbError.message.includes('relation') && dbError.message.includes('does not exist')) {
+                logger.warn('contact_messages table does not exist, skipping database save');
+            } else {
+                throw dbError;
+            }
+        }
+        
+        logger.info('Contact form submitted', { 
+            requestId: req.id, name, email, subject: subject || 'No subject' 
+        });
+        
+        res.json({
+            status: 'success',
+            message: 'Thank you for your message! We will get back to you soon.'
+        });
+    } catch (error) {
+        logger.error('Contact form error:', { requestId: req.id, error: error.message });
+        res.status(500).json({
+            status: 'error', 
+            message: 'Failed to submit form. Please try again later.'
+        });
     }
 });
 
