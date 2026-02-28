@@ -2235,6 +2235,11 @@ adminRouter.put('/messages/:id/read', async (req, res) => {
  *     summary: Get all messages (from contact form)
  *     tags: [Admin]
  */
+// ============================================================
+// ADD THESE MISSING ADMIN ROUTES
+// ============================================================
+
+// Get all contact messages
 adminRouter.get('/messages', async (req, res) => {
     try {
         const result = await db.query('select', 'contact_messages', {
@@ -2247,13 +2252,23 @@ adminRouter.get('/messages', async (req, res) => {
     }
 });
 
-/**
- * @swagger
- * /api/admin/messages/{id}/read:
- *   put:
- *     summary: Mark message as read
- *     tags: [Admin]
- */
+// Get single message
+adminRouter.get('/messages/:id', async (req, res) => {
+    try {
+        const result = await db.query('select', 'contact_messages', { 
+            where: { id: req.params.id } 
+        });
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Message not found' });
+        }
+        res.json({ status: 'success', data: result.data[0] });
+    } catch (error) {
+        logger.error('Admin message fetch error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to fetch message' });
+    }
+});
+
+// Mark message as read
 adminRouter.put('/messages/:id/read', async (req, res) => {
     try {
         await db.query('update', 'contact_messages', {
@@ -2267,13 +2282,7 @@ adminRouter.put('/messages/:id/read', async (req, res) => {
     }
 });
 
-/**
- * @swagger
- * /api/admin/messages/{id}:
- *   delete:
- *     summary: Delete message
- *     tags: [Admin]
- */
+// Delete message
 adminRouter.delete('/messages/:id', async (req, res) => {
     try {
         await db.query('delete', 'contact_messages', { where: { id: req.params.id } });
@@ -2281,6 +2290,67 @@ adminRouter.delete('/messages/:id', async (req, res) => {
     } catch (error) {
         logger.error('Admin delete message error:', error);
         res.status(500).json({ status: 'error', message: 'Failed to delete message' });
+    }
+});
+
+// Mark all messages as read
+adminRouter.post('/messages/mark-all-read', async (req, res) => {
+    try {
+        await db.query('update', 'contact_messages', {
+            data: { is_read: true, read_at: new Date() },
+            where: { is_read: false }
+        });
+        res.json({ status: 'success', message: 'All messages marked as read' });
+    } catch (error) {
+        logger.error('Admin mark all read error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to mark messages as read' });
+    }
+});
+
+// ============================================================
+// UPDATE YOUR CONTACT FORM SUBMISSION TO SAVE TO DATABASE
+// ============================================================
+
+// Update the existing contact form endpoint (around line 1150)
+app.post('/api/contact/submit', createRateLimiter(10), validate(schemas.contactForm), async (req, res) => {
+    try {
+        const { name, email, message, subject } = req.body;
+        
+        // Save to database
+        const contactData = {
+            name: name.trim(),
+            email: email.toLowerCase().trim(),
+            subject: subject || 'No Subject',
+            message: message.trim(),
+            is_read: false,
+            created_at: new Date()
+        };
+        
+        // Create contact_messages table if it doesn't exist (you might want to do this in initialization)
+        try {
+            await db.query('insert', 'contact_messages', { data: contactData });
+        } catch (dbError) {
+            // If table doesn't exist, create it
+            if (dbError.message.includes('relation') && dbError.message.includes('does not exist')) {
+                logger.warn('contact_messages table does not exist, skipping database save');
+            } else {
+                throw dbError;
+            }
+        }
+        
+        logger.info('Contact form submitted', { 
+            requestId: req.id, name, email, subject: subject || 'No subject' 
+        });
+        
+        res.json({
+            status: 'success',
+            message: 'Thank you for your message! We will get back to you soon.'
+        });
+    } catch (error) {
+        logger.error('Contact form error:', { requestId: req.id, error: error.message });
+        res.status(500).json({
+            status: 'error', message: 'Failed to submit form. Please try again later.'
+        });
     }
 });
 

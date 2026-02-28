@@ -2174,24 +2174,47 @@
     
     // ==================== DASHBOARD INITIALIZATION ====================
     async function initDashboard() {
+        console.log('Initializing dashboard...');
         showLoading();
         
         try {
+            console.log('Checking authentication...');
             const isAuthenticated = await checkAuth();
+            console.log('Authentication result:', isAuthenticated);
             
             if (!isAuthenticated) {
+                console.log('Not authenticated, stopping initialization');
                 hideLoading();
                 return;
             }
             
+            console.log('Setting up sidebar and event listeners...');
             setupSidebar();
             setupEventListeners();
             setupActivityListeners();
+            
+            console.log('Loading dashboard content...');
             await loadContent('dashboard');
             updateConnectionStatus();
+            
+            console.log('Dashboard initialized successfully');
         } catch (error) {
             console.error('Dashboard initialization error:', error);
             showToast('Failed to initialize dashboard: ' + error.message, 'error');
+            
+            // Show error in content area
+            document.getElementById('contentArea').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h3>Failed to Load Dashboard</h3>
+                    <p>${error.message || 'Please try refreshing the page.'}</p>
+                    <button class="btn btn-primary" onclick="location.reload()" style="margin-top: 16px;">
+                        Refresh Page
+                    </button>
+                </div>
+            `;
         } finally {
             hideLoading();
         }
@@ -2200,6 +2223,11 @@
     function setupSidebar() {
         const sidebar = document.getElementById('sidebar');
         const mobileOverlay = document.getElementById('mobileOverlay');
+        
+        // Make sure sidebar is visible
+        if (sidebar) {
+            sidebar.style.display = 'flex';
+        }
         
         document.getElementById('mobileMenuToggle')?.addEventListener('click', () => {
             sidebar.classList.toggle('open');
@@ -2273,6 +2301,7 @@
     
     // ==================== CONTENT LOADING ====================
     async function loadContent(page) {
+        console.log(`Loading content for page: ${page}`);
         showLoading();
         
         try {
@@ -2334,31 +2363,36 @@
     // ==================== DASHBOARD PAGE ====================
     async function loadDashboard() {
         try {
+            console.log('Loading dashboard data...');
+            
             // Try to fetch members
             let members = [];
             try {
-                const membersRes = await get('/api/members');
+                const membersRes = await get('/api/admin/members');
                 members = membersRes.data || [];
+                console.log(`Fetched ${members.length} members`);
             } catch (e) {
-                console.log('Members fetch failed, using empty array');
+                console.log('Members fetch failed:', e.message);
             }
             
             // Try to fetch events
             let events = [];
             try {
-                const eventsRes = await get('/api/events');
+                const eventsRes = await get('/api/admin/events');
                 events = eventsRes.data || [];
+                console.log(`Fetched ${events.length} events`);
             } catch (e) {
-                console.log('Events fetch failed, using empty array');
+                console.log('Events fetch failed:', e.message);
             }
             
             // Try to fetch messages
             let messages = [];
             try {
-                const messagesRes = await get('/api/contact');
+                const messagesRes = await get('/api/admin/messages');
                 messages = messagesRes.data || [];
+                console.log(`Fetched ${messages.length} messages`);
             } catch (e) {
-                console.log('Messages fetch failed, using empty array');
+                console.log('Messages fetch failed:', e.message);
             }
             
             const activeMembers = members.filter(m => m.status === 'active').length;
@@ -2520,7 +2554,7 @@
     // ==================== MEMBERS MANAGEMENT ====================
     async function loadMembers() {
         try {
-            const response = await get('/api/members');
+            const response = await get('/api/admin/members');
             const members = response.data || [];
             
             return `
@@ -2643,7 +2677,7 @@
     async function editMember(memberId) {
         try {
             showLoading();
-            const response = await get(`/api/members/${memberId}`);
+            const response = await get(`/api/admin/members/${memberId}`);
             const member = response.data;
             
             if (!member) {
@@ -2719,9 +2753,9 @@
             
             let response;
             if (currentMemberId) {
-                response = await put(`/api/members/${currentMemberId}`, memberData);
+                response = await put(`/api/admin/members/${currentMemberId}`, memberData);
             } else {
-                response = await post('/api/members', memberData);
+                response = await post('/api/admin/members', memberData);
             }
             
             showToast(`Member ${currentMemberId ? 'updated' : 'created'} successfully`, 'success');
@@ -2739,7 +2773,7 @@
         
         try {
             showLoading();
-            await del(`/api/members/${memberId}`);
+            await del(`/api/admin/members/${memberId}`);
             showToast('Member deleted successfully', 'success');
             await loadContent('members');
         } catch (error) {
@@ -2752,7 +2786,7 @@
     // ==================== EVENTS MANAGEMENT ====================
     async function loadEvents() {
         try {
-            const response = await get('/api/events');
+            const response = await get('/api/admin/events');
             const events = response.data || [];
             
             return `
@@ -2839,7 +2873,7 @@
     async function editEvent(eventId) {
         try {
             showLoading();
-            const response = await get(`/api/events/${eventId}`);
+            const response = await get(`/api/admin/events/${eventId}`);
             const event = response.data;
             
             if (!event) {
@@ -2895,9 +2929,9 @@
             
             let response;
             if (currentEventId) {
-                response = await put(`/api/events/${currentEventId}`, eventData);
+                response = await put(`/api/admin/events/${currentEventId}`, eventData);
             } else {
-                response = await post('/api/events', eventData);
+                response = await post('/api/admin/events', eventData);
             }
             
             showToast(`Event ${currentEventId ? 'updated' : 'created'} successfully`, 'success');
@@ -2915,7 +2949,7 @@
         
         try {
             showLoading();
-            await del(`/api/events/${eventId}`);
+            await del(`/api/admin/events/${eventId}`);
             showToast('Event deleted successfully', 'success');
             await loadContent('events');
         } catch (error) {
@@ -2928,7 +2962,7 @@
     // ==================== RESOURCES MANAGEMENT ====================
     async function loadResources() {
         try {
-            const response = await get('/api/resources');
+            const response = await get('/api/admin/resources');
             const resources = response.data || [];
             
             return `
@@ -3007,7 +3041,7 @@
         
         try {
             showLoading();
-            await del(`/api/resources/${resourceId}`);
+            await del(`/api/admin/resources/${resourceId}`);
             showToast('Resource deleted successfully', 'success');
             await loadContent('resources');
         } catch (error) {
@@ -3020,7 +3054,7 @@
     // ==================== MESSAGES MANAGEMENT ====================
     async function loadMessages() {
         try {
-            const response = await get('/api/contact');
+            const response = await get('/api/admin/messages');
             const messages = response.data || [];
             
             const unreadCount = messages.filter(m => !m.is_read).length;
@@ -3108,7 +3142,7 @@
     async function viewMessage(messageId) {
         try {
             showLoading();
-            const response = await get(`/api/contact/${messageId}`);
+            const response = await get(`/api/admin/messages/${messageId}`);
             const message = response.data;
             
             if (!message) {
@@ -3123,7 +3157,7 @@
             
             // Mark as read if not already
             if (!message.is_read) {
-                await put(`/api/contact/${messageId}/read`, {});
+                await put(`/api/admin/messages/${messageId}/read`, {});
                 document.getElementById('markAsReadBtn').style.display = 'none';
                 // Refresh messages to update badge
                 await loadMessages();
@@ -3142,7 +3176,7 @@
         
         try {
             showLoading();
-            await del(`/api/contact/${messageId}`);
+            await del(`/api/admin/messages/${messageId}`);
             showToast('Message deleted successfully', 'success');
             await loadContent('messages');
         } catch (error) {
@@ -3155,7 +3189,7 @@
     async function markAllAsRead() {
         try {
             showLoading();
-            await post('/api/contact/mark-all-read', {});
+            await post('/api/admin/messages/mark-all-read', {});
             showToast('All messages marked as read', 'success');
             await loadContent('messages');
         } catch (error) {
@@ -3326,17 +3360,19 @@
         }
         
         formData.append('file', fileInput.files[0]);
-        formData.append('title', title);
-        formData.append('category', category);
-        formData.append('department', document.getElementById('resourceDepartment').value);
-        formData.append('course_code', document.getElementById('resourceCourseCode').value);
-        formData.append('year', document.getElementById('resourceYear').value);
-        formData.append('description', document.getElementById('resourceDescription').value);
-        formData.append('level', document.getElementById('resourceLevel').value);
+        formData.append('data', JSON.stringify({
+            title: title,
+            category: category,
+            department: document.getElementById('resourceDepartment').value,
+            course_code: document.getElementById('resourceCourseCode').value,
+            year: document.getElementById('resourceYear').value,
+            description: document.getElementById('resourceDescription').value,
+            level: document.getElementById('resourceLevel').value
+        }));
         
         try {
             showLoading();
-            const response = await uploadFile('/api/resources', formData);
+            const response = await uploadFile('/api/admin/resources', formData);
             showToast('Resource uploaded successfully', 'success');
             hideModal('resourceModal');
             await loadContent('resources');
@@ -3453,7 +3489,7 @@
             markReadBtn.addEventListener('click', async () => {
                 if (currentMessageId) {
                     try {
-                        await put(`/api/contact/${currentMessageId}/read`, {});
+                        await put(`/api/admin/messages/${currentMessageId}/read`, {});
                         showToast('Message marked as read', 'success');
                         markReadBtn.style.display = 'none';
                         await loadMessages();
@@ -3479,11 +3515,16 @@
     
     // ==================== INITIALIZE ON LOAD ====================
     document.addEventListener('DOMContentLoaded', () => {
-        // Check if we're on the admin dashboard page
-        if (window.location.pathname.includes('/portal/system') || 
+        console.log('DOM fully loaded, checking path:', window.location.pathname);
+        
+        // Check if we're on the admin dashboard page - FIXED PATH
+        if (window.location.pathname.includes('/admin/dash.html') || 
+            window.location.pathname.includes('/admin/dash') ||
             window.location.pathname.includes('/admin/dashboard')) {
-            // Initialize dashboard
+            console.log('On admin dashboard page, initializing...');
             initDashboard();
+        } else {
+            console.log('Not on admin dashboard page, current path:', window.location.pathname);
         }
     });
     
