@@ -1793,7 +1793,7 @@
             if (idx === -1) continue; // malformed
             const name = cookie.slice(0, idx).trim();
             const value = cookie.slice(idx + 1);
-            if (name === 'admin_session') {
+            if (name === 'auth_token') {  
                 try {
                     return decodeURIComponent(value);
                 } catch {
@@ -2109,13 +2109,18 @@ async function uploadFile(endpoint, formData) {
     async function checkAuth() {
         const token = getAdminToken();
         if (!token) {
-            window.location.href = '/portal/login';
+            window.location.href = '/admin/adlog.html'; // Change this to your actual login page
             return false;
         }
         
         try {
-            // Use the admin session endpoint from the server
-            const response = await fetch(`${API_BASE_URL}/api/admin/session`);
+            // Use the verify endpoint instead of session
+            const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                credentials: 'include'
+            });
             
             if (response.ok) {
                 const data = await response.json();
@@ -2127,21 +2132,22 @@ async function uploadFile(endpoint, formData) {
             }
             
             // If verification fails, redirect to login
-            document.cookie = 'admin_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-            window.location.href = '/portal/login';
+            document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            window.location.href = '/admin/adlog.html';
             return false;
         } catch (error) {
             console.error('Auth check failed:', error);
-            window.location.href = '/portal/login';
+            window.location.href = '/admin/adlog.html';
             return false;
         }
     }
     
     function logout() {
         if (confirm('Are you sure you want to logout?')) {
-            // Clear admin cookie
-            document.cookie = 'admin_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-            window.location.href = '/';
+            // Clear auth token cookie
+            document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            localStorage.removeItem('adminToken');
+            window.location.href = '/admin/adlog.html'; // Redirect to login
         }
     }
     
@@ -2328,158 +2334,163 @@ async function uploadFile(endpoint, formData) {
     
     // ==================== DASHBOARD PAGE ====================
     async function loadDashboard() {
-        try {
-            const [membersRes, statsRes] = await Promise.allSettled([
-                get('/members'),
-                get('/stats')
-            ]);
+    try {
+        // Only call the working endpoints
+        const [membersRes] = await Promise.allSettled([
+            get('/members')  // This endpoint works based on your server
+        ]);
+        
+        const members = membersRes.status === 'fulfilled' ? (membersRes.value.data || []) : [];
+        
+        // Calculate stats from available data
+        const activeMembers = members.filter(m => m.status === 'active').length;
+        const totalMembers = members.length;
+        
+        // Get user count from members or set to 0 if not available
+        const totalUsers = 1; // Current admin user (you can adjust this)
+        
+        // Update notification badge
+        const badge = document.getElementById('notificationBadge');
+        if (badge) {
+            badge.textContent = '0';
+            badge.style.display = 'none';
+        }
+        
+        return `
+            <div class="page-title">Dashboard Overview</div>
+            <p class="page-subtitle">Welcome back, ${currentUser?.fullName || currentUser?.full_name || 'Administrator'}!</p>
             
-            const members = membersRes.status === 'fulfilled' ? (membersRes.value.data || []) : [];
-            const stats = statsRes.status === 'fulfilled' ? (statsRes.value.data || {}) : {};
-            
-            const activeMembers = members.filter(m => m.status === 'active').length;
-            const totalUsers = stats.users || 0;
-            const totalMembers = stats.members || members.length;
-            
-            // Update notification badge
-            const badge = document.getElementById('notificationBadge');
-            if (badge) {
-                badge.textContent = '0';
-                badge.style.display = 'none'; // No message system yet
-            }
-            
-            return `
-                <div class="page-title">Dashboard Overview</div>
-                <p class="page-subtitle">Welcome back, ${currentUser?.fullName || currentUser?.full_name || 'Administrator'}!</p>
-                
-                <div class="stats-grid">
-                    <div class="stat-card" onclick="loadContent('members')" style="cursor: pointer;">
-                        <div class="stat-icon icon-green">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <div class="stat-value">${totalMembers}</div>
-                        <div class="stat-label">Executive Members</div>
-                        <div class="stat-change change-positive">
-                            ${activeMembers} active
-                        </div>
+            <div class="stats-grid">
+                <div class="stat-card" onclick="loadContent('members')" style="cursor: pointer;">
+                    <div class="stat-icon icon-green">
+                        <i class="fas fa-users"></i>
                     </div>
-                    
-                    <div class="stat-card" onclick="loadContent('users')" style="cursor: pointer;">
-                        <div class="stat-icon icon-blue">
-                            <i class="fas fa-user-friends"></i>
-                        </div>
-                        <div class="stat-value">${totalUsers}</div>
-                        <div class="stat-label">Total Users</div>
-                    </div>
-                    
-                    <div class="stat-card" onclick="loadContent('articles')" style="cursor: pointer;">
-                        <div class="stat-icon icon-purple">
-                            <i class="fas fa-newspaper"></i>
-                        </div>
-                        <div class="stat-value">0</div>
-                        <div class="stat-label">Articles</div>
-                    </div>
-                    
-                    <div class="stat-card" onclick="loadContent('resources')" style="cursor: pointer;">
-                        <div class="stat-icon icon-red">
-                            <i class="fas fa-file-download"></i>
-                        </div>
-                        <div class="stat-value">0</div>
-                        <div class="stat-label">Resources</div>
+                    <div class="stat-value">${totalMembers}</div>
+                    <div class="stat-label">Executive Members</div>
+                    <div class="stat-change change-positive">
+                        ${activeMembers} active
                     </div>
                 </div>
                 
-                <div class="quick-actions-grid">
-                    <div class="quick-action-card" onclick="loadContent('members'); setTimeout(() => document.getElementById('addMemberBtn')?.click(), 100);">
-                        <div class="quick-action-icon">
-                            <i class="fas fa-user-plus"></i>
-                        </div>
-                        <div style="font-weight: 600; margin-bottom: 4px;">Add Member</div>
-                        <div style="font-size: 12px; color: var(--slate-500);">Add executive members</div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-blue">
+                        <i class="fas fa-user-shield"></i>
                     </div>
-                    
-                    <div class="quick-action-card" onclick="loadContent('events'); setTimeout(() => document.getElementById('addEventBtn')?.click(), 100);">
-                        <div class="quick-action-icon">
-                            <i class="fas fa-calendar-plus"></i>
-                        </div>
-                        <div style="font-weight: 600; margin-bottom: 4px;">Create Event</div>
-                        <div style="font-size: 12px; color: var(--slate-500);">Schedule new events</div>
-                    </div>
-                    
-                    <div class="quick-action-card" onclick="loadContent('resources'); setTimeout(() => document.getElementById('addResourceBtn')?.click(), 100);">
-                        <div class="quick-action-icon">
-                            <i class="fas fa-upload"></i>
-                        </div>
-                        <div style="font-weight: 600; margin-bottom: 4px;">Upload Resource</div>
-                        <div style="font-size: 12px; color: var(--slate-500);">Add study materials</div>
-                    </div>
-                    
-                    <div class="quick-action-card" onclick="loadContent('settings')">
-                        <div class="quick-action-icon">
-                            <i class="fas fa-cog"></i>
-                        </div>
-                        <div style="font-weight: 600; margin-bottom: 4px;">Settings</div>
-                        <div style="font-size: 12px; color: var(--slate-500);">Configure website</div>
-                    </div>
+                    <div class="stat-value">Admin</div>
+                    <div class="stat-label">Your Role</div>
                 </div>
                 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 32px;">
-                    <div class="content-card">
-                        <div class="card-header">
-                            <h3 class="card-title">Recent Members</h3>
-                            <button class="btn btn-primary btn-sm" onclick="loadContent('members')">
-                                View All
-                            </button>
-                        </div>
-                        ${members.length > 0 ? members.slice(0, 5).map(member => `
-                            <div style="padding: 12px; border-bottom: 1px solid var(--slate-100);">
-                                <div style="display: flex; align-items: center; gap: 12px;">
-                                    <div class="table-avatar">${member.full_name?.charAt(0) || '?'}</div>
-                                    <div>
-                                        <div style="font-weight: 600; margin-bottom: 2px;">${member.full_name || 'N/A'}</div>
-                                        <div style="font-size: 12px; color: var(--slate-500);">
-                                            ${member.position || ''} ${member.department ? `• ${member.department}` : ''}
-                                        </div>
+                <div class="stat-card" onclick="loadContent('events')" style="cursor: pointer;">
+                    <div class="stat-icon icon-purple">
+                        <i class="fas fa-calendar-alt"></i>
+                    </div>
+                    <div class="stat-value">0</div>
+                    <div class="stat-label">Events</div>
+                </div>
+                
+                <div class="stat-card" onclick="loadContent('resources')" style="cursor: pointer;">
+                    <div class="stat-icon icon-red">
+                        <i class="fas fa-file-download"></i>
+                    </div>
+                    <div class="stat-value">0</div>
+                    <div class="stat-label">Resources</div>
+                </div>
+            </div>
+            
+            <div class="quick-actions-grid">
+                <div class="quick-action-card" onclick="loadContent('members'); setTimeout(() => document.getElementById('addMemberBtn')?.click(), 100);">
+                    <div class="quick-action-icon">
+                        <i class="fas fa-user-plus"></i>
+                    </div>
+                    <div style="font-weight: 600; margin-bottom: 4px;">Add Member</div>
+                    <div style="font-size: 12px; color: var(--slate-500);">Add executive members</div>
+                </div>
+                
+                <div class="quick-action-card" onclick="loadContent('events'); setTimeout(() => document.getElementById('addEventBtn')?.click(), 100);">
+                    <div class="quick-action-icon">
+                        <i class="fas fa-calendar-plus"></i>
+                    </div>
+                    <div style="font-weight: 600; margin-bottom: 4px;">Create Event</div>
+                    <div style="font-size: 12px; color: var(--slate-500);">Schedule new events</div>
+                </div>
+                
+                <div class="quick-action-card" onclick="loadContent('resources'); setTimeout(() => document.getElementById('addResourceBtn')?.click(), 100);">
+                    <div class="quick-action-icon">
+                        <i class="fas fa-upload"></i>
+                    </div>
+                    <div style="font-weight: 600; margin-bottom: 4px;">Upload Resource</div>
+                    <div style="font-size: 12px; color: var(--slate-500);">Add study materials</div>
+                </div>
+                
+                <div class="quick-action-card" onclick="loadContent('settings')">
+                    <div class="quick-action-icon">
+                        <i class="fas fa-cog"></i>
+                    </div>
+                    <div style="font-weight: 600; margin-bottom: 4px;">Settings</div>
+                    <div style="font-size: 12px; color: var(--slate-500);">Configure website</div>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 32px;">
+                <div class="content-card">
+                    <div class="card-header">
+                        <h3 class="card-title">Recent Members</h3>
+                        <button class="btn btn-primary btn-sm" onclick="loadContent('members')">
+                            View All
+                        </button>
+                    </div>
+                    ${members.length > 0 ? members.slice(0, 5).map(member => `
+                        <div style="padding: 12px; border-bottom: 1px solid var(--slate-100);">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div class="table-avatar">${member.full_name?.charAt(0) || '?'}</div>
+                                <div>
+                                    <div style="font-weight: 600; margin-bottom: 2px;">${member.full_name || 'N/A'}</div>
+                                    <div style="font-size: 12px; color: var(--slate-500);">
+                                        ${member.position || ''} ${member.department ? `• ${member.department}` : ''}
                                     </div>
                                 </div>
                             </div>
-                        `).join('') : '<p style="text-align: center; color: var(--slate-500); padding: 24px;">No members found</p>'}
-                    </div>
-                    
-                    <div class="content-card">
-                        <div class="card-header">
-                            <h3 class="card-title">System Status</h3>
                         </div>
-                        <div style="padding: 16px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                <span>API Connection</span>
-                                <span class="status-badge badge-success">Online</span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                <span>Database</span>
-                                <span class="status-badge badge-success">Connected</span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span>Admin Session</span>
-                                <span class="status-badge badge-success">Active</span>
-                            </div>
+                    `).join('') : '<p style="text-align: center; color: var(--slate-500); padding: 24px;">No members found</p>'}
+                </div>
+                
+                <div class="content-card">
+                    <div class="card-header">
+                        <h3 class="card-title">Quick Stats</h3>
+                    </div>
+                    <div style="padding: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <span>API Status</span>
+                            <span class="status-badge badge-success">Connected</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <span>Admin Session</span>
+                            <span class="status-badge badge-success">Active</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <span>Server Time</span>
+                            <span>${new Date().toLocaleTimeString()}</span>
                         </div>
                     </div>
                 </div>
-            `;
-        } catch (error) {
-            return `
-                <div class="empty-state">
+            </div>
+        `;
+    } catch (error) {
+        console.error('Dashboard error:', error);
+        return `
+            <div class="empty-state">
+                <div class="empty-state-icon">
                     <i class="fas fa-exclamation-triangle"></i>
-                    <h3>Dashboard Unavailable</h3>
-                    <p>${error.message || 'Unable to load dashboard data.'}</p>
-                    <button class="btn btn-primary" onclick="loadContent('dashboard')" style="margin-top: 16px;">
-                        Retry
-                    </button>
                 </div>
-            `;
-        }
+                <h3>Dashboard Unavailable</h3>
+                <p>${error.message || 'Unable to load dashboard data.'}</p>
+                <button class="btn btn-primary" onclick="location.reload()" style="margin-top: 16px;">
+                    Refresh Page
+                </button>
+            </div>
+        `;
     }
+}
     
     // ==================== EVENT MANAGEMENT FUNCTIONS ====================
 async function editEvent(eventId) {
@@ -2693,6 +2704,80 @@ async function deleteMessage(messageId) {
         await loadContent('messages');
     } catch (error) {
         showToast('Failed to delete message: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function loadArticles() {
+    return `
+        <div class="content-card">
+            <div class="card-header">
+                <h3 class="card-title">Articles Management</h3>
+                <button class="btn btn-primary" id="addArticleBtn" onclick="showToast('Articles feature coming soon', 'info')">
+                    <i class="fas fa-plus"></i> Add Article
+                </button>
+            </div>
+            <div class="empty-state">
+                <i class="far fa-newspaper" style="font-size: 48px; color: var(--slate-300); margin-bottom: 16px;"></i>
+                <h3>Articles Coming Soon</h3>
+                <p>This feature is under development.</p>
+            </div>
+        </div>
+    `;
+}
+
+async function loadAnalytics() {
+    return `
+        <div class="content-card">
+            <div class="card-header">
+                <h3 class="card-title">Analytics Dashboard</h3>
+            </div>
+            <div class="empty-state">
+                <i class="fas fa-chart-bar" style="font-size: 48px; color: var(--slate-300); margin-bottom: 16px;"></i>
+                <h3>Analytics Coming Soon</h3>
+                <p>This feature is under development.</p>
+            </div>
+        </div>
+    `;
+}
+
+// Fix the uploadResource function
+async function uploadResource() {
+    const formData = new FormData();
+    const fileInput = document.getElementById('resourceFile');
+    const title = document.getElementById('resourceTitle').value;
+    const category = document.getElementById('resourceCategory').value;
+    
+    if (!fileInput.files[0]) {
+        showToast('Please select a file to upload', 'error');
+        return;
+    }
+    
+    if (!title || !category) {
+        showToast('Please fill in all required fields', 'error');
+        return;
+    }
+    
+    formData.append('file', fileInput.files[0]);
+    formData.append('data', JSON.stringify({
+        title: title,
+        category: category,
+        department: document.getElementById('resourceDepartment').value,
+        course_code: document.getElementById('resourceCourseCode').value,
+        year: document.getElementById('resourceYear').value,
+        description: document.getElementById('resourceDescription').value,
+        level: document.getElementById('resourceLevel').value
+    }));
+    
+    try {
+        showLoading();
+        const response = await uploadFile('/admin/resources', formData);
+        showToast('Resource uploaded successfully', 'success');
+        hideModal('resourceModal');
+        await loadContent('resources');
+    } catch (error) {
+        showToast('Failed to upload resource: ' + error.message, 'error');
     } finally {
         hideLoading();
     }

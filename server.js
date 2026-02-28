@@ -2198,6 +2198,35 @@ adminRouter.delete('/resources/:id', async (req, res) => {
         res.status(500).json({ status: 'error', message: 'Failed to delete resource' });
     }
 });
+// Add these to your adminRouter in server.js:
+
+// Get single resource
+adminRouter.get('/resources/:id', async (req, res) => {
+    try {
+        const result = await db.query('select', 'resources', { 
+            where: { id: req.params.id } 
+        });
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Resource not found' });
+        }
+        res.json({ status: 'success', data: result.data[0] });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// Mark message as read
+adminRouter.put('/messages/:id/read', async (req, res) => {
+    try {
+        await db.query('update', 'contact_messages', {
+            data: { is_read: true, read_at: new Date() },
+            where: { id: req.params.id }
+        });
+        res.json({ status: 'success', message: 'Message marked as read' });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
 
 /**
  * @swagger
