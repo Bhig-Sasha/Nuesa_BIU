@@ -2797,6 +2797,677 @@ adminRouter.post('/messages/mark-all-read', async (req, res) => {
     }
 });
 
+// ==================== ADMIN ARTICLES MANAGEMENT ====================
+
+/**
+ * @swagger
+ * /api/admin/articles:
+ *   get:
+ *     summary: Get all articles (including drafts) with filtering
+ *     tags: [Admin]
+ */
+adminRouter.get('/articles', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
+    try {
+        const { 
+            status, 
+            category, 
+            tag, 
+            author,
+            search,
+            page = 1, 
+            limit = 50,
+            sort = 'created_at',
+            order = 'desc'
+        } = req.query;
+        
+        let where = {};
+        const offset = (parseInt(page) - 1) * parseInt(limit);
+
+        // Apply filters
+        if (status && status !== 'all') where.status = status;
+        if (category && category !== 'all') where.category = category;
+        if (author && author !== 'all') where.author = author;
+        
+        // Search in title, content, and excerpt
+        if (search) {
+            where.$or = [
+                { title: { operator: 'ilike', value: `%${search}%` } },
+                { content: { operator: 'ilike', value: `%${search}%` } },
+                { excerpt: { operator: 'ilike', value: `%${search}%` } }
+            ];
+        }
+
+        // Tag search (if tags column exists and supports contains)
+        if (tag) {
+            where.tags = { operator: 'contains', value: [tag] };
+        }
+
+        // Get articles with pagination
+        const [articles, countResult] = await Promise.all([
+            db.query('select', 'articles', {
+                where,
+                order: { column: sort, ascending: order === 'asc' },
+                limit: parseInt(limit),
+                offset: parseInt(offset)
+            }),
+            db.query('select', 'articles', {
+                where,
+                count: true
+            })
+        ]);
+
+        res.json({ 
+            status: 'success', 
+            data: articles.data,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total: countResult.count || 0,
+                pages: Math.ceil((countResult.count || 0) / parseInt(limit))
+            }
+        });
+    } catch (error) {
+        logger.error('Admin articles fetch error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch articles' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/articles/{uuid}:
+ *   get:
+ *     summary: Get article by UUID (including drafts)
+ *     tags: [Admin]
+ */
+adminRouter.get('/articles/:uuid', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
+    try {
+        const result = await db.query('select', 'articles', { 
+            where: { uuid: req.params.uuid } 
+        });
+        
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Article not found' });
+        }
+        
+        res.json({ status: 'success', data: result.data[0] });
+    } catch (error) {
+        logger.error('Admin article fetch error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch article' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/articles:
+ *   post:
+ *     summary: Create article (admin/editor only)
+ *     tags: [Admin]
+ */
+adminRouter.post('/articles', verifyToken, requireRole('admin', 'editor'), validate(schemas.article), async (req, res) => {
+    try {
+        const { 
+            title, 
+            slug, 
+            content, 
+            excerpt, 
+            author, 
+            category, 
+            tags, 
+            status, 
+            is_published, 
+            published_at,
+            featured_image,
+            meta_title,
+            meta_description,
+            meta_keywords
+        } = req.body;
+
+        // Generate slug if not provided
+        let articleSlug = slug;
+        if (!articleSlug) {
+            articleSlug = title.toLowerCase()
+                .replace(/[^\w\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/--+/g, '-')
+                .trim();
+        }
+
+        // Check for duplicate slug
+        const existing = await db.query('select', 'articles', { 
+            where: { slug: articleSlug } 
+        });
+        
+        if (existing.data.length > 0) {
+            articleSlug = `${articleSlug}-${Date.now()}`;
+        }
+
+        const articleData = {
+            uuid: uuid.v4(),
+            title: title.trim(),
+            slug: articleSlug,
+            content,
+            excerpt: excerpt || null,
+            author: author || req.user.fullName || 'NUESA BIU',
+            category: category || null,
+            tags: tags || [],
+            status: status || 'draft',
+            is_published: is_published || false,
+            published_at: published_at || (is_published ? new Date().toISOString() : null),
+            featured_image: featured_image || null,
+            meta_title: meta_title || null,
+            meta_description: meta_description || null,
+            meta_keywords: meta_keywords || null,
+            view_count: 0,
+            created_by: req.user.id,
+            updated_by: req.user.id,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        const result = await db.query('insert', 'articles', { data: articleData });
+        
+        // Invalidate cache
+        await cacheManager.invalidateByTags(['articles']);
+
+        logger.info('Admin created article', { 
+            requestId: req.id, 
+            articleId: result.data[0].uuid,
+            createdBy: req.user.id 
+        });
+
+        res.status(201).json({ 
+            status: 'success', 
+            data: result.data[0], 
+            message: 'Article created successfully' 
+        });
+    } catch (error) {
+        logger.error('Admin create article error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to create article',
+            debug: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/articles/{uuid}:
+ *   put:
+ *     summary: Update article (admin/editor only)
+ *     tags: [Admin]
+ */
+adminRouter.put('/articles/:uuid', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
+    try {
+        // Allowed fields for update
+        const allowedFields = [
+            'title', 'slug', 'content', 'excerpt', 'author', 
+            'category', 'tags', 'status', 'is_published', 
+            'published_at', 'featured_image', 'meta_title',
+            'meta_description', 'meta_keywords'
+        ];
+
+        const updateData = {};
+
+        // Build update object with only provided fields
+        allowedFields.forEach(field => {
+            if (req.body[field] !== undefined && req.body[field] !== null) {
+                if (field === 'slug') {
+                    // Sanitize slug if provided
+                    updateData[field] = req.body[field]
+                        .toLowerCase()
+                        .replace(/[^\w\s-]/g, '')
+                        .replace(/\s+/g, '-')
+                        .replace(/--+/g, '-')
+                        .trim();
+                } else if (field === 'tags') {
+                    // Ensure tags is array
+                    updateData[field] = Array.isArray(req.body[field]) 
+                        ? req.body[field] 
+                        : typeof req.body[field] === 'string'
+                            ? req.body[field].split(',').map(t => t.trim())
+                            : [];
+                } else if (field === 'is_published') {
+                    updateData[field] = Boolean(req.body[field]);
+                    // Auto-set published_at if publishing
+                    if (updateData[field] && !req.body.published_at) {
+                        updateData.published_at = new Date().toISOString();
+                    }
+                } else if (typeof req.body[field] === 'string') {
+                    updateData[field] = req.body[field].trim();
+                } else {
+                    updateData[field] = req.body[field];
+                }
+            }
+        });
+
+        // Always update the updated_at and updated_by
+        updateData.updated_at = new Date().toISOString();
+        updateData.updated_by = req.user.id;
+
+        // Check if there's anything to update
+        if (Object.keys(updateData).length === 2) { // only updated_at and updated_by
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'No fields to update' 
+            });
+        }
+
+        // Check for slug uniqueness if slug is being updated
+        if (updateData.slug) {
+            const existing = await db.query('select', 'articles', {
+                where: { 
+                    slug: updateData.slug,
+                    uuid: { operator: 'neq', value: req.params.uuid }
+                }
+            });
+            
+            if (existing.data.length > 0) {
+                updateData.slug = `${updateData.slug}-${Date.now()}`;
+            }
+        }
+
+        const result = await db.query('update', 'articles', {
+            data: updateData,
+            where: { uuid: req.params.uuid }
+        });
+
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Article not found' });
+        }
+
+        // Invalidate cache
+        await cacheManager.invalidateByTags(['articles']);
+
+        logger.info('Article updated', { 
+            requestId: req.id, 
+            articleId: req.params.uuid,
+            updatedBy: req.user.id,
+            updatedFields: Object.keys(updateData)
+        });
+
+        res.json({ 
+            status: 'success', 
+            data: result.data[0], 
+            message: 'Article updated successfully' 
+        });
+    } catch (error) {
+        logger.error('Admin update article error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to update article',
+            debug: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/articles/{uuid}:
+ *   delete:
+ *     summary: Delete article (admin only)
+ *     tags: [Admin]
+ */
+adminRouter.delete('/articles/:uuid', verifyToken, requireRole('admin'), async (req, res) => {
+    try {
+        // Check if article exists
+        const checkResult = await db.query('select', 'articles', { 
+            where: { uuid: req.params.uuid },
+            select: 'uuid, title, featured_image'
+        });
+        
+        if (checkResult.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Article not found' });
+        }
+
+        // Delete the article
+        const result = await db.query('delete', 'articles', { 
+            where: { uuid: req.params.uuid } 
+        });
+
+        // Optional: Delete featured image if it exists and is stored locally
+        const featuredImage = checkResult.data[0].featured_image;
+        if (featuredImage && featuredImage.startsWith('/uploads/')) {
+            const filename = featuredImage.split('/').pop();
+            const filePath = path.join(__dirname, 'uploads', filename);
+            try {
+                await fs.unlink(filePath);
+                logger.info('Featured image deleted', { 
+                    requestId: req.id, 
+                    filename,
+                    articleId: req.params.uuid 
+                });
+            } catch (fileError) {
+                // Log but don't fail if file doesn't exist
+                logger.warn('Could not delete featured image file', { 
+                    requestId: req.id, 
+                    error: fileError.message 
+                });
+            }
+        }
+
+        // Invalidate cache
+        await cacheManager.invalidateByTags(['articles']);
+
+        logger.info('Article deleted', { 
+            requestId: req.id, 
+            articleId: req.params.uuid,
+            title: checkResult.data[0].title,
+            deletedBy: req.user.id 
+        });
+
+        res.json({ 
+            status: 'success', 
+            message: 'Article deleted successfully',
+            data: { uuid: req.params.uuid }
+        });
+    } catch (error) {
+        logger.error('Admin delete article error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to delete article' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/articles/{uuid}/publish:
+ *   patch:
+ *     summary: Publish or unpublish article
+ *     tags: [Admin]
+ */
+adminRouter.patch('/articles/:uuid/publish', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
+    try {
+        const { publish } = req.body;
+        
+        if (publish === undefined) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'publish field is required (true/false)' 
+            });
+        }
+
+        const updateData = {
+            is_published: Boolean(publish),
+            status: Boolean(publish) ? 'published' : 'draft',
+            updated_at: new Date().toISOString(),
+            updated_by: req.user.id
+        };
+
+        // Set published_at if publishing and not already set
+        if (publish) {
+            const article = await db.query('select', 'articles', {
+                where: { uuid: req.params.uuid },
+                select: 'published_at'
+            });
+            
+            if (article.data.length > 0 && !article.data[0].published_at) {
+                updateData.published_at = new Date().toISOString();
+            }
+        }
+
+        const result = await db.query('update', 'articles', {
+            data: updateData,
+            where: { uuid: req.params.uuid }
+        });
+
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Article not found' });
+        }
+
+        // Invalidate cache
+        await cacheManager.invalidateByTags(['articles']);
+
+        logger.info('Article publish status changed', { 
+            requestId: req.id, 
+            articleId: req.params.uuid,
+            is_published: Boolean(publish),
+            updatedBy: req.user.id 
+        });
+
+        res.json({ 
+            status: 'success', 
+            data: result.data[0],
+            message: `Article ${publish ? 'published' : 'unpublished'} successfully` 
+        });
+    } catch (error) {
+        logger.error('Admin article publish error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to update article status' });
+    }
+});
+
+adminRouter.post('/articles/:uuid/photo', upload.single('photo'), async (req, res) => {
+    try {
+        if (!req.file) throw new Error('No file uploaded');
+        
+        // Update article with new image
+        const result = await db.query('update', 'articles', {
+            data: { 
+                featured_image: `/uploads/${req.file.filename}`,
+                updated_at: new Date()
+            },
+            where: { uuid: req.params.uuid }
+        });
+        
+        res.json({ status: 'success', data: result.data[0] });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// ==================== BULK OPERATIONS ====================
+
+/**
+ * @swagger
+ * /api/admin/articles/bulk/delete:
+ *   delete:
+ *     summary: Delete multiple articles (admin only)
+ *     tags: [Admin]
+ */
+adminRouter.delete('/articles/bulk/delete', verifyToken, requireRole('admin'), async (req, res) => {
+    try {
+        const { articleUuids } = req.body;
+
+        if (!articleUuids || !Array.isArray(articleUuids) || articleUuids.length === 0) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'Article UUIDs array is required' 
+            });
+        }
+
+        // Get featured images before deletion
+        const imagesResult = await db.query('select', 'articles', {
+            where: { 
+                uuid: { operator: 'in', value: articleUuids }
+            },
+            select: 'featured_image'
+        });
+
+        // Delete articles
+        const result = await db.query('delete', 'articles', {
+            where: { 
+                uuid: { operator: 'in', value: articleUuids }
+            }
+        });
+
+        // Delete featured image files (if local)
+        for (const article of imagesResult.data) {
+            if (article.featured_image && article.featured_image.startsWith('/uploads/')) {
+                const filename = article.featured_image.split('/').pop();
+                const filePath = path.join(__dirname, 'uploads', filename);
+                try {
+                    await fs.unlink(filePath);
+                } catch (fileError) {
+                    // Log but continue
+                    logger.warn('Could not delete featured image file', { 
+                        requestId: req.id, 
+                        filename,
+                        error: fileError.message 
+                    });
+                }
+            }
+        }
+
+        // Invalidate cache
+        await cacheManager.invalidateByTags(['articles']);
+
+        logger.info('Bulk delete articles', { 
+            requestId: req.id, 
+            articleCount: articleUuids.length,
+            deletedBy: req.user.id 
+        });
+
+        res.json({ 
+            status: 'success', 
+            message: `Deleted ${result.data.length} articles successfully`,
+            data: { deleted: result.data.length }
+        });
+    } catch (error) {
+        logger.error('Bulk delete articles error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to delete articles' 
+        });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/articles/bulk/status:
+ *   patch:
+ *     summary: Update status for multiple articles
+ *     tags: [Admin]
+ */
+adminRouter.patch('/articles/bulk/status', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
+    try {
+        const { articleUuids, status } = req.body;
+
+        if (!articleUuids || !Array.isArray(articleUuids) || articleUuids.length === 0) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'Article UUIDs array is required' 
+            });
+        }
+
+        if (!status || !['draft', 'published', 'archived'].includes(status)) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'Valid status is required (draft, published, or archived)' 
+            });
+        }
+
+        const updateData = {
+            status,
+            is_published: status === 'published',
+            updated_at: new Date().toISOString(),
+            updated_by: req.user.id
+        };
+
+        // Set published_at if publishing
+        if (status === 'published') {
+            updateData.published_at = new Date().toISOString();
+        }
+
+        const result = await db.query('update', 'articles', {
+            data: updateData,
+            where: { 
+                uuid: { operator: 'in', value: articleUuids }
+            }
+        });
+
+        // Invalidate cache
+        await cacheManager.invalidateByTags(['articles']);
+
+        logger.info('Bulk status update articles', { 
+            requestId: req.id, 
+            articleCount: articleUuids.length,
+            status,
+            updatedBy: req.user.id 
+        });
+
+        res.json({ 
+            status: 'success', 
+            message: `Updated ${result.data.length} articles successfully`,
+            data: result.data
+        });
+    } catch (error) {
+        logger.error('Bulk status update articles error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to update articles' 
+        });
+    }
+});
+
+/**
+ * @swagger
+ * /api/articles/meta/categories:
+ *   get:
+ *     summary: Get unique article categories (public)
+ *     tags: [Articles]
+ */
+// Keep your existing public categories route
+
+/**
+ * @swagger
+ * /api/articles/meta/tags:
+ *   get:
+ *     summary: Get unique article tags (public)
+ *     tags: [Articles]
+ */
+// Keep your existing public tags route
+
+/**
+ * @swagger
+ * /api/admin/articles/stats:
+ *   get:
+ *     summary: Get article statistics
+ *     tags: [Admin]
+ */
+adminRouter.get('/articles/stats', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
+    try {
+        // Get total counts by status
+        const [total, published, drafts, archived, categories, authors] = await Promise.all([
+            db.query('select', 'articles', { count: true }),
+            db.query('select', 'articles', { where: { status: 'published' }, count: true }),
+            db.query('select', 'articles', { where: { status: 'draft' }, count: true }),
+            db.query('select', 'articles', { where: { status: 'archived' }, count: true }),
+            db.query('select', 'articles', {
+                select: 'category, COUNT(*) as count',
+                where: { category: { operator: 'isNull', value: false } },
+                groupBy: 'category'
+            }),
+            db.query('select', 'articles', {
+                select: 'author, COUNT(*) as count',
+                groupBy: 'author'
+            })
+        ]);
+
+        // Get recent activity
+        const recentActivity = await db.query('select', 'articles', {
+            select: 'uuid, title, status, updated_at, updated_by',
+            order: { column: 'updated_at', ascending: false },
+            limit: 10
+        });
+
+        res.json({
+            status: 'success',
+            data: {
+                counts: {
+                    total: total.count || 0,
+                    published: published.count || 0,
+                    drafts: drafts.count || 0,
+                    archived: archived.count || 0
+                },
+                byCategory: categories.data || [],
+                byAuthor: authors.data || [],
+                recentActivity: recentActivity.data || []
+            }
+        });
+    } catch (error) {
+        logger.error('Admin articles stats error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch article statistics' });
+    }
+});
+
 // ==================== FILE UPLOAD (GENERIC) ====================
 
 /**
