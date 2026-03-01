@@ -4836,7 +4836,6 @@ async function uploadPhotoOnly(memberId, file) {
     }
 
     // ==================== ARTICLE CRUD ====================
-
     function previewArticleImage(input) {
         if (input.files && input.files[0]) {
             const reader = new FileReader();
@@ -4844,7 +4843,7 @@ async function uploadPhotoOnly(memberId, file) {
             reader.onload = function(e) {
                 const preview = document.getElementById('articleImagePreview');
                 if (preview) {
-                    preview.innerHTML = `<img src="${e.target.result}" style="width: 100px; height: 100px; border-radius: 8px; object-fit: cover;">`;
+                    preview.innerHTML = `<img src="${e.target.result}" style="width: 100%; height: 100%; object-fit: cover;">`;
                 }
             }
             
@@ -4956,7 +4955,7 @@ async function uploadPhotoOnly(memberId, file) {
             }
             
             // Store the current article UUID
-            window.currentArticleUuid = uuid;
+            currentArticleUuid = uuid;
             
             document.getElementById('articleModalTitle').textContent = 'Edit Article';
             
@@ -5065,6 +5064,41 @@ async function uploadPhotoOnly(memberId, file) {
         }
     }
 
+    function resetArticleModal() {
+        // Reset form
+        document.getElementById('articleForm').reset();
+        
+        // Reset title
+        document.getElementById('articleModalTitle').textContent = 'Add New Article';
+        
+        // Clear UUID
+        currentArticleUuid = null;
+        
+        // Clear tags
+        articleTags = [];
+        renderArticleTags();
+        
+        // Reset status toggle to default (published)
+        const statusToggleBtns = document.querySelectorAll('.status-toggle-btn');
+        statusToggleBtns.forEach(btn => {
+            if (btn.dataset.status === 'published') {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+        
+        // Reset image preview
+        const imagePreview = document.getElementById('articleImagePreview');
+        imagePreview.innerHTML = '<i class="far fa-newspaper" style="font-size: 48px; color: var(--slate-400);"></i>';
+        
+        // Clear file input
+        document.getElementById('articleImage').value = '';
+        
+        // Clear content
+        setArticleContent('');
+    }
+
     async function saveArticle() {
         try {
             // Show loading state
@@ -5084,8 +5118,17 @@ async function uploadPhotoOnly(memberId, file) {
             const excerpt = document.getElementById('articleExcerpt').value;
             const content = getArticleContent();
             
-            if (!title || !category || !excerpt || !content) {
-                throw new Error('Title, category, excerpt, and content are required');
+            if (!title) {
+                throw new Error('Title is required');
+            }
+            if (!category) {
+                throw new Error('Category is required');
+            }
+            if (!excerpt) {
+                throw new Error('Excerpt is required');
+            }
+            if (!content || content === '<br>' || content.trim() === '') {
+                throw new Error('Content is required');
             }
 
             // Create FormData for file upload
@@ -5112,8 +5155,6 @@ async function uploadPhotoOnly(memberId, file) {
                 articleData.published_at = new Date().toISOString();
             }
 
-            console.log('Sending article data:', articleData);
-
             // Stringify the article data and add to FormData
             formData.append('data', JSON.stringify(articleData));
             
@@ -5132,7 +5173,6 @@ async function uploadPhotoOnly(memberId, file) {
                 }
                 
                 formData.append('featured_image', imageFile);
-                console.log('Image attached:', imageFile.name, imageFile.type, imageFile.size);
             }
 
             // Get auth token
@@ -5142,14 +5182,12 @@ async function uploadPhotoOnly(memberId, file) {
             }
 
             // Determine if we're creating or updating
-            const isEditing = window.currentArticleUuid ? true : false;
+            const isEditing = currentArticleUuid ? true : false;
             const url = isEditing 
-                ? `/api/admin/articles/${window.currentArticleUuid}`
-                : '/api/admin/articles';
+                ? `https://nuesa-biu-pjp0.onrender.com/api/admin/articles/${currentArticleUuid}`
+                : 'https://nuesa-biu-pjp0.onrender.com/api/admin/articles';
             
             const method = isEditing ? 'PUT' : 'POST';
-
-            console.log(`Sending ${method} request to ${url}`);
 
             // Send request
             const response = await fetch(url, {
@@ -5160,19 +5198,8 @@ async function uploadPhotoOnly(memberId, file) {
                 body: formData
             });
 
-            console.log('Response status:', response.status);
-
-            // Try to parse response
-            let result;
-            const responseText = await response.text();
-            console.log('Raw response:', responseText);
-            
-            try {
-                result = JSON.parse(responseText);
-            } catch (e) {
-                console.error('Failed to parse response:', responseText);
-                throw new Error('Invalid server response');
-            }
+            // Parse response
+            const result = await response.json();
 
             if (!response.ok) {
                 throw new Error(result.message || `Server error: ${response.status}`);
@@ -5197,6 +5224,49 @@ async function uploadPhotoOnly(memberId, file) {
             }
         }
     }
+
+    // Initialize event listeners when the page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize article tags functionality
+        initArticleTags();
+        
+        // Initialize status toggle
+        initArticleStatusToggle();
+        
+        // Add click handler for Add Article button
+        const addArticleBtn = document.getElementById('addArticleBtn');
+        if (addArticleBtn) {
+            addArticleBtn.addEventListener('click', function() {
+                resetArticleModal();
+                showModal('articleModal');
+            });
+        }
+        
+        // Add click handler for Add First Article button
+        const addFirstArticleBtn = document.getElementById('addFirstArticleBtn');
+        if (addFirstArticleBtn) {
+            addFirstArticleBtn.addEventListener('click', function() {
+                resetArticleModal();
+                showModal('articleModal');
+            });
+        }
+        
+        // Add click handler for Cancel button
+        const cancelBtn = document.getElementById('cancelArticle');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function() {
+                closeModal();
+            });
+        }
+        
+        // Add click handler for modal close button
+        const modalClose = document.querySelector('#articleModal .modal-close');
+        if (modalClose) {
+            modalClose.addEventListener('click', function() {
+                closeModal();
+            });
+        }
+    });
 
     // ==================== ARTICLE STATISTICS DASHBOARD ====================
 
@@ -5292,6 +5362,20 @@ async function uploadPhotoOnly(memberId, file) {
             return `<div class="error-message">Failed to load statistics: ${error.message}</div>`;
         }
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+    // Initialize article tags functionality
+    initArticleTags();
+    
+    // Initialize status toggle
+    initArticleStatusToggle();
+    
+    // Set default status
+    const defaultStatusBtn = document.querySelector('.status-toggle-btn[data-status="draft"]');
+    if (defaultStatusBtn) {
+        defaultStatusBtn.classList.add('active');
+    }
+});
 
     // Initialize article modal events
     document.addEventListener('DOMContentLoaded', function() {

@@ -2582,6 +2582,120 @@ adminRouter.delete('/events/:id', async (req, res) => {
 
 // ==================== RESOURCES MANAGEMENT ====================
 
+adminRouter.post('/resources', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
+    try {
+        // Parse the data
+        let resourceData;
+        let file = null;
+        
+        if (req.is('multipart/form-data')) {
+            const dataStr = req.body.data;
+            resourceData = JSON.parse(dataStr);
+            file = req.file;
+        } else {
+            resourceData = req.body;
+        }
+
+        // DEBUGGING: Log the data and its lengths
+        console.log('=== RESOURCE UPLOAD DEBUG ===');
+        console.log('Title:', resourceData.title, 'Length:', resourceData.title?.length);
+        console.log('Category:', resourceData.category, 'Length:', resourceData.category?.length);
+        console.log('Description:', resourceData.description, 'Length:', resourceData.description?.length);
+        console.log('Course Code:', resourceData.course_code, 'Length:', resourceData.course_code?.length);
+        console.log('Department:', resourceData.department, 'Length:', resourceData.department?.length);
+        
+        // Check if any field might be too long (just in case)
+        const longFields = [];
+        if (resourceData.title && resourceData.title.length > 1000) longFields.push('title');
+        if (resourceData.category && resourceData.category.length > 200) longFields.push('category');
+        if (resourceData.description && resourceData.description.length > 5000) longFields.push('description');
+        
+        if (longFields.length > 0) {
+            console.warn('Warning: Very long fields detected:', longFields);
+        }
+
+        // Prepare the data for insertion
+        const resourceRecord = {
+            uuid: uuid.v4(),
+            title: resourceData.title,
+            category: resourceData.category,
+            description: resourceData.description || null,
+            department: resourceData.department || null,
+            level: resourceData.level ? parseInt(resourceData.level) : null,
+            course_code: resourceData.course_code || null,
+            course_title: resourceData.course_title || null,
+            year: resourceData.year || null,
+            semester: resourceData.semester || null,
+            file_type: file ? file.mimetype : (resourceData.file_type || null),
+            file_size: file ? file.size : (resourceData.file_size || null),
+            download_count: 0,
+            uploaded_by: req.user.id,
+            created_at: new Date().toISOString()
+        };
+
+        // Handle file URL
+        if (file) {
+            // Store file URL/path
+            resourceRecord.file_url = `/uploads/${file.filename}`;
+        } else if (resourceData.file_url) {
+            resourceRecord.file_url = resourceData.file_url;
+        }
+
+        console.log('Attempting to insert with data keys:', Object.keys(resourceRecord));
+        
+        // Try the insert with error handling
+        try {
+            const result = await db.query('insert', 'resources', { 
+                data: resourceRecord 
+            });
+            
+            console.log('Insert successful!');
+            res.status(201).json({ 
+                status: 'success', 
+                data: result.data[0],
+                message: 'Resource uploaded successfully' 
+            });
+            
+        } catch (dbError) {
+            console.error('Database insert error:', dbError);
+            
+            // Check for specific error codes
+            if (dbError.code === '22001') {
+                // Value too long - let's find which column
+                console.error('Value too long error. Full record:', JSON.stringify(resourceRecord));
+                
+                // Try to identify the problematic field
+                const fieldLengths = {};
+                for (const [key, value] of Object.entries(resourceRecord)) {
+                    if (typeof value === 'string') {
+                        fieldLengths[key] = value.length;
+                    }
+                }
+                console.error('Field lengths:', fieldLengths);
+                
+                return res.status(400).json({
+                    status: 'error',
+                    message: 'One or more fields exceed the maximum allowed length. Please check your input.',
+                    debug: {
+                        error: dbError.message,
+                        fieldLengths: fieldLengths
+                    }
+                });
+            }
+            
+            throw dbError; // Re-throw other errors
+        }
+        
+    } catch (error) {
+        console.error('Error in resource upload:', error);
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to upload resource',
+            debug: error.message
+        });
+    }
+});
+
 /**
  * @swagger
  * /api/admin/resources:
@@ -2799,100 +2913,229 @@ adminRouter.post('/messages/mark-all-read', async (req, res) => {
 
 // ==================== ADMIN ARTICLES MANAGEMENT ====================
 
+// In your admin routes file, update these endpoints:
+
 /**
  * @swagger
  * /api/admin/articles:
- *   get:
- *     summary: Get all articles (including drafts) with filtering
+ *   post:
+ *     summary: Create article (admin/editor only)
  *     tags: [Admin]
  */
-adminRouter.get('/articles', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
+adminRouter.post('/articles', verifyToken, requireRole('admin', 'editor'), upload.single('featured_image'), async (req, res) => {
     try {
+        // Parse the article data from FormData
+        const articleData = JSON.parse(req.body.data);
+        
         const { 
-            status, 
+            title, 
+            content, 
+            excerpt, 
+            author, 
             category, 
-            tag, 
-            author,
-            search,
-            page = 1, 
-            limit = 50,
-            sort = 'created_at',
-            order = 'desc'
-        } = req.query;
-        
-        let where = {};
-        const offset = (parseInt(page) - 1) * parseInt(limit);
+            tags, 
+            status, 
+            is_published, 
+            published_at,
+            meta_title,
+            meta_description,
+            meta_keywords
+        } = articleData;
 
-        // Apply filters
-        if (status && status !== 'all') where.status = status;
-        if (category && category !== 'all') where.category = category;
-        if (author && author !== 'all') where.author = author;
+        // Generate slug from title
+        let articleSlug = title.toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/--+/g, '-')
+            .trim();
+
+        // Check for duplicate slug
+        const existing = await db.query('select', 'articles', { 
+            where: { slug: articleSlug } 
+        });
         
-        // Search in title, content, and excerpt
-        if (search) {
-            where.$or = [
-                { title: { operator: 'ilike', value: `%${search}%` } },
-                { content: { operator: 'ilike', value: `%${search}%` } },
-                { excerpt: { operator: 'ilike', value: `%${search}%` } }
-            ];
+        if (existing.data.length > 0) {
+            articleSlug = `${articleSlug}-${Date.now()}`;
         }
 
-        // Tag search (if tags column exists and supports contains)
-        if (tag) {
-            where.tags = { operator: 'contains', value: [tag] };
+        // Handle featured image
+        let featuredImage = null;
+        if (req.file) {
+            featuredImage = `/uploads/${req.file.filename}`;
+        } else if (articleData.featured_image) {
+            featuredImage = articleData.featured_image;
         }
 
-        // Get articles with pagination
-        const [articles, countResult] = await Promise.all([
-            db.query('select', 'articles', {
-                where,
-                order: { column: sort, ascending: order === 'asc' },
-                limit: parseInt(limit),
-                offset: parseInt(offset)
-            }),
-            db.query('select', 'articles', {
-                where,
-                count: true
-            })
-        ]);
+        const newArticle = {
+            uuid: uuid.v4(),
+            title: title.trim(),
+            slug: articleSlug,
+            content,
+            excerpt: excerpt || null,
+            author: author || req.user.fullName || 'NUESA BIU',
+            category: category || null,
+            tags: tags || [],
+            status: status || 'draft',
+            is_published: is_published || false,
+            published_at: published_at || (is_published ? new Date().toISOString() : null),
+            featured_image: featuredImage,
+            meta_title: meta_title || null,
+            meta_description: meta_description || null,
+            meta_keywords: meta_keywords || null,
+            view_count: 0,
+            created_by: req.user.id,
+            updated_by: req.user.id,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
 
-        res.json({ 
+        const result = await db.query('insert', 'articles', { data: newArticle });
+        
+        // Invalidate cache
+        if (cacheManager) {
+            await cacheManager.invalidateByTags(['articles']);
+        }
+
+        logger.info('Admin created article', { 
+            requestId: req.id, 
+            articleId: result.data[0].uuid,
+            createdBy: req.user.id 
+        });
+
+        res.status(201).json({ 
             status: 'success', 
-            data: articles.data,
-            pagination: {
-                page: parseInt(page),
-                limit: parseInt(limit),
-                total: countResult.count || 0,
-                pages: Math.ceil((countResult.count || 0) / parseInt(limit))
-            }
+            data: result.data[0], 
+            message: 'Article created successfully' 
         });
     } catch (error) {
-        logger.error('Admin articles fetch error:', { requestId: req.id, error: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to fetch articles' });
+        logger.error('Admin create article error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to create article',
+            debug: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 });
 
 /**
  * @swagger
  * /api/admin/articles/{uuid}:
- *   get:
- *     summary: Get article by UUID (including drafts)
+ *   put:
+ *     summary: Update article (admin/editor only)
  *     tags: [Admin]
  */
-adminRouter.get('/articles/:uuid', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
+adminRouter.put('/articles/:uuid', verifyToken, requireRole('admin', 'editor'), upload.single('featured_image'), async (req, res) => {
     try {
-        const result = await db.query('select', 'articles', { 
-            where: { uuid: req.params.uuid } 
-        });
+        // Parse the article data from FormData
+        const articleData = JSON.parse(req.body.data);
         
+        // Allowed fields for update
+        const allowedFields = [
+            'title', 'content', 'excerpt', 'author', 
+            'category', 'tags', 'status', 'is_published', 
+            'published_at', 'meta_title',
+            'meta_description', 'meta_keywords'
+        ];
+
+        const updateData = {};
+
+        // Build update object with only provided fields
+        allowedFields.forEach(field => {
+            if (articleData[field] !== undefined && articleData[field] !== null) {
+                if (field === 'tags') {
+                    // Ensure tags is array
+                    updateData[field] = Array.isArray(articleData[field]) 
+                        ? articleData[field] 
+                        : typeof articleData[field] === 'string'
+                            ? articleData[field].split(',').map(t => t.trim())
+                            : [];
+                } else if (field === 'is_published') {
+                    updateData[field] = Boolean(articleData[field]);
+                    // Auto-set published_at if publishing
+                    if (updateData[field] && !articleData.published_at) {
+                        updateData.published_at = new Date().toISOString();
+                    }
+                } else if (typeof articleData[field] === 'string') {
+                    updateData[field] = articleData[field].trim();
+                } else {
+                    updateData[field] = articleData[field];
+                }
+            }
+        });
+
+        // Handle slug generation if title is updated
+        if (articleData.title) {
+            let newSlug = articleData.title.toLowerCase()
+                .replace(/[^\w\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/--+/g, '-')
+                .trim();
+            
+            // Check for duplicate slug
+            const existing = await db.query('select', 'articles', {
+                where: { 
+                    slug: newSlug,
+                    uuid: { operator: 'neq', value: req.params.uuid }
+                }
+            });
+            
+            if (existing.data.length > 0) {
+                newSlug = `${newSlug}-${Date.now()}`;
+            }
+            
+            updateData.slug = newSlug;
+        }
+
+        // Handle featured image upload
+        if (req.file) {
+            updateData.featured_image = `/uploads/${req.file.filename}`;
+        }
+
+        // Always update the updated_at and updated_by
+        updateData.updated_at = new Date().toISOString();
+        updateData.updated_by = req.user.id;
+
+        // Check if there's anything to update
+        if (Object.keys(updateData).length === 2) { // only updated_at and updated_by
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'No fields to update' 
+            });
+        }
+
+        const result = await db.query('update', 'articles', {
+            data: updateData,
+            where: { uuid: req.params.uuid }
+        });
+
         if (result.data.length === 0) {
             return res.status(404).json({ status: 'error', message: 'Article not found' });
         }
-        
-        res.json({ status: 'success', data: result.data[0] });
+
+        // Invalidate cache
+        if (cacheManager) {
+            await cacheManager.invalidateByTags(['articles']);
+        }
+
+        logger.info('Article updated', { 
+            requestId: req.id, 
+            articleId: req.params.uuid,
+            updatedBy: req.user.id,
+            updatedFields: Object.keys(updateData)
+        });
+
+        res.json({ 
+            status: 'success', 
+            data: result.data[0], 
+            message: 'Article updated successfully' 
+        });
     } catch (error) {
-        logger.error('Admin article fetch error:', { requestId: req.id, error: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to fetch article' });
+        logger.error('Admin update article error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to update article',
+            debug: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 });
 
@@ -3404,7 +3647,6 @@ adminRouter.patch('/articles/bulk/status', verifyToken, requireRole('admin', 'ed
  *     summary: Get unique article categories (public)
  *     tags: [Articles]
  */
-// Keep your existing public categories route
 
 /**
  * @swagger
@@ -3413,7 +3655,6 @@ adminRouter.patch('/articles/bulk/status', verifyToken, requireRole('admin', 'ed
  *     summary: Get unique article tags (public)
  *     tags: [Articles]
  */
-// Keep your existing public tags route
 
 /**
  * @swagger
