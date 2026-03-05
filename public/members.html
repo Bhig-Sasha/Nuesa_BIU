@@ -960,8 +960,8 @@
 
                     // Fetch data from backend API
                     console.log(`🔍 Fetching ${session} executives from: ${API_BASE_URL}/api/members`);
-                    
-                    const response = await fetch(`${API_BASE_URL}/api/members`, {
+
+                    const response = await fetch(`${API_BASE_URL}/api/members?status=active&session=${session}`, {
                         headers: {
                             'Accept': 'application/json',
                             'Content-Type': 'application/json'
@@ -975,23 +975,17 @@
                     const data = await response.json();
                     console.log('📊 Data received:', data);
 
-                    // Handle different response formats from your backend
+                    // Handle the response format from your backend
                     if (data && data.status === 'success') {
                         membersData = data.data || [];
                     } else if (Array.isArray(data)) {
                         membersData = data;
-                    } else if (data && data.members && Array.isArray(data.members)) {
-                        membersData = data.members;
                     } else {
                         membersData = [];
                     }
 
-                    // Filter by session (if your backend doesn't filter by session)
-                    // This assumes your database has a 'session' field
-                    membersData = membersData.filter(member => member.session === session);
-                    
                     console.log(`✅ Loaded ${membersData.length} members for session ${session}`);
-                    
+
                     // Log all members for debugging
                     console.log('===== MEMBERS FROM BACKEND =====');
                     membersData.forEach((member, index) => {
@@ -1119,13 +1113,12 @@
              * @returns {string|null} Image URL or null
              */
             function getImageUrl(member) {
-                // Check all possible photo field names
-                return member.profile_image_url || 
-                       member.photo_url || 
-                       member.profile_image || 
-                       member.photo || 
-                       member.avatar || 
-                       null;
+                return member.profile_image || 
+                    member.profile_image_url || 
+                    member.photo_url || 
+                    member.photo || 
+                    member.avatar || 
+                    null;
             }
 
             // ============================================

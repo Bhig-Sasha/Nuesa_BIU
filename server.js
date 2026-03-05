@@ -2291,6 +2291,50 @@ adminRouter.post('/members/:id/photo', upload.single('photo'), async (req, res) 
     }
 });
 
+// Add to adminRouter section
+adminRouter.patch('/members/:id/session', verifyToken, requireRole('admin'), async (req, res) => {
+    try {
+        const { session } = req.body;
+        
+        if (!session) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'Session is required' 
+            });
+        }
+
+        const result = await db.query('update', 'executive_members', {
+            data: { 
+                session,
+                updated_at: new Date().toISOString()
+            },
+            where: { id: req.params.id }
+        });
+
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Member not found' });
+        }
+
+        await cacheManager.invalidateByTags(['members']);
+
+        logger.info('Member session updated', { 
+            requestId: req.id, 
+            memberId: req.params.id,
+            session,
+            updatedBy: req.user.id 
+        });
+
+        res.json({ 
+            status: 'success', 
+            data: result.data[0], 
+            message: 'Member session updated successfully' 
+        });
+    } catch (error) {
+        logger.error('Error updating member session:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to update session' });
+    }
+});
+
 // ==================== BULK OPERATIONS ====================
 
 /**
@@ -3755,11 +3799,25 @@ const memberRouter = express.Router();
  *     summary: Get all executive members
  *     tags: [Members]
  */
+// SECTION 16.7 - MEMBERS ROUTES (Public)
 memberRouter.get('/', cacheMiddleware(120, ['members']), async (req, res) => {
     try {
-        const { committee, status = 'active', sort = 'display_order', order = 'asc' } = req.query;
+        const { 
+            committee, 
+            status = 'active', 
+            session,           // 👈 ADD THIS
+            sort = 'display_order', 
+            order = 'asc' 
+        } = req.query;
+        
         let where = { status };
+        
         if (committee && committee !== 'all') where.committee = committee;
+        
+        // 👇 ADD SESSION FILTERING
+        if (session) {
+            where.session = session;
+        }
 
         const result = await db.query('select', 'executive_members', {
             where,
