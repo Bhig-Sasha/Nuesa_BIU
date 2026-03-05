@@ -63,6 +63,7 @@
             color: var(--slate-800);
             line-height: 1.5;
             overflow-x: hidden;
+            padding-top: 80px; /* Prevent content hiding under fixed navbar */
         }
 
         .font-sans {
@@ -766,140 +767,312 @@
             display: block;
         }
 
-        /* Header Styles */
-        .header {
-            position: sticky;
+        /* ===== MODERN NAVBAR (SIDEBAR STYLE) – properly arranged ===== */
+        .navbar {
+            position: fixed;
             top: 0;
-            z-index: 50;
             width: 100%;
-            background: linear-gradient(to right, var(--emerald-600), var(--emerald-700));
-            box-shadow: var(--shadow-lg);
+            z-index: 50;
+            transition: all 0.3s ease;
+            background-color: transparent;
+            padding: 1.25rem 0;
         }
 
-        .header-container {
+        .navbar.scrolled {
+            background-color: rgba(6, 78, 59, 0.95);
+            backdrop-filter: blur(8px);
+            box-shadow: var(--shadow-lg);
+            padding: 0.75rem 0;
+        }
+
+        .nav-container {
             max-width: 80rem;
             margin: 0 auto;
             padding: 0 1rem;
         }
 
-        .header-inner {
+        @media (min-width: 640px) {
+            .nav-container {
+                padding: 0 1.5rem;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .nav-container {
+                padding: 0 2rem;
+            }
+        }
+
+        .nav-flex {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            height: 5rem;
         }
 
-        .logo {
-            flex-shrink: 0;
-            cursor: pointer;
+        /* Logo */
+        .logo-link {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            z-index: 50;
             text-decoration: none;
         }
 
-        .logo-text {
-            font-family: 'Inter', sans-serif;
-            font-size: clamp(1.25rem, 4vw, 1.5rem);
+        .logo-main {
+            font-size: 1.5rem;
             font-weight: 900;
-            letter-spacing: -0.05em;
             color: var(--white);
+            letter-spacing: -0.05em;
         }
 
         .logo-highlight {
-            color: var(--amber-300);
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: var(--amber-400);
+            letter-spacing: -0.05em;
         }
 
-        /* Desktop Navigation */
-        .desktop-nav {
+        /* Desktop links */
+        .desktop-links {
             display: none;
-            gap: 2rem;
+        }
+
+        @media (min-width: 1024px) {
+            .desktop-links {
+                display: flex;
+                align-items: center;
+                gap: 1.5rem;
+            }
         }
 
         .nav-link {
             font-family: 'Roboto Mono', monospace;
-            font-size: 0.875rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--emerald-100);
-            cursor: pointer;
-            padding: 0.5rem 0;
-            transition: all 0.2s;
-            position: relative;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
             text-decoration: none;
+            color: rgba(255, 255, 255, 0.9);
+            transition: color 0.2s;
         }
 
         .nav-link:hover {
-            color: var(--white);
+            color: var(--amber-400);
         }
 
         .nav-link.active {
-            color: var(--white);
-            font-weight: 700;
-            border-bottom: 2px solid var(--amber-300);
+            color: var(--amber-400);
         }
 
-        .nav-link:not(.active):hover::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background-color: var(--emerald-300);
-        }
-
-        /* Mobile Menu */
-        .mobile-menu-button {
+        /* Mobile menu button */
+        .mobile-menu-btn {
             display: block;
-            padding: 0.5rem;
-            color: var(--white);
             background: none;
             border: none;
+            color: var(--white);
             cursor: pointer;
+            z-index: 50;
+            padding: 0.5rem;
             border-radius: 0.375rem;
         }
 
-        .mobile-menu-button:hover {
-            background-color: var(--emerald-700);
+        .mobile-menu-btn:hover {
+            color: var(--amber-400);
         }
 
-        .mobile-nav {
-            display: none;
-            border-top: 1px solid var(--emerald-500);
-            background-color: var(--emerald-700);
+        @media (min-width: 1024px) {
+            .mobile-menu-btn {
+                display: none;
+            }
         }
 
-        .mobile-nav.open {
-            display: block;
-        }
-
-        .mobile-nav-items {
-            padding: 0.5rem 0.75rem;
+        /* Mobile overlay */
+        .mobile-overlay {
+            position: absolute;
+            top: 100%; /* Position right below navbar */
+            left: 0;
+            width: 100%;
+            min-height: 100vh;
+            background-color: var(--emerald-900);
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
+            padding: 2rem 1.5rem;
+            overflow-y: auto;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-20px);
+            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
+            z-index: 40;
         }
 
-        .mobile-nav-link {
-            display: block;
-            text-align: left;
-            padding: 1rem 0.75rem;
+        .mobile-overlay.open {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .mobile-link {
             font-family: 'Roboto Mono', monospace;
-            font-size: 0.875rem;
-            text-transform: uppercase;
-            color: var(--emerald-100);
-            cursor: pointer;
+            font-size: 1.125rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
             text-decoration: none;
-            border-radius: 0.375rem;
-        }
-
-        .mobile-nav-link:hover {
-            background-color: var(--emerald-600);
+            border-bottom: 1px solid var(--emerald-800);
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
             color: var(--white);
         }
 
-        .mobile-nav-link.active {
-            background-color: var(--emerald-600);
-            color: var(--white);
+        .mobile-link.active {
+            color: var(--amber-400);
+        }
+
+        .mobile-link:last-child {
+            border-bottom: none;
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 85vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--emerald-500) 0%, var(--emerald-600) 50%, var(--teal-700) 100%);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .hero-pattern {
+            position: absolute;
+            inset: 0;
+            opacity: 0.1;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 10;
+            max-width: 64rem;
+            margin: 0 auto;
+            padding: 0 1rem;
+            text-align: center;
+        }
+
+        /* About Section */
+        .about-image {
+            position: relative;
+            height: 24rem;
+            background: linear-gradient(135deg, var(--emerald-100) 0%, var(--blue-100) 100%);
+            border-radius: 1rem;
+            padding: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-xl);
+        }
+
+        .about-image img {
+            width: 400px;
+            height: 385px;
+            object-fit: cover;
+            border-radius: 0.5rem;
+            transition: transform 0.3s ease;
+        }
+
+        .about-image img:hover {
+            transform: scale(1.05);
+        }
+
+        /* Event Cards */
+        .event-card {
+            position: relative;
+            background-color: var(--white);
+            border: 2px solid var(--emerald-200);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            transition: all 0.3s;
+            display: block;
+        }
+
+        .event-card:hover {
+            transform: translateY(-0.5rem);
+            box-shadow: var(--shadow-xl);
+            border-color: var(--emerald-400);
+        }
+
+        .event-category {
+            position: absolute;
+            top: -0.75rem;
+            left: 1.5rem;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.75rem;
             font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .category-career, .category-Career {
+            background-color: var(--emerald-500);
+            color: var(--white);
+        }
+
+        .category-workshop, .category-Workshop {
+            background-color: var(--blue-500);
+            color: var(--white);
+        }
+
+        .category-competition, .category-Competition {
+            background-color: var(--amber-500);
+            color: var(--white);
+        }
+
+        .category-socials, .category-Socials {
+            background-color: var(--purple-500);
+            color: var(--white);
+        }
+
+        /* Stat Counter */
+        .stat-counter {
+            text-align: center;
+            padding: 2rem;
+            background: linear-gradient(135deg, var(--emerald-50) 0%, var(--blue-50) 100%);
+            border: 2px solid var(--emerald-300);
+            border-radius: 0.5rem;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .stat-number {
+            font-family: 'Inter', sans-serif;
+            font-size: clamp(2.5rem, 5vw, 3.75rem);
+            font-weight: 900;
+            color: var(--emerald-600);
+            margin-bottom: 0.75rem;
+        }
+
+        /* Loading Spinner */
+        .loading-spinner {
+            display: inline-block;
+            width: 2rem;
+            height: 2rem;
+            border: 3px solid var(--emerald-200);
+            border-radius: 50%;
+            border-top-color: var(--emerald-600);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.5rem;
         }
 
         /* Footer Styles */
@@ -1029,139 +1202,6 @@
             color: var(--emerald-400);
         }
 
-        /* Hero Section */
-        .hero {
-            min-height: 85vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, var(--emerald-500) 0%, var(--emerald-600) 50%, var(--teal-700) 100%);
-            overflow: hidden;
-            position: relative;
-        }
-
-        .hero-pattern {
-            position: absolute;
-            inset: 0;
-            opacity: 0.1;
-        }
-
-        .hero-content {
-            position: relative;
-            z-index: 10;
-            max-width: 64rem;
-            margin: 0 auto;
-            padding: 0 1rem;
-            text-align: center;
-        }
-
-        /* About Section */
-        .about-image {
-            position: relative;
-            height: 24rem;
-            background: linear-gradient(135deg, var(--emerald-100) 0%, var(--blue-100) 100%);
-            border-radius: 1rem;
-            padding: 2rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: var(--shadow-xl);
-        }
-
-        /* Event Cards */
-        .event-card {
-            position: relative;
-            background-color: var(--white);
-            border: 2px solid var(--emerald-200);
-            border-radius: 0.5rem;
-            padding: 1.5rem;
-            transition: all 0.3s;
-            display: block;
-        }
-
-        .event-card:hover {
-            transform: translateY(-0.5rem);
-            box-shadow: var(--shadow-xl);
-            border-color: var(--emerald-400);
-        }
-
-        .event-category {
-            position: absolute;
-            top: -0.75rem;
-            left: 1.5rem;
-            font-family: 'Roboto Mono', monospace;
-            font-size: 0.75rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            box-shadow: var(--shadow-md);
-        }
-
-        .category-career, .category-Career {
-            background-color: var(--emerald-500);
-            color: var(--white);
-        }
-
-        .category-workshop, .category-Workshop {
-            background-color: var(--blue-500);
-            color: var(--white);
-        }
-
-        .category-competition, .category-Competition {
-            background-color: var(--amber-500);
-            color: var(--white);
-        }
-
-        .category-socials, .category-Socials {
-            background-color: var(--purple-500);
-            color: var(--white);
-        }
-
-        /* Stat Counter */
-        .stat-counter {
-            text-align: center;
-            padding: 2rem;
-            background: linear-gradient(135deg, var(--emerald-50) 0%, var(--blue-50) 100%);
-            border: 2px solid var(--emerald-300);
-            border-radius: 0.5rem;
-            box-shadow: var(--shadow-lg);
-        }
-
-        .stat-number {
-            font-family: 'Inter', sans-serif;
-            font-size: clamp(2.5rem, 5vw, 3.75rem);
-            font-weight: 900;
-            color: var(--emerald-600);
-            margin-bottom: 0.75rem;
-        }
-
-        /* Loading Spinner */
-        .loading-spinner {
-            display: inline-block;
-            width: 2rem;
-            height: 2rem;
-            border: 3px solid var(--emerald-200);
-            border-radius: 50%;
-            border-top-color: var(--emerald-600);
-            animation: spin 1s ease-in-out infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .loading-overlay {
-            position: absolute;
-            inset: 0;
-            background: rgba(255, 255, 255, 0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 0.5rem;
-        }
-
         /* Media Queries */
         @media (min-width: 768px) {
             .md\:flex {
@@ -1208,14 +1248,6 @@
                 flex-direction: row;
             }
 
-            .desktop-nav {
-                display: flex;
-            }
-
-            .mobile-menu-button {
-                display: none;
-            }
-
             .footer-grid {
                 grid-template-columns: repeat(4, 1fr);
             }
@@ -1231,50 +1263,47 @@
     </style>
 </head>
 <body>
-    <!-- Header -->
-    <header class="header">
-        <div class="header-container">
-            <div class="header-inner">
+    <!-- ===== MODERN NAVBAR (SIDEBAR STYLE) – properly arranged, no duplicates ===== -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <div class="nav-flex">
                 <!-- Logo -->
-                <a href="index.html" class="logo">
-                    <span class="logo-text">
-                        N.U.E.S.A <span class="logo-highlight">BIU</span>
-                    </span>
+                <a href="/" class="logo-link" id="logoLink">
+                    <span class="logo-main">N.U.E.S.A</span>
+                    <span class="logo-highlight">BIU</span>
                 </a>
 
                 <!-- Desktop Navigation -->
-                <nav class="desktop-nav">
-                    <a href="./index.html" class="nav-link active">Home</a>
-                    <a href="./about.html" class="nav-link">About</a>
-                    <a href="./members.html" class="nav-link">Members</a>
-                    <a href="./events.html" class="nav-link">Events</a>
-                    <a href="./resources.html" class="nav-link">Resources</a>
-                    <a href="./news.html" class="nav-link">News</a>
-                    <a href="./contacts.html" class="nav-link">Contact</a>
-                </nav>
-
-                <!-- Mobile Menu Button -->
-                <div class="md:hidden">
-                    <button class="mobile-menu-button" id="mobileMenuBtn">
-                        <i class="fas fa-bars text-xl"></i>
-                    </button>
+                  <div class="desktop-links">
+                    <a href="index.html" class="nav-link active">HOME</a>
+                    <a href="about.html" class="nav-link">ABOUT</a>
+                    <a href="members.html" class="nav-link">MEMBERS</a>
+                    <a href="events.html" class="nav-link">EVENTS</a>
+                    <a href="resources.html" class="nav-link">RESOURCES</a>
+                    <a href="cgpa-calculator.html" class="nav-link">CGPA CALC</a>
+                    <a href="admission.html" class="nav-link">ADMISSION</a>
+                    <a href="course-representatives.html" class="nav-link">COURSE REPS</a>
+                    <a href="news.html" class="nav-link">NEWS</a>
+                    <a href="contact.html" class="nav-link">CONTACT</a>
                 </div>
+                <button class="mobile-menu-btn" id="mobileMenuBtn">
+                    <i class="fas fa-bars fa-2x" id="menuIcon"></i>
+                </button>
             </div>
         </div>
-
-        <!-- Mobile Navigation -->
-        <nav class="mobile-nav" id="mobileNav">
-            <div class="mobile-nav-items">
-                <a href="./index.html" class="mobile-nav-link active">Home</a>
-                <a href="./about.html" class="mobile-nav-link">About</a>
-                <a href="./members.html" class="mobile-nav-link">Members</a>
-                <a href="./events.html" class="mobile-nav-link">Events</a>
-                <a href="./resources.html" class="mobile-nav-link">Resources</a>
-                <a href="./news.html" class="mobile-nav-link">News</a>
-                <a href="./contacts.html" class="mobile-nav-link">Contact</a>
-            </div>
-        </nav>
-    </header>
+        <div class="mobile-overlay" id="mobileOverlay">
+            <a href="index.html" class="mobile-link active">HOME</a>
+            <a href="about.html" class="mobile-link">ABOUT</a>
+            <a href="members.html" class="mobile-link">MEMBERS</a>
+            <a href="events.html" class="mobile-link">EVENTS</a>
+            <a href="resources.html" class="mobile-link">RESOURCES</a>
+            <a href="cgpa-calculator.html" class="mobile-link">CGPA CALC</a>
+            <a href="admission.html" class="mobile-link">ADMISSION</a>
+            <a href="course-representatives.html" class="mobile-link">COURSE REPS</a>
+            <a href="news.html" class="mobile-link">NEWS</a>
+            <a href="contact.html" class="mobile-link">CONTACT</a>
+        </div>
+    </nav>
 
     <!-- Hero Section -->
     <section class="hero">
@@ -1365,12 +1394,7 @@
                 </div>
 
                 <div class="about-image">
-                    <div class="text-center">
-                        <i class="fas fa-users text-6xl text-emerald-600 mb-4"></i>
-                        <span class="font-mono text-sm text-slate-600 uppercase font-bold">
-                            Community Image Placeholder
-                        </span>
-                    </div>
+                    <img src="/logo.jpg" class="img-medium img-center" alt="NUESA BIU Logo">
                     <!-- Decorative corners -->
                     <div class="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-emerald-600 rounded-tl-lg"></div>
                     <div class="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-emerald-600 rounded-tr-lg"></div>
@@ -1537,10 +1561,144 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // API Configuration - Live backend only, no mock data
+        // API Configuration
         const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
         
-        // ==================== UTILITY FUNCTIONS ====================
+        // ==================== NAVBAR FUNCTIONALITY ====================
+        const navbar = document.getElementById('navbar');
+        const mobileBtn = document.getElementById('mobileMenuBtn');
+        const mobileOverlay = document.getElementById('mobileOverlay');
+        const menuIcon = document.getElementById('menuIcon');
+        const desktopLinks = document.querySelectorAll('.nav-link');
+        const mobileLinks = document.querySelectorAll('.mobile-link');
+
+        // Set current path (for demo, using '/members' to show active)
+        const currentPath = '/members';
+
+        // Update active class based on currentPath
+        function updateActiveLinks() {
+            desktopLinks.forEach(link => {
+                const path = link.getAttribute('data-path');
+                if (path === currentPath) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
+                }
+            });
+
+            mobileLinks.forEach(link => {
+                const path = link.getAttribute('data-path');
+                if (path === currentPath) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
+                }
+            });
+        }
+
+        // Navbar scroll effect
+        function handleScroll() {
+            if (window.scrollY > 20) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
+        }
+        window.addEventListener('scroll', handleScroll);
+        handleScroll();
+
+        // Mobile menu toggle
+        function toggleMobileMenu(forceState) {
+            const isOpen = mobileOverlay.classList.contains('open');
+            
+            if (forceState === 'open' || (!forceState && !isOpen)) {
+                mobileOverlay.classList.add('open');
+                menuIcon.className = 'fas fa-times fa-2x';
+            } else {
+                mobileOverlay.classList.remove('open');
+                menuIcon.className = 'fas fa-bars fa-2x';
+            }
+        }
+
+        mobileBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = mobileOverlay.classList.contains('open');
+            toggleMobileMenu(isOpen ? 'close' : 'open');
+        });
+
+        // Close mobile menu when clicking a link
+        mobileLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                mobileOverlay.classList.remove('open');
+                menuIcon.className = 'fas fa-bars fa-2x';
+            });
+        });
+
+        // Close when clicking outside
+        document.addEventListener('click', (e) => {
+            if (mobileOverlay.classList.contains('open') && 
+                !mobileOverlay.contains(e.target) && 
+                !mobileBtn.contains(e.target)) {
+                mobileOverlay.classList.remove('open');
+                menuIcon.className = 'fas fa-bars fa-2x';
+            }
+        });
+
+        // Desktop links click handler
+        desktopLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const newPath = link.getAttribute('data-path');
+                
+                desktopLinks.forEach(l => {
+                    if (l.getAttribute('data-path') === newPath) {
+                        l.classList.add('active');
+                    } else {
+                        l.classList.remove('active');
+                    }
+                });
+                mobileLinks.forEach(l => {
+                    if (l.getAttribute('data-path') === newPath) {
+                        l.classList.add('active');
+                    } else {
+                        l.classList.remove('active');
+                    }
+                });
+
+                if (mobileOverlay.classList.contains('open')) {
+                    mobileOverlay.classList.remove('open');
+                    menuIcon.className = 'fas fa-bars fa-2x';
+                }
+            });
+        });
+
+        // Logo click
+        document.getElementById('logoLink').addEventListener('click', (e) => {
+            e.preventDefault();
+            desktopLinks.forEach(l => {
+                if (l.getAttribute('data-path') === '/') {
+                    l.classList.add('active');
+                } else {
+                    l.classList.remove('active');
+                }
+            });
+            mobileLinks.forEach(l => {
+                if (l.getAttribute('data-path') === '/') {
+                    l.classList.add('active');
+                } else {
+                    l.classList.remove('active');
+                }
+            });
+            if (mobileOverlay.classList.contains('open')) {
+                mobileOverlay.classList.remove('open');
+                menuIcon.className = 'fas fa-bars fa-2x';
+            }
+        });
+
+        updateActiveLinks();
+
+        // ==================== BACKEND INTEGRATION (keep your existing) ====================
         
         function showLoading(containerId) {
             const container = document.getElementById(containerId);
@@ -1569,8 +1727,6 @@
             }
         }
 
-        // ==================== API FUNCTIONS ====================
-        
         async function fetchAPI(endpoint) {
             try {
                 const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -1591,15 +1747,11 @@
             }
         }
 
-        // ==================== STATISTICS ====================
-        
         async function loadStatistics() {
             try {
-                // Try to get stats from API
                 const data = await fetchAPI('/api/stats');
                 
                 if (data.status === 'success') {
-                    // Update counters with real data
                     document.getElementById('membersCount').textContent = data.data.members || '0';
                     document.getElementById('departmentsCount').textContent = data.data.departments || '3';
                     document.getElementById('eventsCount').textContent = data.data.events || '0';
@@ -1608,26 +1760,20 @@
                 }
             } catch (error) {
                 console.warn('Could not load statistics from API');
-                // Leave counters as 0 - no mock data
             }
         }
 
-        // ==================== EVENTS ====================
-        
         async function loadEvents() {
             const container = document.getElementById('eventsContainer');
             
             try {
                 showLoading('eventsContainer');
                 
-                // Fetch events from API
                 const data = await fetchAPI('/api/events?status=upcoming&limit=3');
                 
                 if (data.status === 'success' && data.data && data.data.length > 0) {
-                    // Display real events
                     displayEvents(data.data);
                 } else {
-                    // No events available - show empty state
                     container.innerHTML = `
                         <div class="col-span-full text-center py-12">
                             <i class="fas fa-calendar-times text-4xl text-slate-400 mb-4"></i>
@@ -1638,7 +1784,6 @@
                 }
             } catch (error) {
                 console.warn('Could not load events from API');
-                // Show empty state instead of mock data
                 container.innerHTML = `
                     <div class="col-span-full text-center py-12">
                         <i class="fas fa-calendar-times text-4xl text-slate-400 mb-4"></i>
@@ -1665,7 +1810,6 @@
             let html = '';
             
             events.slice(0, 3).forEach(event => {
-                // Format date
                 const eventDate = new Date(event.date);
                 const formattedDate = eventDate.toLocaleDateString('en-US', {
                     month: 'short',
@@ -1673,10 +1817,7 @@
                     year: 'numeric'
                 });
 
-                // Format time
                 let timeDisplay = event.time || event.start_time || 'TBA';
-
-                // Get category class
                 const categoryClass = getCategoryClass(event.category);
 
                 html += `
@@ -1728,67 +1869,15 @@
             return categoryMap[category] || 'category-workshop';
         }
 
-        // ==================== MEMBERS ====================
-        
         async function loadMembers() {
             try {
                 const data = await fetchAPI('/api/members');
-                // You can use this data for the members page
                 console.log('Members loaded:', data);
             } catch (error) {
                 console.warn('Could not load members');
             }
         }
 
-        // ==================== MOBILE MENU ====================
-        
-        function setupMobileMenu() {
-            const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-            const mobileNav = document.getElementById('mobileNav');
-            
-            if (mobileMenuBtn) {
-                mobileMenuBtn.addEventListener('click', function() {
-                    mobileNav.classList.toggle('open');
-                    const icon = this.querySelector('i');
-                    if (icon) {
-                        icon.classList.toggle('fa-bars');
-                        icon.classList.toggle('fa-times');
-                    }
-                });
-            }
-            
-            // Close mobile menu when clicking outside
-            document.addEventListener('click', function(e) {
-                if (mobileNav && mobileMenuBtn && 
-                    !mobileNav.contains(e.target) && 
-                    !mobileMenuBtn.contains(e.target)) {
-                    mobileNav.classList.remove('open');
-                    const icon = mobileMenuBtn.querySelector('i');
-                    if (icon) {
-                        icon.classList.remove('fa-times');
-                        icon.classList.add('fa-bars');
-                    }
-                }
-            });
-        }
-
-        // ==================== PAGE HIGHLIGHT ====================
-        
-        function highlightCurrentPage() {
-            const currentPage = window.location.pathname.split('/').pop() || 'index.html';
-            
-            document.querySelectorAll('.desktop-nav .nav-link, .mobile-nav-link').forEach(link => {
-                const href = link.getAttribute('href');
-                if (href === currentPage) {
-                    link.classList.add('active');
-                } else {
-                    link.classList.remove('active');
-                }
-            });
-        }
-
-        // ==================== ANIMATIONS ====================
-        
         function setupScrollAnimations() {
             const observerOptions = {
                 threshold: 0.1,
@@ -1813,17 +1902,11 @@
             });
         }
 
-        // ==================== INITIALIZATION ====================
-        
         async function initialize() {
             console.log('NUESA BIU - Connecting to live backend:', API_BASE_URL);
             
-            // Setup UI components
-            setupMobileMenu();
-            highlightCurrentPage();
             setupScrollAnimations();
             
-            // Load data from API (no fallbacks, no mock data)
             await loadStatistics();
             await loadEvents();
             await loadMembers();
@@ -1831,7 +1914,6 @@
             console.log('Initialization complete');
         }
 
-        // Start the application
         initialize();
     });
     </script>
