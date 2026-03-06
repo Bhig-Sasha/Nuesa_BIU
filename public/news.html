@@ -72,6 +72,10 @@
             padding-top: 80px;
         }
 
+        body.menu-open {
+            overflow: hidden;
+        }
+
         .font-sans {
             font-family: 'Inter', sans-serif;
         }
@@ -679,11 +683,6 @@
             border-left: 4px solid var(--amber-400);
         }
 
-        /* Main content padding to account for fixed navbar */
-        .main-content {
-            padding-top: 80px;
-        }
-
         /* Media Queries for Responsive Navbar */
         @media screen and (max-width: 1024px) {
             .nav-links {
@@ -1169,6 +1168,12 @@
             box-shadow: var(--shadow-md);
         }
 
+        .load-more-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         /* No Articles Message */
         .no-articles {
             text-align: center;
@@ -1195,6 +1200,238 @@
             font-family: 'Roboto Mono', monospace;
             font-size: 0.875rem;
             color: var(--gray-600);
+        }
+
+        /* Loading State */
+        .loading-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 4rem;
+        }
+        
+        .spinner {
+            width: 3rem;
+            height: 3rem;
+            border: 3px solid var(--gray-200);
+            border-top-color: var(--emerald-600);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 4rem;
+            background: var(--white);
+            border: 1px dashed var(--gray-300);
+            border-radius: 0.5rem;
+        }
+        
+        .empty-state i {
+            font-size: 3rem;
+            color: var(--gray-300);
+            margin-bottom: 1rem;
+        }
+        
+        .empty-state h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+            color: var(--gray-700);
+        }
+        
+        .empty-state p {
+            color: var(--gray-600);
+        }
+        
+        /* Filter Message */
+        .filter-message {
+            background: var(--emerald-50);
+            border: 1px solid var(--emerald-500);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .filter-count {
+            margin-left: 0.5rem;
+            color: var(--emerald-600);
+        }
+        
+        .clear-filter-btn {
+            padding: 0.25rem 0.75rem;
+            background: var(--white);
+            border: 1px solid var(--emerald-500);
+            border-radius: 0.25rem;
+            color: var(--emerald-700);
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+        
+        .clear-filter-btn:hover {
+            background: var(--emerald-500);
+            color: var(--white);
+        }
+        
+        /* Modal Styles */
+        .article-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 1rem;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            max-width: 800px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-2xl);
+            position: relative;
+            animation: slideUp 0.3s ease;
+        }
+        
+        .close-modal {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: var(--gray-600);
+            cursor: pointer;
+            padding: 0.5rem;
+            line-height: 1;
+            transition: color 0.2s ease;
+        }
+        
+        .close-modal:hover {
+            color: var(--gray-800);
+        }
+        
+        .modal-meta {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            color: var(--gray-600);
+            font-size: 0.875rem;
+            flex-wrap: wrap;
+        }
+        
+        .modal-tags {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .modal-tag {
+            padding: 0.25rem 0.5rem;
+            background: var(--gray-100);
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            color: var(--gray-600);
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        
+        .modal-tag:hover {
+            background: var(--gray-200);
+        }
+        
+        .modal-body {
+            line-height: 1.6;
+            color: var(--gray-700);
+            margin-bottom: 2rem;
+        }
+        
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+        
+        .copy-link-btn {
+            padding: 0.5rem 1rem;
+            background: var(--emerald-600);
+            color: white;
+            border: none;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        
+        .copy-link-btn:hover {
+            background: var(--emerald-700);
+        }
+        
+        .close-modal-btn {
+            padding: 0.5rem 1rem;
+            background: var(--gray-200);
+            border: none;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        
+        .close-modal-btn:hover {
+            background: var(--gray-300);
+        }
+        
+        /* Toast Notifications */
+        .toast {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            z-index: 10000;
+            animation: slideIn 0.3s ease;
+        }
+        
+        .toast-success {
+            background: var(--emerald-600);
+        }
+        
+        .toast-error {
+            background: #ef4444;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
 
         /* Media Queries */
@@ -1270,7 +1507,7 @@
     </style>
 </head>
 <body>
-    <!-- ===== NEW NAVBAR (REPLACED) ===== -->
+    <!-- ===== NEW NAVBAR ===== -->
     <nav class="navbar" id="navbar">
         <div class="nav-container">
             <div class="nav-flex">
@@ -1307,7 +1544,7 @@
         <!-- Mobile Navigation -->
         <div class="mobile-nav" id="mobileNav">
             <ul>
-                <li><a href="index.html" class="active">HOME</a></li>
+                <li><a href="index.html">HOME</a></li>
                 <li><a href="about.html">ABOUT</a></li>
                 <li><a href="members.html">MEMBERS</a></li>
                 <li><a href="events.html">EVENTS</a></li>
@@ -1321,7 +1558,7 @@
         </div>
     </nav>
 
-    <!-- News Page Content (EXACTLY AS ORIGINAL) -->
+    <!-- News Page Content -->
     <main class="min-h-screen bg-gray-100">
         <!-- Header Section -->
         <section class="news-header">
@@ -1352,7 +1589,7 @@
         </section>
     </main>
 
-    <!-- Footer (EXACTLY AS ORIGINAL) -->
+    <!-- Footer -->
     <footer class="footer">
         <div class="footer-container">
             <div class="footer-grid">
@@ -1547,11 +1784,8 @@
             const ARTICLES_PER_PAGE = 6;
             
             // DOM Elements
-            const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-            const mobileNav = document.getElementById('mobileNav');
             const articlesGrid = document.getElementById('articlesGrid');
             const loadMoreBtn = document.getElementById('loadMoreBtn');
-            const logoBtn = document.getElementById('logoBtn');
             
             if (!articlesGrid) return;
             
@@ -1568,13 +1802,6 @@
             
             if (loadMoreBtn) {
                 loadMoreBtn.addEventListener('click', loadMoreArticles);
-            }
-            
-            if (logoBtn) {
-                logoBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    window.location.href = 'index.html';
-                });
             }
             
             addHeaderAnimation();
@@ -1866,9 +2093,6 @@
                 modal.querySelector('.close-modal').addEventListener('click', closeModal);
                 modal.querySelector('.close-modal-btn').addEventListener('click', closeModal);
                 
-                const closeBtn = modal.querySelector('.close-modal');
-                if (closeBtn) closeBtn.addEventListener('click', closeModal);
-                
                 modal.addEventListener('click', function(e) {
                     if (e.target === this) {
                         closeModal();
@@ -2097,9 +2321,9 @@
                 });
             }
         }
+
         // ==================== INITIALIZE EVERYTHING ====================
         document.addEventListener('DOMContentLoaded', function() {
-            addStyles();
             initNavbar();
             initNewsPage();
         });
