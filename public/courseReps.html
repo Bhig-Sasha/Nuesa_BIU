@@ -625,6 +625,24 @@
             margin-top: 1rem;
             color: var(--slate-600);
         }
+
+        .hidden {
+            display: none !important;
+        }
+
+        #gridContainer {
+            border: 3px solid red !important;
+            min-height: 100px;
+        }
+
+        #listContainer {
+            border: 3px solid blue !important;
+            min-height: 100px;
+        }
+
+        .rep-card {
+            border: 2px solid green !important;
+        }
     </style>
 </head>
 <body>
@@ -1098,6 +1116,59 @@
             }
             
             return filtered;
+        }
+
+        function debugVisibility() {
+            console.log('=== DEBUG VISIBILITY ===');
+            console.log('gridContainer classes:', gridContainer.className);
+            console.log('gridContainer hidden?', gridContainer.classList.contains('hidden'));
+            console.log('gridContainer HTML length:', gridContainer.innerHTML.length);
+            console.log('listContainer classes:', listContainer.className);
+            console.log('emptyState classes:', emptyState.className);
+            console.log('loadingContainer classes:', loadingContainer.className);
+            console.log('levelsData length:', levelsData.length);
+            console.log('filtered length:', filterLevels().length);
+            console.log('currentView:', currentView);
+        }
+
+        // Call it after filterAndRender
+        function filterAndRender() {
+            const filtered = filterLevels();
+            
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+                gridContainer.classList.add('hidden');
+                listContainer.classList.add('hidden');
+                emptyState.innerHTML = `
+                    <i class="fas fa-search" style="color: var(--slate-400);"></i>
+                    <h3>No results found</h3>
+                    <p>Try adjusting your search or filter criteria.</p>
+                `;
+                debugVisibility(); // Add debug call
+                return;
+            }
+            
+            emptyState.classList.add('hidden');
+            
+            if (currentView === 'grid') {
+                gridContainer.classList.remove('hidden');
+                listContainer.classList.add('hidden');
+                renderGrid(filtered);
+                console.log('Grid rendered with', filtered.length, 'items');
+            } else {
+                listContainer.classList.remove('hidden');
+                gridContainer.classList.add('hidden');
+                renderList(filtered);
+            }
+            
+            debugVisibility(); // Add debug call
+            
+            // Trigger entrance animation
+            setTimeout(() => {
+                document.querySelectorAll('.rep-card').forEach((card, i) => {
+                    card.style.animationDelay = `${i * 0.05}s`;
+                });
+            }, 50);
         }
 
         // ===== Render functions =====
