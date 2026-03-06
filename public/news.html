@@ -1664,104 +1664,99 @@
     </footer>
 
 <script>
-    // ===== COMBINED NAVBAR AND NEWS PAGE SCRIPT =====
-    (function() {
+    document.addEventListener('DOMContentLoaded', function() {
         // ==================== NAVBAR FUNCTIONALITY ====================
-        function initNavbar() {
-            const navbar = document.getElementById('navbar');
-            const hamburger = document.getElementById('hamburger');
-            const mobileNav = document.getElementById('mobileNav');
-            const mobileLinks = document.querySelectorAll('.mobile-nav ul li a');
-            const desktopLinks = document.querySelectorAll('.nav-links li a');
+        const navbar = document.getElementById('navbar');
+        const hamburger = document.getElementById('hamburger');
+        const mobileNav = document.getElementById('mobileNav');
+        const mobileLinks = document.querySelectorAll('.mobile-nav ul li a');
+        const desktopLinks = document.querySelectorAll('.nav-links li a');
 
-            if (!navbar || !hamburger || !mobileNav) return;
-
-            // Get current path for active link highlighting
-            let currentPath = window.location.pathname;
-            if (currentPath.endsWith('.html')) {
-                currentPath = currentPath.replace('.html', '');
-            }
-            if (currentPath === '/' || currentPath === '/index') {
-                currentPath = '/';
-            }
-
-            // Update active links
-            function updateActiveLinks() {
-                desktopLinks.forEach(link => {
-                    const href = link.getAttribute('href').replace('.html', '');
-                    if (href === currentPath || (currentPath === '/' && href === 'index')) {
-                        link.classList.add('active');
-                    } else {
-                        link.classList.remove('active');
-                    }
-                });
-
-                mobileLinks.forEach(link => {
-                    const href = link.getAttribute('href').replace('.html', '');
-                    if (href === currentPath || (currentPath === '/' && href === 'index')) {
-                        link.classList.add('active');
-                    } else {
-                        link.classList.remove('active');
-                    }
-                });
-            }
-
-            // Navbar scroll effect
-            function handleScroll() {
-                if (window.scrollY > 20) {
-                    navbar.classList.add('scrolled');
-                } else {
-                    navbar.classList.remove('scrolled');
-                }
-            }
-            window.addEventListener('scroll', handleScroll);
-            handleScroll();
-
-            // Toggle mobile menu
-            function toggleMobileMenu(open) {
-                if (open) {
-                    hamburger.classList.add('active');
-                    mobileNav.classList.add('active');
-                    document.body.classList.add('menu-open');
-                } else {
-                    hamburger.classList.remove('active');
-                    mobileNav.classList.remove('active');
-                    document.body.classList.remove('menu-open');
-                }
-            }
-
-            hamburger.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const isOpen = hamburger.classList.contains('active');
-                toggleMobileMenu(!isOpen);
-            });
-
-            // Close mobile menu when clicking a link
-            mobileLinks.forEach(link => {
-                link.addEventListener('click', () => {
-                    toggleMobileMenu(false);
-                });
-            });
-
-            // Close mobile menu when clicking outside
-            document.addEventListener('click', (e) => {
-                if (mobileNav.classList.contains('active') && 
-                    !mobileNav.contains(e.target) && 
-                    !hamburger.contains(e.target)) {
-                    toggleMobileMenu(false);
-                }
-            });
-
-            // Close on escape key
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && mobileNav.classList.contains('active')) {
-                    toggleMobileMenu(false);
-                }
-            });
-
-            updateActiveLinks();
+        // Get current path for active link highlighting
+        let currentPath = window.location.pathname;
+        if (currentPath.endsWith('.html')) {
+            currentPath = currentPath.replace('.html', '');
         }
+        if (currentPath === '/' || currentPath === '/index') {
+            currentPath = '/';
+        }
+
+        // Update active links
+        function updateActiveLinks() {
+            desktopLinks.forEach(link => {
+                const href = link.getAttribute('href').replace('.html', '');
+                if (href === currentPath || (currentPath === '/' && href === 'index')) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
+                }
+            });
+
+            mobileLinks.forEach(link => {
+                const href = link.getAttribute('href').replace('.html', '');
+                if (href === currentPath || (currentPath === '/' && href === 'index')) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
+                }
+            });
+        }
+
+        // Navbar scroll effect
+        function handleScroll() {
+            if (window.scrollY > 20) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
+        }
+        window.addEventListener('scroll', handleScroll);
+        handleScroll();
+
+        // Toggle mobile menu
+        function toggleMobileMenu(open) {
+            if (open) {
+                hamburger.classList.add('active');
+                mobileNav.classList.add('active');
+                document.body.classList.add('menu-open');
+            } else {
+                hamburger.classList.remove('active');
+                mobileNav.classList.remove('active');
+                document.body.classList.remove('menu-open');
+            }
+        }
+
+        hamburger.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const isOpen = hamburger.classList.contains('active');
+            toggleMobileMenu(!isOpen);
+        });
+
+        // Close mobile menu when clicking a link
+        mobileLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                toggleMobileMenu(false);
+            });
+        });
+
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (mobileNav.classList.contains('active') && 
+                !mobileNav.contains(e.target) && 
+                !hamburger.contains(e.target)) {
+                toggleMobileMenu(false);
+            }
+        });
+
+        // Close on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && mobileNav.classList.contains('active')) {
+                toggleMobileMenu(false);
+            }
+        });
+
+        updateActiveLinks();
 
         // ==================== NEWS PAGE FUNCTIONALITY ====================
         function initNewsPage() {
