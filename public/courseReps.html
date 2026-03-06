@@ -68,6 +68,7 @@
             background-color: var(--gray-100);
             color: var(--gray-800);
             line-height: 1.5;
+            overflow-x: hidden;
         }
 
         /* ===== MODERN NAVBAR STYLES ===== */
@@ -75,7 +76,7 @@
             position: fixed;
             top: 0;
             width: 100%;
-            z-index: 50;
+            z-index: 1000;
             transition: all var(--transition-base);
             background-color: rgba(6, 78, 59, 0.95);
             padding: 1.25rem 0;
@@ -116,7 +117,7 @@
             display: flex;
             align-items: center;
             gap: 0.25rem;
-            z-index: 50;
+            z-index: 1001;
             text-decoration: none;
             transition: transform var(--transition-fast);
         }
@@ -189,14 +190,16 @@
             width: 100%;
         }
 
+        /* Mobile Menu Button */
         .mobile-menu-btn {
             display: block;
             background: none;
             border: none;
             color: var(--white);
             cursor: pointer;
-            z-index: 50;
+            z-index: 1001;
             transition: transform var(--transition-fast);
+            position: relative;
         }
 
         .mobile-menu-btn:hover {
@@ -210,62 +213,77 @@
             }
         }
 
+        /* Mobile Overlay - Fixed positioning */
         .mobile-overlay {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
-            min-height: 100vh;
+            height: 100vh;
             background: linear-gradient(135deg, var(--emerald-900), var(--emerald-800));
             display: flex;
             flex-direction: column;
-            padding: 6rem 1.5rem 2rem;
+            justify-content: center;
+            align-items: center;
+            padding: 5rem 2rem;
             overflow-y: auto;
             opacity: 0;
             visibility: hidden;
-            transform: translateY(-20px);
-            transition: opacity var(--transition-base), transform var(--transition-base), visibility var(--transition-base);
+            transform: translateY(-100%);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            pointer-events: none;
         }
 
         .mobile-overlay.open {
             opacity: 1;
             visibility: visible;
             transform: translateY(0);
+            pointer-events: all;
         }
 
         .mobile-link {
             font-family: 'Roboto Mono', monospace;
-            font-size: 1.125rem;
+            font-size: 1.5rem;
             font-weight: 600;
             letter-spacing: 0.1em;
             text-decoration: none;
-            border-bottom: 1px solid var(--emerald-800);
-            padding-bottom: 1rem;
-            margin-bottom: 1rem;
             color: var(--white);
             transition: all var(--transition-fast);
+            margin: 1rem 0;
             transform: translateX(0);
+            opacity: 0;
+            animation: slideInLink 0.4s forwards;
+            animation-delay: calc(var(--i, 0) * 0.1s);
+        }
+
+        @keyframes slideInLink {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
 
         .mobile-link:hover {
             color: var(--amber-400);
-            padding-left: 0.5rem;
-            border-bottom-color: var(--amber-400);
+            transform: translateX(10px);
         }
 
         .mobile-link.active {
             color: var(--amber-400);
-        }
-
-        .mobile-link:last-child {
-            border-bottom: none;
+            border-left: 4px solid var(--amber-400);
+            padding-left: 1rem;
         }
 
         .main-wrapper {
             padding-top: 5rem;
         }
 
-        /* ===== HERO SECTION STYLES ===== */
+        /* ===== REST OF YOUR EXISTING STYLES (keep all your other styles) ===== */
         .hero {
             position: relative;
             background: linear-gradient(135deg, var(--emerald-800), var(--emerald-600), var(--teal-500));
@@ -1523,6 +1541,11 @@
             width: 1rem;
             height: 1rem;
         }
+
+        /* Prevent body scroll when mobile menu is open */
+        body.menu-open {
+            overflow: hidden;
+        }
     </style>
 </head>
 <body>
@@ -1546,22 +1569,22 @@
                     <a href="news.html" class="nav-link">NEWS</a>
                     <a href="contacts.html" class="nav-link">CONTACT</a>
                 </div>
-                <button class="mobile-menu-btn" id="mobileMenuBtn">
+                <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu">
                     <i class="fas fa-bars fa-2x" id="menuIcon"></i>
                 </button>
             </div>
         </div>
         <div class="mobile-overlay" id="mobileOverlay">
-            <a href="index.html" class="mobile-link">HOME</a>
-            <a href="about.html" class="mobile-link">ABOUT</a>
-            <a href="members.html" class="mobile-link">MEMBERS</a>
-            <a href="events.html" class="mobile-link">EVENTS</a>
-            <a href="resources.html" class="mobile-link">RESOURCES</a>
-            <a href="cgpa-Cal.html" class="mobile-link">CGPA CALC</a>
-            <a href="admission.html" class="mobile-link">ADMISSION</a>
-            <a href="courseReps.html" class="mobile-link active">COURSE REPS</a>
-            <a href="news.html" class="mobile-link">NEWS</a>
-            <a href="contacts.html" class="mobile-link">CONTACT</a>
+            <a href="index.html" class="mobile-link" style="--i:1">HOME</a>
+            <a href="about.html" class="mobile-link" style="--i:2">ABOUT</a>
+            <a href="members.html" class="mobile-link" style="--i:3">MEMBERS</a>
+            <a href="events.html" class="mobile-link" style="--i:4">EVENTS</a>
+            <a href="resources.html" class="mobile-link" style="--i:5">RESOURCES</a>
+            <a href="cgpa-Cal.html" class="mobile-link" style="--i:6">CGPA CALC</a>
+            <a href="admission.html" class="mobile-link" style="--i:7">ADMISSION</a>
+            <a href="courseReps.html" class="mobile-link active" style="--i:8">COURSE REPS</a>
+            <a href="news.html" class="mobile-link" style="--i:9">NEWS</a>
+            <a href="contacts.html" class="mobile-link" style="--i:10">CONTACT</a>
         </div>
     </nav>
 
@@ -1584,9 +1607,9 @@
                 <div class="toolbar-left">
                     <div class="select-wrapper">
                         <select id="sessionSelect" class="select">
-                            <option value="2025/2026">2025/2026 Session</option>
-                            <option value="2024/2025">2024/2025 Session</option>
-                            <option value="2023/2024">2023/2024 Session</option>
+                            <option value="2025/2026">2025/2026</option>
+                            <option value="2024/2025">2024/2025</option>
+                            <option value="2023/2024">2023/2024</option>
                         </select>
                     </div>
                     <div class="view-toggle">
@@ -1760,24 +1783,53 @@
             window.addEventListener('scroll', updateNavbar);
             updateNavbar();
 
-            // ===== Mobile menu toggle =====
-            mobileBtn.addEventListener('click', () => {
-                const isOpen = mobileOverlay.classList.contains('open');
-                if (isOpen) {
-                    mobileOverlay.classList.remove('open');
-                    menuIcon.className = 'fas fa-bars fa-2x';
-                } else {
+            // ===== Mobile menu toggle - FIXED =====
+            function toggleMobileMenu(open) {
+                if (open) {
                     mobileOverlay.classList.add('open');
                     menuIcon.className = 'fas fa-times fa-2x';
-                }
-            });
-            
-            document.querySelectorAll('.mobile-link').forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
+                    document.body.classList.add('menu-open');
+                } else {
                     mobileOverlay.classList.remove('open');
                     menuIcon.className = 'fas fa-bars fa-2x';
+                    document.body.classList.remove('menu-open');
+                }
+            }
+
+            mobileBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const isOpen = mobileOverlay.classList.contains('open');
+                toggleMobileMenu(!isOpen);
+            });
+
+            // Close mobile menu when clicking on a link
+            document.querySelectorAll('.mobile-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault(); // Remove this if you want actual navigation
+                    toggleMobileMenu(false);
+                    
+                    // Optional: Navigate after a short delay
+                    // setTimeout(() => {
+                    //     window.location.href = link.getAttribute('href');
+                    // }, 300);
                 });
+            });
+
+            // Close mobile menu when clicking outside
+            document.addEventListener('click', (e) => {
+                if (mobileOverlay.classList.contains('open') && 
+                    !mobileOverlay.contains(e.target) && 
+                    !mobileBtn.contains(e.target)) {
+                    toggleMobileMenu(false);
+                }
+            });
+
+            // Close mobile menu on escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && mobileOverlay.classList.contains('open')) {
+                    toggleMobileMenu(false);
+                }
             });
 
             // ===== Process API response =====

@@ -63,7 +63,10 @@
             color: var(--slate-800);
             line-height: 1.5;
             overflow-x: hidden;
-            padding-top: 80px; /* Prevent content hiding under fixed navbar */
+        }
+
+        body.menu-open {
+            overflow: hidden;
         }
 
         .font-sans {
@@ -427,6 +430,10 @@
             position: absolute;
         }
 
+        .fixed {
+            position: fixed;
+        }
+
         .inset-0 {
             top: 0;
             right: 0;
@@ -488,6 +495,14 @@
 
         .z-10 {
             z-index: 10;
+        }
+
+        .z-40 {
+            z-index: 40;
+        }
+
+        .z-50 {
+            z-index: 50;
         }
 
         .z-50 {
@@ -767,20 +782,23 @@
             display: block;
         }
 
-        /* ===== MODERN NAVBAR (SIDEBAR STYLE) – properly arranged ===== */
+        /* ===== MODERN NAVBAR ===== */
         .navbar {
             position: fixed;
             top: 0;
+            left: 0;
+            right: 0;
             width: 100%;
-            z-index: 50;
+            z-index: 1000;
             transition: all 0.3s ease;
             background-color: rgba(6, 78, 59, 0.95);
             padding: 1.25rem 0;
+            backdrop-filter: blur(8px);
         }
 
         .navbar.scrolled {
-            background-color: rgba(6, 78, 59, 0.95);
-            backdrop-filter: blur(8px);
+            background-color: rgba(6, 78, 59, 0.98);
+            backdrop-filter: blur(10px);
             box-shadow: var(--shadow-lg);
             padding: 0.75rem 0;
         }
@@ -807,6 +825,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: relative;
         }
 
         /* Logo */
@@ -814,8 +833,13 @@
             display: flex;
             align-items: center;
             gap: 0.25rem;
-            z-index: 50;
+            z-index: 1001;
             text-decoration: none;
+            transition: transform 0.3s ease;
+        }
+
+        .logo-link:hover {
+            transform: scale(1.05);
         }
 
         .logo-main {
@@ -853,14 +877,34 @@
             text-decoration: none;
             color: rgba(255, 255, 255, 0.9);
             transition: color 0.2s;
+            position: relative;
+        }
+
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background-color: var(--amber-400);
+            transition: width 0.3s;
         }
 
         .nav-link:hover {
             color: var(--amber-400);
         }
 
+        .nav-link:hover::after {
+            width: 100%;
+        }
+
         .nav-link.active {
             color: var(--amber-400);
+        }
+
+        .nav-link.active::after {
+            width: 100%;
         }
 
         /* Mobile menu button */
@@ -870,13 +914,15 @@
             border: none;
             color: var(--white);
             cursor: pointer;
-            z-index: 50;
+            z-index: 1001;
+            transition: all 0.3s;
             padding: 0.5rem;
             border-radius: 0.375rem;
         }
 
         .mobile-menu-btn:hover {
             color: var(--amber-400);
+            transform: rotate(90deg);
         }
 
         @media (min-width: 1024px) {
@@ -885,23 +931,25 @@
             }
         }
 
-        /* Mobile overlay */
+        /* Mobile overlay - FIXED */
         .mobile-overlay {
-            position: absolute;
-            top: 100%; /* Position right below navbar */
+            position: fixed;
+            top: 0;
             left: 0;
             width: 100%;
-            min-height: 100vh;
-            background-color: var(--emerald-900);
+            height: 100vh;
+            background: linear-gradient(135deg, var(--emerald-900), var(--emerald-800));
             display: flex;
             flex-direction: column;
-            padding: 2rem 1.5rem;
+            justify-content: center;
+            align-items: center;
+            padding: 5rem 2rem;
             overflow-y: auto;
             opacity: 0;
             visibility: hidden;
-            transform: translateY(-20px);
-            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
-            z-index: 40;
+            transform: translateY(-100%);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 999;
         }
 
         .mobile-overlay.open {
@@ -912,22 +960,52 @@
 
         .mobile-link {
             font-family: 'Roboto Mono', monospace;
-            font-size: 1.125rem;
+            font-size: 1.5rem;
             font-weight: 600;
             letter-spacing: 0.1em;
             text-decoration: none;
-            border-bottom: 1px solid var(--emerald-800);
-            padding-bottom: 1rem;
-            margin-bottom: 1rem;
             color: var(--white);
+            transition: all 0.3s;
+            margin: 0.75rem 0;
+            opacity: 0;
+            transform: translateX(-20px);
+        }
+
+        .mobile-overlay.open .mobile-link {
+            opacity: 1;
+            transform: translateX(0);
+            transition: opacity 0.4s, transform 0.4s;
+        }
+
+        .mobile-overlay.open .mobile-link:nth-child(1) { transition-delay: 0.1s; }
+        .mobile-overlay.open .mobile-link:nth-child(2) { transition-delay: 0.15s; }
+        .mobile-overlay.open .mobile-link:nth-child(3) { transition-delay: 0.2s; }
+        .mobile-overlay.open .mobile-link:nth-child(4) { transition-delay: 0.25s; }
+        .mobile-overlay.open .mobile-link:nth-child(5) { transition-delay: 0.3s; }
+        .mobile-overlay.open .mobile-link:nth-child(6) { transition-delay: 0.35s; }
+        .mobile-overlay.open .mobile-link:nth-child(7) { transition-delay: 0.4s; }
+        .mobile-overlay.open .mobile-link:nth-child(8) { transition-delay: 0.45s; }
+        .mobile-overlay.open .mobile-link:nth-child(9) { transition-delay: 0.5s; }
+        .mobile-overlay.open .mobile-link:nth-child(10) { transition-delay: 0.55s; }
+
+        .mobile-link:hover {
+            color: var(--amber-400);
+            transform: translateX(10px);
         }
 
         .mobile-link.active {
             color: var(--amber-400);
+            border-left: 4px solid var(--amber-400);
+            padding-left: 1rem;
         }
 
         .mobile-link:last-child {
             border-bottom: none;
+        }
+
+        /* Main content padding to account for fixed navbar */
+        .main-content {
+            padding-top: 80px;
         }
 
         /* Hero Section */
@@ -1278,9 +1356,9 @@
                     <a href="members.html" class="nav-link" data-path="/members">MEMBERS</a>
                     <a href="events.html" class="nav-link" data-path="/events">EVENTS</a>
                     <a href="resources.html" class="nav-link" data-path="/resources">RESOURCES</a>
-                    <a href="cgpa-calculator.html" class="nav-link" data-path="/cgpa-calculator">CGPA CALC</a>
+                    <a href="cgpa-Cal.html" class="nav-link" data-path="/cgpa-calculator">CGPA CALC</a>
                     <a href="admission.html" class="nav-link" data-path="/admission">ADMISSION</a>
-                    <a href="course-representatives.html" class="nav-link" data-path="/course-representatives">COURSE REPS</a>
+                    <a href="courseReps.html" class="nav-link" data-path="/course-representatives">COURSE REPS</a>
                     <a href="news.html" class="nav-link" data-path="/news">NEWS</a>
                     <a href="contacts.html" class="nav-link" data-path="/contact">CONTACT</a>
                 </div>
@@ -1297,182 +1375,185 @@
             <a href="members.html" class="mobile-link" data-path="/members">MEMBERS</a>
             <a href="events.html" class="mobile-link" data-path="/events">EVENTS</a>
             <a href="resources.html" class="mobile-link" data-path="/resources">RESOURCES</a>
-            <a href="cgpa-Cal.html" class="nav-link" data-path="/cgpa-calculator">CGPA CALC</a>
-            <a href="admission.html" class="nav-link" data-path="/admission">ADMISSION</a>
-            <a href="courseReps.html" class="nav-link" data-path="/course-reps">COURSE REPS</a>
+            <a href="cgpa-Cal.html" class="mobile-link" data-path="/cgpa-calculator">CGPA CALC</a>
+            <a href="admission.html" class="mobile-link" data-path="/admission">ADMISSION</a>
+            <a href="courseReps.html" class="mobile-link" data-path="/course-reps">COURSE REPS</a>
             <a href="news.html" class="mobile-link" data-path="/news">NEWS</a>
             <a href="contacts.html" class="mobile-link" data-path="/contact">CONTACT</a>
         </div>
     </nav>
 
-    <!-- Hero Section -->
-    <section class="hero">
-        <!-- Animated Background Pattern -->
-        <div class="hero-pattern">
-            <div class="circle-1 absolute top-20 left-20 w-64 h-64 border-4 border-white rounded-full animate-pulse"></div>
-            <div class="circle-2 absolute bottom-20 right-20 w-96 h-96 border-2 border-white transform rotate-45"></div>
-            <div class="circle-3 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] border border-white rounded-full opacity-50"></div>
-        </div>
-
-        <div class="hero-content">
-            <div class="inline-block mb-6 px-6 py-2 bg-white/20 backdrop-blur-sm border border-white/30 rounded-full">
-                <span class="font-mono text-sm font-bold uppercase tracking-widest text-white">
-                    Benson Idahosa University
-                </span>
+    <!-- Main content wrapper with padding top -->
+    <div class="main-content">
+        <!-- Hero Section -->
+        <section class="hero">
+            <!-- Animated Background Pattern -->
+            <div class="hero-pattern">
+                <div class="circle-1 absolute top-20 left-20 w-64 h-64 border-4 border-white rounded-full animate-pulse"></div>
+                <div class="circle-2 absolute bottom-20 right-20 w-96 h-96 border-2 border-white transform rotate-45"></div>
+                <div class="circle-3 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] border border-white rounded-full opacity-50"></div>
             </div>
 
-            <h1 class="font-sans text-4xl md:text-7xl font-black text-white mb-8 leading-tight tracking-tight drop-shadow-lg">
-                NUESA BIU <br />
-                <span class="text-amber-300">
-                    Empowering Tomorrow's Engineers
-                </span>
-            </h1>
+            <div class="hero-content">
+                <div class="inline-block mb-6 px-6 py-2 bg-white/20 backdrop-blur-sm border border-white/30 rounded-full">
+                    <span class="font-mono text-sm font-bold uppercase tracking-widest text-white">
+                        Benson Idahosa University
+                    </span>
+                </div>
 
-            <p class="font-sans text-lg md:text-xl text-emerald-50 max-w-2xl mx-auto mb-12 leading-relaxed">
-                Fostering innovation, academic excellence, and professional growth
-                for all engineering students at Benson Idahosa University.
-            </p>
+                <h1 class="font-sans text-4xl md:text-7xl font-black text-white mb-8 leading-tight tracking-tight drop-shadow-lg">
+                    NUESA BIU <br />
+                    <span class="text-amber-300">
+                        Empowering Tomorrow's Engineers
+                    </span>
+                </h1>
 
-            <div class="flex flex-col sm:flex-row justify-center gap-4">
-                <a href="members.html" class="btn btn-primary">
-                    Join Us <i class="fas fa-arrow-right ml-2"></i>
-                </a>
-                <a href="events.html" class="btn btn-secondary">
-                    Latest Events
-                </a>
+                <p class="font-sans text-lg md:text-xl text-emerald-50 max-w-2xl mx-auto mb-12 leading-relaxed">
+                    Fostering innovation, academic excellence, and professional growth
+                    for all engineering students at Benson Idahosa University.
+                </p>
+
+                <div class="flex flex-col sm:flex-row justify-center gap-4">
+                    <a href="members.html" class="btn btn-primary">
+                        Join Us <i class="fas fa-arrow-right ml-2"></i>
+                    </a>
+                    <a href="events.html" class="btn btn-secondary">
+                        Latest Events
+                    </a>
+                </div>
             </div>
-        </div>
 
-        <div class="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce text-white">
-            <i class="fas fa-chevron-down text-2xl"></i>
-        </div>
-    </section>
+            <div class="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce text-white">
+                <i class="fas fa-chevron-down text-2xl"></i>
+            </div>
+        </section>
 
-    <!-- About Preview -->
-    <section class="py-24 bg-white">
-        <div class="container">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-                <div class="space-y-8">
-                    <div class="tag tag-emerald">
-                        About Us
+        <!-- About Preview -->
+        <section class="py-24 bg-white">
+            <div class="container">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+                    <div class="space-y-8">
+                        <div class="tag tag-emerald">
+                            About Us
+                        </div>
+                        <h2 class="font-sans text-3xl md:text-5xl font-bold text-slate-800 leading-tight">
+                            Building the Future, <br />
+                            <span class="text-emerald-600">
+                                One Engineer at a Time.
+                            </span>
+                        </h2>
+                        <p class="font-sans text-lg text-slate-600 leading-relaxed">
+                            The Nigerian Universities Engineering Students' Association
+                            (NUESA) BIU Chapter is dedicated to bridging the gap between
+                            academic theory and practical industry application.
+                        </p>
+                        <ul class="space-y-4">
+                            <li class="flex items-center font-sans text-slate-700">
+                                <div class="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                                    <i class="fas fa-check text-white text-xs"></i>
+                                </div>
+                                Professional Development Workshops
+                            </li>
+                            <li class="flex items-center font-sans text-slate-700">
+                                <div class="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                                    <i class="fas fa-check text-white text-xs"></i>
+                                </div>
+                                Industry Networking Opportunities
+                            </li>
+                            <li class="flex items-center font-sans text-slate-700">
+                                <div class="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                                    <i class="fas fa-check text-white text-xs"></i>
+                                </div>
+                                Academic Support & Resources
+                            </li>
+                        </ul>
+                        <a href="about.html" class="btn btn-text">
+                            READ OUR FULL MISSION
+                            <i class="fas fa-arrow-right ml-2 arrow"></i>
+                        </a>
                     </div>
-                    <h2 class="font-sans text-3xl md:text-5xl font-bold text-slate-800 leading-tight">
-                        Building the Future, <br />
-                        <span class="text-emerald-600">
-                            One Engineer at a Time.
-                        </span>
+
+                    <div class="about-image">
+                        <img src="/logo.jpg" class="img-medium img-center" alt="NUESA BIU Logo">
+                        <!-- Decorative corners -->
+                        <div class="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-emerald-600 rounded-tl-lg"></div>
+                        <div class="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-emerald-600 rounded-tr-lg"></div>
+                        <div class="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-emerald-600 rounded-bl-lg"></div>
+                        <div class="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-emerald-600 rounded-br-lg"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Stats Section -->
+        <section class="py-20 bg-gradient-slate">
+            <div class="container">
+                <div class="text-center mb-12">
+                    <h2 class="font-sans text-3xl md:text-4xl font-bold text-slate-800 mb-4">
+                        Our Impact in Numbers
                     </h2>
-                    <p class="font-sans text-lg text-slate-600 leading-relaxed">
-                        The Nigerian Universities Engineering Students' Association
-                        (NUESA) BIU Chapter is dedicated to bridging the gap between
-                        academic theory and practical industry application.
+                    <p class="font-mono text-sm text-slate-600">
+                        Growing stronger every year
                     </p>
-                    <ul class="space-y-4">
-                        <li class="flex items-center font-sans text-slate-700">
-                            <div class="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                                <i class="fas fa-check text-white text-xs"></i>
-                            </div>
-                            Professional Development Workshops
-                        </li>
-                        <li class="flex items-center font-sans text-slate-700">
-                            <div class="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                                <i class="fas fa-check text-white text-xs"></i>
-                            </div>
-                            Industry Networking Opportunities
-                        </li>
-                        <li class="flex items-center font-sans text-slate-700">
-                            <div class="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                                <i class="fas fa-check text-white text-xs"></i>
-                            </div>
-                            Academic Support & Resources
-                        </li>
-                    </ul>
-                    <a href="about.html" class="btn btn-text">
-                        READ OUR FULL MISSION
-                        <i class="fas fa-arrow-right ml-2 arrow"></i>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div class="stat-counter">
+                        <div id="membersCount" class="stat-number">0</div>
+                        <div class="font-mono text-sm uppercase tracking-widest text-slate-700 font-bold">
+                            Active Members
+                        </div>
+                    </div>
+                    <div class="stat-counter">
+                        <div id="departmentsCount" class="stat-number">0</div>
+                        <div class="font-mono text-sm uppercase tracking-widest text-slate-700 font-bold">
+                            Departments
+                        </div>
+                    </div>
+                    <div class="stat-counter">
+                        <div id="eventsCount" class="stat-number">0</div>
+                        <div class="font-mono text-sm uppercase tracking-widest text-slate-700 font-bold">
+                            Annual Events
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Featured Events -->
+        <section class="py-24 bg-white">
+            <div class="container">
+                <div class="flex justify-between items-end mb-12">
+                    <div>
+                        <div class="tag tag-amber mb-4">
+                            What's Happening
+                        </div>
+                        <h2 class="font-sans text-3xl md:text-4xl font-bold text-slate-800 mb-2">
+                            Upcoming Events
+                        </h2>
+                        <p class="font-sans text-slate-600">
+                            Don't miss out on our latest activities
+                        </p>
+                    </div>
+                    <a href="events.html" class="hidden md:flex items-center font-mono text-sm font-bold text-emerald-600 hover:text-emerald-700 transition-colors group">
+                        VIEW ALL EVENTS
+                        <i class="fas fa-arrow-right ml-2 arrow group-hover:translate-x-1"></i>
                     </a>
                 </div>
 
-                <div class="about-image">
-                    <img src="/logo.jpg" class="img-medium img-center" alt="NUESA BIU Logo">
-                    <!-- Decorative corners -->
-                    <div class="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-emerald-600 rounded-tl-lg"></div>
-                    <div class="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-emerald-600 rounded-tr-lg"></div>
-                    <div class="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-emerald-600 rounded-bl-lg"></div>
-                    <div class="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-emerald-600 rounded-br-lg"></div>
+                <!-- Events Container -->
+                <div id="eventsContainer" class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <!-- Events will be dynamically loaded here -->
                 </div>
-            </div>
-        </div>
-    </section>
 
-    <!-- Stats Section -->
-    <section class="py-20 bg-gradient-slate">
-        <div class="container">
-            <div class="text-center mb-12">
-                <h2 class="font-sans text-3xl md:text-4xl font-bold text-slate-800 mb-4">
-                    Our Impact in Numbers
-                </h2>
-                <p class="font-mono text-sm text-slate-600">
-                    Growing stronger every year
-                </p>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div class="stat-counter">
-                    <div id="membersCount" class="stat-number">0</div>
-                    <div class="font-mono text-sm uppercase tracking-widest text-slate-700 font-bold">
-                        Active Members
-                    </div>
-                </div>
-                <div class="stat-counter">
-                    <div id="departmentsCount" class="stat-number">0</div>
-                    <div class="font-mono text-sm uppercase tracking-widest text-slate-700 font-bold">
-                        Departments
-                    </div>
-                </div>
-                <div class="stat-counter">
-                    <div id="eventsCount" class="stat-number">0</div>
-                    <div class="font-mono text-sm uppercase tracking-widest text-slate-700 font-bold">
-                        Annual Events
-                    </div>
+                <div class="mt-8 text-center md:hidden">
+                    <a href="events.html" class="inline-flex items-center font-mono text-sm font-bold text-emerald-600 hover:text-emerald-700 transition-colors group">
+                        VIEW ALL EVENTS
+                        <i class="fas fa-arrow-right ml-2 arrow group-hover:translate-x-1"></i>
+                    </a>
                 </div>
             </div>
-        </div>
-    </section>
-
-    <!-- Featured Events -->
-    <section class="py-24 bg-white">
-        <div class="container">
-            <div class="flex justify-between items-end mb-12">
-                <div>
-                    <div class="tag tag-amber mb-4">
-                        What's Happening
-                    </div>
-                    <h2 class="font-sans text-3xl md:text-4xl font-bold text-slate-800 mb-2">
-                        Upcoming Events
-                    </h2>
-                    <p class="font-sans text-slate-600">
-                        Don't miss out on our latest activities
-                    </p>
-                </div>
-                <a href="events.html" class="hidden md:flex items-center font-mono text-sm font-bold text-emerald-600 hover:text-emerald-700 transition-colors group">
-                    VIEW ALL EVENTS
-                    <i class="fas fa-arrow-right ml-2 arrow group-hover:translate-x-1"></i>
-                </a>
-            </div>
-
-            <!-- Events Container -->
-            <div id="eventsContainer" class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <!-- Events will be dynamically loaded here -->
-            </div>
-
-            <div class="mt-8 text-center md:hidden">
-                <a href="events.html" class="inline-flex items-center font-mono text-sm font-bold text-emerald-600 hover:text-emerald-700 transition-colors group">
-                    VIEW ALL EVENTS
-                    <i class="fas fa-arrow-right ml-2 arrow group-hover:translate-x-1"></i>
-                </a>
-            </div>
-        </div>
-    </section>
+        </section>
+    </div>
 
     <!-- Footer -->
     <footer class="footer">
@@ -1563,22 +1644,22 @@
     document.addEventListener('DOMContentLoaded', function() {
 
         // Get current path and normalize it
-            let currentPath = window.location.pathname;
+        let currentPath = window.location.pathname;
 
         // Remove .html extension if present for matching
-            if (currentPath.endsWith('.html')) {
-                currentPath = currentPath.replace('.html', '');
-            }
-            
+        if (currentPath.endsWith('.html')) {
+            currentPath = currentPath.replace('.html', '');
+        }
+        
         // Handle root/index page
-            if (currentPath === '/' || currentPath === '/index') {
-                currentPath = '/';
-            }
+        if (currentPath === '/' || currentPath === '/index') {
+            currentPath = '/';
+        }
 
         // API Configuration
         const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
         
-        // ==================== NAVBAR FUNCTIONALITY ====================
+        // ==================== NAVBAR FUNCTIONALITY - FIXED ====================
         const navbar = document.getElementById('navbar');
         const mobileBtn = document.getElementById('mobileMenuBtn');
         const mobileOverlay = document.getElementById('mobileOverlay');
@@ -1618,30 +1699,36 @@
         window.addEventListener('scroll', handleScroll);
         handleScroll();
 
-        // Mobile menu toggle
-        function toggleMobileMenu(forceState) {
-            const isOpen = mobileOverlay.classList.contains('open');
-            
-            if (forceState === 'open' || (!forceState && !isOpen)) {
+        // Mobile menu toggle - FIXED
+        function toggleMobileMenu(open) {
+            if (open) {
                 mobileOverlay.classList.add('open');
                 menuIcon.className = 'fas fa-times fa-2x';
+                document.body.classList.add('menu-open');
             } else {
                 mobileOverlay.classList.remove('open');
                 menuIcon.className = 'fas fa-bars fa-2x';
+                document.body.classList.remove('menu-open');
             }
         }
 
         mobileBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             e.stopPropagation();
             const isOpen = mobileOverlay.classList.contains('open');
-            toggleMobileMenu(isOpen ? 'close' : 'open');
+            toggleMobileMenu(!isOpen);
         });
 
         // Close mobile menu when clicking a link
         mobileLinks.forEach(link => {
             link.addEventListener('click', (e) => {
-                mobileOverlay.classList.remove('open');
-                menuIcon.className = 'fas fa-bars fa-2x';
+                e.preventDefault(); // Remove this if you want actual navigation
+                toggleMobileMenu(false);
+                
+                // Optional: Navigate after a short delay
+                // setTimeout(() => {
+                //     window.location.href = link.getAttribute('href');
+                // }, 300);
             });
         });
 
@@ -1650,13 +1737,18 @@
             if (mobileOverlay.classList.contains('open') && 
                 !mobileOverlay.contains(e.target) && 
                 !mobileBtn.contains(e.target)) {
-                mobileOverlay.classList.remove('open');
-                menuIcon.className = 'fas fa-bars fa-2x';
+                toggleMobileMenu(false);
+            }
+        });
+
+        // Close on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && mobileOverlay.classList.contains('open')) {
+                toggleMobileMenu(false);
             }
         });
 
         // Desktop links click handler
-        // Desktop links click handler - FIXED VERSION
         desktopLinks.forEach(link => {
             link.addEventListener('click', (e) => {
                 const newPath = link.getAttribute('data-path');
