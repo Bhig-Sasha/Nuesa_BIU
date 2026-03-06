@@ -1102,22 +1102,6 @@
 
         // ===== Render functions =====
         function renderGrid(levels) {
-            if (levels.length === 0) {
-                gridContainer.classList.add('hidden');
-                listContainer.classList.add('hidden');
-                emptyState.classList.remove('hidden');
-                emptyState.innerHTML = `
-                    <i class="fas fa-search" style="color: var(--slate-400);"></i>
-                    <h3>No results found</h3>
-                    <p>Try adjusting your search or filter criteria.</p>
-                `;
-                return;
-            }
-            
-            emptyState.classList.add('hidden');
-            gridContainer.classList.remove('hidden');
-            listContainer.classList.add('hidden');
-
             let html = '';
             levels.forEach(level => {
                 const isExpanded = expandedLevel === level.level;
@@ -1178,22 +1162,6 @@
         };
 
         function renderList(levels) {
-            if (levels.length === 0) {
-                gridContainer.classList.add('hidden');
-                listContainer.classList.add('hidden');
-                emptyState.classList.remove('hidden');
-                emptyState.innerHTML = `
-                    <i class="fas fa-search" style="color: var(--slate-400);"></i>
-                    <h3>No results found</h3>
-                    <p>Try adjusting your search or filter criteria.</p>
-                `;
-                return;
-            }
-            
-            emptyState.classList.add('hidden');
-            listContainer.classList.remove('hidden');
-            gridContainer.classList.add('hidden');
-
             let html = '';
             levels.forEach(level => {
                 const isExpanded = expandedListItem === level.level;
@@ -1234,9 +1202,28 @@
 
         function filterAndRender() {
             const filtered = filterLevels();
+            
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+                gridContainer.classList.add('hidden');
+                listContainer.classList.add('hidden');
+                emptyState.innerHTML = `
+                    <i class="fas fa-search" style="color: var(--slate-400);"></i>
+                    <h3>No results found</h3>
+                    <p>Try adjusting your search or filter criteria.</p>
+                `;
+                return;
+            }
+            
+            emptyState.classList.add('hidden');
+            
             if (currentView === 'grid') {
+                gridContainer.classList.remove('hidden');
+                listContainer.classList.add('hidden');
                 renderGrid(filtered);
             } else {
+                listContainer.classList.remove('hidden');
+                gridContainer.classList.add('hidden');
                 renderList(filtered);
             }
             
@@ -1244,7 +1231,6 @@
             setTimeout(() => {
                 document.querySelectorAll('.rep-card').forEach((card, i) => {
                     card.style.animationDelay = `${i * 0.05}s`;
-                    card.classList.add('fade-in');
                 });
             }, 50);
         }
