@@ -1232,6 +1232,331 @@
     </footer>
 
     <script>
+        // ==================== BACKEND INTEGRATION ====================
+        const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
+
+        // Check if user is logged in
+        async function checkAuthStatus() {
+            const token = localStorage.getItem('auth_token');
+            if (!token) return false;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                return response.ok;
+            } catch {
+                return false;
+            }
+        }
+
+        // Add login UI to the page
+        function addLoginUI() {
+            const sidebar = document.querySelector('.sidebar');
+            if (!sidebar) return;
+            
+            const loginCard = document.createElement('div');
+            loginCard.className = 'card';
+            loginCard.innerHTML = `
+                <div class="gradient-header" style="background: linear-gradient(to right, var(--emerald-700), var(--emerald-600));">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <div>
+                        <h2>Cloud Sync</h2>
+                        <p>Backup your data to the cloud</p>
+                    </div>
+                </div>
+                <div class="card-body" id="cloudSyncSection">
+                    <div id="loggedOutView">
+                        <p style="margin-bottom: 1rem; color: var(--slate-600);">
+                            Sign in to save your data securely and access it from any device.
+                        </p>
+                        <button id="showLoginBtn" class="projection-btn" style="margin-bottom: 0.5rem;">
+                            <i class="fas fa-sign-in-alt"></i> Sign In
+                        </button>
+                        <p style="text-align: center; font-size: 0.75rem; color: var(--slate-400);">
+                            Don't have an account? Contact your course rep.
+                        </p>
+                    </div>
+                    <div id="loggedInView" style="display: none;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                            <i class="fas fa-user-circle" style="font-size: 2rem; color: var(--emerald-600);"></i>
+                            <div>
+                                <p style="font-weight: 600;" id="userNameDisplay">User</p>
+                                <p style="font-size: 0.75rem; color: var(--slate-500);" id="userEmailDisplay"></p>
+                            </div>
+                        </div>
+                        <button id="syncToCloudBtn" class="projection-btn" style="margin-bottom: 0.5rem;">
+                            <i class="fas fa-cloud-upload-alt"></i> Sync to Cloud
+                        </button>
+                        <button id="loadFromCloudBtn" class="data-management-btn download-btn" style="width: 100%; margin-bottom: 0.5rem;">
+                            <i class="fas fa-cloud-download-alt"></i> Load from Cloud
+                        </button>
+                        <button id="logoutBtn" class="data-management-btn clear-btn" style="width: 100%;">
+                            <i class="fas fa-sign-out-alt"></i> Sign Out
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // Insert after data management card
+            const dataManagementCard = document.querySelector('.card:has(#clearAllDataBtn)');
+            if (dataManagementCard && dataManagementCard.parentNode) {
+                dataManagementCard.parentNode.insertBefore(loginCard, dataManagementCard.nextSibling);
+            } else {
+                sidebar.appendChild(loginCard);
+            }
+            
+            // Check initial auth status
+            checkAuthStatus().then(isLoggedIn => {
+                if (isLoggedIn) {
+                    showLoggedInView();
+                    loadUserInfo();
+                } else {
+                    showLoggedOutView();
+                }
+            });
+            
+            // Add event listeners
+            document.getElementById('showLoginBtn')?.addEventListener('click', showLoginModal);
+            document.getElementById('syncToCloudBtn')?.addEventListener('click', syncToCloud);
+            document.getElementById('loadFromCloudBtn')?.addEventListener('click', loadFromCloud);
+            document.getElementById('logoutBtn')?.addEventListener('click', logout);
+        }
+
+        // Create login modal
+        function showLoginModal() {
+            const modal = document.createElement('div');
+            modal.className = 'article-modal';
+            modal.id = 'loginModal';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 400px;">
+                    <button class="close-modal" onclick="document.getElementById('loginModal').remove()">&times;</button>
+                    
+                    <h2 style="margin-bottom: 1.5rem;">Sign In to NUESA BIU</h2>
+                    
+                    <form id="loginForm">
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label class="form-label">Email</label>
+                            <input type="email" id="loginEmail" class="form-input" required placeholder="your.email@example.com">
+                        </div>
+                        
+                        <div class="form-group" style="margin-bottom: 1.5rem;">
+                            <label class="form-label">Password</label>
+                            <input type="password" id="loginPassword" class="form-input" required placeholder="••••••••">
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; margin-bottom: 1.5rem;">
+                            <input type="checkbox" id="rememberMe" style="margin-right: 0.5rem;">
+                            <label for="rememberMe">Remember me</label>
+                        </div>
+                        
+                        <button type="submit" class="projection-btn" style="width: 100%;">
+                            <i class="fas fa-sign-in-alt"></i> Sign In
+                        </button>
+                    </form>
+                    
+                    <div id="loginError" style="color: #dc2626; margin-top: 1rem; text-align: center; display: none;"></div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            document.getElementById('loginForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const email = document.getElementById('loginEmail').value;
+                const password = document.getElementById('loginPassword').value;
+                const rememberMe = document.getElementById('rememberMe').checked;
+                
+                const errorDiv = document.getElementById('loginError');
+                errorDiv.style.display = 'none';
+                
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, password, rememberMe })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(data.message || 'Login failed');
+                    }
+                    
+                    // Save token
+                    localStorage.setItem('auth_token', data.data.token);
+                    localStorage.setItem('user', JSON.stringify(data.data.user));
+                    
+                    // Close modal
+                    modal.remove();
+                    
+                    // Update UI
+                    showLoggedInView();
+                    loadUserInfo();
+                    
+                    showToast('Login successful!', 'success');
+                    
+                } catch (error) {
+                    errorDiv.textContent = error.message;
+                    errorDiv.style.display = 'block';
+                }
+            });
+        }
+
+        function showLoggedInView() {
+            document.getElementById('loggedOutView').style.display = 'none';
+            document.getElementById('loggedInView').style.display = 'block';
+        }
+
+        function showLoggedOutView() {
+            document.getElementById('loggedOutView').style.display = 'block';
+            document.getElementById('loggedInView').style.display = 'none';
+        }
+
+        function loadUserInfo() {
+            const userJson = localStorage.getItem('user');
+            if (userJson) {
+                const user = JSON.parse(userJson);
+                document.getElementById('userNameDisplay').textContent = user.fullName || user.email;
+                document.getElementById('userEmailDisplay').textContent = user.email;
+            }
+        }
+
+        async function logout() {
+            const token = localStorage.getItem('auth_token');
+            
+            try {
+                if (token) {
+                    await fetch(`${API_BASE_URL}/api/auth/logout`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+            
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user');
+            showLoggedOutView();
+            showToast('Logged out successfully', 'success');
+        }
+
+        async function syncToCloud() {
+            const token = localStorage.getItem('auth_token');
+            if (!token) {
+                showToast('Please sign in first', 'error');
+                return;
+            }
+            
+            // Get current data
+            const cgpaData = {
+                studentInfo,
+                savedSemesters,
+                lastSynced: new Date().toISOString()
+            };
+            
+            try {
+                showToast('Syncing to cloud...', 'success');
+                
+                const response = await fetch(`${API_BASE_URL}/api/cgpa/sync`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(cgpaData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Sync failed');
+                }
+                
+                localStorage.setItem('lastSynced', new Date().toISOString());
+                showToast('Data synced to cloud successfully!', 'success');
+                
+            } catch (error) {
+                console.error('Sync error:', error);
+                showToast('Failed to sync. Please try again.', 'error');
+            }
+        }
+
+        async function loadFromCloud() {
+            const token = localStorage.getItem('auth_token');
+            if (!token) {
+                showToast('Please sign in first', 'error');
+                return;
+            }
+            
+            try {
+                showToast('Loading from cloud...', 'success');
+                
+                const response = await fetch(`${API_BASE_URL}/api/cgpa/history`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load data');
+                }
+                
+                const data = await response.json();
+                
+                if (data.data && confirm('Load cloud data? This will replace your current data.')) {
+                    // Update state
+                    studentInfo = data.data.studentInfo || studentInfo;
+                    savedSemesters = data.data.savedSemesters || [];
+                    
+                    // Save to localStorage
+                    saveToStorage();
+                    
+                    // Update UI
+                    renderStudentInfo();
+                    updateDisplay();
+                    
+                    showToast('Data loaded from cloud!', 'success');
+                }
+                
+            } catch (error) {
+                console.error('Load error:', error);
+                showToast('Failed to load from cloud', 'error');
+            }
+        }
+
+        // Add cloud sync status indicator
+        function addSyncIndicator() {
+            const lastSynced = localStorage.getItem('lastSynced');
+            if (!lastSynced) return;
+            
+            const date = new Date(lastSynced);
+            const indicator = document.createElement('div');
+            indicator.className = 'text-xs text-slate-400 text-center mt-2';
+            indicator.innerHTML = `
+                <i class="fas fa-cloud"></i> Last synced: ${date.toLocaleDateString()} ${date.toLocaleTimeString()}
+            `;
+            
+            const cloudSection = document.getElementById('cloudSyncSection');
+            if (cloudSection) {
+                cloudSection.appendChild(indicator);
+            }
+        }
+
+        // Initialize cloud features
+        function initCloudFeatures() {
+            addLoginUI();
+            addSyncIndicator();
+        }
+
+        // Call this after your existing initialization
+        document.addEventListener('DOMContentLoaded', function() {
+            // Your existing init code...
+            
+            // Add cloud features if on CGPA page
+            if (window.location.pathname.includes('cgpa-Cal')) {
+                initCloudFeatures();
+            }
+        });
+
         (function() {
             // ===== GRADE POINTS =====
             const GRADE_POINTS = {

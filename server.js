@@ -5094,6 +5094,179 @@ app.get('/api/course-reps/sessions', async (req, res) => {
     }
 });
 
+// Add to your server.js - CGPA Routes
+
+/**
+ * @swagger
+ * /api/cgpa/sync:
+ *   post:
+ *     summary: Sync CGPA data to cloud
+ *     tags: [CGPA]
+ */
+app.post('/api/cgpa/sync', verifyToken, async (req, res) => {
+    try {
+        const { studentInfo, savedSemesters } = req.body;
+        
+        // Validate data
+        if (!studentInfo || !savedSemesters) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'Invalid data format' 
+            });
+        }
+        
+        // Check if user already has CGPA data
+        const existing = await db.query('select', 'cgpa_data', {
+            where: { user_id: req.user.id }
+        });
+        
+        let result;
+        if (existing.data.length > 0) {
+            // Update existing record
+            result = await db.query('update', 'cgpa_data', {
+                data: {
+                    student_info: studentInfo,
+                    semesters: savedSemesters,
+                    updated_at: new Date().toISOString()
+                },
+                where: { user_id: req.user.id }
+            });
+        } else {
+            // Create new record
+            result = await db.query('insert', 'cgpa_data', {
+                data: {
+                    user_id: req.user.id,
+                    student_info: studentInfo,
+                    semesters: savedSemesters,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }
+            });
+        }
+        
+        logger.info('CGPA data synced', { 
+            requestId: req.id, 
+            userId: req.user.id,
+            semesterCount: savedSemesters.length 
+        });
+        
+        res.json({ 
+            status: 'success', 
+            message: 'Data synced successfully',
+            data: { syncedAt: new Date().toISOString() }
+        });
+        
+    } catch (error) {
+        logger.error('CGPA sync error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to sync data' 
+        });
+    }
+});
+
+/**
+ * @swagger
+ * /api/cgpa/history:
+ *   get:
+ *     summary: Get user's CGPA history
+ *     tags: [CGPA]
+ */
+app.get('/api/cgpa/history', verifyToken, async (req, res) => {
+    try {
+        const result = await db.query('select', 'cgpa_data', {
+            where: { user_id: req.user.id }
+        });
+        
+        if (result.data.length === 0) {
+            return res.json({ 
+                status: 'success', 
+                data: null,
+                message: 'No data found' 
+            });
+        }
+        
+        res.json({ 
+            status: 'success', 
+            data: {
+                studentInfo: result.data[0].student_info,
+                savedSemesters: result.data[0].semesters,
+                lastUpdated: result.data[0].updated_at
+            }
+        });
+        
+    } catch (error) {
+        logger.error('CGPA history error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to fetch history' 
+        });
+    }
+});
+
+/**
+ * @swagger
+ * /api/cgpa/export:
+ *   get:
+ *     summary: Export CGPA data as PDF/CSV
+ *     tags: [CGPA]
+ */
+app.get('/api/cgpa/export', verifyToken, async (req, res) => {
+    try {
+        const { format = 'json' } = req.query;
+        
+        const result = await db.query('select', 'cgpa_data', {
+            where: { user_id: req.user.id }
+        });
+        
+        if (result.data.length === 0) {
+            return res.status(404).json({ 
+                status: 'error', 
+                message: 'No data found' 
+            });
+        }
+        
+        const data = result.data[0];
+        
+        if (format === 'csv') {
+            // Generate CSV
+            let csv = 'Year,Semester,GPA,Total Units,Courses\n';
+            data.semesters.forEach(sem => {
+                csv += `${sem.year},${sem.semester},${sem.gpa.toFixed(2)},${sem.totalUnits},${sem.courses.length}\n`;
+            });
+            
+            res.setHeader('Content-Type', 'text/csv');
+            res.setHeader('Content-Disposition', 'attachment; filename=cgpa-history.csv');
+            return res.send(csv);
+            
+        } else if (format === 'pdf') {
+            // PDF generation would require additional library
+            return res.status(501).json({ 
+                status: 'error', 
+                message: 'PDF export not implemented yet' 
+            });
+            
+        } else {
+            // Default JSON
+            res.json({ 
+                status: 'success', 
+                data: {
+                    studentInfo: data.student_info,
+                    semesters: data.semesters,
+                    exportedAt: new Date().toISOString()
+                }
+            });
+        }
+        
+    } catch (error) {
+        logger.error('CGPA export error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to export data' 
+        });
+    }
+});
+
 // --- 16.11 FILE MANAGEMENT ROUTES ---
 
 /**
