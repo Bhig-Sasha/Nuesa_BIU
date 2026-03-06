@@ -5027,61 +5027,48 @@ app.use('/api/news', articleRouter);
 console.log('✅ Articles/News router registered at /api/articles and /api/news');
 
 // ============================================================
-// COURSE REPRESENTATIVES ROUTES
+// COURSE REPRESENTATIVES ROUTES - DIRECT VERSION
 // ============================================================
 
-const courseRepRouter = express.Router();
-
-/**
- * @swagger
- * /api/course-reps:
- *   get:
- *     summary: Get course representatives by session
- *     tags: [Course Representatives]
- */
-courseRepRouter.get('/', cacheMiddleware(300, ['course-reps']), async (req, res) => {
+// GET course representatives
+app.get('/api/course-reps', async (req, res) => {
     try {
-        const { session = '2025/2026' } = req.query;
+        const { session = '2025/2026', level } = req.query;
         
-        console.log(`📡 Fetching course reps for session: ${session}`);
+        console.log(`📡 Fetching course reps for session: ${session}, level: ${level || 'all'}`);
         
-        const { data, error } = await supabase
+        let query = supabase
             .from('course_representatives')
             .select('*')
-            .eq('session', session)
-            .order('level');
+            .eq('session', session);
         
-        if (error) {
-            console.error('❌ Database error:', error);
-            throw error;
+        if (level && level !== 'all') {
+            query = query.eq('level', level);
         }
         
-        console.log(`✅ Found ${data.length} course reps for session ${session}`);
+        const { data, error } = await query.order('level');
         
-        res.json({
-            status: 'success',
+        if (error) throw error;
+        
+        res.json({ 
+            status: 'success', 
             data: data,
-            count: data.length
+            count: data.length 
         });
     } catch (error) {
-        console.error('❌ Error fetching course reps:', error);
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch course representatives',
-            debug: process.env.NODE_ENV === 'development' ? error.message : undefined
+        console.error('❌ Error:', error);
+        res.status(500).json({ 
+            status: 'error', 
+            message: error.message 
         });
     }
 });
 
-/**
- * @swagger
- * /api/course-reps/sessions:
- *   get:
- *     summary: Get all available sessions
- *     tags: [Course Representatives]
- */
-courseRepRouter.get('/sessions', async (req, res) => {
+// GET unique sessions - FIX THIS ENDPOINT
+app.get('/api/course-reps/sessions', async (req, res) => {
     try {
+        console.log('📡 Fetching available sessions...');
+        
         const { data, error } = await supabase
             .from('course_representatives')
             .select('session')
@@ -5089,22 +5076,23 @@ courseRepRouter.get('/sessions', async (req, res) => {
         
         if (error) throw error;
         
+        // Get unique sessions
         const sessions = [...new Set(data.map(item => item.session))];
         
-        res.json({
-            status: 'success',
-            data: sessions
+        console.log(`✅ Found ${sessions.length} unique sessions`);
+        
+        res.json({ 
+            status: 'success', 
+            data: sessions 
         });
     } catch (error) {
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch sessions'
+        console.error('❌ Error fetching sessions:', error);
+        res.status(500).json({ 
+            status: 'error', 
+            message: error.message 
         });
     }
 });
-
-// Mount the router
-app.use('/api/course-reps', courseRepRouter);
 
 // --- 16.11 FILE MANAGEMENT ROUTES ---
 

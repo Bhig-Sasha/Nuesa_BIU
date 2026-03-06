@@ -685,10 +685,11 @@
             <div class="toolbar">
                 <div class="toolbar-left">
                     <div class="select-wrapper">
-                        <select class="select" id="sessionSelect">
-                            <option value="2025/2026">2025/2026</option>
-                            <option value="2024/2025">2024/2025</option>
-                        </select>
+                    <select id="sessionSelect">
+                        <option value="2025/2026">2025/2026 Session</option>
+                        <option value="2024/2025">2024/2025 Session</option>
+                        <option value="2023/2024">2023/2024 Session</option>
+                    </select>
                         <svg class="select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
                     </div>
                     <div class="view-toggle">
@@ -862,6 +863,92 @@
             });
         });
 
+        // ===== Process API response =====
+        function processApiResponse(result) {
+            if (result.status === 'success' && result.data && result.data.length > 0) {
+                // Transform data - parse departments if it's a string
+                levelsData = result.data.map(rep => {
+                    // Parse departments if it's a string
+                    let departments = rep.departments;
+                    if (typeof departments === 'string') {
+                        try {
+                            // Remove the escape characters and parse
+                            departments = JSON.parse(departments);
+                        } catch (e) {
+                            console.error('Error parsing departments for level', rep.level, e);
+                            departments = [];
+                        }
+                    }
+                    
+                    return {
+                        level: rep.level,
+                        genRep: rep.gen_rep || 'Not Assigned',
+                        asstGenRep: rep.asst_gen_rep || 'Not Assigned',
+                        deptCount: departments?.length || 0,
+                        departments: departments || []
+                    };
+                });
+                
+                console.log('Transformed data:', levelsData);
+                
+                // Update session title
+                sessionTitle.textContent = `${sessionSelect.value} Course Representatives`;
+                
+                // Render level chips
+                renderLevelChips();
+                
+                // Filter and render
+                filterAndRender();
+                
+                // Hide loading state
+                loadingContainer.classList.add('hidden');
+            } else {
+                // No data found
+                console.log('No data found for session:', sessionSelect.value);
+                levelsData = [];
+                renderLevelChips();
+                filterAndRender();
+                loadingContainer.classList.add('hidden');
+            }
+        }
+
+        // ===== Fetch available sessions =====
+        async function fetchAvailableSessions() {
+            try {
+                console.log('Fetching available sessions...');
+                const response = await fetch(`${API_BASE_URL}/api/course-reps/sessions`);
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.status === 'success' && result.data && result.data.length > 0) {
+                        // Populate session dropdown
+                        const currentValue = sessionSelect.value;
+                        sessionSelect.innerHTML = result.data.map(session => 
+                            `<option value="${session}" ${session === currentValue ? 'selected' : ''}>${session} Session</option>`
+                        ).join('');
+                        return;
+                    }
+                }
+                
+                // If sessions endpoint fails or returns no data, use default sessions
+                console.log('Using default sessions');
+                const defaultSessions = ['2025/2026', '2024/2025', '2023/2024'];
+                const currentValue = sessionSelect.value;
+                sessionSelect.innerHTML = defaultSessions.map(session => 
+                    `<option value="${session}" ${session === currentValue ? 'selected' : ''}>${session} Session</option>`
+                ).join('');
+                
+            } catch (error) {
+                console.error('Failed to fetch sessions, using defaults:', error);
+                // Use default sessions on error
+                const defaultSessions = ['2025/2026', '2024/2025', '2023/2024'];
+                const currentValue = sessionSelect.value;
+                sessionSelect.innerHTML = defaultSessions.map(session => 
+                    `<option value="${session}" ${session === currentValue ? 'selected' : ''}>${session} Session</option>`
+                ).join('');
+            }
+        }
+
         // ===== Fetch course reps from API =====
         async function fetchCourseReps() {
             try {
@@ -874,59 +961,58 @@
                 const session = sessionSelect.value;
                 console.log(`Fetching course reps for session: ${session}`);
                 
-                const response = await fetch(`${API_BASE_URL}/api/course-reps?session=${session}`);
+                // Create abort controller for timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+                
+                // First, check if API is accessible
+                console.log('Checking API availability...');
+                try {
+                    const baseCheck = await fetch(`${API_BASE_URL}/api/course-reps/sessions`, {
+                        signal: controller.signal
+                    });
+                    
+                    if (baseCheck.ok) {
+                        const sessionsData = await baseCheck.json();
+                        console.log('Available sessions:', sessionsData);
+                    }
+                } catch (err) {
+                    console.log('Sessions endpoint not available, continuing...');
+                }
+                
+                // Now fetch course reps
+                const url = `${API_BASE_URL}/api/course-reps?session=${encodeURIComponent(session)}`;
+                console.log('Fetching from:', url);
+                
+                const response = await fetch(url, {
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
                 
                 if (!response.ok) {
+                    if (response.status === 404) {
+                        // Try alternative session format
+                        console.log('Trying alternative session format...');
+                        const altSession = session.replace('/', '-');
+                        const altUrl = `${API_BASE_URL}/api/course-reps?session=${encodeURIComponent(altSession)}`;
+                        console.log('Trying:', altUrl);
+                        
+                        const altResponse = await fetch(altUrl);
+                        if (altResponse.ok) {
+                            const altResult = await altResponse.json();
+                            console.log('Alternative format worked!', altResult);
+                            processApiResponse(altResult);
+                            return;
+                        }
+                    }
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
                 const result = await response.json();
                 console.log('API Response:', result);
                 
-                if (result.status === 'success' && result.data && result.data.length > 0) {
-                    // Transform data - parse departments if it's a string
-                    levelsData = result.data.map(rep => {
-                        // Parse departments if it's a string
-                        let departments = rep.departments;
-                        if (typeof departments === 'string') {
-                            try {
-                                // Remove the escape characters and parse
-                                departments = JSON.parse(departments);
-                            } catch (e) {
-                                console.error('Error parsing departments for level', rep.level, e);
-                                departments = [];
-                            }
-                        }
-                        
-                        return {
-                            level: rep.level,
-                            genRep: rep.gen_rep || 'Not Assigned',
-                            asstGenRep: rep.asst_gen_rep || 'Not Assigned',
-                            deptCount: departments?.length || 0,
-                            departments: departments || []
-                        };
-                    });
-                    
-                    console.log('Transformed data:', levelsData);
-                    
-                    // Update session title
-                    sessionTitle.textContent = `${session} Course Representatives`;
-                    
-                    // Render level chips
-                    renderLevelChips();
-                    
-                    // Filter and render
-                    filterAndRender();
-                } else {
-                    // No data found
-                    console.log('No data found for session:', session);
-                    levelsData = [];
-                    renderLevelChips();
-                    filterAndRender();
-                }
-                
-                // Hide loading state
-                loadingContainer.classList.add('hidden');
+                processApiResponse(result);
                 
             } catch (error) {
                 console.error('Failed to fetch course reps:', error);
@@ -934,12 +1020,28 @@
                 // Show error in UI
                 loadingContainer.classList.add('hidden');
                 emptyState.classList.remove('hidden');
-                emptyState.innerHTML = `
-                    <i class="fas fa-exclamation-triangle" style="color: var(--amber-500);"></i>
-                    <h3>Failed to load data</h3>
-                    <p>Please try again later or contact support.</p>
-                    <p style="font-size: 0.8rem; margin-top: 1rem; color: var(--slate-500);">${error.message}</p>
-                `;
+                
+                if (error.name === 'AbortError') {
+                    emptyState.innerHTML = `
+                        <i class="fas fa-clock" style="color: var(--amber-500);"></i>
+                        <h3>Request Timeout</h3>
+                        <p>The server is taking too long to respond. The service might be starting up.</p>
+                        <p style="font-size: 0.8rem; margin-top: 1rem; color: var(--slate-500);">Please wait a moment and try again.</p>
+                        <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: var(--primary); color: white; border: none; border-radius: 0.5rem; cursor: pointer;">
+                            <i class="fas fa-sync-alt"></i> Retry
+                        </button>
+                    `;
+                } else {
+                    emptyState.innerHTML = `
+                        <i class="fas fa-exclamation-triangle" style="color: var(--amber-500);"></i>
+                        <h3>Failed to load data</h3>
+                        <p>Please try again later or contact support.</p>
+                        <p style="font-size: 0.8rem; margin-top: 1rem; color: var(--slate-500);">${error.message}</p>
+                        <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: var(--primary); color: white; border: none; border-radius: 0.5rem; cursor: pointer;">
+                            <i class="fas fa-sync-alt"></i> Retry
+                        </button>
+                    `;
+                }
             }
         }
 
@@ -1004,6 +1106,11 @@
                 gridContainer.classList.add('hidden');
                 listContainer.classList.add('hidden');
                 emptyState.classList.remove('hidden');
+                emptyState.innerHTML = `
+                    <i class="fas fa-search" style="color: var(--slate-400);"></i>
+                    <h3>No results found</h3>
+                    <p>Try adjusting your search or filter criteria.</p>
+                `;
                 return;
             }
             
@@ -1075,6 +1182,11 @@
                 gridContainer.classList.add('hidden');
                 listContainer.classList.add('hidden');
                 emptyState.classList.remove('hidden');
+                emptyState.innerHTML = `
+                    <i class="fas fa-search" style="color: var(--slate-400);"></i>
+                    <h3>No results found</h3>
+                    <p>Try adjusting your search or filter criteria.</p>
+                `;
                 return;
             }
             
@@ -1132,6 +1244,7 @@
             setTimeout(() => {
                 document.querySelectorAll('.rep-card').forEach((card, i) => {
                     card.style.animationDelay = `${i * 0.05}s`;
+                    card.classList.add('fade-in');
                 });
             }, 50);
         }
@@ -1169,8 +1282,15 @@
         });
 
         // ===== Initialize =====
-        // Fetch data on page load
-        fetchCourseReps();
+        async function initialize() {
+            // First fetch available sessions
+            await fetchAvailableSessions();
+            // Then fetch course reps
+            await fetchCourseReps();
+        }
+        
+        // Start initialization
+        initialize();
     })();
 </script>
 </body>
