@@ -71,40 +71,31 @@
             overflow-x: hidden;
         }
 
-        /* ===== MODERN NAVBAR STYLES ===== */
+        /* ===== MODERN RESPONSIVE NAVBAR ===== */
         .navbar {
             position: fixed;
             top: 0;
+            left: 0;
+            right: 0;
             width: 100%;
             z-index: 1000;
-            transition: all var(--transition-base);
+            transition: all 0.3s ease;
             background-color: rgba(6, 78, 59, 0.95);
-            padding: 1.25rem 0;
+            padding: 1rem 0;
             backdrop-filter: blur(8px);
         }
 
         .navbar.scrolled {
             background-color: rgba(6, 78, 59, 0.98);
+            backdrop-filter: blur(10px);
             box-shadow: var(--shadow-lg);
-            padding: 0.75rem 0;
+            padding: 0.5rem 0;
         }
 
         .nav-container {
             max-width: 80rem;
             margin: 0 auto;
-            padding: 0 1rem;
-        }
-
-        @media (min-width: 640px) {
-            .nav-container {
-                padding: 0 1.5rem;
-            }
-        }
-
-        @media (min-width: 1024px) {
-            .nav-container {
-                padding: 0 2rem;
-            }
+            padding: 0 2rem;
         }
 
         .nav-flex {
@@ -113,13 +104,13 @@
             align-items: center;
         }
 
+        /* Logo */
         .logo-link {
             display: flex;
             align-items: center;
             gap: 0.25rem;
-            z-index: 1001;
             text-decoration: none;
-            transition: transform var(--transition-fast);
+            transition: transform 0.3s ease;
         }
 
         .logo-link:hover {
@@ -140,81 +131,94 @@
             letter-spacing: -0.05em;
         }
 
-        .desktop-links {
-            display: none;
+        /* Desktop Navigation */
+        .nav-menu {
+            display: flex;
+            align-items: center;
         }
 
-        @media (min-width: 1024px) {
-            .desktop-links {
-                display: flex;
-                align-items: center;
-                gap: 1.5rem;
-            }
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            list-style: none;
         }
 
-        .nav-link {
+        .nav-links li a {
             font-family: 'Roboto Mono', monospace;
             font-size: 0.75rem;
             font-weight: 600;
             letter-spacing: 0.1em;
             text-decoration: none;
             color: rgba(255, 255, 255, 0.9);
-            transition: all var(--transition-fast);
+            transition: color 0.2s;
             position: relative;
+            padding: 0.5rem 0;
         }
 
-        .nav-link::after {
+        .nav-links li a::after {
             content: '';
             position: absolute;
-            bottom: -4px;
+            bottom: 0;
             left: 0;
             width: 0;
             height: 2px;
             background-color: var(--amber-400);
-            transition: width var(--transition-fast);
+            transition: width 0.3s;
         }
 
-        .nav-link:hover {
+        .nav-links li a:hover {
             color: var(--amber-400);
         }
 
-        .nav-link:hover::after {
+        .nav-links li a:hover::after {
             width: 100%;
         }
 
-        .nav-link.active {
+        .nav-links li a.active {
             color: var(--amber-400);
         }
 
-        .nav-link.active::after {
+        .nav-links li a.active::after {
             width: 100%;
         }
 
         /* Mobile Menu Button */
-        .mobile-menu-btn {
-            display: block;
-            background: none;
-            border: none;
-            color: var(--white);
+        .hamburger {
+            display: none;
             cursor: pointer;
             z-index: 1001;
-            transition: transform var(--transition-fast);
-            position: relative;
+            background: none;
+            border: none;
+            padding: 0.5rem;
         }
 
-        .mobile-menu-btn:hover {
-            color: var(--amber-400);
-            transform: rotate(90deg);
+        .hamburger span {
+            display: block;
+            width: 25px;
+            height: 3px;
+            background-color: var(--white);
+            margin: 5px 0;
+            transition: all 0.3s ease;
+            border-radius: 3px;
         }
 
-        @media (min-width: 1024px) {
-            .mobile-menu-btn {
-                display: none;
-            }
+        .hamburger.active span:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 6px);
+            background-color: var(--amber-400);
         }
 
-        /* Mobile Overlay - Fixed positioning */
-        .mobile-overlay {
+        .hamburger.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .hamburger.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(5px, -6px);
+            background-color: var(--amber-400);
+        }
+
+        /* Mobile Navigation */
+        .mobile-nav {
             position: fixed;
             top: 0;
             left: 0;
@@ -225,62 +229,82 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            padding: 5rem 2rem;
-            overflow-y: auto;
+            z-index: 999;
             opacity: 0;
             visibility: hidden;
-            transform: translateY(-100%);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 1000;
-            pointer-events: none;
+            transition: all 0.4s ease;
+            padding: 2rem;
         }
 
-        .mobile-overlay.open {
+        .mobile-nav.active {
             opacity: 1;
             visibility: visible;
-            transform: translateY(0);
-            pointer-events: all;
         }
 
-        .mobile-link {
+        .mobile-nav ul {
+            list-style: none;
+            text-align: center;
+        }
+
+        .mobile-nav ul li {
+            margin: 1.5rem 0;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.4s ease;
+        }
+
+        .mobile-nav.active ul li {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .mobile-nav.active ul li:nth-child(1) { transition-delay: 0.1s; }
+        .mobile-nav.active ul li:nth-child(2) { transition-delay: 0.2s; }
+        .mobile-nav.active ul li:nth-child(3) { transition-delay: 0.3s; }
+        .mobile-nav.active ul li:nth-child(4) { transition-delay: 0.4s; }
+        .mobile-nav.active ul li:nth-child(5) { transition-delay: 0.5s; }
+        .mobile-nav.active ul li:nth-child(6) { transition-delay: 0.6s; }
+        .mobile-nav.active ul li:nth-child(7) { transition-delay: 0.7s; }
+        .mobile-nav.active ul li:nth-child(8) { transition-delay: 0.8s; }
+        .mobile-nav.active ul li:nth-child(9) { transition-delay: 0.9s; }
+        .mobile-nav.active ul li:nth-child(10) { transition-delay: 1s; }
+
+        .mobile-nav ul li a {
             font-family: 'Roboto Mono', monospace;
             font-size: 1.5rem;
             font-weight: 600;
             letter-spacing: 0.1em;
             text-decoration: none;
             color: var(--white);
-            transition: all var(--transition-fast);
-            margin: 1rem 0;
-            transform: translateX(0);
-            opacity: 0;
-            animation: slideInLink 0.4s forwards;
-            animation-delay: calc(var(--i, 0) * 0.1s);
+            transition: color 0.3s;
+            display: inline-block;
+            padding: 0.5rem 1rem;
         }
 
-        @keyframes slideInLink {
-            from {
-                opacity: 0;
-                transform: translateX(-30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        .mobile-link:hover {
+        .mobile-nav ul li a:hover {
             color: var(--amber-400);
             transform: translateX(10px);
         }
 
-        .mobile-link.active {
+        .mobile-nav ul li a.active {
             color: var(--amber-400);
             border-left: 4px solid var(--amber-400);
-            padding-left: 1rem;
         }
 
-        .main-wrapper {
-            padding-top: 5rem;
+        /* Main content padding to account for fixed navbar */
+        .main-content {
+            padding-top: 80px;
+        }
+
+        /* Media Queries for Responsive Navbar */
+        @media screen and (max-width: 1024px) {
+            .nav-links {
+                display: none;
+            }
+
+            .hamburger {
+                display: block;
+            }
         }
 
         /* ===== REST OF YOUR EXISTING STYLES (keep all your other styles) ===== */
@@ -1550,6 +1574,7 @@
 </head>
 <body>
     <!-- ===== NAVBAR ===== -->
+    <!-- ===== MODERN RESPONSIVE NAVBAR ===== -->
     <nav class="navbar" id="navbar">
         <div class="nav-container">
             <div class="nav-flex">
@@ -1557,34 +1582,46 @@
                     <span class="logo-main">N.U.E.S.A</span>
                     <span class="logo-highlight">BIU</span>
                 </a>
-                <div class="desktop-links">
-                    <a href="index.html" class="nav-link">HOME</a>
-                    <a href="about.html" class="nav-link">ABOUT</a>
-                    <a href="members.html" class="nav-link">MEMBERS</a>
-                    <a href="events.html" class="nav-link">EVENTS</a>
-                    <a href="resources.html" class="nav-link">RESOURCES</a>
-                    <a href="cgpa-Cal.html" class="nav-link">CGPA CALC</a>
-                    <a href="admission.html" class="nav-link">ADMISSION</a>
-                    <a href="courseReps.html" class="nav-link active">COURSE REPS</a>
-                    <a href="news.html" class="nav-link">NEWS</a>
-                    <a href="contacts.html" class="nav-link">CONTACT</a>
+
+                <!-- Desktop Navigation -->
+                <div class="nav-menu">
+                    <ul class="nav-links">
+                        <li><a href="index.html" class="active">HOME</a></li>
+                        <li><a href="about.html">ABOUT</a></li>
+                        <li><a href="members.html">MEMBERS</a></li>
+                        <li><a href="events.html">EVENTS</a></li>
+                        <li><a href="resources.html">RESOURCES</a></li>
+                        <li><a href="cgpa-Cal.html">CGPA CALC</a></li>
+                        <li><a href="admission.html">ADMISSION</a></li>
+                        <li><a href="courseReps.html">COURSE REPS</a></li>
+                        <li><a href="news.html">NEWS</a></li>
+                        <li><a href="contacts.html">CONTACT</a></li>
+                    </ul>
                 </div>
-                <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu">
-                    <i class="fas fa-bars fa-2x" id="menuIcon"></i>
+
+                <!-- Hamburger Menu Button -->
+                <button class="hamburger" id="hamburger">
+                    <span></span>
+                    <span></span>
+                    <span></span>
                 </button>
             </div>
         </div>
-        <div class="mobile-overlay" id="mobileOverlay">
-            <a href="index.html" class="mobile-link" style="--i:1">HOME</a>
-            <a href="about.html" class="mobile-link" style="--i:2">ABOUT</a>
-            <a href="members.html" class="mobile-link" style="--i:3">MEMBERS</a>
-            <a href="events.html" class="mobile-link" style="--i:4">EVENTS</a>
-            <a href="resources.html" class="mobile-link" style="--i:5">RESOURCES</a>
-            <a href="cgpa-Cal.html" class="mobile-link" style="--i:6">CGPA CALC</a>
-            <a href="admission.html" class="mobile-link" style="--i:7">ADMISSION</a>
-            <a href="courseReps.html" class="mobile-link active" style="--i:8">COURSE REPS</a>
-            <a href="news.html" class="mobile-link" style="--i:9">NEWS</a>
-            <a href="contacts.html" class="mobile-link" style="--i:10">CONTACT</a>
+
+        <!-- Mobile Navigation -->
+        <div class="mobile-nav" id="mobileNav">
+            <ul>
+                <li><a href="index.html" class="active">HOME</a></li>
+                <li><a href="about.html">ABOUT</a></li>
+                <li><a href="members.html">MEMBERS</a></li>
+                <li><a href="events.html">EVENTS</a></li>
+                <li><a href="resources.html">RESOURCES</a></li>
+                <li><a href="cgpa-Cal.html">CGPA CALC</a></li>
+                <li><a href="admission.html">ADMISSION</a></li>
+                <li><a href="courseReps.html">COURSE REPS</a></li>
+                <li><a href="news.html">NEWS</a></li>
+                <li><a href="contacts.html">CONTACT</a></li>
+            </ul>
         </div>
     </nav>
 
@@ -1783,54 +1820,97 @@
             window.addEventListener('scroll', updateNavbar);
             updateNavbar();
 
-            // ===== Mobile menu toggle - FIXED =====
-            function toggleMobileMenu(open) {
-                if (open) {
-                    mobileOverlay.classList.add('open');
-                    menuIcon.className = 'fas fa-times fa-2x';
-                    document.body.classList.add('menu-open');
+        // ==================== NAVBAR FUNCTIONALITY ====================
+        const hamburger = document.getElementById('hamburger');
+        const mobileNav = document.getElementById('mobileNav');
+        const mobileLinks = document.querySelectorAll('.mobile-nav ul li a');
+        const desktopLinks = document.querySelectorAll('.nav-links li a');
+
+        // Get current path for active link highlighting
+        let currentPath = window.location.pathname;
+        if (currentPath.endsWith('.html')) {
+            currentPath = currentPath.replace('.html', '');
+        }
+        if (currentPath === '/' || currentPath === '/index') {
+            currentPath = '/';
+        }
+
+        // Update active links
+        function updateActiveLinks() {
+            desktopLinks.forEach(link => {
+                const href = link.getAttribute('href').replace('.html', '');
+                if (href === currentPath || (currentPath === '/' && href === 'index')) {
+                    link.classList.add('active');
                 } else {
-                    mobileOverlay.classList.remove('open');
-                    menuIcon.className = 'fas fa-bars fa-2x';
-                    document.body.classList.remove('menu-open');
+                    link.classList.remove('active');
                 }
+            });
+
+            mobileLinks.forEach(link => {
+                const href = link.getAttribute('href').replace('.html', '');
+                if (href === currentPath || (currentPath === '/' && href === 'index')) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
+                }
+            });
+        }
+
+        // Navbar scroll effect
+        function handleScroll() {
+            if (window.scrollY > 20) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
             }
+        }
+        window.addEventListener('scroll', handleScroll);
+        handleScroll();
 
-            mobileBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const isOpen = mobileOverlay.classList.contains('open');
-                toggleMobileMenu(!isOpen);
-            });
+        // Toggle mobile menu
+        function toggleMobileMenu(open) {
+            if (open) {
+                hamburger.classList.add('active');
+                mobileNav.classList.add('active');
+                document.body.classList.add('menu-open');
+            } else {
+                hamburger.classList.remove('active');
+                mobileNav.classList.remove('active');
+                document.body.classList.remove('menu-open');
+            }
+        }
 
-            // Close mobile menu when clicking on a link
-            document.querySelectorAll('.mobile-link').forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault(); // Remove this if you want actual navigation
-                    toggleMobileMenu(false);
-                    
-                    // Optional: Navigate after a short delay
-                    // setTimeout(() => {
-                    //     window.location.href = link.getAttribute('href');
-                    // }, 300);
-                });
-            });
+        hamburger.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const isOpen = hamburger.classList.contains('active');
+            toggleMobileMenu(!isOpen);
+        });
 
-            // Close mobile menu when clicking outside
-            document.addEventListener('click', (e) => {
-                if (mobileOverlay.classList.contains('open') && 
-                    !mobileOverlay.contains(e.target) && 
-                    !mobileBtn.contains(e.target)) {
-                    toggleMobileMenu(false);
-                }
+        // Close mobile menu when clicking a link
+        mobileLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                toggleMobileMenu(false);
             });
+        });
 
-            // Close mobile menu on escape key
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && mobileOverlay.classList.contains('open')) {
-                    toggleMobileMenu(false);
-                }
-            });
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (mobileNav.classList.contains('active') && 
+                !mobileNav.contains(e.target) && 
+                !hamburger.contains(e.target)) {
+                toggleMobileMenu(false);
+            }
+        });
+
+        // Close on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && mobileNav.classList.contains('active')) {
+                toggleMobileMenu(false);
+            }
+        });
+
+        updateActiveLinks();
 
             // ===== Process API response =====
             function processApiResponse(result) {
