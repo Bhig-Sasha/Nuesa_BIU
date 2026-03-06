@@ -794,6 +794,54 @@
             margin-top: 0.5rem;
         }
 
+        /* Cloud Sync Styles */
+        .toast {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            z-index: 10000;
+            animation: slideIn 0.3s ease;
+        }
+
+        .toast-success {
+            background: var(--emerald-600);
+        }
+
+        .toast-error {
+            background: #dc2626;
+        }
+
+        .toast-warning {
+            background: #f59e0b;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Login Modal Styles */
+        .article-modal .modal-content {
+            animation: fadeIn 0.3s ease;
+        }
+
+        #loginModal .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--slate-200);
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        #loginModal .form-input:focus {
+            outline: none;
+            border-color: var(--emerald-500);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+        
         /* ===== UTILITY CLASSES ===== */
         .hidden { display: none !important; }
         .relative { position: relative; }
@@ -1232,331 +1280,525 @@
     </footer>
 
     <script>
-        // ==================== BACKEND INTEGRATION ====================
-        const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
-
-        // Check if user is logged in
-        async function checkAuthStatus() {
-            const token = localStorage.getItem('auth_token');
-            if (!token) return false;
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                return response.ok;
-            } catch {
-                return false;
+        // ==================== BACKEND INTEGRATION FOR CGPA CALCULATOR ====================
+        (function() {
+            // Only run on CGPA calculator page
+            if (!window.location.pathname.includes('cgpa-Cal') && 
+                !window.location.pathname.includes('cgpa.html')) {
+                return;
             }
-        }
 
-        // Add login UI to the page
-        function addLoginUI() {
-            const sidebar = document.querySelector('.sidebar');
-            if (!sidebar) return;
+            const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
             
-            const loginCard = document.createElement('div');
-            loginCard.className = 'card';
-            loginCard.innerHTML = `
-                <div class="gradient-header" style="background: linear-gradient(to right, var(--emerald-700), var(--emerald-600));">
-                    <i class="fas fa-cloud-upload-alt"></i>
-                    <div>
-                        <h2>Cloud Sync</h2>
-                        <p>Backup your data to the cloud</p>
+            // ==================== AUTH STATE MANAGEMENT ====================
+            let currentUser = null;
+            let authToken = localStorage.getItem('auth_token');
+            
+            // Try to restore user from localStorage
+            try {
+                const savedUser = localStorage.getItem('cgpa_user');
+                if (savedUser) {
+                    currentUser = JSON.parse(savedUser);
+                }
+            } catch (e) {
+                console.error('Error restoring user:', e);
+            }
+
+            // ==================== ADD CLOUD SYNC UI TO SIDEBAR ====================
+            function addCloudSyncUI() {
+                const sidebar = document.querySelector('.sidebar');
+                if (!sidebar) return;
+
+                // Check if already added
+                if (document.getElementById('cloudSyncCard')) return;
+
+                const cloudCard = document.createElement('div');
+                cloudCard.className = 'card';
+                cloudCard.id = 'cloudSyncCard';
+                
+                // Determine which view to show
+                const isLoggedIn = !!authToken && currentUser;
+                
+                cloudCard.innerHTML = `
+                    <div class="gradient-header" style="background: linear-gradient(to right, #2563eb, #3b82f6);">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <div>
+                            <h2>Cloud Backup</h2>
+                            <p>Save your data securely</p>
+                        </div>
                     </div>
-                </div>
-                <div class="card-body" id="cloudSyncSection">
-                    <div id="loggedOutView">
-                        <p style="margin-bottom: 1rem; color: var(--slate-600);">
-                            Sign in to save your data securely and access it from any device.
-                        </p>
-                        <button id="showLoginBtn" class="projection-btn" style="margin-bottom: 0.5rem;">
-                            <i class="fas fa-sign-in-alt"></i> Sign In
-                        </button>
-                        <p style="text-align: center; font-size: 0.75rem; color: var(--slate-400);">
-                            Don't have an account? Contact your course rep.
-                        </p>
-                    </div>
-                    <div id="loggedInView" style="display: none;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
-                            <i class="fas fa-user-circle" style="font-size: 2rem; color: var(--emerald-600);"></i>
-                            <div>
-                                <p style="font-weight: 600;" id="userNameDisplay">User</p>
-                                <p style="font-size: 0.75rem; color: var(--slate-500);" id="userEmailDisplay"></p>
+                    <div class="card-body">
+                        <!-- LOGGED OUT VIEW -->
+                        <div id="cloudLoggedOutView" style="${isLoggedIn ? 'display: none;' : ''}">
+                            <p style="margin-bottom: 1rem; color: var(--slate-600); font-size: 0.875rem;">
+                                Sign in to save your CGPA data to the cloud and access it from any device.
+                            </p>
+                            <button id="showLoginBtn" class="projection-btn" style="margin-bottom: 0.75rem; width: 100%;">
+                                <i class="fas fa-sign-in-alt"></i> Sign In
+                            </button>
+                            <p style="text-align: center; font-size: 0.7rem; color: var(--slate-400);">
+                                Use your NUESA BIU account
+                            </p>
+                        </div>
+                        
+                        <!-- LOGGED IN VIEW -->
+                        <div id="cloudLoggedInView" style="${isLoggedIn ? '' : 'display: none;'}">
+                            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; padding: 0.75rem; background: var(--slate-50); border-radius: 0.5rem;">
+                                <div style="width: 2.5rem; height: 2.5rem; background: var(--emerald-100); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--emerald-700);">
+                                    <i class="fas fa-user-graduate"></i>
+                                </div>
+                                <div style="flex: 1;">
+                                    <p style="font-weight: 600; font-size: 0.875rem;" id="cloudUserName">
+                                        ${currentUser?.fullName || currentUser?.email || 'Student'}
+                                    </p>
+                                    <p style="font-size: 0.7rem; color: var(--slate-500);" id="cloudUserEmail">
+                                        ${currentUser?.email || ''}
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.75rem;">
+                                <button id="syncToCloudBtn" class="data-management-btn" style="border-color: var(--emerald-600); color: var(--emerald-600); width: 100%;">
+                                    <i class="fas fa-cloud-upload-alt"></i> Sync
+                                </button>
+                                <button id="loadFromCloudBtn" class="data-management-btn" style="border-color: var(--blue-500); color: var(--blue-500); width: 100%;">
+                                    <i class="fas fa-cloud-download-alt"></i> Load
+                                </button>
+                            </div>
+                            
+                            <button id="logoutBtn" class="data-management-btn clear-btn" style="width: 100%; margin-bottom: 0.5rem;">
+                                <i class="fas fa-sign-out-alt"></i> Sign Out
+                            </button>
+                            
+                            <div id="lastSyncInfo" style="font-size: 0.7rem; color: var(--slate-400); text-align: center; margin-top: 0.5rem; display: none;">
+                                <i class="fas fa-check-circle" style="color: var(--emerald-600);"></i> 
+                                Last sync: <span id="lastSyncTime">Never</span>
                             </div>
                         </div>
-                        <button id="syncToCloudBtn" class="projection-btn" style="margin-bottom: 0.5rem;">
-                            <i class="fas fa-cloud-upload-alt"></i> Sync to Cloud
-                        </button>
-                        <button id="loadFromCloudBtn" class="data-management-btn download-btn" style="width: 100%; margin-bottom: 0.5rem;">
-                            <i class="fas fa-cloud-download-alt"></i> Load from Cloud
-                        </button>
-                        <button id="logoutBtn" class="data-management-btn clear-btn" style="width: 100%;">
-                            <i class="fas fa-sign-out-alt"></i> Sign Out
-                        </button>
+                        
+                        <div id="cloudSyncStatus" style="margin-top: 0.75rem; font-size: 0.75rem; text-align: center; display: none;"></div>
                     </div>
-                </div>
-            `;
-            
-            // Insert after data management card
-            const dataManagementCard = document.querySelector('.card:has(#clearAllDataBtn)');
-            if (dataManagementCard && dataManagementCard.parentNode) {
-                dataManagementCard.parentNode.insertBefore(loginCard, dataManagementCard.nextSibling);
-            } else {
-                sidebar.appendChild(loginCard);
-            }
-            
-            // Check initial auth status
-            checkAuthStatus().then(isLoggedIn => {
-                if (isLoggedIn) {
-                    showLoggedInView();
-                    loadUserInfo();
-                } else {
-                    showLoggedOutView();
-                }
-            });
-            
-            // Add event listeners
-            document.getElementById('showLoginBtn')?.addEventListener('click', showLoginModal);
-            document.getElementById('syncToCloudBtn')?.addEventListener('click', syncToCloud);
-            document.getElementById('loadFromCloudBtn')?.addEventListener('click', loadFromCloud);
-            document.getElementById('logoutBtn')?.addEventListener('click', logout);
-        }
+                `;
 
-        // Create login modal
-        function showLoginModal() {
-            const modal = document.createElement('div');
-            modal.className = 'article-modal';
-            modal.id = 'loginModal';
-            modal.innerHTML = `
-                <div class="modal-content" style="max-width: 400px;">
-                    <button class="close-modal" onclick="document.getElementById('loginModal').remove()">&times;</button>
-                    
-                    <h2 style="margin-bottom: 1.5rem;">Sign In to NUESA BIU</h2>
-                    
-                    <form id="loginForm">
-                        <div class="form-group" style="margin-bottom: 1rem;">
-                            <label class="form-label">Email</label>
-                            <input type="email" id="loginEmail" class="form-input" required placeholder="your.email@example.com">
+                // Insert after data management card
+                const dataManagementCard = document.querySelector('.card:has(#clearAllDataBtn)');
+                if (dataManagementCard && dataManagementCard.parentNode) {
+                    dataManagementCard.parentNode.insertBefore(cloudCard, dataManagementCard.nextSibling);
+                } else {
+                    sidebar.appendChild(cloudCard);
+                }
+
+                // Add event listeners
+                document.getElementById('showLoginBtn')?.addEventListener('click', showLoginModal);
+                document.getElementById('syncToCloudBtn')?.addEventListener('click', syncToCloud);
+                document.getElementById('loadFromCloudBtn')?.addEventListener('click', loadFromCloud);
+                document.getElementById('logoutBtn')?.addEventListener('click', logout);
+
+                // Check last sync time
+                updateLastSyncInfo();
+            }
+
+            // ==================== LOGIN MODAL ====================
+            function showLoginModal() {
+                // Remove existing modal if any
+                const existingModal = document.getElementById('loginModal');
+                if (existingModal) existingModal.remove();
+
+                const modal = document.createElement('div');
+                modal.className = 'article-modal';
+                modal.id = 'loginModal';
+                modal.innerHTML = `
+                    <div class="modal-content" style="max-width: 400px;">
+                        <button class="close-modal" onclick="this.closest('.article-modal').remove()">&times;</button>
+                        
+                        <div style="text-align: center; margin-bottom: 1.5rem;">
+                            <div style="width: 4rem; height: 4rem; background: var(--emerald-100); border-radius: 50%; margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-cloud" style="font-size: 2rem; color: var(--emerald-600);"></i>
+                            </div>
+                            <h2 style="font-size: 1.5rem;">Sign In to NUESA BIU</h2>
+                            <p style="color: var(--slate-500); font-size: 0.875rem;">Access your CGPA data from anywhere</p>
                         </div>
                         
-                        <div class="form-group" style="margin-bottom: 1.5rem;">
-                            <label class="form-label">Password</label>
-                            <input type="password" id="loginPassword" class="form-input" required placeholder="••••••••">
-                        </div>
+                        <form id="loginForm">
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label class="form-label">Email</label>
+                                <input type="email" id="loginEmail" class="form-input" required 
+                                    placeholder="your.email@example.com" value="test@example.com">
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 1.5rem;">
+                                <label class="form-label">Password</label>
+                                <input type="password" id="loginPassword" class="form-input" required 
+                                    placeholder="••••••••" value="password123">
+                            </div>
+                            
+                            <div style="display: flex; align-items: center; margin-bottom: 1.5rem;">
+                                <input type="checkbox" id="rememberMe" style="margin-right: 0.5rem;" checked>
+                                <label for="rememberMe" style="font-size: 0.875rem; color: var(--slate-600);">Remember me</label>
+                            </div>
+                            
+                            <button type="submit" class="projection-btn" style="width: 100%;">
+                                <i class="fas fa-sign-in-alt"></i> Sign In
+                            </button>
+                        </form>
                         
-                        <div style="display: flex; align-items: center; margin-bottom: 1.5rem;">
-                            <input type="checkbox" id="rememberMe" style="margin-right: 0.5rem;">
-                            <label for="rememberMe">Remember me</label>
-                        </div>
+                        <div id="loginError" style="color: #dc2626; margin-top: 1rem; text-align: center; font-size: 0.875rem; display: none;"></div>
                         
-                        <button type="submit" class="projection-btn" style="width: 100%;">
-                            <i class="fas fa-sign-in-alt"></i> Sign In
-                        </button>
-                    </form>
+                        <div style="margin-top: 1.5rem; text-align: center; font-size: 0.75rem; color: var(--slate-400);">
+                            <p>Demo credentials: test@example.com / password123</p>
+                            <p style="margin-top: 0.5rem;">Don't have an account? Contact your course rep.</p>
+                        </div>
+                    </div>
+                `;
+
+                document.body.appendChild(modal);
+
+                // Handle login form submission
+                document.getElementById('loginForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
                     
-                    <div id="loginError" style="color: #dc2626; margin-top: 1rem; text-align: center; display: none;"></div>
-                </div>
-            `;
-            
-            document.body.appendChild(modal);
-            
-            document.getElementById('loginForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                
-                const email = document.getElementById('loginEmail').value;
-                const password = document.getElementById('loginPassword').value;
-                const rememberMe = document.getElementById('rememberMe').checked;
-                
-                const errorDiv = document.getElementById('loginError');
-                errorDiv.style.display = 'none';
-                
+                    const email = document.getElementById('loginEmail').value;
+                    const password = document.getElementById('loginPassword').value;
+                    const rememberMe = document.getElementById('rememberMe').checked;
+                    
+                    const errorDiv = document.getElementById('loginError');
+                    errorDiv.style.display = 'none';
+                    
+                    // Show loading state
+                    const submitBtn = e.target.querySelector('button[type="submit"]');
+                    const originalText = submitBtn.innerHTML;
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in...';
+                    submitBtn.disabled = true;
+
+                    try {
+                        console.log('Attempting login with:', { email });
+                        
+                        const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+                            method: 'POST',
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({ email, password, rememberMe })
+                        });
+
+                        const data = await response.json();
+                        console.log('Login response:', data);
+
+                        if (!response.ok) {
+                            throw new Error(data.message || data.error || 'Login failed');
+                        }
+
+                        if (!data.data || !data.data.token) {
+                            throw new Error('Invalid response from server');
+                        }
+
+                        // Save auth data
+                        authToken = data.data.token;
+                        currentUser = data.data.user;
+                        
+                        localStorage.setItem('auth_token', authToken);
+                        localStorage.setItem('cgpa_user', JSON.stringify(currentUser));
+                        
+                        if (rememberMe) {
+                            localStorage.setItem('auth_remember', 'true');
+                        }
+
+                        // Close modal
+                        modal.remove();
+
+                        // Update UI
+                        updateCloudUI(true);
+                        
+                        // Show success message
+                        showToast('Login successful!', 'success');
+
+                        // Auto-sync after login
+                        setTimeout(() => {
+                            if (confirm('Would you like to sync your local data to the cloud?')) {
+                                syncToCloud();
+                            }
+                        }, 1000);
+
+                    } catch (error) {
+                        console.error('Login error:', error);
+                        errorDiv.textContent = error.message || 'Login failed. Please try again.';
+                        errorDiv.style.display = 'block';
+                        
+                        // Reset button
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
+                    }
+                });
+            }
+
+            // ==================== SYNC TO CLOUD ====================
+            async function syncToCloud() {
+                if (!authToken) {
+                    showToast('Please sign in first', 'error');
+                    return;
+                }
+
+                // Get current data from global state
+                const cgpaData = {
+                    studentInfo: window.studentInfo || {
+                        fullName: document.getElementById('fullName')?.value || '',
+                        matricNumber: document.getElementById('matricNumber')?.value || '',
+                        department: document.getElementById('department')?.value || '',
+                        level: document.getElementById('level')?.value || ''
+                    },
+                    savedSemesters: window.savedSemesters || [],
+                    totalUnits: window.totalUnits || 0,
+                    cgpa: window.cgpa || 0,
+                    lastUpdated: new Date().toISOString()
+                };
+
+                // Show loading status
+                showSyncStatus('Syncing to cloud...', 'loading');
+
                 try {
-                    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+                    console.log('Syncing data:', cgpaData);
+
+                    const response = await fetch(`${API_BASE_URL}/api/cgpa/sync`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email, password, rememberMe })
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${authToken}`
+                        },
+                        body: JSON.stringify(cgpaData)
                     });
-                    
+
                     const data = await response.json();
-                    
+
                     if (!response.ok) {
-                        throw new Error(data.message || 'Login failed');
+                        throw new Error(data.message || 'Sync failed');
+                    }
+
+                    // Update last sync time
+                    localStorage.setItem('last_sync_time', new Date().toISOString());
+                    updateLastSyncInfo();
+
+                    showSyncStatus('✓ Synced successfully!', 'success');
+                    showToast('Data synced to cloud!', 'success');
+
+                } catch (error) {
+                    console.error('Sync error:', error);
+                    showSyncStatus('✗ Sync failed', 'error');
+                    showToast('Failed to sync: ' + error.message, 'error');
+                }
+            }
+
+            // ==================== LOAD FROM CLOUD ====================
+            async function loadFromCloud() {
+                if (!authToken) {
+                    showToast('Please sign in first', 'error');
+                    return;
+                }
+
+                if (!confirm('Load data from cloud? This will replace your current local data.')) {
+                    return;
+                }
+
+                showSyncStatus('Loading from cloud...', 'loading');
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/cgpa/history`, {
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`
+                        }
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.message || 'Failed to load');
+                    }
+
+                    if (!data.data) {
+                        showSyncStatus('No cloud data found', 'warning');
+                        return;
+                    }
+
+                    // Update global state
+                    if (data.data.studentInfo) {
+                        window.studentInfo = data.data.studentInfo;
+                        
+                        // Update form fields
+                        document.getElementById('fullName').value = data.data.studentInfo.fullName || '';
+                        document.getElementById('matricNumber').value = data.data.studentInfo.matricNumber || '';
+                        document.getElementById('department').value = data.data.studentInfo.department || '';
+                        document.getElementById('level').value = data.data.studentInfo.level || '';
+                    }
+
+                    if (data.data.savedSemesters) {
+                        window.savedSemesters = data.data.savedSemesters;
+                    }
+
+                    // Save to localStorage
+                    if (window.saveToStorage) {
+                        window.saveToStorage();
+                    }
+
+                    // Update UI
+                    if (window.updateDisplay) {
+                        window.updateDisplay();
+                    }
+
+                    showSyncStatus('✓ Data loaded successfully!', 'success');
+                    showToast('Data loaded from cloud!', 'success');
+
+                } catch (error) {
+                    console.error('Load error:', error);
+                    showSyncStatus('✗ Failed to load', 'error');
+                    showToast('Failed to load: ' + error.message, 'error');
+                }
+            }
+
+            // ==================== LOGOUT ====================
+            async function logout() {
+                if (authToken) {
+                    try {
+                        await fetch(`${API_BASE_URL}/api/auth/logout`, {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${authToken}` }
+                        });
+                    } catch (error) {
+                        console.error('Logout error:', error);
+                    }
+                }
+
+                // Clear auth data
+                authToken = null;
+                currentUser = null;
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('cgpa_user');
+                localStorage.removeItem('auth_remember');
+
+                // Update UI
+                updateCloudUI(false);
+                showToast('Logged out successfully', 'success');
+            }
+
+            // ==================== UPDATE CLOUD UI ====================
+            function updateCloudUI(isLoggedIn) {
+                const loggedOutView = document.getElementById('cloudLoggedOutView');
+                const loggedInView = document.getElementById('cloudLoggedInView');
+                
+                if (loggedOutView && loggedInView) {
+                    loggedOutView.style.display = isLoggedIn ? 'none' : 'block';
+                    loggedInView.style.display = isLoggedIn ? 'block' : 'none';
+                }
+
+                if (isLoggedIn && currentUser) {
+                    const nameEl = document.getElementById('cloudUserName');
+                    const emailEl = document.getElementById('cloudUserEmail');
+                    
+                    if (nameEl) nameEl.textContent = currentUser.fullName || currentUser.email || 'Student';
+                    if (emailEl) emailEl.textContent = currentUser.email || '';
+                }
+
+                updateLastSyncInfo();
+            }
+
+            // ==================== SHOW SYNC STATUS ====================
+            function showSyncStatus(message, type = 'info') {
+                const statusEl = document.getElementById('cloudSyncStatus');
+                if (!statusEl) return;
+
+                const colors = {
+                    info: 'var(--slate-600)',
+                    loading: 'var(--blue-500)',
+                    success: 'var(--emerald-600)',
+                    error: '#dc2626',
+                    warning: '#f59e0b'
+                };
+
+                statusEl.style.display = 'block';
+                statusEl.style.color = colors[type] || colors.info;
+                statusEl.innerHTML = message;
+
+                if (type !== 'loading') {
+                    setTimeout(() => {
+                        statusEl.style.display = 'none';
+                    }, 3000);
+                }
+            }
+
+            // ==================== UPDATE LAST SYNC INFO ====================
+            function updateLastSyncInfo() {
+                const lastSyncEl = document.getElementById('lastSyncInfo');
+                const lastSyncTimeEl = document.getElementById('lastSyncTime');
+                
+                if (!lastSyncEl || !lastSyncTimeEl) return;
+
+                const lastSync = localStorage.getItem('last_sync_time');
+                
+                if (lastSync) {
+                    const date = new Date(lastSync);
+                    const now = new Date();
+                    const diffHours = Math.floor((now - date) / (1000 * 60 * 60));
+                    
+                    let timeStr;
+                    if (diffHours < 1) {
+                        timeStr = 'Just now';
+                    } else if (diffHours < 24) {
+                        timeStr = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+                    } else {
+                        timeStr = date.toLocaleDateString();
                     }
                     
-                    // Save token
-                    localStorage.setItem('auth_token', data.data.token);
-                    localStorage.setItem('user', JSON.stringify(data.data.user));
-                    
-                    // Close modal
-                    modal.remove();
-                    
-                    // Update UI
-                    showLoggedInView();
-                    loadUserInfo();
-                    
-                    showToast('Login successful!', 'success');
-                    
-                } catch (error) {
-                    errorDiv.textContent = error.message;
-                    errorDiv.style.display = 'block';
+                    lastSyncTimeEl.textContent = timeStr;
+                    lastSyncEl.style.display = 'block';
+                } else {
+                    lastSyncEl.style.display = 'none';
                 }
-            });
-        }
-
-        function showLoggedInView() {
-            document.getElementById('loggedOutView').style.display = 'none';
-            document.getElementById('loggedInView').style.display = 'block';
-        }
-
-        function showLoggedOutView() {
-            document.getElementById('loggedOutView').style.display = 'block';
-            document.getElementById('loggedInView').style.display = 'none';
-        }
-
-        function loadUserInfo() {
-            const userJson = localStorage.getItem('user');
-            if (userJson) {
-                const user = JSON.parse(userJson);
-                document.getElementById('userNameDisplay').textContent = user.fullName || user.email;
-                document.getElementById('userEmailDisplay').textContent = user.email;
             }
-        }
 
-        async function logout() {
-            const token = localStorage.getItem('auth_token');
-            
-            try {
-                if (token) {
-                    await fetch(`${API_BASE_URL}/api/auth/logout`, {
-                        method: 'POST',
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                }
-            } catch (error) {
-                console.error('Logout error:', error);
+            // ==================== SHOW TOAST ====================
+            function showToast(message, type = 'success') {
+                const toast = document.createElement('div');
+                toast.className = `toast toast-${type}`;
+                toast.textContent = message;
+                document.body.appendChild(toast);
+                
+                setTimeout(() => {
+                    toast.remove();
+                }, 3000);
             }
-            
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('user');
-            showLoggedOutView();
-            showToast('Logged out successfully', 'success');
-        }
 
-        async function syncToCloud() {
-            const token = localStorage.getItem('auth_token');
-            if (!token) {
-                showToast('Please sign in first', 'error');
-                return;
-            }
-            
-            // Get current data
-            const cgpaData = {
-                studentInfo,
-                savedSemesters,
-                lastSynced: new Date().toISOString()
-            };
-            
-            try {
-                showToast('Syncing to cloud...', 'success');
+            // ==================== INITIALIZE ====================
+            function initCloudIntegration() {
+                console.log('Initializing cloud integration...');
                 
-                const response = await fetch(`${API_BASE_URL}/api/cgpa/sync`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify(cgpaData)
-                });
+                // Add UI
+                addCloudSyncUI();
                 
-                if (!response.ok) {
-                    throw new Error('Sync failed');
-                }
-                
-                localStorage.setItem('lastSynced', new Date().toISOString());
-                showToast('Data synced to cloud successfully!', 'success');
-                
-            } catch (error) {
-                console.error('Sync error:', error);
-                showToast('Failed to sync. Please try again.', 'error');
-            }
-        }
-
-        async function loadFromCloud() {
-            const token = localStorage.getItem('auth_token');
-            if (!token) {
-                showToast('Please sign in first', 'error');
-                return;
-            }
-            
-            try {
-                showToast('Loading from cloud...', 'success');
-                
-                const response = await fetch(`${API_BASE_URL}/api/cgpa/history`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to load data');
-                }
-                
-                const data = await response.json();
-                
-                if (data.data && confirm('Load cloud data? This will replace your current data.')) {
-                    // Update state
-                    studentInfo = data.data.studentInfo || studentInfo;
-                    savedSemesters = data.data.savedSemesters || [];
+                // Check auth status on load
+                if (authToken && currentUser) {
+                    updateCloudUI(true);
                     
-                    // Save to localStorage
-                    saveToStorage();
-                    
-                    // Update UI
-                    renderStudentInfo();
-                    updateDisplay();
-                    
-                    showToast('Data loaded from cloud!', 'success');
+                    // Optional: Auto-check for cloud data
+                    setTimeout(() => {
+                        const lastSync = localStorage.getItem('last_sync_time');
+                        if (!lastSync && window.savedSemesters?.length > 0) {
+                            // Prompt to sync if they have local data but never synced
+                            const shouldSync = confirm('You have local CGPA data. Would you like to back it up to the cloud?');
+                            if (shouldSync) {
+                                syncToCloud();
+                            }
+                        }
+                    }, 2000);
                 }
-                
-            } catch (error) {
-                console.error('Load error:', error);
-                showToast('Failed to load from cloud', 'error');
             }
-        }
 
-        // Add cloud sync status indicator
-        function addSyncIndicator() {
-            const lastSynced = localStorage.getItem('lastSynced');
-            if (!lastSynced) return;
-            
-            const date = new Date(lastSynced);
-            const indicator = document.createElement('div');
-            indicator.className = 'text-xs text-slate-400 text-center mt-2';
-            indicator.innerHTML = `
-                <i class="fas fa-cloud"></i> Last synced: ${date.toLocaleDateString()} ${date.toLocaleTimeString()}
-            `;
-            
-            const cloudSection = document.getElementById('cloudSyncSection');
-            if (cloudSection) {
-                cloudSection.appendChild(indicator);
+            // Wait for DOM and existing scripts to load
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initCloudIntegration);
+            } else {
+                setTimeout(initCloudIntegration, 500);
             }
-        }
 
-        // Initialize cloud features
-        function initCloudFeatures() {
-            addLoginUI();
-            addSyncIndicator();
-        }
-
-        // Call this after your existing initialization
-        document.addEventListener('DOMContentLoaded', function() {
-            // Your existing init code...
-            
-            // Add cloud features if on CGPA page
-            if (window.location.pathname.includes('cgpa-Cal')) {
-                initCloudFeatures();
-            }
-        });
-
+        })();
         (function() {
             // ===== GRADE POINTS =====
             const GRADE_POINTS = {
