@@ -8,49 +8,38 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --emerald-50: #ecfdf5;
-            --emerald-100: #d1fae5;
-            --emerald-200: #a7f3d0;
-            --emerald-300: #6ee7b7;
-            --emerald-400: #34d399;
-            --emerald-500: #10b981;
-            --emerald-600: #059669;
-            --emerald-700: #047857;
-            --emerald-800: #065f46;
             --emerald-900: #064e3b;
-            --teal-700: #0f766e;
-            --amber-300: #fcd34d;
+            --emerald-800: #065f46;
+            --emerald-700: #047857;
+            --emerald-600: #059669;
+            --emerald-500: #10b981;
+            --emerald-400: #34d399;
+            --emerald-300: #6ee7b7;
+            --emerald-200: #a7f3d0;
+            --emerald-100: #d1fae5;
             --amber-400: #fbbf24;
-            --amber-500: #f59e0b;
-            --amber-600: #d97706;
-            --amber-100: #fef3c7;
-            --amber-700: #b45309;
-            --blue-50: #eff6ff;
-            --blue-100: #dbeafe;
-            --blue-500: #3b82f6;
-            --slate-50: #f8fafc;
-            --slate-100: #f1f5f9;
-            --slate-200: #e2e8f0;
-            --slate-300: #cbd5e1;
-            --slate-400: #94a3b8;
-            --slate-500: #64748b;
-            --slate-600: #475569;
-            --slate-700: #334155;
-            --slate-800: #1e293b;
-            --slate-900: #0f172a;
-            --purple-500: #8b5cf6;
+            --amber-300: #fcd34d;
             --white: #ffffff;
+            --white-90: rgba(255,255,255,0.9);
             --gray-100: #f5f5f7;
-            --gray-200: #e5e5e7;
             --gray-300: #9ca3af;
             --gray-600: #4b5563;
-            --gray-700: #374151;
             --gray-800: #1f2933;
-            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            --slate-300: #cbd5e1;
+            --slate-400: #94a3b8;
+            --slate-700: #334155;
+            --slate-800: #1e293b;
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1),0 2px 4px -1px rgba(0,0,0,0.06);
+            --teal-700: #0f766e;
+            --blue-100: #dbeafe;
+            --blue-500: #3b82f6;
+            --blue-700: #1d4ed8;
+            --amber-100: #fef3c7;
+            --amber-600: #d97706;
+            --gray-200: #e5e5e7;
+            --gray-50: #f9fafb;
+            --gray-500: #6b7280;
         }
 
         * {
@@ -69,16 +58,315 @@
             line-height: 1.5;
             overflow-x: hidden;
             background-color: var(--gray-100);
+            padding-top: 80px;
         }
 
-        .font-sans {
-            font-family: 'Inter', sans-serif;
+        /* ===== NEW NAVBAR STYLES ===== */
+        .navbar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 50;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background-color: rgba(6, 78, 59, 0.95);
+            padding: 1.25rem 0;
         }
 
-        .font-mono {
+        .navbar.scrolled {
+            background-color: rgba(6, 78, 59, 0.95);
+            backdrop-filter: blur(8px);
+            box-shadow: var(--shadow-lg);
+            padding: 0.75rem 0;
+        }
+
+        .nav-container {
+            max-width: 80rem;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        @media (min-width: 640px) {
+            .nav-container { padding: 0 1.5rem; }
+        }
+
+        @media (min-width: 1024px) {
+            .nav-container { padding: 0 2rem; }
+        }
+
+        .nav-flex {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-link {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            z-index: 50;
+            text-decoration: none;
+            transition: transform 0.3s ease;
+        }
+
+        .logo-link:hover {
+            transform: scale(1.05);
+        }
+
+        .logo-main {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: var(--white);
+            letter-spacing: -0.05em;
+            transition: color 0.3s ease;
+        }
+
+        .logo-highlight {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: var(--amber-400);
+            letter-spacing: -0.05em;
+            transition: color 0.3s ease;
+        }
+
+        .logo-link:hover .logo-highlight {
+            color: var(--amber-300);
+        }
+
+        .desktop-links {
+            display: none;
+        }
+
+        @media (min-width: 1024px) {
+            .desktop-links {
+                display: flex;
+                align-items: center;
+                gap: 1.5rem;
+            }
+        }
+
+        .nav-link {
             font-family: 'Roboto Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-decoration: none;
+            color: rgba(255, 255, 255, 0.9);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem 0;
+            position: relative;
         }
 
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background-color: var(--amber-400);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateX(-50%);
+        }
+
+        .nav-link:hover {
+            color: var(--white);
+        }
+
+        .nav-link:hover::after {
+            width: 100%;
+        }
+
+        .nav-link.active {
+            color: var(--amber-400);
+        }
+
+        .nav-link.active::after {
+            width: 100%;
+            background-color: var(--amber-400);
+        }
+
+        .mobile-menu-btn {
+            display: block;
+            background: none;
+            border: none;
+            color: var(--white);
+            cursor: pointer;
+            z-index: 50;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            transition: all 0.3s ease;
+        }
+
+        .mobile-menu-btn:hover {
+            color: var(--amber-400);
+            transform: rotate(90deg);
+        }
+
+        @media (min-width: 1024px) {
+            .mobile-menu-btn {
+                display: none;
+            }
+        }
+
+        .mobile-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--emerald-900) 0%, var(--emerald-800) 100%);
+            display: flex;
+            flex-direction: column;
+            padding: 6rem 1.5rem 2rem;
+            overflow-y: auto;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-20px);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 40;
+        }
+
+        .mobile-overlay.open {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .mobile-link {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 1.125rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-decoration: none;
+            border-bottom: 1px solid var(--emerald-800);
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+            color: var(--white);
+            background: none;
+            border: none;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            transform: translateX(0);
+        }
+
+        .mobile-link:hover {
+            color: var(--amber-400);
+            transform: translateX(10px);
+            border-bottom-color: var(--amber-400);
+        }
+
+        .mobile-link.active {
+            color: var(--amber-400);
+            border-bottom-color: var(--amber-400);
+        }
+
+        .mobile-link:last-child {
+            border-bottom: none;
+        }
+
+        /* ===== ENHANCED ANIMATIONS ===== */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes fadeInRight {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes slideInBottom {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes rotateIn {
+            from {
+                opacity: 0;
+                transform: rotate(-10deg) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: rotate(0) scale(1);
+            }
+        }
+
+        .animate-fade-up {
+            animation: fadeInUp 0.8s ease forwards;
+        }
+
+        .animate-fade-left {
+            animation: fadeInLeft 0.8s ease forwards;
+        }
+
+        .animate-fade-right {
+            animation: fadeInRight 0.8s ease forwards;
+        }
+
+        .animate-scale {
+            animation: scaleIn 0.6s ease forwards;
+        }
+
+        .animate-slide {
+            animation: slideInBottom 0.8s ease forwards;
+        }
+
+        .animate-rotate {
+            animation: rotateIn 0.8s ease forwards;
+        }
+
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+        .delay-5 { animation-delay: 0.5s; }
+
+        /* ===== REST OF YOUR EXISTING STYLES (keep exactly as before) ===== */
         .container {
             width: 100%;
             max-width: 1200px;
@@ -563,148 +851,7 @@
             border-color: var(--emerald-300);
         }
 
-        /* Header Styles */
-        .header {
-            position: sticky;
-            top: 0;
-            z-index: 50;
-            width: 100%;
-            background: linear-gradient(to right, var(--emerald-600), var(--emerald-700));
-            box-shadow: var(--shadow-lg);
-        }
-
-        .header-container {
-            max-width: 80rem;
-            margin: 0 auto;
-            padding: 0 1rem;
-        }
-
-        .header-inner {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            height: 5rem;
-        }
-
-        .logo {
-            flex-shrink: 0;
-            cursor: pointer;
-        }
-
-        .logo a {
-            text-decoration: none;
-        }
-
-        .logo-text {
-            font-family: 'Inter', sans-serif;
-            font-size: 1.5rem;
-            font-weight: 900;
-            letter-spacing: -0.05em;
-            color: var(--white);
-        }
-
-        .logo-highlight {
-            color: var(--amber-300);
-        }
-
-        /* Desktop Navigation */
-        .desktop-nav {
-            display: none;
-            gap: 2rem;
-        }
-
-        .nav-button {
-            font-family: 'Roboto Mono', monospace;
-            font-size: 0.875rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            background: none;
-            border: none;
-            color: var(--emerald-100);
-            cursor: pointer;
-            padding: 0.5rem 0;
-            transition: all 0.2s;
-            position: relative;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .nav-button:hover {
-            color: var(--white);
-        }
-
-        .nav-button.active {
-            color: var(--white);
-            font-weight: 700;
-            border-bottom: 2px solid var(--amber-300);
-        }
-
-        .nav-button:not(.active):hover::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background-color: var(--emerald-300);
-        }
-
-        /* Mobile Menu */
-        .mobile-menu-button {
-            display: block;
-            padding: 0.5rem;
-            color: var(--white);
-            background: none;
-            border: none;
-            cursor: pointer;
-            border-radius: 0.375rem;
-        }
-
-        .mobile-menu-button:hover {
-            background-color: var(--emerald-700);
-        }
-
-        .mobile-nav {
-            display: none;
-            border-top: 1px solid var(--emerald-500);
-            background-color: var(--emerald-700);
-        }
-
-        .mobile-nav.open {
-            display: block;
-        }
-
-        .mobile-nav-items {
-            padding: 0.5rem 0.75rem;
-        }
-
-        .mobile-nav-button {
-            display: block;
-            width: 100%;
-            text-align: left;
-            padding: 1rem 0.75rem;
-            font-family: 'Roboto Mono', monospace;
-            font-size: 0.875rem;
-            text-transform: uppercase;
-            background: none;
-            border: none;
-            color: var(--emerald-100);
-            cursor: pointer;
-            text-decoration: none;
-        }
-
-        .mobile-nav-button:hover {
-            background-color: var(--emerald-600);
-            color: var(--white);
-        }
-
-        .mobile-nav-button.active {
-            background-color: var(--emerald-600);
-            color: var(--white);
-            font-weight: 700;
-        }
-
-        /* Footer Styles */
+        /* Footer Styles (keep exactly as before) */
         .footer {
             background: linear-gradient(135deg, var(--slate-800) 0%, var(--slate-900) 100%);
             border-top: 4px solid var(--emerald-500);
@@ -832,7 +979,7 @@
             color: var(--emerald-400);
         }
 
-        /* About Page Styles */
+        /* About Page Styles (keep exactly as before) */
         .about-header {
             border-bottom: 2px dashed var(--gray-300);
             padding: 5rem 0;
@@ -867,6 +1014,13 @@
             border: 2px dashed var(--gray-300);
             position: relative;
             overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .mission-vision-card:hover {
+            transform: translateY(-10px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--emerald-400);
         }
 
         .card-icon-bg {
@@ -875,6 +1029,12 @@
             right: 0;
             padding: 1rem;
             opacity: 0.1;
+            transition: all 0.5s ease;
+        }
+
+        .mission-vision-card:hover .card-icon-bg {
+            opacity: 0.2;
+            transform: scale(1.1) rotate(5deg);
         }
 
         .card-icon-bg i {
@@ -895,6 +1055,12 @@
             margin-right: 0.75rem;
             color: var(--gray-600);
             font-size: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .mission-vision-card:hover .card-title i {
+            color: var(--emerald-600);
+            transform: scale(1.1);
         }
 
         .card-content {
@@ -937,11 +1103,23 @@
             border: 2px solid var(--gray-800);
             border-radius: 50%;
             z-index: 10;
+            transition: all 0.3s ease;
+        }
+
+        .timeline-item:hover .timeline-dot {
+            background-color: var(--emerald-600);
+            border-color: var(--emerald-800);
+            transform: scale(1.3);
         }
 
         .timeline-item {
             position: relative;
             margin-bottom: 3rem;
+            transition: all 0.3s ease;
+        }
+
+        .timeline-item:hover {
+            transform: translateX(10px);
         }
 
         .timeline-year {
@@ -952,6 +1130,12 @@
             background-color: var(--gray-200);
             padding: 0.25rem 0.5rem;
             display: inline-block;
+            transition: all 0.3s ease;
+        }
+
+        .timeline-item:hover .timeline-year {
+            background-color: var(--emerald-600);
+            color: var(--white);
         }
 
         .timeline-item-title {
@@ -981,11 +1165,13 @@
             padding: 1.5rem;
             border: 1px solid var(--gray-300);
             text-align: center;
-            transition: box-shadow 0.3s;
+            transition: all 0.3s ease;
         }
 
         .value-card:hover {
-            box-shadow: var(--shadow-md);
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--emerald-400);
         }
 
         .value-icon-container {
@@ -998,11 +1184,23 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .value-card:hover .value-icon-container {
+            background-color: var(--emerald-600);
+            border-color: var(--white);
+            transform: rotate(360deg);
         }
 
         .value-icon {
             color: var(--gray-800);
             font-size: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .value-card:hover .value-icon {
+            color: var(--white);
         }
 
         .value-title {
@@ -1041,6 +1239,11 @@
             height: 0.25rem;
             background-color: var(--emerald-500);
             border-radius: 0.125rem;
+            transition: all 0.3s ease;
+        }
+
+        .section-title:hover .section-title-line {
+            width: 4rem;
         }
 
         .highlight-card {
@@ -1048,6 +1251,12 @@
             border: 1px solid var(--emerald-200);
             padding: 1.5rem;
             border-radius: 0.75rem;
+            transition: all 0.3s ease;
+        }
+
+        .highlight-card:hover {
+            transform: scale(1.02);
+            box-shadow: var(--shadow-md);
         }
 
         .highlight-text {
@@ -1073,9 +1282,9 @@
         }
 
         .dept-card:hover {
-            border-color: var(--emerald-300);
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-md);
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--emerald-400);
         }
 
         .dept-card-header {
@@ -1093,6 +1302,11 @@
             align-items: center;
             justify-content: center;
             color: var(--white);
+            transition: all 0.3s ease;
+        }
+
+        .dept-card:hover .dept-icon {
+            transform: rotate(5deg) scale(1.1);
         }
 
         .dept-title {
@@ -1114,6 +1328,11 @@
             background-color: var(--gray-100);
             padding: 1.5rem;
             border-radius: 0.75rem;
+            transition: all 0.3s ease;
+        }
+
+        .student-activities:hover {
+            box-shadow: var(--shadow-md);
         }
 
         .activity-list {
@@ -1125,6 +1344,11 @@
             align-items: flex-start;
             gap: 1rem;
             margin-bottom: 1.25rem;
+            transition: all 0.3s ease;
+        }
+
+        .activity-item:hover {
+            transform: translateX(10px);
         }
 
         .activity-number {
@@ -1140,6 +1364,12 @@
             font-weight: 700;
             font-size: 0.875rem;
             margin-top: 0.125rem;
+            transition: all 0.3s ease;
+        }
+
+        .activity-item:hover .activity-number {
+            background-color: var(--emerald-700);
+            transform: scale(1.1);
         }
 
         .activity-text {
@@ -1164,8 +1394,9 @@
         }
 
         .benefit-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-sm);
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--emerald-400);
         }
 
         .benefit-title {
@@ -1190,6 +1421,12 @@
             border-radius: 1rem;
             padding: 3rem;
             text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .cta-section:hover {
+            box-shadow: var(--shadow-xl);
+            transform: scale(1.02);
         }
 
         .cta-icon {
@@ -1202,6 +1439,12 @@
             justify-content: center;
             margin: 0 auto 1.5rem;
             color: var(--white);
+            transition: all 0.3s ease;
+        }
+
+        .cta-section:hover .cta-icon {
+            transform: rotate(360deg);
+            background-color: var(--emerald-700);
         }
 
         .cta-title {
@@ -1235,7 +1478,8 @@
 
         .cta-button:hover {
             background-color: var(--emerald-700);
-            transform: translateY(-2px);
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
         }
 
         /* Media Queries */
@@ -1270,14 +1514,6 @@
             
             .md\:flex-row {
                 flex-direction: row;
-            }
-
-            .desktop-nav {
-                display: flex;
-            }
-
-            .mobile-menu-button {
-                display: none;
             }
 
             .footer-grid {
@@ -1370,62 +1606,57 @@
     </style>
 </head>
 <body>
-    <!-- Header -->
-    <header class="header">
-        <div class="header-container">
-            <div class="header-inner">
-                <!-- Logo -->
-                <div class="logo" id="logoBtn">
-                    <a href="index.html" style="text-decoration: none;">
-                        <span class="logo-text">
-                            N.U.E.S.A <span class="logo-highlight">BIU</span>
-                        </span>
-                    </a>
+    <!-- ===== NEW NAVBAR (REPLACED) ===== -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <div class="nav-flex">
+                <a href="/" class="logo-link" id="logoLink">
+                    <span class="logo-main">N.U.E.S.A</span>
+                    <span class="logo-highlight">BIU</span>
+                </a>
+
+                <div class="desktop-links" id="desktopLinks">
+                    <a href="./index.html" class="nav-link" data-path="/">HOME</a>
+                    <a href="./about.html" class="nav-link active" data-path="/about">ABOUT</a>
+                    <a href="./members.html" class="nav-link" data-path="/members">MEMBERS</a>
+                    <a href="./events.html" class="nav-link" data-path="/events">EVENTS</a>
+                    <a href="./resources.html" class="nav-link" data-path="/resources">RESOURCES</a>
+                    <a href="./cgpa-calculator.html" class="nav-link" data-path="/cgpa-calculator">CGPA CALC</a>
+                    <a href="./admission.html" class="nav-link" data-path="/admission">ADMISSION</a>
+                    <a href="./course-representatives.html" class="nav-link" data-path="/course-representatives">COURSE REPS</a>
+                    <a href="./news.html" class="nav-link" data-path="/news">NEWS</a>
+                    <a href="./contacts.html" class="nav-link" data-path="/contact">CONTACT</a>
                 </div>
 
-                <!-- Desktop Navigation -->
-                <nav class="desktop-nav">
-                    <a href="./index.html" class="nav-button">Home</a>
-                    <a href="./about.html" class="nav-button active">About</a>
-                    <a href="./members.html" class="nav-button">Members</a>
-                    <a href="./events.html" class="nav-button">Events</a>
-                    <a href="./resources.html" class="nav-button">Resources</a>
-                    <a href="./news.html" class="nav-button">News</a>
-                    <a href="./contacts.html" class="nav-button">Contact</a>
-                </nav>
-
-                <!-- Mobile Menu Button -->
-                <div class="md:hidden">
-                    <button class="mobile-menu-button" id="mobileMenuBtn">
-                        <i class="fas fa-bars text-xl"></i>
-                    </button>
-                </div>
+                <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu">
+                    <i class="fas fa-bars fa-2x" id="menuIcon"></i>
+                </button>
             </div>
         </div>
 
-        <!-- Mobile Navigation -->
-        <div class="mobile-nav" id="mobileNav">
-            <div class="mobile-nav-items">
-                <a href="./index.html" class="mobile-nav-button">Home</a>
-                <a href="./about.html" class="mobile-nav-button active">About</a>
-                <a href="./members.html" class="mobile-nav-button">Members</a>
-                <a href="./events.html" class="mobile-nav-button">Events</a>
-                <a href="./resources.html" class="mobile-nav-button">Resources</a>
-                <a href="./news.html" class="mobile-nav-button">News</a>
-                <a href="./contacts.html" class="mobile-nav-button">Contact</a>
-            </div>
+        <div class="mobile-overlay" id="mobileOverlay">
+            <a href="./index.html" class="mobile-link" data-path="/">HOME</a>
+            <a href="./about.html" class="mobile-link active" data-path="/about">ABOUT</a>
+            <a href="./members.html" class="mobile-link" data-path="/members">MEMBERS</a>
+            <a href="./events.html" class="mobile-link" data-path="/events">EVENTS</a>
+            <a href="./resources.html" class="mobile-link" data-path="/resources">RESOURCES</a>
+            <a href="./cgpa-calculator.html" class="mobile-link" data-path="/cgpa-calculator">CGPA CALC</a>
+            <a href="./admission.html" class="mobile-link" data-path="/admission">ADMISSION</a>
+            <a href="./course-representatives.html" class="mobile-link" data-path="/course-representatives">COURSE REPS</a>
+            <a href="./news.html" class="mobile-link" data-path="/news">NEWS</a>
+            <a href="./contacts.html" class="mobile-link" data-path="/contact">CONTACT</a>
         </div>
-    </header>
+    </nav>
 
-    <!-- About Page Content -->
+    <!-- About Page Content (EXACTLY AS ORIGINAL) -->
     <main class="min-h-screen bg-gray-100">
         <!-- Header Section -->
         <section class="about-header">
             <div class="container max-w-4xl text-center">
-                <h1 class="about-title">
+                <h1 class="about-title animate-fade-up">
                     About Engineering & NUESA
                 </h1>
-                <p class="about-subtitle">
+                <p class="about-subtitle animate-fade-up delay-1">
                     Discover what engineering is all about at BIU and learn about the Nigerian Universities 
                     Engineering Students' Association - the student wing of the Nigerian Society of Engineers.
                 </p>
@@ -1435,11 +1666,11 @@
         <!-- Engineering Section -->
         <section class="engineering-section">
             <div class="container max-w-4xl">
-                <h2 class="section-title">
+                <h2 class="section-title animate-fade-left">
                     <span class="section-title-line"></span>
                     What is Engineering?
                 </h2>
-                <p class="highlight-text mb-8">
+                <p class="highlight-text mb-8 animate-fade-right delay-1">
                     Engineering is the application of science and math to solve real-world
                     problems. Engineers design, build, and maintain engines, machines,
                     structures, and systems that make life easier and better for everyone.
@@ -1447,11 +1678,11 @@
 
                 <!-- Importance of Engineering -->
                 <div class="mb-12">
-                    <h3 class="section-title">
+                    <h3 class="section-title animate-fade-left delay-2">
                         <span class="section-title-line"></span>
                         Why is Engineering Important?
                     </h3>
-                    <div class="highlight-card">
+                    <div class="highlight-card animate-scale delay-3">
                         <p class="highlight-text">
                             Without engineers, we wouldn't have clean water, electricity, cars,
                             phones, or safe buildings. Engineers turn ideas into reality. As an
@@ -1463,10 +1694,10 @@
 
                 <!-- Departments Section -->
                 <div class="mb-12">
-                    <h3 class="section-title mb-6">Engineering Departments at BIU</h3>
+                    <h3 class="section-title mb-6 animate-fade-left delay-4">Engineering Departments at BIU</h3>
                     <div class="departments-grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <!-- Mechanical Engineering -->
-                        <div class="dept-card">
+                        <div class="dept-card animate-slide delay-1">
                             <div class="dept-card-header">
                                 <div class="dept-icon" style="background-color: var(--blue-500);">
                                     <i class="fas fa-wrench"></i>
@@ -1481,7 +1712,7 @@
                         </div>
 
                         <!-- Electrical Engineering -->
-                        <div class="dept-card">
+                        <div class="dept-card animate-slide delay-2">
                             <div class="dept-card-header">
                                 <div class="dept-icon" style="background-color: var(--amber-600);">
                                     <i class="fas fa-bolt"></i>
@@ -1496,7 +1727,7 @@
                         </div>
 
                         <!-- Civil Engineering -->
-                        <div class="dept-card">
+                        <div class="dept-card animate-slide delay-3">
                             <div class="dept-card-header">
                                 <div class="dept-icon" style="background-color: var(--teal-700);">
                                     <i class="fas fa-water"></i>
@@ -1511,8 +1742,6 @@
                         </div>
                     </div>
                 </div>
-
-                </div>
             </div>
         </section>
 
@@ -1521,7 +1750,7 @@
             <div class="container max-w-7xl">
                 <div class="mission-vision-grid">
                     <!-- Mission Card -->
-                    <div class="mission-vision-card">
+                    <div class="mission-vision-card animate-fade-left delay-1">
                         <div class="card-icon-bg">
                             <i class="fas fa-bullseye"></i>
                         </div>
@@ -1537,7 +1766,7 @@
                     </div>
 
                     <!-- Vision Card -->
-                    <div class="mission-vision-card">
+                    <div class="mission-vision-card animate-fade-right delay-2">
                         <div class="card-icon-bg">
                             <i class="fas fa-eye"></i>
                         </div>
@@ -1557,13 +1786,13 @@
         <!-- Timeline -->
         <section class="timeline-section">
             <div class="container max-w-5xl">
-                <h2 class="timeline-title">
+                <h2 class="timeline-title animate-fade-up">
                     Our Journey
                 </h2>
 
                 <div class="timeline-container">
                     <!-- Timeline Item 1 -->
-                    <div class="timeline-item">
+                    <div class="timeline-item animate-fade-left delay-1">
                         <div class="timeline-dot"></div>
                         <div class="timeline-item-content">
                             <span class="timeline-year">2010</span>
@@ -1576,7 +1805,7 @@
                     </div>
 
                     <!-- Timeline Item 2 -->
-                    <div class="timeline-item">
+                    <div class="timeline-item animate-fade-right delay-2">
                         <div class="timeline-dot"></div>
                         <div class="timeline-item-spacer"></div>
                         <div class="timeline-item-content right">
@@ -1589,7 +1818,7 @@
                     </div>
 
                     <!-- Timeline Item 3 -->
-                    <div class="timeline-item">
+                    <div class="timeline-item animate-fade-left delay-3">
                         <div class="timeline-dot"></div>
                         <div class="timeline-item-content">
                             <span class="timeline-year">2020</span>
@@ -1607,12 +1836,12 @@
         <!-- Core Values -->
         <section class="py-20">
             <div class="container max-w-7xl">
-                <h2 class="timeline-title">
+                <h2 class="timeline-title animate-fade-up">
                     Core Values
                 </h2>
                 <div class="values-grid md:grid-cols-2 lg:grid-cols-4">
                     <!-- Excellence -->
-                    <div class="value-card">
+                    <div class="value-card animate-scale delay-1">
                         <div class="value-icon-container">
                             <i class="fas fa-award value-icon"></i>
                         </div>
@@ -1623,7 +1852,7 @@
                     </div>
 
                     <!-- Unity -->
-                    <div class="value-card">
+                    <div class="value-card animate-scale delay-2">
                         <div class="value-icon-container">
                             <i class="fas fa-users value-icon"></i>
                         </div>
@@ -1634,7 +1863,7 @@
                     </div>
 
                     <!-- Innovation -->
-                    <div class="value-card">
+                    <div class="value-card animate-scale delay-3">
                         <div class="value-icon-container">
                             <i class="fas fa-bolt value-icon"></i>
                         </div>
@@ -1645,7 +1874,7 @@
                     </div>
 
                     <!-- Leadership -->
-                    <div class="value-card">
+                    <div class="value-card animate-scale delay-4">
                         <div class="value-icon-container">
                             <i class="fas fa-heart value-icon"></i>
                         </div>
@@ -1661,39 +1890,39 @@
         <!-- NUESA Benefits -->
         <section class="engineering-section" style="background-color: var(--blue-50);">
             <div class="container max-w-4xl">
-                <h2 class="section-title text-center mb-8">What NUESA Does For You</h2>
+                <h2 class="section-title text-center mb-8 animate-fade-up">What NUESA Does For You</h2>
                 <div class="benefits-grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-                    <div class="benefit-card">
+                    <div class="benefit-card animate-slide delay-1">
                         <h4 class="benefit-title">Academic Support</h4>
                         <p class="benefit-description">
                             Organizes tutorials, provides past questions, and helps resolve academic issues.
                         </p>
                     </div>
-                    <div class="benefit-card">
+                    <div class="benefit-card animate-slide delay-2">
                         <h4 class="benefit-title">Welfare & Representation</h4>
                         <p class="benefit-description">
                             Looks out for student well-being and represents student needs to the faculty.
                         </p>
                     </div>
-                    <div class="benefit-card">
+                    <div class="benefit-card animate-slide delay-3">
                         <h4 class="benefit-title">Events & Activities</h4>
                         <p class="benefit-description">
                             Hosts Engineering Week, dinners, sports competitions, and orientation for freshers.
                         </p>
                     </div>
-                    <div class="benefit-card">
+                    <div class="benefit-card animate-slide delay-4">
                         <h4 class="benefit-title">Information Hub</h4>
                         <p class="benefit-description">
                             Disseminates important news from the faculty and university management.
                         </p>
                     </div>
-                    <div class="benefit-card">
+                    <div class="benefit-card animate-slide delay-5">
                         <h4 class="benefit-title">Skill Acquisition</h4>
                         <p class="benefit-description">
                             Organizes workshops and seminars to teach practical engineering skills.
                         </p>
                     </div>
-                    <div class="benefit-card">
+                    <div class="benefit-card animate-slide delay-5">
                         <h4 class="benefit-title">Networking</h4>
                         <p class="benefit-description">
                             Connects students with alumni and industry professionals for career guidance.
@@ -1704,7 +1933,7 @@
         </section>
     </main>
 
-    <!-- Footer -->
+    <!-- Footer (EXACTLY AS ORIGINAL) -->
     <footer class="footer">
         <div class="footer-container">
             <div class="footer-grid">
@@ -1790,7 +2019,129 @@
     </footer>
 
     <script>
-        // Header navigation functionality
+        // ===== NEW NAVBAR SCRIPT =====
+        (function() {
+            const currentPath = '/about';
+            
+            const navbar = document.getElementById('navbar');
+            const mobileBtn = document.getElementById('mobileMenuBtn');
+            const mobileOverlay = document.getElementById('mobileOverlay');
+            const menuIcon = document.getElementById('menuIcon');
+            const desktopLinks = document.querySelectorAll('.desktop-links .nav-link');
+            const mobileLinks = document.querySelectorAll('.mobile-link');
+            const logoLink = document.getElementById('logoLink');
+
+            function setActiveFromPath() {
+                desktopLinks.forEach(link => {
+                    const path = link.getAttribute('data-path');
+                    if (path === currentPath) {
+                        link.classList.add('active');
+                    } else {
+                        link.classList.remove('active');
+                    }
+                });
+
+                mobileLinks.forEach(link => {
+                    const path = link.getAttribute('data-path');
+                    if (path === currentPath) {
+                        link.classList.add('active');
+                    } else {
+                        link.classList.remove('active');
+                    }
+                });
+            }
+
+            function handleScroll() {
+                if (window.scrollY > 20) {
+                    navbar.classList.add('scrolled');
+                } else {
+                    navbar.classList.remove('scrolled');
+                }
+            }
+            window.addEventListener('scroll', handleScroll);
+            handleScroll();
+
+            function openMobile() {
+                mobileOverlay.classList.add('open');
+                menuIcon.className = 'fas fa-times fa-2x';
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeMobile() {
+                mobileOverlay.classList.remove('open');
+                menuIcon.className = 'fas fa-bars fa-2x';
+                document.body.style.overflow = '';
+            }
+
+            function toggleMobile() {
+                if (mobileOverlay.classList.contains('open')) {
+                    closeMobile();
+                } else {
+                    openMobile();
+                }
+            }
+
+            mobileBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleMobile();
+            });
+
+            document.addEventListener('click', (e) => {
+                if (mobileOverlay.classList.contains('open')) {
+                    if (!mobileOverlay.contains(e.target) && !mobileBtn.contains(e.target)) {
+                        closeMobile();
+                    }
+                }
+            });
+
+            mobileOverlay.addEventListener('click', (e) => e.stopPropagation());
+
+            function handleLinkClick(linkElement, event) {
+                event.preventDefault();
+                const newPath = linkElement.getAttribute('data-path');
+
+                desktopLinks.forEach(l => {
+                    if (l.getAttribute('data-path') === newPath) {
+                        l.classList.add('active');
+                    } else {
+                        l.classList.remove('active');
+                    }
+                });
+                mobileLinks.forEach(l => {
+                    if (l.getAttribute('data-path') === newPath) {
+                        l.classList.add('active');
+                    } else {
+                        l.classList.remove('active');
+                    }
+                });
+
+                // Navigate to the page
+                const href = linkElement.getAttribute('href') || 
+                            (newPath === '/' ? 'index.html' : newPath.substring(1) + '.html');
+                window.location.href = href;
+
+                if (mobileOverlay.classList.contains('open')) {
+                    closeMobile();
+                }
+            }
+
+            mobileLinks.forEach(link => {
+                link.addEventListener('click', (e) => handleLinkClick(link, e));
+            });
+
+            desktopLinks.forEach(link => {
+                link.addEventListener('click', (e) => handleLinkClick(link, e));
+            });
+
+            logoLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.location.href = 'index.html';
+            });
+
+            setActiveFromPath();
+        })();
+
+        // ===== ORIGINAL ABOUT PAGE SCRIPT (KEPT EXACTLY) =====
         document.addEventListener('DOMContentLoaded', function() {
             const mobileNav = document.getElementById('mobileNav');
             const mobileMenuBtn = document.getElementById('mobileMenuBtn');

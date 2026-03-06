@@ -774,7 +774,7 @@
             width: 100%;
             z-index: 50;
             transition: all 0.3s ease;
-            background-color: transparent;
+            background-color: rgba(6, 78, 59, 0.95);
             padding: 1.25rem 0;
         }
 
@@ -1263,45 +1263,45 @@
     </style>
 </head>
 <body>
-    <!-- ===== MODERN NAVBAR (SIDEBAR STYLE) – properly arranged, no duplicates ===== -->
+    <!-- ===== MODERN NAVBAR ===== -->
     <nav class="navbar" id="navbar">
         <div class="nav-container">
             <div class="nav-flex">
-                <!-- Logo -->
                 <a href="/" class="logo-link" id="logoLink">
                     <span class="logo-main">N.U.E.S.A</span>
                     <span class="logo-highlight">BIU</span>
                 </a>
 
-                <!-- Desktop Navigation -->
-                  <div class="desktop-links">
-                    <a href="index.html" class="nav-link active">HOME</a>
-                    <a href="about.html" class="nav-link">ABOUT</a>
-                    <a href="members.html" class="nav-link">MEMBERS</a>
-                    <a href="events.html" class="nav-link">EVENTS</a>
-                    <a href="resources.html" class="nav-link">RESOURCES</a>
-                    <a href="cgpa-calculator.html" class="nav-link">CGPA CALC</a>
-                    <a href="admission.html" class="nav-link">ADMISSION</a>
-                    <a href="course-representatives.html" class="nav-link">COURSE REPS</a>
-                    <a href="news.html" class="nav-link">NEWS</a>
-                    <a href="contact.html" class="nav-link">CONTACT</a>
+                <div class="desktop-links" id="desktopLinks">
+                    <a href="index.html" class="nav-link active" data-path="/">HOME</a>
+                    <a href="about.html" class="nav-link" data-path="/about">ABOUT</a>
+                    <a href="members.html" class="nav-link" data-path="/members">MEMBERS</a>
+                    <a href="events.html" class="nav-link" data-path="/events">EVENTS</a>
+                    <a href="resources.html" class="nav-link" data-path="/resources">RESOURCES</a>
+                    <a href="cgpa-calculator.html" class="nav-link" data-path="/cgpa-calculator">CGPA CALC</a>
+                    <a href="admission.html" class="nav-link" data-path="/admission">ADMISSION</a>
+                    <a href="course-representatives.html" class="nav-link" data-path="/course-representatives">COURSE REPS</a>
+                    <a href="news.html" class="nav-link" data-path="/news">NEWS</a>
+                    <a href="contacts.html" class="nav-link" data-path="/contact">CONTACT</a>
                 </div>
-                <button class="mobile-menu-btn" id="mobileMenuBtn">
+
+                <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu">
                     <i class="fas fa-bars fa-2x" id="menuIcon"></i>
                 </button>
             </div>
         </div>
+
         <div class="mobile-overlay" id="mobileOverlay">
-            <a href="index.html" class="mobile-link active">HOME</a>
-            <a href="about.html" class="mobile-link">ABOUT</a>
-            <a href="members.html" class="mobile-link">MEMBERS</a>
-            <a href="events.html" class="mobile-link">EVENTS</a>
-            <a href="resources.html" class="mobile-link">RESOURCES</a>
-            <a href="cgpa-calculator.html" class="mobile-link">CGPA CALC</a>
-            <a href="admission.html" class="mobile-link">ADMISSION</a>
-            <a href="course-representatives.html" class="mobile-link">COURSE REPS</a>
-            <a href="news.html" class="mobile-link">NEWS</a>
-            <a href="contact.html" class="mobile-link">CONTACT</a>
+            <a href="index.html" class="mobile-link active" data-path="/">HOME</a>
+            <a href="about.html" class="mobile-link" data-path="/about">ABOUT</a>
+            <a href="members.html" class="mobile-link" data-path="/members">MEMBERS</a>
+            <a href="events.html" class="mobile-link" data-path="/events">EVENTS</a>
+            <a href="resources.html" class="mobile-link" data-path="/resources">RESOURCES</a>
+            <a href="cgpa-calculator.html" class="mobile-link" data-path="/cgpa-calculator">CGPA CALC</a>
+            <a href="admission.html" class="mobile-link" data-path="/admission">ADMISSION</a>
+            <a href="course-representatives.html" class="mobile-link" data-path="/course-representatives">COURSE REPS</a>
+            <a href="news.html" class="mobile-link" data-path="/news">NEWS</a>
+            <a href="contacts.html" class="mobile-link" data-path="/contact">CONTACT</a>
         </div>
     </nav>
 
@@ -1561,6 +1561,20 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+
+        // Get current path and normalize it
+            let currentPath = window.location.pathname;
+
+        // Remove .html extension if present for matching
+            if (currentPath.endsWith('.html')) {
+                currentPath = currentPath.replace('.html', '');
+            }
+            
+        // Handle root/index page
+            if (currentPath === '/' || currentPath === '/index') {
+                currentPath = '/';
+            }
+
         // API Configuration
         const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
         
@@ -1571,9 +1585,6 @@
         const menuIcon = document.getElementById('menuIcon');
         const desktopLinks = document.querySelectorAll('.nav-link');
         const mobileLinks = document.querySelectorAll('.mobile-link');
-
-        // Set current path (for demo, using '/members' to show active)
-        const currentPath = '/members';
 
         // Update active class based on currentPath
         function updateActiveLinks() {
@@ -1629,7 +1640,6 @@
         // Close mobile menu when clicking a link
         mobileLinks.forEach(link => {
             link.addEventListener('click', (e) => {
-                e.preventDefault();
                 mobileOverlay.classList.remove('open');
                 menuIcon.className = 'fas fa-bars fa-2x';
             });
@@ -1646,9 +1656,9 @@
         });
 
         // Desktop links click handler
+        // Desktop links click handler - FIXED VERSION
         desktopLinks.forEach(link => {
             link.addEventListener('click', (e) => {
-                e.preventDefault();
                 const newPath = link.getAttribute('data-path');
                 
                 desktopLinks.forEach(l => {
@@ -1669,13 +1679,12 @@
                 if (mobileOverlay.classList.contains('open')) {
                     mobileOverlay.classList.remove('open');
                     menuIcon.className = 'fas fa-bars fa-2x';
-                }
+                }                
             });
         });
 
         // Logo click
         document.getElementById('logoLink').addEventListener('click', (e) => {
-            e.preventDefault();
             desktopLinks.forEach(l => {
                 if (l.getAttribute('data-path') === '/') {
                     l.classList.add('active');
