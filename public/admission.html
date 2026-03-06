@@ -35,21 +35,29 @@
             background-color: var(--gray-100);
             color: var(--gray-800);
             line-height: 1.5;
+            overflow-x: hidden;
         }
 
-        /* ===== MODERN NAVBAR (exact copy from members page) ===== */
+        body.menu-open {
+            overflow: hidden;
+        }
+
+        /* ===== MODERN NAVBAR - FIXED VERSION ===== */
         .navbar {
             position: fixed;
             top: 0;
+            left: 0;
+            right: 0;
             width: 100%;
-            z-index: 50;
+            z-index: 1000;
             transition: all 0.3s ease;
             background-color: rgba(6, 78, 59, 0.95);
             padding: 1.25rem 0;
+            backdrop-filter: blur(8px);
         }
         .navbar.scrolled {
-            background-color: rgba(6, 78, 59, 0.95);
-            backdrop-filter: blur(8px);
+            background-color: rgba(6, 78, 59, 0.98);
+            backdrop-filter: blur(10px);
             box-shadow: var(--shadow-lg);
             padding: 0.75rem 0;
         }
@@ -64,13 +72,18 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: relative;
         }
         .logo-link {
             display: flex;
             align-items: center;
             gap: 0.25rem;
-            z-index: 50;
+            z-index: 1001;
             text-decoration: none;
+            transition: transform 0.3s ease;
+        }
+        .logo-link:hover {
+            transform: scale(1.05);
         }
         .logo-main {
             font-size: 1.5rem;
@@ -100,34 +113,59 @@
             text-decoration: none;
             color: rgba(255,255,255,0.9);
             transition: color 0.2s;
+            position: relative;
+        }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background-color: var(--amber-400);
+            transition: width 0.3s;
         }
         .nav-link:hover { color: var(--amber-400); }
+        .nav-link:hover::after { width: 100%; }
         .nav-link.active { color: var(--amber-400); }
+        .nav-link.active::after { width: 100%; }
+        
         .mobile-menu-btn {
             display: block;
             background: none;
             border: none;
             color: var(--white);
             cursor: pointer;
-            z-index: 50;
+            z-index: 1001;
+            transition: all 0.3s;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
         }
-        .mobile-menu-btn:hover { color: var(--amber-400); }
+        .mobile-menu-btn:hover { 
+            color: var(--amber-400);
+            transform: rotate(90deg);
+        }
         @media (min-width: 1024px) { .mobile-menu-btn { display: none; } }
+        
+        /* Mobile overlay - FIXED */
         .mobile-overlay {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
-            min-height: 100vh;
-            background-color: var(--emerald-900);
+            height: 100vh;
+            background: linear-gradient(135deg, var(--emerald-900), var(--emerald-800));
             display: flex;
             flex-direction: column;
-            padding: 6rem 1.5rem 2rem;
+            justify-content: center;
+            align-items: center;
+            padding: 5rem 2rem;
             overflow-y: auto;
             opacity: 0;
             visibility: hidden;
-            transform: translateY(-20px);
-            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
+            transform: translateY(-100%);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 999;
         }
         .mobile-overlay.open {
             opacity: 1;
@@ -136,18 +174,46 @@
         }
         .mobile-link {
             font-family: 'Roboto Mono', monospace;
-            font-size: 1.125rem;
+            font-size: 1.5rem;
             font-weight: 600;
             letter-spacing: 0.1em;
             text-decoration: none;
-            border-bottom: 1px solid var(--emerald-800);
-            padding-bottom: 1rem;
-            margin-bottom: 1rem;
             color: var(--white);
+            transition: all 0.3s;
+            margin: 0.75rem 0;
+            opacity: 0;
+            transform: translateX(-20px);
         }
-        .mobile-link.active { color: var(--amber-400); }
+        .mobile-overlay.open .mobile-link {
+            opacity: 1;
+            transform: translateX(0);
+            transition: opacity 0.4s, transform 0.4s;
+        }
+        .mobile-overlay.open .mobile-link:nth-child(1) { transition-delay: 0.1s; }
+        .mobile-overlay.open .mobile-link:nth-child(2) { transition-delay: 0.15s; }
+        .mobile-overlay.open .mobile-link:nth-child(3) { transition-delay: 0.2s; }
+        .mobile-overlay.open .mobile-link:nth-child(4) { transition-delay: 0.25s; }
+        .mobile-overlay.open .mobile-link:nth-child(5) { transition-delay: 0.3s; }
+        .mobile-overlay.open .mobile-link:nth-child(6) { transition-delay: 0.35s; }
+        .mobile-overlay.open .mobile-link:nth-child(7) { transition-delay: 0.4s; }
+        .mobile-overlay.open .mobile-link:nth-child(8) { transition-delay: 0.45s; }
+        .mobile-overlay.open .mobile-link:nth-child(9) { transition-delay: 0.5s; }
+        .mobile-overlay.open .mobile-link:nth-child(10) { transition-delay: 0.55s; }
+        
+        .mobile-link:hover { 
+            color: var(--amber-400);
+            transform: translateX(10px);
+        }
+        .mobile-link.active { 
+            color: var(--amber-400);
+            border-left: 4px solid var(--amber-400);
+            padding-left: 1rem;
+        }
         .mobile-link:last-child { border-bottom: none; }
-        .main-wrapper { padding-top: 5rem; }
+        
+        .main-wrapper { 
+            padding-top: 5rem;
+        }
 
         /* ===== HERO SECTION (custom for admission) ===== */
         .hero {
@@ -535,7 +601,7 @@
     </style>
 </head>
 <body>
-    <!-- ===== NAVBAR (exact copy from members page) ===== -->
+    <!-- ===== NAVBAR - FIXED VERSION ===== -->
     <nav class="navbar" id="navbar">
         <div class="nav-container">
             <div class="nav-flex">
@@ -862,26 +928,57 @@
             window.addEventListener('scroll', updateNavbar);
             updateNavbar();
 
-            // ===== MOBILE MENU TOGGLE =====
+            // ===== MOBILE MENU TOGGLE - FIXED =====
             const mobileBtn = document.getElementById('mobileMenuBtn');
             const mobileOverlay = document.getElementById('mobileOverlay');
             const menuIcon = document.getElementById('menuIcon');
-            mobileBtn.addEventListener('click', () => {
-                const isOpen = mobileOverlay.classList.contains('open');
-                if (isOpen) {
-                    mobileOverlay.classList.remove('open');
-                    menuIcon.className = 'fas fa-bars fa-2x';
-                } else {
+            
+            function toggleMobileMenu(open) {
+                if (open) {
                     mobileOverlay.classList.add('open');
                     menuIcon.className = 'fas fa-times fa-2x';
-                }
-            });
-            document.querySelectorAll('.mobile-link').forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
+                    document.body.classList.add('menu-open');
+                } else {
                     mobileOverlay.classList.remove('open');
                     menuIcon.className = 'fas fa-bars fa-2x';
+                    document.body.classList.remove('menu-open');
+                }
+            }
+
+            mobileBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const isOpen = mobileOverlay.classList.contains('open');
+                toggleMobileMenu(!isOpen);
+            });
+
+            // Close mobile menu when clicking a link
+            document.querySelectorAll('.mobile-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault(); // Remove this if you want actual navigation
+                    toggleMobileMenu(false);
+                    
+                    // Optional: Navigate after a short delay
+                    // setTimeout(() => {
+                    //     window.location.href = link.getAttribute('href');
+                    // }, 300);
                 });
+            });
+
+            // Close when clicking outside
+            document.addEventListener('click', (e) => {
+                if (mobileOverlay.classList.contains('open') && 
+                    !mobileOverlay.contains(e.target) && 
+                    !mobileBtn.contains(e.target)) {
+                    toggleMobileMenu(false);
+                }
+            });
+
+            // Close on escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && mobileOverlay.classList.contains('open')) {
+                    toggleMobileMenu(false);
+                }
             });
 
             // ===== TABBED INTERFACE =====
