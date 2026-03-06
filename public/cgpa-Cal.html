@@ -1,0 +1,1603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NUESA BIU – CGPA Calculator</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ===== ROOT VARIABLES (from members page) ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        :root {
+            --emerald-50: #ecfdf5;  --emerald-100: #d1fae5;  --emerald-200: #a7f3d0;
+            --emerald-300: #6ee7b7;  --emerald-400: #34d399;  --emerald-500: #10b981;
+            --emerald-600: #059669;  --emerald-700: #047857;  --emerald-800: #065f46;
+            --emerald-900: #064e3b;  --teal-400: #2dd4bf;    --teal-500: #14b8a6;
+            --amber-300: #fcd34d;    --amber-400: #fbbf24;    --amber-500: #f59e0b;
+            --slate-50: #f8fafc;     --slate-100: #f1f5f9;    --slate-200: #e2e8f0;
+            --slate-300: #cbd5e1;     --slate-400: #94a3b8;    --slate-500: #64748b;
+            --slate-600: #475569;     --slate-700: #334155;    --slate-800: #1e293b;
+            --slate-900: #0f172a;     --white: #ffffff;        --gray-100: #f5f5f7;
+            --gray-200: #e5e5e7;      --gray-300: #d1d5db;     --gray-400: #9ca3af;
+            --gray-500: #6b7280;      --gray-600: #4b5563;     --gray-700: #374151;
+            --gray-800: #1f2933;      --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+        }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--gray-100);
+            color: var(--gray-800);
+            line-height: 1.5;
+        }
+
+        /* ===== MODERN NAVBAR (from members page) ===== */
+        .navbar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 50;
+            transition: all 0.3s ease;
+            background-color: rgba(6, 78, 59, 0.95);
+            padding: 1.25rem 0;
+        }
+        .navbar.scrolled {
+            background-color: rgba(6, 78, 59, 0.95);
+            backdrop-filter: blur(8px);
+            box-shadow: var(--shadow-lg);
+            padding: 0.75rem 0;
+        }
+        .nav-container {
+            max-width: 80rem;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+        @media (min-width: 640px) { .nav-container { padding: 0 1.5rem; } }
+        @media (min-width: 1024px) { .nav-container { padding: 0 2rem; } }
+        .nav-flex {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo-link {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            z-index: 50;
+            text-decoration: none;
+        }
+        .logo-main {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: var(--white);
+            letter-spacing: -0.05em;
+        }
+        .logo-highlight {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: var(--amber-400);
+            letter-spacing: -0.05em;
+        }
+        .desktop-links { display: none; }
+        @media (min-width: 1024px) {
+            .desktop-links {
+                display: flex;
+                align-items: center;
+                gap: 1.5rem;
+            }
+        }
+        .nav-link {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-decoration: none;
+            color: rgba(255,255,255,0.9);
+            transition: color 0.2s;
+        }
+        .nav-link:hover { color: var(--amber-400); }
+        .nav-link.active { color: var(--amber-400); }
+        .mobile-menu-btn {
+            display: block;
+            background: none;
+            border: none;
+            color: var(--white);
+            cursor: pointer;
+            z-index: 50;
+        }
+        .mobile-menu-btn:hover { color: var(--amber-400); }
+        @media (min-width: 1024px) { .mobile-menu-btn { display: none; } }
+        .mobile-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            min-height: 100vh;
+            background-color: var(--emerald-900);
+            display: flex;
+            flex-direction: column;
+            padding: 6rem 1.5rem 2rem;
+            overflow-y: auto;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-20px);
+            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
+        }
+        .mobile-overlay.open {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        .mobile-link {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 1.125rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-decoration: none;
+            border-bottom: 1px solid var(--emerald-800);
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+            color: var(--white);
+        }
+        .mobile-link.active { color: var(--amber-400); }
+        .mobile-link:last-child { border-bottom: none; }
+        .main-wrapper { padding-top: 5rem; }
+
+        /* ===== HERO SECTION (CGPA calculator version) ===== */
+        .hero {
+            position: relative;
+            background: linear-gradient(to bottom right, var(--emerald-800), var(--emerald-600), var(--teal-500));
+            padding: 4rem 1rem;
+            overflow: hidden;
+        }
+        .hero-blob-1 {
+            position: absolute; top: 2.5rem; left: 2.5rem;
+            width: 12rem; height: 12rem; background-color: rgba(255,255,255,0.1);
+            border-radius: 50%; filter: blur(2rem);
+        }
+        .hero-blob-2 {
+            position: absolute; bottom: 2.5rem; right: 5rem;
+            width: 16rem; height: 16rem; background-color: rgba(45,212,191,0.2);
+            border-radius: 50%; filter: blur(3rem);
+        }
+        .hero-content {
+            max-width: 80rem; margin: 0 auto; position: relative; z-index: 10; text-align: center;
+        }
+        .hero-title {
+            font-size: 2.5rem; font-weight: 900; color: white; margin-bottom: 1rem; letter-spacing: -0.025em;
+        }
+        @media (min-width: 768px) { .hero-title { font-size: 3.5rem; } }
+        .hero-subtitle {
+            color: rgba(236, 253, 245, 1); max-width: 42rem; margin: 0 auto; font-size: 1.125rem;
+        }
+
+        /* ===== CONTAINER & LAYOUT ===== */
+        .container { width: 100%; max-width: 1280px; margin: 0 auto; padding: 0 1rem; }
+        @media (min-width: 640px) { .container { padding: 0 1.5rem; } }
+        @media (min-width: 1024px) { .container { padding: 0 2rem; } }
+        .mt-8 { margin-top: 2rem; }
+        .-mt-8 { margin-top: -2rem; }
+        .mb-6 { margin-bottom: 1.5rem; }
+        .mb-8 { margin-bottom: 2rem; }
+        .mt-10 { margin-top: 2.5rem; }
+        .py-16 { padding-top: 4rem; padding-bottom: 4rem; }
+        .pt-20 { padding-top: 5rem; }
+        .pb-20 { padding-bottom: 5rem; }
+
+        /* ===== STATS BAR ===== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+        .stat-card {
+            background-color: var(--emerald-600);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            text-align: center;
+            color: white;
+            box-shadow: var(--shadow-lg);
+        }
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: 900;
+        }
+        @media (min-width: 768px) {
+            .stat-number { font-size: 1.875rem; }
+        }
+        .stat-label {
+            color: var(--emerald-100);
+            font-size: 0.75rem;
+        }
+        @media (min-width: 768px) {
+            .stat-label { font-size: 0.875rem; }
+        }
+
+        /* ===== MAIN LAYOUT GRID ===== */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            margin-top: 2.5rem;
+        }
+        @media (min-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 3fr 2fr;
+            }
+        }
+
+        /* ===== CARD STYLES ===== */
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--slate-100);
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+        .card:last-child { margin-bottom: 0; }
+
+        .card-header {
+            background-color: var(--emerald-600);
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .card-header i {
+            color: white;
+            width: 1.25rem;
+            height: 1.25rem;
+        }
+        .card-header h2 {
+            color: white;
+            font-weight: 700;
+            font-size: 1.125rem;
+        }
+        .card-header p {
+            color: var(--emerald-100);
+            font-size: 0.875rem;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        /* ===== QUICK GUIDE STYLES ===== */
+        .guide-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .guide-number {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            background-color: var(--emerald-100);
+            color: var(--emerald-700);
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .guide-content h3 {
+            font-weight: 600;
+            color: var(--slate-900);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.25rem;
+            font-size: 1rem;
+        }
+        .guide-content p {
+            color: var(--slate-600);
+            font-size: 0.875rem;
+        }
+
+        /* ===== FORM STYLES ===== */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+        @media (min-width: 768px) {
+            .form-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        .form-group {
+            margin-bottom: 0;
+        }
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--slate-700);
+            margin-bottom: 0.25rem;
+        }
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--slate-200);
+            border-radius: 0.5rem;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px var(--emerald-500);
+            border-color: transparent;
+        }
+
+        /* ===== COURSE ENTRY SECTION ===== */
+        .course-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .course-header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .semester-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .semester-select {
+            padding: 0.375rem 0.75rem;
+            background-color: rgba(255,255,255,0.2);
+            color: white;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+        }
+        .semester-select option {
+            color: var(--slate-900);
+        }
+        .add-course-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.5rem 1rem;
+            background-color: var(--emerald-600);
+            color: white;
+            font-size: 0.875rem;
+            font-weight: 600;
+            border-radius: 0.5rem;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .add-course-btn:hover {
+            background-color: var(--emerald-700);
+        }
+
+        .courses-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .course-row {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .course-code {
+            grid-column: span 2;
+        }
+        .course-title {
+            grid-column: span 4;
+        }
+        .course-units {
+            grid-column: span 2;
+        }
+        .course-grade {
+            grid-column: span 3;
+        }
+        .course-remove {
+            grid-column: span 1;
+            display: flex;
+            justify-content: center;
+        }
+
+        .remove-btn {
+            padding: 0.5rem;
+            color: #ef4444;
+            background: none;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .remove-btn:hover {
+            background-color: #fef2f2;
+        }
+        .remove-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .current-gpa-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 1rem;
+            border-top: 1px solid var(--slate-100);
+            margin-bottom: 1rem;
+        }
+        .current-gpa-label {
+            color: var(--slate-600);
+        }
+        .current-gpa-value {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: var(--emerald-600);
+        }
+
+        .save-semester-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: var(--emerald-600);
+            color: white;
+            font-weight: 700;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        .save-semester-btn:hover {
+            background-color: var(--emerald-700);
+        }
+
+        /* ===== SAVED SEMESTERS ===== */
+        .saved-semester-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            background-color: var(--slate-50);
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .saved-semester-info h4 {
+            font-weight: 600;
+            color: var(--slate-900);
+        }
+        .saved-semester-info p {
+            font-size: 0.875rem;
+            color: var(--slate-600);
+        }
+        .saved-semester-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .saved-semester-gpa {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--emerald-600);
+        }
+        .delete-semester-btn {
+            padding: 0.5rem;
+            color: #ef4444;
+            background: none;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+        }
+        .delete-semester-btn:hover {
+            background-color: #fef2f2;
+        }
+
+        /* ===== SIDEBAR CARDS ===== */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        @media (min-width: 1024px) {
+            .sidebar {
+                position: sticky;
+                top: 6rem;
+                align-self: start;
+            }
+        }
+
+        .gradient-header {
+            background: linear-gradient(to right, var(--emerald-600), var(--teal-500));
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .gradient-header i {
+            color: white;
+        }
+        .gradient-header h2 {
+            color: white;
+            font-weight: 700;
+        }
+        .gradient-header p {
+            color: var(--emerald-100);
+            font-size: 0.875rem;
+        }
+
+        .current-status {
+            text-align: center;
+            padding: 1.5rem;
+        }
+        .cgpa-display {
+            font-size: 3rem;
+            font-weight: 900;
+        }
+        .cgpa-display.emerald-600 { color: var(--emerald-600); }
+        .cgpa-display.blue-600 { color: #2563eb; }
+        .cgpa-display.amber-600 { color: #d97706; }
+        .cgpa-display.orange-600 { color: #ea580c; }
+        .cgpa-display.red-600 { color: #dc2626; }
+        .cgpa-display.gray-300 { color: var(--slate-300); }
+
+        .classification-box {
+            margin-top: 1rem;
+            padding: 0.75rem 1rem;
+            background-color: var(--slate-50);
+            border-radius: 0.5rem;
+        }
+        .classification-text {
+            font-weight: 700;
+        }
+        .classification-text.emerald-600 { color: var(--emerald-600); }
+        .classification-text.blue-600 { color: #2563eb; }
+        .classification-text.amber-600 { color: #d97706; }
+        .classification-text.orange-600 { color: #ea580c; }
+        .classification-text.red-600 { color: #dc2626; }
+        .classification-text.gray-400 { color: var(--slate-400); }
+
+        .stats-mini-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .stat-mini-box {
+            padding: 0.75rem;
+            background-color: var(--slate-50);
+            border-radius: 0.5rem;
+            text-align: center;
+        }
+        .stat-mini-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--slate-900);
+        }
+        .stat-mini-label {
+            color: var(--slate-600);
+            font-size: 0.875rem;
+        }
+
+        .projection-input {
+            width: 100%;
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--slate-200);
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .projection-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: var(--emerald-600);
+            color: white;
+            font-weight: 700;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        .projection-btn:hover {
+            background-color: var(--emerald-700);
+        }
+        .projection-result {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: var(--emerald-50);
+            border-radius: 0.5rem;
+            color: var(--emerald-800);
+            font-size: 0.875rem;
+        }
+
+        .data-management-btn {
+            width: 100%;
+            padding: 0.625rem;
+            border: 2px solid;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            background: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .data-management-btn:last-child {
+            margin-bottom: 0;
+        }
+        .download-btn {
+            border-color: var(--emerald-600);
+            color: var(--emerald-600);
+        }
+        .download-btn:hover {
+            background-color: var(--emerald-50);
+        }
+        .clear-btn {
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+        .clear-btn:hover {
+            background-color: #fef2f2;
+        }
+        .data-note {
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--slate-500);
+            margin-top: 0.5rem;
+        }
+
+        /* ===== UTILITY CLASSES ===== */
+        .hidden { display: none !important; }
+        .relative { position: relative; }
+        .z-20 { z-index: 20; }
+        .text-center { text-align: center; }
+        .text-emerald-600 { color: var(--emerald-600); }
+        .text-slate-400 { color: var(--slate-400); }
+        .text-sm { font-size: 0.875rem; }
+        .text-xs { font-size: 0.75rem; }
+        .font-bold { font-weight: 700; }
+        .font-black { font-weight: 900; }
+        .mb-2 { margin-bottom: 0.5rem; }
+        .mb-4 { margin-bottom: 1rem; }
+        .mt-4 { margin-top: 1rem; }
+        .mt-6 { margin-top: 1.5rem; }
+        .py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+        .px-4 { padding-left: 1rem; padding-right: 1rem; }
+        .bg-white { background-color: white; }
+        .rounded-lg { border-radius: 0.5rem; }
+        .border { border: 1px solid var(--slate-200); }
+
+        /* ===== FOOTER (from members page) ===== */
+        .footer {
+            background: linear-gradient(135deg, var(--slate-800) 0%, var(--slate-900) 100%);
+            border-top: 4px solid var(--emerald-500);
+            padding: 4rem 0 2rem;
+            margin-top: 3rem;
+        }
+        .footer-container {
+            max-width: 80rem;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 3rem;
+            margin-bottom: 3rem;
+        }
+        @media (min-width:768px){ .footer-grid{grid-template-columns:repeat(4,1fr);} }
+        .footer-section h3{ font-size:1.25rem; font-weight:700; color:var(--white); margin-bottom:1rem; }
+        .footer-section h4{ font-family:'Roboto Mono',monospace; font-size:.875rem; font-weight:700; text-transform:uppercase; color:var(--emerald-400); letter-spacing:0.1em; margin-bottom:1.5rem; }
+        .footer-text{ font-family:'Roboto Mono',monospace; font-size:.875rem; color:var(--slate-300); margin-bottom:1.5rem; }
+        .social-icons{ display:flex; gap:1rem; }
+        .social-icon{ color:var(--slate-400); transition:color 0.3s; font-size:1.25rem; }
+        .social-icon:hover{ color:var(--emerald-400); }
+        .footer-links{ list-style:none; }
+        .footer-links li{ margin-bottom:0.75rem; }
+        .footer-links a,.footer-links span{ font-family:'Roboto Mono',monospace; font-size:.875rem; color:var(--slate-300); text-decoration:none; transition:color 0.3s; }
+        .footer-links a:hover{ color:var(--emerald-400); }
+        .footer-contact-item{ display:flex; align-items:flex-start; margin-bottom:1rem; }
+        .footer-contact-icon{ margin-right:.75rem; flex-shrink:0; color:var(--emerald-400); margin-top:.125rem; }
+        .footer-bottom{ border-top:1px solid var(--slate-700); padding-top:2rem; display:flex; flex-direction:column; justify-content:space-between; align-items:center; }
+        @media(min-width:768px){ .footer-bottom{ flex-direction:row; } }
+        .footer-bottom p{ font-family:'Roboto Mono',monospace; font-size:.75rem; color:var(--slate-400); margin-bottom:1rem; }
+        @media(min-width:768px){ .footer-bottom p{ margin-bottom:0; } }
+        .footer-bottom-links{ display:flex; gap:1.5rem; }
+        .footer-bottom-links a{ font-family:'Roboto Mono',monospace; font-size:.75rem; color:var(--slate-400); text-decoration:none; transition:color 0.3s; }
+        .footer-bottom-links a:hover{ color:var(--emerald-400); }
+        .icon{ width:1.25rem; height:1.25rem; }
+        .icon-sm{ width:1rem; height:1rem; }
+    </style>
+</head>
+<body>
+    <!-- ===== NAVBAR (from members page) ===== -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <div class="nav-flex">
+                <a href="/" class="logo-link">
+                    <span class="logo-main">N.U.E.S.A</span>
+                    <span class="logo-highlight">BIU</span>
+                </a>
+                <div class="desktop-links">
+                    <a href="index.html" class="nav-link">HOME</a>
+                    <a href="about.html" class="nav-link">ABOUT</a>
+                    <a href="members.html" class="nav-link">MEMBERS</a>
+                    <a href="events.html" class="nav-link">EVENTS</a>
+                    <a href="resources.html" class="nav-link">RESOURCES</a>
+                    <a href="cgpa-Cal.html" class="nav-link active">CGPA CALC</a>
+                    <a href="admission.html" class="nav-link">ADMISSION</a>
+                    <a href="courseReps.html" class="nav-link">COURSE REPS</a>
+                    <a href="news.html" class="nav-link">NEWS</a>
+                    <a href="contacts.html" class="nav-link">CONTACT</a>
+                </div>
+                <button class="mobile-menu-btn" id="mobileMenuBtn">
+                    <i class="fas fa-bars fa-2x" id="menuIcon"></i>
+                </button>
+            </div>
+        </div>
+        <div class="mobile-overlay" id="mobileOverlay">
+            <a href="index.html" class="mobile-link">HOME</a>
+            <a href="about.html" class="mobile-link">ABOUT</a>
+            <a href="members.html" class="mobile-link">MEMBERS</a>
+            <a href="events.html" class="mobile-link">EVENTS</a>
+            <a href="resources.html" class="mobile-link">RESOURCES</a>
+            <a href="cgpa-calculator.html" class="mobile-link active">CGPA CALC</a>
+            <a href="admission.html" class="mobile-link">ADMISSION</a>
+            <a href="course-reps.html" class="mobile-link">COURSE REPS</a>
+            <a href="news.html" class="mobile-link">NEWS</a>
+            <a href="contacts.html" class="mobile-link">CONTACT</a>
+        </div>
+    </nav>
+
+    <!-- ===== MAIN WRAPPER ===== -->
+    <div class="main-wrapper">
+        <!-- ===== HERO SECTION ===== -->
+        <div class="hero">
+            <div class="hero-blob-1"></div>
+            <div class="hero-blob-2"></div>
+            <div class="hero-content">
+                <h1 class="hero-title">CGPA Calculator</h1>
+                <p class="hero-subtitle">Calculate and track your academic performance with precision</p>
+            </div>
+        </div>
+
+        <!-- ===== STATS BAR ===== -->
+        <div class="container -mt-8 relative z-20">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <p class="stat-number">10K+</p>
+                    <p class="stat-label">Calculations</p>
+                </div>
+                <div class="stat-card">
+                    <p class="stat-number">1,300+</p>
+                    <p class="stat-label">Students</p>
+                </div>
+                <div class="stat-card">
+                    <p class="stat-number">99.9%</p>
+                    <p class="stat-label">Accuracy</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== MAIN CONTENT ===== -->
+        <div class="container mt-10">
+            <div class="main-grid">
+                <!-- LEFT COLUMN - MAIN CONTENT -->
+                <div class="left-column">
+                    <!-- Quick Guide Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-info-circle"></i>
+                            <div>
+                                <h2>Quick Guide</h2>
+                                <p>How to use this calculator</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="guide-item">
+                                <span class="guide-number">1</span>
+                                <div class="guide-content">
+                                    <h3><i class="fas fa-user" style="color: var(--emerald-600); width: 1rem;"></i> Add Student Info</h3>
+                                    <p>Fill in your personal and academic details</p>
+                                </div>
+                            </div>
+                            <div class="guide-item">
+                                <span class="guide-number">2</span>
+                                <div class="guide-content">
+                                    <h3><i class="fas fa-book" style="color: var(--emerald-600);"></i> Enter Courses</h3>
+                                    <p>Add your courses with grades and units</p>
+                                </div>
+                            </div>
+                            <div class="guide-item">
+                                <span class="guide-number">3</span>
+                                <div class="guide-content">
+                                    <h3><i class="fas fa-save" style="color: var(--emerald-600);"></i> Save Semester</h3>
+                                    <p>Save your semester data for CGPA calculation</p>
+                                </div>
+                            </div>
+                            <div class="guide-item">
+                                <span class="guide-number">4</span>
+                                <div class="guide-content">
+                                    <h3><i class="fas fa-chart-line" style="color: var(--emerald-600);"></i> Track Progress</h3>
+                                    <p>Monitor your academic performance over time</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Student Information Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-user"></i>
+                            <div>
+                                <h2>Student Information</h2>
+                                <p>Your academic profile</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label class="form-label">Full Name</label>
+                                    <input type="text" id="fullName" class="form-input" placeholder="Enter your full name">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Matric Number</label>
+                                    <input type="text" id="matricNumber" class="form-input" placeholder="e.g., BIU/20/ENG/067">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Department</label>
+                                    <select id="department" class="form-select">
+                                        <option value="">Select Department</option>
+                                        <option value="Civil Engineering">Civil Engineering</option>
+                                        <option value="Electrical/Electronics Engineering">Electrical/Electronics Engineering</option>
+                                        <option value="Mechanical Engineering">Mechanical Engineering</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Current Level</label>
+                                    <select id="level" class="form-select">
+                                        <option value="">Select Level</option>
+                                        <option value="100L">100L</option>
+                                        <option value="200L">200L</option>
+                                        <option value="300L">300L</option>
+                                        <option value="400L">400L</option>
+                                        <option value="500L">500L</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Course Entry Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1;">
+                                <i class="fas fa-book"></i>
+                                <div style="flex: 1;">
+                                    <h2>Course Entry</h2>
+                                    <p id="semesterLabel">Year 1, Semester 1</p>
+                                </div>
+                            </div>
+                            <div class="semester-controls">
+                                <select id="currentYear" class="semester-select">
+                                    <option value="1">Y1</option>
+                                    <option value="2">Y2</option>
+                                    <option value="3">Y3</option>
+                                    <option value="4">Y4</option>
+                                    <option value="5">Y5</option>
+                                </select>
+                                <select id="currentSemester" class="semester-select">
+                                    <option value="1">S1</option>
+                                    <option value="2">S2</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="course-header">
+                                <div class="course-header-left">
+                                    <span class="font-bold">Courses (<span id="courseCount">1</span>)</span>
+                                </div>
+                                <button id="addCourseBtn" class="add-course-btn">
+                                    <i class="fas fa-plus"></i> Add Course
+                                </button>
+                            </div>
+
+                            <div id="coursesContainer" class="courses-container">
+                                <!-- Courses will be dynamically added here -->
+                            </div>
+
+                            <div class="current-gpa-row">
+                                <span class="current-gpa-label">Current Semester GPA:</span>
+                                <span id="currentGpa" class="current-gpa-value">0.00</span>
+                            </div>
+
+                            <button id="saveSemesterBtn" class="save-semester-btn">
+                                <i class="fas fa-save"></i> Save Semester
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Saved Semesters Card -->
+                    <div id="savedSemestersCard" class="card hidden">
+                        <div class="card-header">
+                            <i class="fas fa-chart-bar"></i>
+                            <div>
+                                <h2>Saved Semesters</h2>
+                                <p id="savedSemestersCount">0 semester(s) recorded</p>
+                            </div>
+                        </div>
+                        <div class="card-body" id="savedSemestersList">
+                            <!-- Saved semesters will appear here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN - SIDEBAR -->
+                <div class="sidebar">
+                    <!-- Current Status Card -->
+                    <div class="card">
+                        <div class="gradient-header">
+                            <i class="fas fa-award"></i>
+                            <div>
+                                <h2>Current Status</h2>
+                                <p style="color: var(--emerald-100); font-size: 0.875rem;">Your academic standing</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="current-status">
+                                <p id="currentCgpaDisplay" class="cgpa-display gray-300">0.00</p>
+                                <p class="text-sm" style="color: var(--slate-600); margin-top: 0.25rem;">Current CGPA</p>
+
+                                <div id="classificationBox" class="classification-box">
+                                    <p id="classificationText" class="classification-text gray-400">No classification yet</p>
+                                    <p id="classificationSubtext" class="text-xs" style="color: var(--slate-400);">Complete a semester to see your standing</p>
+                                </div>
+
+                                <div class="stats-mini-grid">
+                                    <div class="stat-mini-box">
+                                        <p id="totalSemesters" class="stat-mini-number">0</p>
+                                        <p class="stat-mini-label">Semesters</p>
+                                    </div>
+                                    <div class="stat-mini-box">
+                                        <p id="totalUnits" class="stat-mini-number">0</p>
+                                        <p class="stat-mini-label">Total Units</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CGPA Projection Card -->
+                    <div class="card">
+                        <div class="gradient-header" style="background: linear-gradient(to right, var(--emerald-500), var(--teal-400));">
+                            <i class="fas fa-bullseye"></i>
+                            <div>
+                                <h2>CGPA Projection</h2>
+                                <p style="color: var(--emerald-100);">Calculate required GPA for target</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <label class="form-label">Target CGPA</label>
+                            <input type="number" id="targetCgpa" step="0.01" min="0" max="5" class="projection-input" placeholder="e.g., 4.50">
+                            
+                            <button id="calculateProjectionBtn" class="projection-btn">
+                                <i class="fas fa-calculator"></i> Calculate
+                            </button>
+                            
+                            <div id="projectionResult" class="projection-result hidden"></div>
+                        </div>
+                    </div>
+
+                    <!-- Data Management Card -->
+                    <div class="card">
+                        <div class="gradient-header" style="background: linear-gradient(to right, var(--emerald-700), var(--emerald-600));">
+                            <i class="fas fa-save"></i>
+                            <div>
+                                <h2>Data Management</h2>
+                                <p style="color: var(--emerald-100);">Manage your academic records</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <button id="downloadReportBtn" class="data-management-btn download-btn">
+                                <i class="fas fa-download"></i> Download Report
+                            </button>
+                            <button id="clearAllDataBtn" class="data-management-btn clear-btn">
+                                <i class="fas fa-trash"></i> Clear All Data
+                            </button>
+                            <p class="data-note">Data is automatically saved to your browser</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== FOOTER (from members page) ===== -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-grid">
+                <div class="footer-section">
+                    <h3>N.U.E.S.A <span style="color: var(--emerald-400);">BIU</span></h3>
+                    <p class="footer-text">Empowering the next generation of engineers through innovation, unity, and excellence.</p>
+                    <div class="social-icons">
+                        <a href="#" class="social-icon"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="social-icon"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="social-icon"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="social-icon"><i class="fab fa-linkedin-in"></i></a>
+                    </div>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul class="footer-links">
+                        <li><a href="about.html">About Us</a></li>
+                        <li><a href="members.html">Executives</a></li>
+                        <li><a href="events.html">Events</a></li>
+                        <li><a href="resources.html">Resources</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Departments</h4>
+                    <ul class="footer-links">
+                        <li><span>Electrical/Electronics</span></li>
+                        <li><span>Mechanical Engineering</span></li>
+                        <li><span>Civil Engineering</span></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact</h4>
+                    <div class="footer-links">
+                        <div class="footer-contact-item">
+                            <i class="fas fa-map-marker-alt footer-contact-icon"></i>
+                            <span>Benson Idahosa University,<br>Benin City, Nigeria</span>
+                        </div>
+                        <div class="footer-contact-item">
+                            <i class="fas fa-envelope footer-contact-icon"></i>
+                            <span>info@nuesabiu.org</span>
+                        </div>
+                        <div class="footer-contact-item">
+                            <i class="fas fa-phone footer-contact-icon"></i>
+                            <span>+234 800 123 4567</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>© 2026 NUESA BIU. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Terms of Service</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        (function() {
+            // ===== GRADE POINTS =====
+            const GRADE_POINTS = {
+                'A': 5.0,
+                'B': 4.0,
+                'C': 3.0,
+                'D': 2.0,
+                'E': 1.0,
+                'F': 0.0
+            };
+
+            const DEPARTMENTS = [
+                'Civil Engineering',
+                'Computer Engineering',
+                'Electrical/Electronics Engineering',
+                'Mechanical Engineering',
+                'Petroleum Engineering'
+            ];
+
+            const LEVELS = ['100L', '200L', '300L', '400L', '500L'];
+
+            // ===== STATE =====
+            let studentInfo = {
+                fullName: '',
+                matricNumber: '',
+                department: '',
+                level: ''
+            };
+
+            let currentYear = 1;
+            let currentSemester = 1;
+            let courses = [{
+                id: '1',
+                code: '',
+                title: '',
+                units: 3,
+                grade: ''
+            }];
+
+            let savedSemesters = [];
+            let targetCgpa = '';
+            let projectionResult = '';
+
+            // ===== NAVBAR FUNCTIONS =====
+            const navbar = document.getElementById('navbar');
+            function updateNavbar() {
+                if (window.scrollY > 20) {
+                    navbar.classList.add('scrolled');
+                } else {
+                    navbar.classList.remove('scrolled');
+                }
+            }
+            window.addEventListener('scroll', updateNavbar);
+            updateNavbar();
+
+            // Mobile menu
+            const mobileBtn = document.getElementById('mobileMenuBtn');
+            const mobileOverlay = document.getElementById('mobileOverlay');
+            const menuIcon = document.getElementById('menuIcon');
+            
+            mobileBtn.addEventListener('click', () => {
+                const isOpen = mobileOverlay.classList.contains('open');
+                if (isOpen) {
+                    mobileOverlay.classList.remove('open');
+                    menuIcon.className = 'fas fa-bars fa-2x';
+                } else {
+                    mobileOverlay.classList.add('open');
+                    menuIcon.className = 'fas fa-times fa-2x';
+                }
+            });
+
+            document.querySelectorAll('.mobile-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    mobileOverlay.classList.remove('open');
+                    menuIcon.className = 'fas fa-bars fa-2x';
+                });
+            });
+
+            // ===== LOAD FROM LOCALSTORAGE =====
+            function loadFromStorage() {
+                const savedData = localStorage.getItem('nuesa-cgpa-data');
+                if (savedData) {
+                    try {
+                        const data = JSON.parse(savedData);
+                        if (data.studentInfo) studentInfo = data.studentInfo;
+                        if (data.savedSemesters) savedSemesters = data.savedSemesters;
+                    } catch (e) {
+                        console.error('Error loading data:', e);
+                    }
+                }
+            }
+
+            // ===== SAVE TO LOCALSTORAGE =====
+            function saveToStorage() {
+                localStorage.setItem('nuesa-cgpa-data', JSON.stringify({
+                    studentInfo,
+                    savedSemesters
+                }));
+            }
+
+            // ===== RENDER STUDENT INFO =====
+            function renderStudentInfo() {
+                document.getElementById('fullName').value = studentInfo.fullName || '';
+                document.getElementById('matricNumber').value = studentInfo.matricNumber || '';
+                document.getElementById('department').value = studentInfo.department || '';
+                document.getElementById('level').value = studentInfo.level || '';
+            }
+
+            // ===== RENDER COURSES =====
+            function renderCourses() {
+                const container = document.getElementById('coursesContainer');
+                document.getElementById('courseCount').textContent = courses.length;
+                document.getElementById('semesterLabel').textContent = `Year ${currentYear}, Semester ${currentSemester}`;
+
+                let html = '';
+                courses.forEach(course => {
+                    html += `
+                        <div class="course-row" data-id="${course.id}">
+                            <input type="text" class="form-input course-code" value="${course.code}" placeholder="Code" data-field="code">
+                            <input type="text" class="form-input course-title" value="${course.title}" placeholder="Course Title" data-field="title">
+                            <select class="form-select course-units" data-field="units">
+                                ${[1,2,3,4,5,6].map(u => `
+                                    <option value="${u}" ${course.units === u ? 'selected' : ''}>${u} Unit${u > 1 ? 's' : ''}</option>
+                                `).join('')}
+                            </select>
+                            <select class="form-select course-grade" data-field="grade">
+                                <option value="">Grade</option>
+                                <option value="A" ${course.grade === 'A' ? 'selected' : ''}>A (5.0)</option>
+                                <option value="B" ${course.grade === 'B' ? 'selected' : ''}>B (4.0)</option>
+                                <option value="C" ${course.grade === 'C' ? 'selected' : ''}>C (3.0)</option>
+                                <option value="D" ${course.grade === 'D' ? 'selected' : ''}>D (2.0)</option>
+                                <option value="E" ${course.grade === 'E' ? 'selected' : ''}>E (1.0)</option>
+                                <option value="F" ${course.grade === 'F' ? 'selected' : ''}>F (0.0)</option>
+                            </select>
+                            <div class="course-remove">
+                                <button class="remove-btn" ${courses.length === 1 ? 'disabled' : ''} onclick="window.removeCourse('${course.id}')">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+
+                // Add event listeners to inputs
+                document.querySelectorAll('.course-row').forEach(row => {
+                    const id = row.dataset.id;
+                    row.querySelectorAll('input, select').forEach(input => {
+                        input.addEventListener('change', (e) => {
+                            const field = e.target.dataset.field;
+                            const value = e.target.type === 'number' ? parseInt(e.target.value) : e.target.value;
+                            updateCourse(id, field, value);
+                        });
+                    });
+                });
+
+                updateCurrentGpa();
+            }
+
+            // ===== UPDATE COURSE =====
+            window.updateCourse = function(id, field, value) {
+                courses = courses.map(c => 
+                    c.id === id ? { ...c, [field]: value } : c
+                );
+                updateCurrentGpa();
+            };
+
+            // ===== REMOVE COURSE =====
+            window.removeCourse = function(id) {
+                if (courses.length > 1) {
+                    courses = courses.filter(c => c.id !== id);
+                    renderCourses();
+                }
+            };
+
+            // ===== ADD COURSE =====
+            document.getElementById('addCourseBtn').addEventListener('click', () => {
+                courses.push({
+                    id: Date.now().toString(),
+                    code: '',
+                    title: '',
+                    units: 3,
+                    grade: ''
+                });
+                renderCourses();
+            });
+
+            // ===== CALCULATE CURRENT GPA =====
+            function calculateCurrentGpa() {
+                const validCourses = courses.filter(c => c.grade && c.units > 0);
+                if (validCourses.length === 0) {
+                    return { gpa: 0, totalUnits: 0, qualityPoints: 0 };
+                }
+
+                let totalUnits = 0;
+                let qualityPoints = 0;
+
+                validCourses.forEach(course => {
+                    const gradePoint = GRADE_POINTS[course.grade] || 0;
+                    totalUnits += course.units;
+                    qualityPoints += gradePoint * course.units;
+                });
+
+                return {
+                    gpa: totalUnits > 0 ? qualityPoints / totalUnits : 0,
+                    totalUnits,
+                    qualityPoints
+                };
+            }
+
+            // ===== UPDATE CURRENT GPA DISPLAY =====
+            function updateCurrentGpa() {
+                const { gpa } = calculateCurrentGpa();
+                document.getElementById('currentGpa').textContent = gpa.toFixed(2);
+            }
+
+            // ===== CALCULATE CGPA =====
+            function calculateCgpa() {
+                if (savedSemesters.length === 0) {
+                    return { cgpa: 0, totalUnits: 0, totalQualityPoints: 0 };
+                }
+
+                let totalUnits = 0;
+                let totalQualityPoints = 0;
+
+                savedSemesters.forEach(sem => {
+                    totalUnits += sem.totalUnits;
+                    totalQualityPoints += sem.qualityPoints;
+                });
+
+                return {
+                    cgpa: totalUnits > 0 ? totalQualityPoints / totalUnits : 0,
+                    totalUnits,
+                    totalQualityPoints
+                };
+            }
+
+            // ===== GET CLASSIFICATION =====
+            function getClassification(cgpa) {
+                if (cgpa >= 4.5) return 'First Class Honours';
+                if (cgpa >= 3.5) return 'Second Class Upper';
+                if (cgpa >= 2.4) return 'Second Class Lower';
+                if (cgpa >= 1.5) return 'Third Class';
+                if (cgpa >= 1.0) return 'Pass';
+                return 'Fail';
+            }
+
+            function getClassificationColor(cgpa) {
+                if (cgpa >= 4.5) return 'emerald-600';
+                if (cgpa >= 3.5) return 'blue-600';
+                if (cgpa >= 2.4) return 'amber-600';
+                if (cgpa >= 1.5) return 'orange-600';
+                return 'red-600';
+            }
+
+            // ===== UPDATE DISPLAY =====
+            function updateDisplay() {
+                // Update CGPA display
+                const { cgpa, totalUnits } = calculateCgpa();
+                const cgpaDisplay = document.getElementById('currentCgpaDisplay');
+                cgpaDisplay.textContent = cgpa.toFixed(2);
+                
+                // Update color class
+                cgpaDisplay.className = 'cgpa-display';
+                if (savedSemesters.length > 0) {
+                    cgpaDisplay.classList.add(getClassificationColor(cgpa));
+                } else {
+                    cgpaDisplay.classList.add('gray-300');
+                }
+
+                // Update classification
+                const classificationBox = document.getElementById('classificationBox');
+                const classificationText = document.getElementById('classificationText');
+                const classificationSubtext = document.getElementById('classificationSubtext');
+
+                if (savedSemesters.length > 0) {
+                    const classification = getClassification(cgpa);
+                    const colorClass = getClassificationColor(cgpa);
+                    classificationText.textContent = classification;
+                    classificationText.className = `classification-text ${colorClass}`;
+                    classificationSubtext.classList.add('hidden');
+                } else {
+                    classificationText.textContent = 'No classification yet';
+                    classificationText.className = 'classification-text gray-400';
+                    classificationSubtext.classList.remove('hidden');
+                }
+
+                // Update stats
+                document.getElementById('totalSemesters').textContent = savedSemesters.length;
+                document.getElementById('totalUnits').textContent = totalUnits;
+
+                // Update saved semesters section
+                const savedCard = document.getElementById('savedSemestersCard');
+                const savedCount = document.getElementById('savedSemestersCount');
+                
+                if (savedSemesters.length > 0) {
+                    savedCard.classList.remove('hidden');
+                    savedCount.textContent = `${savedSemesters.length} semester(s) recorded`;
+                    
+                    let semHtml = '';
+                    savedSemesters.forEach(sem => {
+                        semHtml += `
+                            <div class="saved-semester-item">
+                                <div class="saved-semester-info">
+                                    <h4>Year ${sem.year}, Semester ${sem.semester}</h4>
+                                    <p>${sem.totalUnits} units • ${sem.courses.length} courses</p>
+                                </div>
+                                <div class="saved-semester-actions">
+                                    <span class="saved-semester-gpa">${sem.gpa.toFixed(2)}</span>
+                                    <button class="delete-semester-btn" onclick="window.deleteSemester('${sem.id}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    document.getElementById('savedSemestersList').innerHTML = semHtml;
+                } else {
+                    savedCard.classList.add('hidden');
+                }
+
+                // Update projection result if exists
+                if (projectionResult) {
+                    const resultDiv = document.getElementById('projectionResult');
+                    resultDiv.textContent = projectionResult;
+                    resultDiv.classList.remove('hidden');
+                } else {
+                    document.getElementById('projectionResult').classList.add('hidden');
+                }
+            }
+
+            // ===== SAVE SEMESTER =====
+            document.getElementById('saveSemesterBtn').addEventListener('click', () => {
+                const { gpa, totalUnits, qualityPoints } = calculateCurrentGpa();
+                if (totalUnits === 0) return;
+
+                const newSemester = {
+                    id: Date.now().toString(),
+                    year: currentYear,
+                    semester: currentSemester,
+                    courses: courses.filter(c => c.grade && c.units > 0),
+                    gpa,
+                    totalUnits,
+                    qualityPoints
+                };
+
+                savedSemesters.push(newSemester);
+                saveToStorage();
+
+                // Reset courses
+                courses = [{
+                    id: Date.now().toString(),
+                    code: '',
+                    title: '',
+                    units: 3,
+                    grade: ''
+                }];
+                
+                renderCourses();
+                updateDisplay();
+            });
+
+            // ===== DELETE SEMESTER =====
+            window.deleteSemester = function(id) {
+                savedSemesters = savedSemesters.filter(s => s.id !== id);
+                saveToStorage();
+                updateDisplay();
+            };
+
+            // ===== CALCULATE PROJECTION =====
+            document.getElementById('calculateProjectionBtn').addEventListener('click', () => {
+                const target = parseFloat(document.getElementById('targetCgpa').value);
+                
+                if (isNaN(target) || target < 0 || target > 5) {
+                    projectionResult = 'Please enter a valid target CGPA (0.00 - 5.00)';
+                    updateDisplay();
+                    return;
+                }
+
+                const { totalUnits, totalQualityPoints } = calculateCgpa();
+                
+                if (savedSemesters.length === 0) {
+                    projectionResult = 'Save at least one semester first to calculate projection.';
+                    updateDisplay();
+                    return;
+                }
+
+                // Assume average 20 units per remaining semester, estimate 2 semesters remaining
+                const remainingUnits = 40;
+                const requiredQualityPoints = target * (totalUnits + remainingUnits) - totalQualityPoints;
+                const requiredGpa = requiredQualityPoints / remainingUnits;
+
+                if (requiredGpa > 5.0) {
+                    const maxPossible = ((totalQualityPoints + 5 * remainingUnits) / (totalUnits + remainingUnits)).toFixed(2);
+                    projectionResult = `Target CGPA of ${target.toFixed(2)} is not achievable. Maximum possible is ${maxPossible}.`;
+                } else if (requiredGpa < 0) {
+                    projectionResult = `You've already exceeded your target! Keep up the great work.`;
+                } else {
+                    projectionResult = `You need an average GPA of ${requiredGpa.toFixed(2)} in your remaining semesters to achieve a CGPA of ${target.toFixed(2)}.`;
+                }
+
+                updateDisplay();
+            });
+
+            // ===== DOWNLOAD REPORT =====
+            document.getElementById('downloadReportBtn').addEventListener('click', () => {
+                const { cgpa, totalUnits } = calculateCgpa();
+                
+                let report = `NUESA BIU - CGPA Report\n`;
+                report += `========================\n\n`;
+                report += `Student: ${studentInfo.fullName || 'N/A'}\n`;
+                report += `Matric No: ${studentInfo.matricNumber || 'N/A'}\n`;
+                report += `Department: ${studentInfo.department || 'N/A'}\n`;
+                report += `Level: ${studentInfo.level || 'N/A'}\n\n`;
+                report += `Cumulative GPA: ${cgpa.toFixed(2)}\n`;
+                report += `Total Units: ${totalUnits}\n`;
+                report += `Classification: ${getClassification(cgpa)}\n\n`;
+                report += `Semester Breakdown:\n`;
+                report += `-------------------\n`;
+                
+                savedSemesters.forEach(sem => {
+                    report += `Year ${sem.year}, Semester ${sem.semester}: GPA ${sem.gpa.toFixed(2)} (${sem.totalUnits} units)\n`;
+                });
+
+                const blob = new Blob([report], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'cgpa-report.txt';
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            // ===== CLEAR ALL DATA =====
+            document.getElementById('clearAllDataBtn').addEventListener('click', () => {
+                if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
+                    studentInfo = {
+                        fullName: '',
+                        matricNumber: '',
+                        department: '',
+                        level: ''
+                    };
+                    savedSemesters = [];
+                    courses = [{
+                        id: '1',
+                        code: '',
+                        title: '',
+                        units: 3,
+                        grade: ''
+                    }];
+                    targetCgpa = '';
+                    projectionResult = '';
+
+                    localStorage.removeItem('nuesa-cgpa-data');
+                    
+                    renderStudentInfo();
+                    renderCourses();
+                    updateDisplay();
+                    
+                    document.getElementById('targetCgpa').value = '';
+                }
+            });
+
+            // ===== STUDENT INFO CHANGE HANDLERS =====
+            document.getElementById('fullName').addEventListener('input', (e) => {
+                studentInfo.fullName = e.target.value;
+                saveToStorage();
+            });
+
+            document.getElementById('matricNumber').addEventListener('input', (e) => {
+                studentInfo.matricNumber = e.target.value;
+                saveToStorage();
+            });
+
+            document.getElementById('department').addEventListener('change', (e) => {
+                studentInfo.department = e.target.value;
+                saveToStorage();
+            });
+
+            document.getElementById('level').addEventListener('change', (e) => {
+                studentInfo.level = e.target.value;
+                saveToStorage();
+            });
+
+            // ===== YEAR/SEMESTER CHANGE =====
+            document.getElementById('currentYear').addEventListener('change', (e) => {
+                currentYear = parseInt(e.target.value);
+                document.getElementById('semesterLabel').textContent = `Year ${currentYear}, Semester ${currentSemester}`;
+            });
+
+            document.getElementById('currentSemester').addEventListener('change', (e) => {
+                currentSemester = parseInt(e.target.value);
+                document.getElementById('semesterLabel').textContent = `Year ${currentYear}, Semester ${currentSemester}`;
+            });
+
+            // ===== INITIALIZE =====
+            loadFromStorage();
+            renderStudentInfo();
+            renderCourses();
+            updateDisplay();
+        })();
+    </script>
+</body>
+</html>

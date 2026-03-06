@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NUESA BIU – Admission Guide</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ===== ROOT VARIABLES (from members page) ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        :root {
+            --emerald-50: #ecfdf5;  --emerald-100: #d1fae5;  --emerald-200: #a7f3d0;
+            --emerald-300: #6ee7b7;  --emerald-400: #34d399;  --emerald-500: #10b981;
+            --emerald-600: #059669;  --emerald-700: #047857;  --emerald-800: #065f46;
+            --emerald-900: #064e3b;  --teal-400: #2dd4bf;    --teal-500: #14b8a6;
+            --amber-300: #fcd34d;    --amber-400: #fbbf24;    --amber-500: #f59e0b;
+            --slate-50: #f8fafc;     --slate-100: #f1f5f9;    --slate-200: #e2e8f0;
+            --slate-300: #cbd5e1;     --slate-400: #94a3b8;    --slate-500: #64748b;
+            --slate-600: #475569;     --slate-700: #334155;    --slate-800: #1e293b;
+            --slate-900: #0f172a;     --white: #ffffff;        --gray-100: #f5f5f7;
+            --gray-200: #e5e5e7;      --gray-300: #d1d5db;     --gray-400: #9ca3af;
+            --gray-500: #6b7280;      --gray-600: #4b5563;     --gray-700: #374151;
+            --gray-800: #1f2933;      --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+        }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--gray-100);
+            color: var(--gray-800);
+            line-height: 1.5;
+        }
+
+        /* ===== MODERN NAVBAR (exact copy from members page) ===== */
+        .navbar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 50;
+            transition: all 0.3s ease;
+            background-color: rgba(6, 78, 59, 0.95);
+            padding: 1.25rem 0;
+        }
+        .navbar.scrolled {
+            background-color: rgba(6, 78, 59, 0.95);
+            backdrop-filter: blur(8px);
+            box-shadow: var(--shadow-lg);
+            padding: 0.75rem 0;
+        }
+        .nav-container {
+            max-width: 80rem;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+        @media (min-width: 640px) { .nav-container { padding: 0 1.5rem; } }
+        @media (min-width: 1024px) { .nav-container { padding: 0 2rem; } }
+        .nav-flex {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo-link {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            z-index: 50;
+            text-decoration: none;
+        }
+        .logo-main {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: var(--white);
+            letter-spacing: -0.05em;
+        }
+        .logo-highlight {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: var(--amber-400);
+            letter-spacing: -0.05em;
+        }
+        .desktop-links { display: none; }
+        @media (min-width: 1024px) {
+            .desktop-links {
+                display: flex;
+                align-items: center;
+                gap: 1.5rem;
+            }
+        }
+        .nav-link {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-decoration: none;
+            color: rgba(255,255,255,0.9);
+            transition: color 0.2s;
+        }
+        .nav-link:hover { color: var(--amber-400); }
+        .nav-link.active { color: var(--amber-400); }
+        .mobile-menu-btn {
+            display: block;
+            background: none;
+            border: none;
+            color: var(--white);
+            cursor: pointer;
+            z-index: 50;
+        }
+        .mobile-menu-btn:hover { color: var(--amber-400); }
+        @media (min-width: 1024px) { .mobile-menu-btn { display: none; } }
+        .mobile-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            min-height: 100vh;
+            background-color: var(--emerald-900);
+            display: flex;
+            flex-direction: column;
+            padding: 6rem 1.5rem 2rem;
+            overflow-y: auto;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-20px);
+            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
+        }
+        .mobile-overlay.open {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        .mobile-link {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 1.125rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-decoration: none;
+            border-bottom: 1px solid var(--emerald-800);
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+            color: var(--white);
+        }
+        .mobile-link.active { color: var(--amber-400); }
+        .mobile-link:last-child { border-bottom: none; }
+        .main-wrapper { padding-top: 5rem; }
+
+        /* ===== HERO SECTION (custom for admission) ===== */
+        .hero {
+            position: relative;
+            background: linear-gradient(to bottom right, var(--emerald-800), var(--emerald-600), var(--teal-500));
+            padding: 4rem 1rem;
+            overflow: hidden;
+        }
+        .hero-blob-1 {
+            position: absolute; top: 2.5rem; left: 2.5rem;
+            width: 12rem; height: 12rem; background-color: rgba(255,255,255,0.1);
+            border-radius: 50%; filter: blur(2rem);
+        }
+        .hero-blob-2 {
+            position: absolute; bottom: 2.5rem; right: 5rem;
+            width: 16rem; height: 16rem; background-color: rgba(45,212,191,0.2);
+            border-radius: 50%; filter: blur(3rem);
+        }
+        .hero-content {
+            max-width: 80rem; margin: 0 auto; position: relative; z-index: 10; text-align: center;
+        }
+        .hero-badge {
+            display: inline-block;
+            padding: 0.5rem 1.5rem;
+            border-radius: 999px;
+            background-color: rgba(5,150,105,0.3);
+            border: 1px solid rgba(52,211,153,0.3);
+            color: var(--emerald-50);
+            font-weight: 600;
+            font-size: 0.875rem;
+            backdrop-filter: blur(4px);
+            margin-bottom: 1.5rem;
+        }
+        .hero-title {
+            font-size: 2.5rem; font-weight: 900; color: white; margin-bottom: 1rem; letter-spacing: -0.025em;
+        }
+        @media (min-width: 768px) { .hero-title { font-size: 3.5rem; } }
+        .hero-subtitle {
+            color: rgba(236, 253, 245, 1); max-width: 42rem; margin: 0 auto; font-size: 1.125rem;
+        }
+
+        /* ===== CONTAINER & LAYOUT ===== */
+        .container { width: 100%; max-width: 80rem; margin: 0 auto; padding: 0 1rem; }
+        @media (min-width: 640px) { .container { padding: 0 1.5rem; } }
+        @media (min-width: 1024px) { .container { padding: 0 2rem; } }
+        .mt-8 { margin-top: 2rem; }
+        .-mt-8 { margin-top: -2rem; }
+        .mb-8 { margin-bottom: 2rem; }
+        .py-16 { padding-top: 4rem; padding-bottom: 4rem; }
+
+        /* ===== TAB NAVIGATION ===== */
+        .tab-container {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: var(--shadow-xl, 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04));
+            padding: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            overflow-x: auto;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+            margin-top: 50px;
+        }
+        .tab-container::-webkit-scrollbar { display: none; }
+        @media (min-width: 640px) {
+            .tab-container { flex-direction: row; }
+        }
+        .tab-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            white-space: nowrap;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.875rem;
+        }
+        .tab-btn.active {
+            background-color: var(--emerald-50);
+            color: var(--emerald-700);
+            box-shadow: var(--shadow-sm);
+        }
+        .tab-btn:not(.active) {
+            color: var(--slate-500);
+        }
+        .tab-btn:not(.active):hover {
+            background-color: var(--slate-50);
+            color: var(--slate-900);
+        }
+        .tab-icon {
+            width: 1.25rem; height: 1.25rem;
+        }
+        .tab-btn.active .tab-icon { color: var(--emerald-600); }
+        .tab-btn:not(.active) .tab-icon { color: var(--slate-400); }
+
+        /* ===== CONTENT ANIMATION ===== */
+        .content-panel {
+            animation: fadeSlide 0.3s ease-out;
+        }
+        @keyframes fadeSlide {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ===== REQUIREMENTS CARDS ===== */
+        .requirements-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+        @media (min-width: 768px) { .requirements-grid { grid-template-columns: repeat(3, 1fr); } }
+        .req-card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: var(--shadow-md);
+            border-top: 4px solid var(--emerald-500);
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .req-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+        .req-card-content { padding: 1.5rem; }
+        .req-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--slate-900);
+            margin-bottom: 1rem;
+        }
+        .req-number {
+            width: 2rem; height: 2rem;
+            border-radius: 50%;
+            background-color: var(--emerald-100);
+            color: var(--emerald-600);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            font-weight: 700;
+        }
+        .req-list {
+            list-style: none;
+        }
+        .req-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+            color: var(--slate-600);
+            font-size: 0.875rem;
+        }
+        .req-item i {
+            color: var(--emerald-500);
+            font-size: 1rem;
+            flex-shrink: 0;
+            margin-top: 0.125rem;
+        }
+
+        /* ===== RULES SECTION ===== */
+        .rules-container {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: var(--shadow-md);
+            padding: 2rem;
+        }
+        .rule-item {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .rule-number {
+            width: 2.5rem; height: 2.5rem;
+            border-radius: 50%;
+            background-color: var(--emerald-100);
+            color: var(--emerald-700);
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .rule-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--slate-900);
+            margin-bottom: 0.25rem;
+        }
+        .rule-desc {
+            color: var(--slate-600);
+            line-height: 1.625;
+        }
+
+        /* ===== TIMELINE ===== */
+        .timeline-container {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: var(--shadow-md);
+            padding: 2rem;
+        }
+        .timeline {
+            position: relative;
+            border-left: 2px solid var(--emerald-200);
+            margin-left: 1rem;
+            padding: 1rem 0;
+        }
+        @media (min-width: 768px) { .timeline { margin-left: 2rem; } }
+        .timeline-item {
+            position: relative;
+            padding-left: 2rem;
+            margin-bottom: 2.5rem;
+        }
+        @media (min-width: 768px) { .timeline-item { padding-left: 3rem; } }
+        .timeline-dot {
+            position: absolute;
+            left: -0.5625rem;
+            top: 0.375rem;
+            width: 1rem; height: 1rem;
+            border-radius: 50%;
+            background-color: var(--emerald-500);
+            box-shadow: 0 0 0 4px white;
+        }
+        .timeline-date {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--emerald-600);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-family: 'Roboto Mono', monospace;
+        }
+        .timeline-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--slate-900);
+            margin: 0.25rem 0 0.5rem;
+        }
+        .timeline-desc {
+            color: var(--slate-600);
+        }
+
+        /* ===== APPLY SECTION ===== */
+        .apply-container {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: var(--shadow-md);
+            padding: 2rem;
+            max-width: 48rem;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .apply-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--slate-900);
+            margin-bottom: 1rem;
+        }
+        .apply-text {
+            color: var(--slate-600);
+            margin-bottom: 2rem;
+        }
+        .checklist {
+            background-color: var(--slate-50);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            text-align: left;
+            max-width: 24rem;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .checklist-title {
+            font-weight: 700;
+            color: var(--slate-900);
+            margin-bottom: 0.75rem;
+        }
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--slate-600);
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+        .checklist-item i {
+            color: var(--emerald-500);
+        }
+        .apply-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            background-color: var(--emerald-600);
+            color: white;
+            font-weight: 700;
+            border-radius: 0.5rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: var(--shadow-md);
+        }
+        .apply-btn:hover {
+            background-color: var(--emerald-700);
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
+        }
+
+        /* ===== SECTION HEADER ===== */
+        .section-header {
+            background-color: var(--emerald-600);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            text-align: center;
+            color: white;
+            box-shadow: var(--shadow-lg);
+            margin-bottom: 2rem;
+        }
+        .section-header i {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.8;
+        }
+        .section-header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+        .section-header p {
+            color: var(--emerald-100);
+        }
+
+        /* ===== EMPTY STATE (not used) ===== */
+        .hidden { display: none !important; }
+
+        /* ===== FOOTER (exact copy from members page) ===== */
+        .footer {
+            background: linear-gradient(135deg, var(--slate-800) 0%, var(--slate-900) 100%);
+            border-top: 4px solid var(--emerald-500);
+            padding: 4rem 0 2rem;
+            margin-top: 3rem;
+        }
+        .footer-container {
+            max-width: 80rem;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 3rem;
+            margin-bottom: 3rem;
+        }
+        @media (min-width:768px){ .footer-grid{grid-template-columns:repeat(4,1fr);} }
+        .footer-section h3{ font-size:1.25rem; font-weight:700; color:var(--white); margin-bottom:1rem; }
+        .footer-section h4{ font-family:'Roboto Mono',monospace; font-size:.875rem; font-weight:700; text-transform:uppercase; color:var(--emerald-400); letter-spacing:0.1em; margin-bottom:1.5rem; }
+        .footer-text{ font-family:'Roboto Mono',monospace; font-size:.875rem; color:var(--slate-300); margin-bottom:1.5rem; }
+        .social-icons{ display:flex; gap:1rem; }
+        .social-icon{ color:var(--slate-400); transition:color 0.3s; font-size:1.25rem; }
+        .social-icon:hover{ color:var(--emerald-400); }
+        .footer-links{ list-style:none; }
+        .footer-links li{ margin-bottom:0.75rem; }
+        .footer-links a,.footer-links span{ font-family:'Roboto Mono',monospace; font-size:.875rem; color:var(--slate-300); text-decoration:none; transition:color 0.3s; }
+        .footer-links a:hover{ color:var(--emerald-400); }
+        .footer-contact-item{ display:flex; align-items:flex-start; margin-bottom:1rem; }
+        .footer-contact-icon{ margin-right:.75rem; flex-shrink:0; color:var(--emerald-400); margin-top:.125rem; }
+        .footer-bottom{ border-top:1px solid var(--slate-700); padding-top:2rem; display:flex; flex-direction:column; justify-content:space-between; align-items:center; }
+        @media(min-width:768px){ .footer-bottom{ flex-direction:row; } }
+        .footer-bottom p{ font-family:'Roboto Mono',monospace; font-size:.75rem; color:var(--slate-400); margin-bottom:1rem; }
+        @media(min-width:768px){ .footer-bottom p{ margin-bottom:0; } }
+        .footer-bottom-links{ display:flex; gap:1.5rem; }
+        .footer-bottom-links a{ font-family:'Roboto Mono',monospace; font-size:.75rem; color:var(--slate-400); text-decoration:none; transition:color 0.3s; }
+        .footer-bottom-links a:hover{ color:var(--emerald-400); }
+        .icon{ width:1.25rem; height:1.25rem; }
+        .icon-sm{ width:1rem; height:1rem; }
+    </style>
+</head>
+<body>
+    <!-- ===== NAVBAR (exact copy from members page) ===== -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <div class="nav-flex">
+                <a href="/" class="logo-link">
+                    <span class="logo-main">N.U.E.S.A</span>
+                    <span class="logo-highlight">BIU</span>
+                </a>
+                <div class="desktop-links">
+                    <a href="index.html" class="nav-link">HOME</a>
+                    <a href="about.html" class="nav-link">ABOUT</a>
+                    <a href="members.html" class="nav-link">MEMBERS</a>
+                    <a href="events.html" class="nav-link">EVENTS</a>
+                    <a href="resources.html" class="nav-link">RESOURCES</a>
+                    <a href="cgpa-Cal.html" class="nav-link">CGPA CALC</a>
+                    <a href="admission.html" class="nav-link active">ADMISSION</a>
+                    <a href="courseReps.html" class="nav-link">COURSE REPS</a>
+                    <a href="news.html" class="nav-link">NEWS</a>
+                    <a href="contacts.html" class="nav-link">CONTACT</a>
+                </div>
+                <button class="mobile-menu-btn" id="mobileMenuBtn">
+                    <i class="fas fa-bars fa-2x" id="menuIcon"></i>
+                </button>
+            </div>
+        </div>
+        <div class="mobile-overlay" id="mobileOverlay">
+            <a href="index.html" class="mobile-link">HOME</a>
+            <a href="about.html" class="mobile-link">ABOUT</a>
+            <a href="members.html" class="mobile-link">MEMBERS</a>
+            <a href="events.html" class="mobile-link">EVENTS</a>
+            <a href="resources.html" class="mobile-link">RESOURCES</a>
+            <a href="cgpa-Cal.html" class="mobile-link">CGPA CALC</a>
+            <a href="admission.html" class="mobile-link active">ADMISSION</a>
+            <a href="courseReps.html" class="mobile-link">COURSE REPS</a>
+            <a href="news.html" class="mobile-link">NEWS</a>
+            <a href="contacts.html" class="mobile-link">CONTACT</a>
+        </div>
+    </nav>
+
+    <!-- ===== MAIN WRAPPER ===== -->
+    <div class="main-wrapper">
+        <!-- ===== HERO SECTION ===== -->
+        <div class="hero">
+            <div class="hero-blob-1"></div>
+            <div class="hero-blob-2"></div>
+            <div class="hero-content">
+                <span class="hero-badge"><i class="fas fa-graduation-cap" style="margin-right: 0.5rem;"></i>Admission Guide</span>
+                <h1 class="hero-title">Begin Your Journey</h1>
+                <p class="hero-subtitle">Discover the requirements, rules, and timeline for joining the Faculty of Engineering at Benson Idahosa University.</p>
+            </div>
+        </div>
+
+        <!-- ===== TAB NAVIGATION (floating) ===== -->
+        <div class="container -mt-8 relative z-20">
+            <div class="tab-container" id="tabContainer">
+                <button class="tab-btn active" data-tab="requirements">
+                    <i class="fas fa-clipboard-list tab-icon"></i>
+                    <span>Requirements</span>
+                </button>
+                <button class="tab-btn" data-tab="rules">
+                    <i class="fas fa-users tab-icon"></i>
+                    <span>Faculty Rules</span>
+                </button>
+                <button class="tab-btn" data-tab="timeline">
+                    <i class="fas fa-calendar tab-icon"></i>
+                    <span>Timeline</span>
+                </button>
+                <button class="tab-btn" data-tab="apply">
+                    <i class="fas fa-graduation-cap tab-icon"></i>
+                    <span>Apply Now</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- ===== CONTENT PANELS ===== -->
+        <div class="container py-16">
+            <!-- REQUIREMENTS PANEL -->
+            <div id="requirementsPanel" class="content-panel">
+                <div class="section-header">
+                    <i class="fas fa-clipboard-list"></i>
+                    <h2>Admission Requirements</h2>
+                    <p>Ensure you meet all the necessary requirements before applying to the Faculty of Engineering</p>
+                </div>
+                <div class="requirements-grid">
+                    <!-- UTME -->
+                    <div class="req-card">
+                        <div class="req-card-content">
+                            <h3 class="req-title">
+                                <span class="req-number">1</span>
+                                UTME Requirements
+                            </h3>
+                            <ul class="req-list">
+                                <li class="req-item"><i class="fas fa-check-circle"></i> Minimum JAMB score of 180</li>
+                                <li class="req-item"><i class="fas fa-check-circle"></i> English Language</li>
+                                <li class="req-item"><i class="fas fa-check-circle"></i> Mathematics</li>
+                                <li class="req-item"><i class="fas fa-check-circle"></i> Physics</li>
+                                <li class="req-item"><i class="fas fa-check-circle"></i> Chemistry</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <!-- O'Level -->
+                    <div class="req-card">
+                        <div class="req-card-content">
+                            <h3 class="req-title">
+                                <span class="req-number">2</span>
+                                O'Level Requirements
+                            </h3>
+                            <ul class="req-list">
+                                <li class="req-item"><i class="fas fa-check-circle"></i> 5 Credits in WAEC/NECO/NABTEB</li>
+                                <li class="req-item"><i class="fas fa-check-circle"></i> Must include English Language</li>
+                                <li class="req-item"><i class="fas fa-check-circle"></i> Must include Mathematics</li>
+                                <li class="req-item"><i class="fas fa-check-circle"></i> Must include Physics & Chemistry</li>
+                                <li class="req-item"><i class="fas fa-check-circle"></i> Obtained in not more than 2 sittings</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <!-- Direct Entry -->
+                    <div class="req-card">
+                        <div class="req-card-content">
+                            <h3 class="req-title">
+                                <span class="req-number">3</span>
+                                Direct Entry
+                            </h3>
+                            <ul class="req-list">
+                                <li class="req-item"><i class="fas fa-check-circle"></i> HND/ND with minimum of Upper Credit</li>
+                                <li class="req-item"><i class="fas fa-check-circle"></i> JUPEB with minimum acceptable points</li>
+                                <li class="req-item"><i class="fas fa-check-circle"></i> A'Level passes in Maths and Physics</li>
+                                <li class="req-item"><i class="fas fa-check-circle"></i> Must meet all O'Level requirements</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RULES PANEL (hidden initially) -->
+            <div id="rulesPanel" class="content-panel hidden">
+                <div class="section-header">
+                    <i class="fas fa-users"></i>
+                    <h2>Faculty Rules & Regulations</h2>
+                    <p>Standard code of conduct for all engineering students</p>
+                </div>
+                <div class="rules-container">
+                    <div class="rule-item">
+                        <div class="rule-number">1</div>
+                        <div>
+                            <div class="rule-title">Dress Code</div>
+                            <div class="rule-desc">All engineering students must adhere to the corporate dress code. Workshop coats and safety boots are mandatory for all laboratory and workshop sessions.</div>
+                        </div>
+                    </div>
+                    <div class="rule-item">
+                        <div class="rule-number">2</div>
+                        <div>
+                            <div class="rule-title">Class Attendance</div>
+                            <div class="rule-desc">A minimum of 75% attendance is required in all registered courses to be eligible to write the semester examinations.</div>
+                        </div>
+                    </div>
+                    <div class="rule-item">
+                        <div class="rule-number">3</div>
+                        <div>
+                            <div class="rule-title">Examination Conduct</div>
+                            <div class="rule-desc">Students must present their valid ID cards during exams. Malpractice of any form will lead to immediate disciplinary action and possible expulsion.</div>
+                        </div>
+                    </div>
+                    <div class="rule-item">
+                        <div class="rule-number">4</div>
+                        <div>
+                            <div class="rule-title">Laboratory Safety</div>
+                            <div class="rule-desc">Strict adherence to safety protocols in all laboratories. No student is allowed to operate heavy machinery without supervision.</div>
+                        </div>
+                    </div>
+                    <div class="rule-item">
+                        <div class="rule-number">5</div>
+                        <div>
+                            <div class="rule-title">Academic Integrity</div>
+                            <div class="rule-desc">Plagiarism in assignments, projects, or reports is strictly prohibited and carries severe academic penalties.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TIMELINE PANEL (hidden initially) -->
+            <div id="timelinePanel" class="content-panel hidden">
+                <div class="section-header">
+                    <i class="fas fa-calendar"></i>
+                    <h2>Admission Timeline</h2>
+                    <p>Key dates and processes for the academic session</p>
+                </div>
+                <div class="timeline-container">
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <span class="timeline-dot"></span>
+                            <span class="timeline-date">January - March</span>
+                            <h4 class="timeline-title">JAMB Registration</h4>
+                            <p class="timeline-desc">Register for UTME and select Benson Idahosa University as your first choice.</p>
+                        </div>
+                        <div class="timeline-item">
+                            <span class="timeline-dot"></span>
+                            <span class="timeline-date">August - September</span>
+                            <h4 class="timeline-title">Post-UTME Screening</h4>
+                            <p class="timeline-desc">Apply and participate in the BIU internal screening exercise.</p>
+                        </div>
+                        <div class="timeline-item">
+                            <span class="timeline-dot"></span>
+                            <span class="timeline-date">October - November</span>
+                            <h4 class="timeline-title">Admission List Release</h4>
+                            <p class="timeline-desc">Check your admission status on the JAMB CAPS and BIU portal.</p>
+                        </div>
+                        <div class="timeline-item">
+                            <span class="timeline-dot"></span>
+                            <span class="timeline-date">November</span>
+                            <h4 class="timeline-title">Acceptance Fee Payment</h4>
+                            <p class="timeline-desc">Pay the non-refundable acceptance fee to secure your admission.</p>
+                        </div>
+                        <div class="timeline-item">
+                            <span class="timeline-dot"></span>
+                            <span class="timeline-date">December</span>
+                            <h4 class="timeline-title">Course Registration</h4>
+                            <p class="timeline-desc">Complete your physical clearance and register your courses online.</p>
+                        </div>
+                        <div class="timeline-item">
+                            <span class="timeline-dot"></span>
+                            <span class="timeline-date">January</span>
+                            <h4 class="timeline-title">Orientation & Resumption</h4>
+                            <p class="timeline-desc">Attend the mandatory orientation program for fresh engineering students.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- APPLY PANEL (hidden initially) -->
+            <div id="applyPanel" class="content-panel hidden">
+                <div class="section-header">
+                    <i class="fas fa-graduation-cap"></i>
+                    <h2>Ready to Apply?</h2>
+                    <p>Take the next step towards your engineering career</p>
+                </div>
+                <div class="apply-container">
+                    <h3 class="apply-title">Start Your Application</h3>
+                    <p class="apply-text">Applications for the upcoming academic session are currently open. Ensure you have scanned copies of your O'Level results, JAMB result slip, and passport photograph ready before starting the application.</p>
+                    <div class="checklist">
+                        <div class="checklist-title">Required Documents Checklist:</div>
+                        <div class="checklist-item"><i class="fas fa-check-circle"></i> JAMB Result Slip</div>
+                        <div class="checklist-item"><i class="fas fa-check-circle"></i> WAEC/NECO Result</div>
+                        <div class="checklist-item"><i class="fas fa-check-circle"></i> Birth Certificate</div>
+                        <div class="checklist-item"><i class="fas fa-check-circle"></i> Passport Photograph</div>
+                    </div>
+                    <div>
+                        <button class="apply-btn" onclick="window.open('https://portal.biu.edu.ng/', '_blank')">
+                            Proceed to BIU Portal <i class="fas fa-arrow-right"></i>
+                        </button>
+                        <p class="text-sm" style="color: var(--slate-500); margin-top: 1rem;">You will be redirected to the official university portal.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== FOOTER (exact copy from members page) ===== -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-grid">
+                <div class="footer-section">
+                    <h3>N.U.E.S.A <span style="color: var(--emerald-400);">BIU</span></h3>
+                    <p class="footer-text">Empowering the next generation of engineers through innovation, unity, and excellence.</p>
+                    <div class="social-icons">
+                        <a href="#" class="social-icon"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="social-icon"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="social-icon"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="social-icon"><i class="fab fa-linkedin-in"></i></a>
+                    </div>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul class="footer-links">
+                        <li><a href="about.html">About Us</a></li>
+                        <li><a href="members.html">Executives</a></li>
+                        <li><a href="events.html">Events</a></li>
+                        <li><a href="resources.html">Resources</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Departments</h4>
+                    <ul class="footer-links">
+                        <li><span>Electrical/Electronics</span></li>
+                        <li><span>Mechanical Engineering</span></li>
+                        <li><span>Civil Engineering</span></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact</h4>
+                    <div class="footer-links">
+                        <div class="footer-contact-item">
+                            <i class="fas fa-map-marker-alt footer-contact-icon"></i>
+                            <span>Benson Idahosa University,<br>Benin City, Nigeria</span>
+                        </div>
+                        <div class="footer-contact-item">
+                            <i class="fas fa-envelope footer-contact-icon"></i>
+                            <span>info@nuesabiu.org</span>
+                        </div>
+                        <div class="footer-contact-item">
+                            <i class="fas fa-phone footer-contact-icon"></i>
+                            <span>+234 800 123 4567</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>© 2026 NUESA BIU. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Terms of Service</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        (function() {
+            // ===== NAVBAR SCROLL EFFECT =====
+            const navbar = document.getElementById('navbar');
+            function updateNavbar() {
+                if (window.scrollY > 20) navbar.classList.add('scrolled');
+                else navbar.classList.remove('scrolled');
+            }
+            window.addEventListener('scroll', updateNavbar);
+            updateNavbar();
+
+            // ===== MOBILE MENU TOGGLE =====
+            const mobileBtn = document.getElementById('mobileMenuBtn');
+            const mobileOverlay = document.getElementById('mobileOverlay');
+            const menuIcon = document.getElementById('menuIcon');
+            mobileBtn.addEventListener('click', () => {
+                const isOpen = mobileOverlay.classList.contains('open');
+                if (isOpen) {
+                    mobileOverlay.classList.remove('open');
+                    menuIcon.className = 'fas fa-bars fa-2x';
+                } else {
+                    mobileOverlay.classList.add('open');
+                    menuIcon.className = 'fas fa-times fa-2x';
+                }
+            });
+            document.querySelectorAll('.mobile-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    mobileOverlay.classList.remove('open');
+                    menuIcon.className = 'fas fa-bars fa-2x';
+                });
+            });
+
+            // ===== TABBED INTERFACE =====
+            const tabs = document.querySelectorAll('.tab-btn');
+            const panels = {
+                requirements: document.getElementById('requirementsPanel'),
+                rules: document.getElementById('rulesPanel'),
+                timeline: document.getElementById('timelinePanel'),
+                apply: document.getElementById('applyPanel')
+            };
+
+            function activateTab(tabId) {
+                // Update tab buttons
+                tabs.forEach(btn => {
+                    if (btn.dataset.tab === tabId) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+
+                // Show selected panel with animation (by removing hidden and adding new one)
+                Object.keys(panels).forEach(key => {
+                    if (key === tabId) {
+                        panels[key].classList.remove('hidden');
+                        // trigger reflow to restart animation
+                        panels[key].style.animation = 'none';
+                        panels[key].offsetHeight; // reflow
+                        panels[key].style.animation = 'fadeSlide 0.3s ease-out';
+                    } else {
+                        panels[key].classList.add('hidden');
+                    }
+                });
+            }
+
+            tabs.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tabId = btn.dataset.tab;
+                    activateTab(tabId);
+                });
+            });
+
+            // Activate default tab (requirements)
+            activateTab('requirements');
+        })();
+    </script>
+</body>
+</html>

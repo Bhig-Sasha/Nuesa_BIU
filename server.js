@@ -5026,6 +5026,86 @@ app.use('/api/articles', articleRouter);
 app.use('/api/news', articleRouter);
 console.log('✅ Articles/News router registered at /api/articles and /api/news');
 
+// ============================================================
+// COURSE REPRESENTATIVES ROUTES
+// ============================================================
+
+const courseRepRouter = express.Router();
+
+/**
+ * @swagger
+ * /api/course-reps:
+ *   get:
+ *     summary: Get course representatives by session
+ *     tags: [Course Representatives]
+ */
+courseRepRouter.get('/', cacheMiddleware(300, ['course-reps']), async (req, res) => {
+    try {
+        const { session = '2025/2026' } = req.query;
+        
+        console.log(`📡 Fetching course reps for session: ${session}`);
+        
+        const { data, error } = await supabase
+            .from('course_representatives')
+            .select('*')
+            .eq('session', session)
+            .order('level');
+        
+        if (error) {
+            console.error('❌ Database error:', error);
+            throw error;
+        }
+        
+        console.log(`✅ Found ${data.length} course reps for session ${session}`);
+        
+        res.json({
+            status: 'success',
+            data: data,
+            count: data.length
+        });
+    } catch (error) {
+        console.error('❌ Error fetching course reps:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch course representatives',
+            debug: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+/**
+ * @swagger
+ * /api/course-reps/sessions:
+ *   get:
+ *     summary: Get all available sessions
+ *     tags: [Course Representatives]
+ */
+courseRepRouter.get('/sessions', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('course_representatives')
+            .select('session')
+            .order('session', { ascending: false });
+        
+        if (error) throw error;
+        
+        const sessions = [...new Set(data.map(item => item.session))];
+        
+        res.json({
+            status: 'success',
+            data: sessions
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch sessions'
+        });
+    }
+});
+
+// Mount the router
+app.use('/api/course-reps', courseRepRouter);
+
 // --- 16.11 FILE MANAGEMENT ROUTES ---
 
 /**

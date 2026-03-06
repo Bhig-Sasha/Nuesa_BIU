@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NUESA BIU – Course Representatives</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ===== ROOT VARIABLES (copied from members page) ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        :root {
+            --emerald-50: #ecfdf5;  --emerald-100: #d1fae5;  --emerald-200: #a7f3d0;
+            --emerald-300: #6ee7b7;  --emerald-400: #34d399;  --emerald-500: #10b981;
+            --emerald-600: #059669;  --emerald-700: #047857;  --emerald-800: #065f46;
+            --emerald-900: #064e3b;  --teal-400: #2dd4bf;    --teal-500: #14b8a6;
+            --amber-300: #fcd34d;    --amber-400: #fbbf24;    --amber-500: #f59e0b;
+            --slate-50: #f8fafc;     --slate-100: #f1f5f9;    --slate-200: #e2e8f0;
+            --slate-300: #cbd5e1;     --slate-400: #94a3b8;    --slate-500: #64748b;
+            --slate-600: #475569;     --slate-700: #334155;    --slate-800: #1e293b;
+            --slate-900: #0f172a;     --white: #ffffff;        --gray-100: #f5f5f7;
+            --gray-200: #e5e5e7;      --gray-300: #d1d5db;     --gray-400: #9ca3af;
+            --gray-500: #6b7280;      --gray-600: #4b5563;     --gray-700: #374151;
+            --gray-800: #1f2933;      --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+        }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--gray-100);
+            color: var(--gray-800);
+            line-height: 1.5;
+        }
+
+        /* ===== MODERN NAVBAR STYLES (exact copy from members page) ===== */
+        .navbar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 50;
+            transition: all 0.3s ease;
+            background-color: rgba(6, 78, 59, 0.95);
+            padding: 1.25rem 0;
+        }
+        .navbar.scrolled {
+            background-color: rgba(6, 78, 59, 0.95);
+            backdrop-filter: blur(8px);
+            box-shadow: var(--shadow-lg);
+            padding: 0.75rem 0;
+        }
+        .nav-container {
+            max-width: 80rem;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+        @media (min-width: 640px) { .nav-container { padding: 0 1.5rem; } }
+        @media (min-width: 1024px) { .nav-container { padding: 0 2rem; } }
+        .nav-flex {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo-link {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            z-index: 50;
+            text-decoration: none;
+        }
+        .logo-main {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: var(--white);
+            letter-spacing: -0.05em;
+        }
+        .logo-highlight {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: var(--amber-400);
+            letter-spacing: -0.05em;
+        }
+        .desktop-links { display: none; }
+        @media (min-width: 1024px) {
+            .desktop-links {
+                display: flex;
+                align-items: center;
+                gap: 1.5rem;
+            }
+        }
+        .nav-link {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-decoration: none;
+            color: rgba(255,255,255,0.9);
+            transition: color 0.2s;
+        }
+        .nav-link:hover { color: var(--amber-400); }
+        .nav-link.active { color: var(--amber-400); }
+        .mobile-menu-btn {
+            display: block;
+            background: none;
+            border: none;
+            color: var(--white);
+            cursor: pointer;
+            z-index: 50;
+        }
+        .mobile-menu-btn:hover { color: var(--amber-400); }
+        @media (min-width: 1024px) { .mobile-menu-btn { display: none; } }
+        .mobile-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            min-height: 100vh;
+            background-color: var(--emerald-900);
+            display: flex;
+            flex-direction: column;
+            padding: 6rem 1.5rem 2rem;
+            overflow-y: auto;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-20px);
+            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
+        }
+        .mobile-overlay.open {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        .mobile-link {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 1.125rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-decoration: none;
+            border-bottom: 1px solid var(--emerald-800);
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+            color: var(--white);
+        }
+        .mobile-link.active { color: var(--amber-400); }
+        .mobile-link:last-child { border-bottom: none; }
+        .main-wrapper { padding-top: 5rem; }
+
+        /* ===== HERO SECTION STYLES (adapted for course reps) ===== */
+        .hero {
+            position: relative;
+            background: linear-gradient(to bottom right, var(--emerald-800), var(--emerald-600), var(--teal-500));
+            padding: 4rem 1rem;
+            overflow: hidden;
+        }
+        .hero-blob-1 {
+            position: absolute; top: 2.5rem; left: 2.5rem;
+            width: 12rem; height: 12rem; background-color: rgba(255,255,255,0.1);
+            border-radius: 50%; filter: blur(2rem);
+        }
+        .hero-blob-2 {
+            position: absolute; bottom: 2.5rem; right: 5rem;
+            width: 16rem; height: 16rem; background-color: rgba(45,212,191,0.2);
+            border-radius: 50%; filter: blur(3rem);
+        }
+        .hero-content {
+            max-width: 80rem; margin: 0 auto; position: relative; z-index: 10; text-align: center;
+        }
+        .hero-title {
+            font-size: 2.5rem; font-weight: 900; color: white; margin-bottom: 1rem; letter-spacing: -0.025em;
+        }
+        .hero-subtitle {
+            color: rgba(236, 253, 245, 1); max-width: 42rem; margin: 0 auto; font-family: 'Roboto Mono', monospace; font-size: 0.875rem;
+        }
+
+        /* ===== CONTAINER & LAYOUT ===== */
+        .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
+        @media (min-width: 640px) { .container { padding: 0 1.5rem; } }
+        @media (min-width: 1024px) { .container { padding: 0 2rem; } }
+        .mt-8 { margin-top: 2rem; }
+        .mb-8 { margin-bottom: 2rem; }
+
+        /* ===== TOOLBAR (same as members page, with extra filters) ===== */
+        .toolbar {
+            background-color: white; border-radius: 0.75rem; box-shadow: var(--shadow-sm);
+            border: 1px solid var(--slate-100); padding: 1rem; margin-bottom: 2rem;
+            display: flex; flex-direction: column; gap: 1rem;
+        }
+        @media (min-width: 640px) { .toolbar { flex-direction: row; justify-content: space-between; align-items: center; } }
+        .toolbar-left, .toolbar-right { display: flex; align-items: center; gap: 1rem; width: 100%; flex-wrap: wrap; }
+        @media (min-width: 640px) { .toolbar-left, .toolbar-right { width: auto; } }
+        .select-wrapper { position: relative; }
+        .select {
+            appearance: none; background-color: var(--slate-50); border: 1px solid var(--slate-200);
+            color: var(--slate-700); padding: 0.5rem 2.5rem 0.5rem 1rem; border-radius: 0.5rem;
+            font-weight: 500; cursor: pointer; font-size: 0.875rem; font-family: 'Inter', sans-serif;
+            min-width: 140px;
+        }
+        .select:focus { outline: none; box-shadow: 0 0 0 2px var(--emerald-500); }
+        .select-icon {
+            position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
+            width: 1rem; height: 1rem; color: var(--slate-500); pointer-events: none;
+        }
+        .view-toggle {
+            display: flex; background-color: var(--slate-50); border-radius: 0.5rem;
+            padding: 0.25rem; border: 1px solid var(--slate-200);
+        }
+        .view-btn {
+            padding: 0.375rem; border-radius: 0.375rem; border: none; background: none; cursor: pointer;
+            color: var(--slate-400); transition: all 0.2s; display: flex; align-items: center; justify-content: center;
+        }
+        .view-btn:hover { color: var(--slate-600); }
+        .view-btn.active { background-color: white; box-shadow: var(--shadow-sm); color: var(--emerald-600); }
+        .search-wrapper { position: relative; flex: 1; min-width: 200px; }
+        .search-input {
+            width: 100%; background-color: var(--slate-50); border: 1px solid var(--slate-200);
+            color: var(--slate-900); padding: 0.5rem 1rem 0.5rem 2.5rem; border-radius: 0.5rem;
+            font-size: 0.875rem; font-family: 'Inter', sans-serif;
+        }
+        .search-input:focus { outline: none; box-shadow: 0 0 0 2px var(--emerald-500); }
+        .search-icon {
+            position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%);
+            width: 1rem; height: 1rem; color: var(--slate-400);
+        }
+        .btn-primary {
+            display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;
+            background-color: var(--emerald-600); color: white; font-weight: 600; border-radius: 0.5rem;
+            border: none; cursor: pointer; transition: background-color 0.2s; font-size: 0.875rem;
+            font-family: 'Inter', sans-serif; white-space: nowrap;
+        }
+        .btn-primary:hover { background-color: var(--emerald-700); }
+        .filter-chips {
+            display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem;
+        }
+        .chip {
+            background-color: var(--slate-100); border: 1px solid var(--slate-200);
+            border-radius: 999px; padding: 0.25rem 0.75rem; font-size: 0.75rem;
+            font-weight: 600; color: var(--slate-600); cursor: pointer; transition: all 0.2s;
+            display: flex; align-items: center; gap: 0.25rem;
+        }
+        .chip:hover { background-color: var(--slate-200); }
+        .chip.active {
+            background-color: var(--emerald-600); color: white; border-color: var(--emerald-600);
+        }
+        .chip i { font-size: 0.625rem; }
+
+        /* ===== COURSE REPRESENTATIVES CARD STYLES (custom for reps) ===== */
+        .reps-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+        .reps-grid.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        @media (min-width: 640px) { .reps-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (min-width: 1024px) { .reps-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (min-width: 1280px) { .reps-grid { grid-template-columns: repeat(4, 1fr); } }
+
+        .rep-card {
+            background-color: white;
+            border-radius: 1rem;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--slate-100);
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0;
+            transform: scale(0.95);
+            animation: cardPopIn 0.4s forwards;
+        }
+        @keyframes cardPopIn {
+            to { opacity: 1; transform: scale(1); }
+        }
+        .rep-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, var(--emerald-700), var(--emerald-500));
+            padding: 1.25rem 1rem;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .card-header i {
+            font-size: 1.5rem;
+            opacity: 0.9;
+        }
+        .card-header h3 {
+            font-weight: 800;
+            font-size: 1.25rem;
+            letter-spacing: -0.025em;
+        }
+
+        .card-body {
+            padding: 1.25rem;
+        }
+
+        .rep-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s;
+        }
+        .rep-item:hover {
+            background-color: var(--slate-50);
+        }
+        .rep-icon {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            background-color: var(--emerald-100);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--emerald-600);
+            flex-shrink: 0;
+        }
+        .rep-info {
+            flex: 1;
+        }
+        .rep-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--emerald-600);
+            font-family: 'Roboto Mono', monospace;
+        }
+        .rep-name {
+            font-weight: 600;
+            color: var(--slate-900);
+            line-height: 1.4;
+        }
+        .rep-name.not-assigned {
+            color: var(--slate-400);
+            font-style: italic;
+        }
+        .dept-badge {
+            background-color: var(--slate-100);
+            border-radius: 999px;
+            padding: 0.25rem 0.75rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--slate-600);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .expand-section {
+            border-top: 1px solid var(--slate-100);
+            overflow: hidden;
+            transition: max-height 0.4s ease-in-out;
+            max-height: 0;
+            background-color: var(--slate-50);
+        }
+        .expand-section.open {
+            max-height: 500px; /* enough for departments */
+        }
+        .expand-content {
+            padding: 1.25rem;
+        }
+        .dept-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+        }
+        @media (min-width: 640px) { .dept-grid { grid-template-columns: repeat(2, 1fr); } }
+        .dept-item {
+            background-color: white;
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            border: 1px solid var(--slate-200);
+            font-size: 0.8rem;
+        }
+        .dept-name {
+            font-weight: 700;
+            color: var(--slate-800);
+            margin-bottom: 0.25rem;
+        }
+        .dept-rep {
+            color: var(--slate-600);
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        .dept-rep i {
+            color: var(--emerald-500);
+            font-size: 0.625rem;
+        }
+        .pending {
+            color: var(--slate-400);
+            font-style: italic;
+        }
+
+        .expand-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background: none;
+            border: none;
+            border-top: 1px solid var(--slate-100);
+            color: var(--emerald-600);
+            font-weight: 700;
+            font-size: 0.875rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+        .expand-btn:hover {
+            background-color: var(--slate-50);
+            color: var(--emerald-700);
+        }
+
+        /* List view styles */
+        .reps-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+        .reps-list.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .list-item {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--slate-100);
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+        .list-item:hover {
+            box-shadow: var(--shadow-md);
+        }
+        .list-header {
+            display: flex;
+            flex-direction: column;
+            padding: 1rem;
+            gap: 1rem;
+            cursor: pointer;
+        }
+        @media (min-width: 768px) {
+            .list-header {
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+            }
+        }
+        .list-level {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: linear-gradient(135deg, var(--emerald-700), var(--emerald-500));
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 800;
+            min-width: 100px;
+        }
+        .list-level i { font-size: 1.25rem; }
+        .list-summary {
+            display: flex;
+            flex: 1;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+        }
+        .summary-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--slate-600);
+        }
+        .summary-item strong {
+            color: var(--slate-900);
+            font-weight: 600;
+        }
+        .expand-icon {
+            color: var(--emerald-600);
+            font-size: 1rem;
+        }
+        .list-expand {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease-in-out;
+            background-color: var(--slate-50);
+        }
+        .list-expand.open {
+            max-height: 800px;
+        }
+        .list-dept-grid {
+            padding: 1.5rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 0.75rem;
+        }
+
+        /* Info banner */
+        .info-banner {
+            background-color: var(--amber-50);
+            border-left: 4px solid var(--amber-400);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+        }
+        .info-banner i {
+            color: var(--amber-500);
+            font-size: 1.25rem;
+        }
+        .info-banner h4 {
+            font-weight: 700;
+            color: var(--amber-900);
+            margin-bottom: 0.25rem;
+        }
+        .info-banner p {
+            color: var(--amber-800);
+            font-size: 0.875rem;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: white;
+            border-radius: 0.75rem;
+            border: 2px dashed var(--slate-300);
+            grid-column: 1 / -1;
+        }
+        .empty-state i {
+            font-size: 3rem;
+            color: var(--slate-300);
+            margin-bottom: 1rem;
+        }
+        .empty-state h3 {
+            font-size: 1.25rem;
+            color: var(--slate-600);
+            margin-bottom: 0.5rem;
+        }
+        .hidden { display: none !important; }
+
+        /* Loading spinner */
+        .loading-spinner {
+            display: inline-block;
+            width: 2rem;
+            height: 2rem;
+            border: 3px solid var(--emerald-200);
+            border-radius: 50%;
+            border-top-color: var(--emerald-600);
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ===== FOOTER STYLES (exact copy from members page) ===== */
+        .footer {
+            background: linear-gradient(135deg, var(--slate-800) 0%, var(--slate-900) 100%);
+            border-top: 4px solid var(--emerald-500);
+            padding: 4rem 0 2rem;
+            margin-top: 3rem;
+        }
+        .footer-container {
+            max-width: 80rem;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 3rem;
+            margin-bottom: 3rem;
+        }
+        @media (min-width:768px){ .footer-grid{grid-template-columns:repeat(4,1fr);} }
+        .footer-section h3{ font-size:1.25rem; font-weight:700; color:var(--white); margin-bottom:1rem; }
+        .footer-section h4{ font-family:'Roboto Mono',monospace; font-size:.875rem; font-weight:700; text-transform:uppercase; color:var(--emerald-400); letter-spacing:0.1em; margin-bottom:1.5rem; }
+        .footer-text{ font-family:'Roboto Mono',monospace; font-size:.875rem; color:var(--slate-300); margin-bottom:1.5rem; }
+        .social-icons{ display:flex; gap:1rem; }
+        .social-icon{ color:var(--slate-400); transition:color 0.3s; font-size:1.25rem; }
+        .social-icon:hover{ color:var(--emerald-400); }
+        .footer-links{ list-style:none; }
+        .footer-links li{ margin-bottom:0.75rem; }
+        .footer-links a,.footer-links span{ font-family:'Roboto Mono',monospace; font-size:.875rem; color:var(--slate-300); text-decoration:none; transition:color 0.3s; }
+        .footer-links a:hover{ color:var(--emerald-400); }
+        .footer-contact-item{ display:flex; align-items:flex-start; margin-bottom:1rem; }
+        .footer-contact-icon{ margin-right:.75rem; flex-shrink:0; color:var(--emerald-400); margin-top:.125rem; }
+        .footer-bottom{ border-top:1px solid var(--slate-700); padding-top:2rem; display:flex; flex-direction:column; justify-content:space-between; align-items:center; }
+        @media(min-width:768px){ .footer-bottom{ flex-direction:row; } }
+        .footer-bottom p{ font-family:'Roboto Mono',monospace; font-size:.75rem; color:var(--slate-400); margin-bottom:1rem; }
+        @media(min-width:768px){ .footer-bottom p{ margin-bottom:0; } }
+        .footer-bottom-links{ display:flex; gap:1.5rem; }
+        .footer-bottom-links a{ font-family:'Roboto Mono',monospace; font-size:.75rem; color:var(--slate-400); text-decoration:none; transition:color 0.3s; }
+        .footer-bottom-links a:hover{ color:var(--emerald-400); }
+        .icon{ width:1.25rem; height:1.25rem; }
+        .icon-sm{ width:1rem; height:1rem; }
+        
+        /* Loading container */
+        .loading-container {
+            text-align: center;
+            padding: 3rem;
+        }
+        .loading-container p {
+            margin-top: 1rem;
+            color: var(--slate-600);
+        }
+    </style>
+</head>
+<body>
+    <!-- ===== NAVBAR (exact copy from members page) ===== -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <div class="nav-flex">
+                <a href="/" class="logo-link">
+                    <span class="logo-main">N.U.E.S.A</span>
+                    <span class="logo-highlight">BIU</span>
+                </a>
+                <div class="desktop-links">
+                    <a href="index.html" class="nav-link">HOME</a>
+                    <a href="about.html" class="nav-link">ABOUT</a>
+                    <a href="members.html" class="nav-link">MEMBERS</a>
+                    <a href="events.html" class="nav-link">EVENTS</a>
+                    <a href="resources.html" class="nav-link">RESOURCES</a>
+                    <a href="cgpa-Cal.html" class="nav-link">CGPA CALC</a>
+                    <a href="admission.html" class="nav-link">ADMISSION</a>
+                    <a href="courseReps.html" class="nav-link active">COURSE REPS</a>
+                    <a href="news.html" class="nav-link">NEWS</a>
+                    <a href="contacts.html" class="nav-link">CONTACT</a>
+                </div>
+                <button class="mobile-menu-btn" id="mobileMenuBtn">
+                    <i class="fas fa-bars fa-2x" id="menuIcon"></i>
+                </button>
+            </div>
+        </div>
+        <div class="mobile-overlay" id="mobileOverlay">
+            <a href="index.html" class="mobile-link">HOME</a>
+            <a href="about.html" class="mobile-link">ABOUT</a>
+            <a href="members.html" class="mobile-link">MEMBERS</a>
+            <a href="events.html" class="mobile-link">EVENTS</a>
+            <a href="resources.html" class="mobile-link">RESOURCES</a>
+            <a href="cgpa-Cal.html" class="mobile-link">CGPA CALC</a>
+            <a href="admission.html" class="mobile-link">ADMISSION</a>
+            <a href="courseReps.html" class="mobile-link active">COURSE REPS</a>
+            <a href="news.html" class="mobile-link">NEWS</a>
+            <a href="contacts.html" class="mobile-link">CONTACT</a>
+        </div>
+    </nav>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <div class="main-wrapper">
+        <!-- ===== HERO SECTION ===== -->
+        <div class="hero">
+            <div class="hero-blob-1"></div>
+            <div class="hero-blob-2"></div>
+            <div class="hero-content">
+                <h1 class="hero-title">Course Representatives</h1>
+                <p class="hero-subtitle">Meet your dedicated departmental reps for the 2025/2026 session</p>
+            </div>
+        </div>
+
+        <!-- ===== MAIN CONTAINER ===== -->
+        <div class="container mt-8">
+            <!-- ===== TOOLBAR ===== -->
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <div class="select-wrapper">
+                        <select class="select" id="sessionSelect">
+                            <option value="2025/2026">2025/2026</option>
+                            <option value="2024/2025">2024/2025</option>
+                        </select>
+                        <svg class="select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <div class="view-toggle">
+                        <button class="view-btn active" id="gridViewBtn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></button>
+                        <button class="view-btn" id="listViewBtn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></button>
+                    </div>
+                </div>
+                <div class="toolbar-right">
+                    <div class="search-wrapper">
+                        <input type="text" placeholder="Search reps or levels..." class="search-input" id="searchInput">
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== INFO BANNER ===== -->
+            <div class="info-banner">
+                <i class="fas fa-info-circle"></i>
+                <div>
+                    <h4 id="sessionTitle">2025/2026 Course Representatives</h4>
+                    <p>Each level has a General Representative, an Assistant, and Departmental Representatives. Click "View Departments" to see all departmental reps.</p>
+                </div>
+            </div>
+
+            <!-- ===== FILTER CHIPS (by level) ===== -->
+            <div class="filter-chips mb-8" id="levelFilters">
+                <span class="chip active" data-level="all"><i class="fas fa-layer-group"></i> All Levels</span>
+                <!-- JS will populate level chips dynamically from API -->
+            </div>
+
+            <!-- ===== LOADING STATE ===== -->
+            <div id="loadingContainer" class="loading-container">
+                <div class="loading-spinner"></div>
+                <p>Loading course representatives...</p>
+            </div>
+
+            <!-- ===== GRID VIEW CONTAINER ===== -->
+            <div id="gridContainer" class="reps-grid hidden"></div>
+            
+            <!-- ===== LIST VIEW CONTAINER ===== -->
+            <div id="listContainer" class="reps-list hidden"></div>
+
+            <!-- ===== EMPTY STATE ===== -->
+            <div id="emptyState" class="empty-state hidden">
+                <i class="fas fa-users-slash"></i>
+                <h3>No representatives found</h3>
+                <p>Try adjusting your search or selecting a different level</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== FOOTER (exact copy from members page) ===== -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-grid">
+                <div class="footer-section">
+                    <h3>N.U.E.S.A <span style="color: var(--emerald-400);">BIU</span></h3>
+                    <p class="footer-text">Empowering the next generation of engineers through innovation, unity, and excellence.</p>
+                    <div class="social-icons">
+                        <a href="#" class="social-icon"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="social-icon"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="social-icon"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="social-icon"><i class="fab fa-linkedin-in"></i></a>
+                    </div>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul class="footer-links">
+                        <li><a href="about.html">About Us</a></li>
+                        <li><a href="members.html">Executives</a></li>
+                        <li><a href="events.html">Events</a></li>
+                        <li><a href="resources.html">Resources</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Departments</h4>
+                    <ul class="footer-links">
+                        <li><span>Electrical/Electronics</span></li>
+                        <li><span>Mechanical Engineering</span></li>
+                        <li><span>Civil Engineering</span></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact</h4>
+                    <div class="footer-links">
+                        <div class="footer-contact-item">
+                            <i class="fas fa-map-marker-alt footer-contact-icon"></i>
+                            <span>Benson Idahosa University,<br>Benin City, Nigeria</span>
+                        </div>
+                        <div class="footer-contact-item">
+                            <i class="fas fa-envelope footer-contact-icon"></i>
+                            <span>info@nuesabiu.org</span>
+                        </div>
+                        <div class="footer-contact-item">
+                            <i class="fas fa-phone footer-contact-icon"></i>
+                            <span>+234 800 123 4567</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>© 2026 NUESA BIU. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Terms of Service</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+<script>
+    (function() {
+        // ============================================
+        // NUESA BIU COURSE REPS PAGE - BACKEND INTEGRATION
+        // ============================================
+        
+        // ===== CONFIGURATION =====
+        const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
+        
+        // ===== DATA (will be populated from API) =====
+        let levelsData = [];
+
+        // ===== DOM elements =====
+        const navbar = document.getElementById('navbar');
+        const mobileBtn = document.getElementById('mobileMenuBtn');
+        const mobileOverlay = document.getElementById('mobileOverlay');
+        const menuIcon = document.getElementById('menuIcon');
+        const sessionSelect = document.getElementById('sessionSelect');
+        const sessionTitle = document.getElementById('sessionTitle');
+        const searchInput = document.getElementById('searchInput');
+        const gridContainer = document.getElementById('gridContainer');
+        const listContainer = document.getElementById('listContainer');
+        const emptyState = document.getElementById('emptyState');
+        const loadingContainer = document.getElementById('loadingContainer');
+        const gridViewBtn = document.getElementById('gridViewBtn');
+        const listViewBtn = document.getElementById('listViewBtn');
+        const levelFilters = document.getElementById('levelFilters');
+
+        // ===== State =====
+        let currentView = 'grid';
+        let searchQuery = '';
+        let selectedLevel = 'all';
+        let expandedLevel = null;
+        let expandedListItem = null;
+
+        // ===== Navbar scroll effect =====
+        function updateNavbar() {
+            if (window.scrollY > 20) navbar.classList.add('scrolled');
+            else navbar.classList.remove('scrolled');
+        }
+        window.addEventListener('scroll', updateNavbar);
+        updateNavbar();
+
+        // ===== Mobile menu toggle =====
+        mobileBtn.addEventListener('click', () => {
+            const isOpen = mobileOverlay.classList.contains('open');
+            if (isOpen) {
+                mobileOverlay.classList.remove('open');
+                menuIcon.className = 'fas fa-bars fa-2x';
+            } else {
+                mobileOverlay.classList.add('open');
+                menuIcon.className = 'fas fa-times fa-2x';
+            }
+        });
+        
+        document.querySelectorAll('.mobile-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                mobileOverlay.classList.remove('open');
+                menuIcon.className = 'fas fa-bars fa-2x';
+            });
+        });
+
+        // ===== Fetch course reps from API =====
+        async function fetchCourseReps() {
+            try {
+                // Show loading state
+                loadingContainer.classList.remove('hidden');
+                gridContainer.classList.add('hidden');
+                listContainer.classList.add('hidden');
+                emptyState.classList.add('hidden');
+                
+                const session = sessionSelect.value;
+                console.log(`Fetching course reps for session: ${session}`);
+                
+                const response = await fetch(`${API_BASE_URL}/api/course-reps?session=${session}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('API Response:', result);
+                
+                if (result.status === 'success' && result.data && result.data.length > 0) {
+                    // Transform data - parse departments if it's a string
+                    levelsData = result.data.map(rep => {
+                        // Parse departments if it's a string
+                        let departments = rep.departments;
+                        if (typeof departments === 'string') {
+                            try {
+                                // Remove the escape characters and parse
+                                departments = JSON.parse(departments);
+                            } catch (e) {
+                                console.error('Error parsing departments for level', rep.level, e);
+                                departments = [];
+                            }
+                        }
+                        
+                        return {
+                            level: rep.level,
+                            genRep: rep.gen_rep || 'Not Assigned',
+                            asstGenRep: rep.asst_gen_rep || 'Not Assigned',
+                            deptCount: departments?.length || 0,
+                            departments: departments || []
+                        };
+                    });
+                    
+                    console.log('Transformed data:', levelsData);
+                    
+                    // Update session title
+                    sessionTitle.textContent = `${session} Course Representatives`;
+                    
+                    // Render level chips
+                    renderLevelChips();
+                    
+                    // Filter and render
+                    filterAndRender();
+                } else {
+                    // No data found
+                    console.log('No data found for session:', session);
+                    levelsData = [];
+                    renderLevelChips();
+                    filterAndRender();
+                }
+                
+                // Hide loading state
+                loadingContainer.classList.add('hidden');
+                
+            } catch (error) {
+                console.error('Failed to fetch course reps:', error);
+                
+                // Show error in UI
+                loadingContainer.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                emptyState.innerHTML = `
+                    <i class="fas fa-exclamation-triangle" style="color: var(--amber-500);"></i>
+                    <h3>Failed to load data</h3>
+                    <p>Please try again later or contact support.</p>
+                    <p style="font-size: 0.8rem; margin-top: 1rem; color: var(--slate-500);">${error.message}</p>
+                `;
+            }
+        }
+
+        // ===== Populate level filter chips =====
+        function renderLevelChips() {
+            const levels = ['all', ...new Set(levelsData.map(l => l.level))];
+            
+            // Sort levels numerically (100L, 200L, etc.)
+            levels.sort((a, b) => {
+                if (a === 'all') return -1;
+                if (b === 'all') return 1;
+                const numA = parseInt(a);
+                const numB = parseInt(b);
+                return numA - numB;
+            });
+            
+            levelFilters.innerHTML = levels.map(lvl => {
+                const active = selectedLevel === lvl ? 'active' : '';
+                const icon = lvl === 'all' ? 'fa-layer-group' : 'fa-graduation-cap';
+                const label = lvl === 'all' ? 'All Levels' : lvl;
+                return `<span class="chip ${active}" data-level="${lvl}"><i class="fas ${icon}"></i> ${label}</span>`;
+            }).join('');
+            
+            document.querySelectorAll('.chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    selectedLevel = chip.dataset.level;
+                    renderLevelChips();
+                    filterAndRender();
+                });
+            });
+        }
+
+        // ===== Filtering =====
+        function filterLevels() {
+            let filtered = levelsData;
+            
+            // Filter by level
+            if (selectedLevel !== 'all') {
+                filtered = filtered.filter(l => l.level === selectedLevel);
+            }
+            
+            // Filter by search query
+            if (searchQuery) {
+                const q = searchQuery.toLowerCase();
+                filtered = filtered.filter(l => 
+                    l.level.toLowerCase().includes(q) ||
+                    l.genRep.toLowerCase().includes(q) ||
+                    l.asstGenRep.toLowerCase().includes(q) ||
+                    (l.departments && l.departments.some(d => 
+                        d.name.toLowerCase().includes(q) || 
+                        d.rep.toLowerCase().includes(q)
+                    ))
+                );
+            }
+            
+            return filtered;
+        }
+
+        // ===== Render functions =====
+        function renderGrid(levels) {
+            if (levels.length === 0) {
+                gridContainer.classList.add('hidden');
+                listContainer.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            
+            emptyState.classList.add('hidden');
+            gridContainer.classList.remove('hidden');
+            listContainer.classList.add('hidden');
+
+            let html = '';
+            levels.forEach(level => {
+                const isExpanded = expandedLevel === level.level;
+                html += `
+                    <div class="rep-card" data-level="${level.level}">
+                        <div class="card-header">
+                            <i class="fas fa-graduation-cap"></i>
+                            <h3>${level.level}</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="rep-item">
+                                <div class="rep-icon"><i class="fas fa-user-tie"></i></div>
+                                <div class="rep-info">
+                                    <div class="rep-label">General Rep</div>
+                                    <div class="rep-name ${level.genRep === 'Not Assigned' ? 'not-assigned' : ''}">${level.genRep}</div>
+                                </div>
+                            </div>
+                            <div class="rep-item">
+                                <div class="rep-icon"><i class="fas fa-user"></i></div>
+                                <div class="rep-info">
+                                    <div class="rep-label">Assistant Gen Rep</div>
+                                    <div class="rep-name ${level.asstGenRep === 'Not Assigned' ? 'not-assigned' : ''}">${level.asstGenRep}</div>
+                                </div>
+                            </div>
+                            <div class="rep-item">
+                                <div class="rep-icon"><i class="fas fa-users"></i></div>
+                                <div class="rep-info">
+                                    <div class="rep-label">Departments</div>
+                                    <div><span class="dept-badge"><i class="fas fa-building"></i> ${level.deptCount} reps</span></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="expand-section ${isExpanded ? 'open' : ''}" id="expand-${level.level}">
+                            <div class="expand-content">
+                                <div class="dept-grid">
+                                    ${level.departments.map(d => `
+                                        <div class="dept-item">
+                                            <div class="dept-name">${d.name}</div>
+                                            <div class="dept-rep"><i class="fas fa-user-circle"></i> <span class="${d.rep === 'Pending' ? 'pending' : ''}">${d.rep}</span></div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                        <button class="expand-btn" onclick="window.toggleGridExpand('${level.level}')">
+                            <i class="fas ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'}"></i>
+                            <span>${isExpanded ? 'Hide Departments' : 'View Departments'}</span>
+                        </button>
+                    </div>
+                `;
+            });
+            gridContainer.innerHTML = html;
+        }
+
+        window.toggleGridExpand = (level) => {
+            expandedLevel = expandedLevel === level ? null : level;
+            filterAndRender();
+        };
+
+        function renderList(levels) {
+            if (levels.length === 0) {
+                gridContainer.classList.add('hidden');
+                listContainer.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            
+            emptyState.classList.add('hidden');
+            listContainer.classList.remove('hidden');
+            gridContainer.classList.add('hidden');
+
+            let html = '';
+            levels.forEach(level => {
+                const isExpanded = expandedListItem === level.level;
+                html += `
+                    <div class="list-item">
+                        <div class="list-header" onclick="window.toggleListExpand('${level.level}')">
+                            <div class="list-level">
+                                <i class="fas fa-graduation-cap"></i>
+                                <span>${level.level}</span>
+                            </div>
+                            <div class="list-summary">
+                                <span class="summary-item"><i class="fas fa-user-tie"></i> <strong>Gen Rep:</strong> ${level.genRep}</span>
+                                <span class="summary-item"><i class="fas fa-user"></i> <strong>Asst:</strong> ${level.asstGenRep}</span>
+                                <span class="summary-item"><i class="fas fa-users"></i> <strong>Depts:</strong> ${level.deptCount}</span>
+                            </div>
+                            <i class="fas ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'} expand-icon"></i>
+                        </div>
+                        <div class="list-expand ${isExpanded ? 'open' : ''}">
+                            <div class="list-dept-grid">
+                                ${level.departments.map(d => `
+                                    <div class="dept-item">
+                                        <div class="dept-name">${d.name}</div>
+                                        <div class="dept-rep"><i class="fas fa-user-circle"></i> <span class="${d.rep === 'Pending' ? 'pending' : ''}">${d.rep}</span></div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            listContainer.innerHTML = html;
+        }
+
+        window.toggleListExpand = (level) => {
+            expandedListItem = expandedListItem === level ? null : level;
+            filterAndRender();
+        };
+
+        function filterAndRender() {
+            const filtered = filterLevels();
+            if (currentView === 'grid') {
+                renderGrid(filtered);
+            } else {
+                renderList(filtered);
+            }
+            
+            // Trigger entrance animation
+            setTimeout(() => {
+                document.querySelectorAll('.rep-card').forEach((card, i) => {
+                    card.style.animationDelay = `${i * 0.05}s`;
+                });
+            }, 50);
+        }
+
+        // ===== View toggle =====
+        gridViewBtn.addEventListener('click', () => {
+            currentView = 'grid';
+            gridViewBtn.classList.add('active');
+            listViewBtn.classList.remove('active');
+            filterAndRender();
+        });
+        
+        listViewBtn.addEventListener('click', () => {
+            currentView = 'list';
+            listViewBtn.classList.add('active');
+            gridViewBtn.classList.remove('active');
+            filterAndRender();
+        });
+
+        // ===== Search =====
+        searchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value;
+            filterAndRender();
+        });
+
+        // ===== Session change =====
+        sessionSelect.addEventListener('change', () => {
+            // Reset expanded states
+            expandedLevel = null;
+            expandedListItem = null;
+            selectedLevel = 'all';
+            
+            // Fetch data for new session
+            fetchCourseReps();
+        });
+
+        // ===== Initialize =====
+        // Fetch data on page load
+        fetchCourseReps();
+    })();
+</script>
+</body>
+</html>

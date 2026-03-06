@@ -3248,6 +3248,756 @@ async function uploadPhotoOnly(memberId, file) {
         }
     });
     
+    // ==================== ARTICLES MANAGEMENT ====================
+
+    // Global variables
+    let currentArticleUuid = null;
+    let articleTags = [];
+
+    async function loadArticles() {
+        try {
+            const response = await get('/api/admin/articles');
+            const articles = response.data || [];
+            
+            return `
+                <div class="content-card">
+                    <div class="card-header">
+                        <h3 class="card-title">Articles Management</h3>
+                        <button class="btn btn-primary" id="addArticleBtn">
+                            <i class="fas fa-plus"></i> Add Article
+                        </button>
+                    </div>
+                    
+                    <div class="search-filter">
+                        <input type="text" class="search-input" id="articleSearch" placeholder="Search articles..." onkeyup="filterArticles()">
+                        <select class="filter-select" id="articleCategoryFilter" onchange="filterArticles()">
+                            <option value="">All Categories</option>
+                            <option value="News">News</option>
+                            <option value="Events">Events</option>
+                            <option value="Academic">Academic</option>
+                            <option value="Technical">Technical</option>
+                            <option value="Announcement">Announcement</option>
+                            <option value="General">General</option>
+                        </select>
+                        <select class="filter-select" id="articleStatusFilter" onchange="filterArticles()">
+                            <option value="">All Status</option>
+                            <option value="published">Published</option>
+                            <option value="draft">Draft</option>
+                            <option value="archived">Archived</option>
+                        </select>
+                    </div>
+                    
+                    ${articles.length > 0 ? `
+                        <div class="table-container">
+                            <table class="data-table" id="articlesTable">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 40px;">
+                                            <input type="checkbox" id="selectAllArticles" onchange="toggleSelectAllArticles()">
+                                        </th>
+                                        <th>Image</th>
+                                        <th>Title</th>
+                                        <th>Category</th>
+                                        <th>Author</th>
+                                        <th>Status</th>
+                                        <th>Published</th>
+                                        <th>Views</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${articles.map(article => {
+                                        const hasImage = article.featured_image || article.image_url;
+                                        const imageUrl = hasImage ? (hasImage.startsWith('http') ? hasImage : `https://nuesa-biu-pjp0.onrender.com${hasImage}`) : null;
+                                        const publishedDate = article.published_at ? new Date(article.published_at).toLocaleDateString() : 'Not published';
+                                        
+                                        return `
+                                            <tr>
+                                                <td>
+                                                    <input type="checkbox" class="article-checkbox" value="${article.uuid}" onchange="updateSelectAllArticles()">
+                                                </td>
+                                                <td>
+                                                    <div class="table-user">
+                                                        <div class="table-avatar" style="background-image: ${imageUrl ? `url('${imageUrl}')` : 'none'}; background-size: cover; background-position: center;">
+                                                            ${!imageUrl ? '<i class="far fa-newspaper"></i>' : ''}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div>
+                                                        <div style="font-weight: 600;">${article.title || 'Untitled'}</div>
+                                                        <div style="font-size: 12px; color: var(--slate-500);">${article.excerpt?.substring(0, 50)}${article.excerpt?.length > 50 ? '...' : ''}</div>
+                                                    </div>
+                                                </td>
+                                                <td><span class="category-badge">${article.category || 'Uncategorized'}</span></td>
+                                                <td>${article.author || 'NUESA BIU'}</td>
+                                                <td>
+                                                    <span class="status-badge ${article.status === 'published' ? 'badge-success' : article.status === 'draft' ? 'badge-warning' : 'badge-danger'}">
+                                                        ${article.status || 'draft'}
+                                                    </span>
+                                                </td>
+                                                <td>${publishedDate}</td>
+                                                <td>${article.view_count || 0}</td>
+                                                <td>
+                                                    <div class="action-buttons">
+                                                        <button class="icon-btn icon-btn-primary" onclick="previewArticle('${article.uuid}')" title="Preview">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                        <button class="icon-btn icon-btn-primary" onclick="editArticle('${article.uuid}')" title="Edit">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                        <button class="icon-btn icon-btn-success" onclick="togglePublishArticle('${article.uuid}', ${!article.is_published})" title="${article.is_published ? 'Unpublish' : 'Publish'}">
+                                                            <i class="fas fa-${article.is_published ? 'eye-slash' : 'eye'}"></i>
+                                                        </button>
+                                                        <button class="icon-btn icon-btn-danger" onclick="deleteArticle('${article.uuid}')" title="Delete">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Bulk Actions -->
+                        <div class="bulk-actions" id="articleBulkActions" style="display: none; margin-top: 16px; padding: 12px; background: var(--slate-50); border-radius: 8px;">
+                            <span id="selectedArticlesCount">0</span> articles selected
+                            <div style="display: inline-flex; gap: 8px; margin-left: 16px;">
+                                <select class="form-select" id="bulkArticleStatus" style="width: auto;">
+                                    <option value="">Change Status</option>
+                                    <option value="published">Published</option>
+                                    <option value="draft">Draft</option>
+                                    <option value="archived">Archived</option>
+                                </select>
+                                <button class="btn btn-primary btn-sm" onclick="bulkUpdateArticleStatus()">Apply</button>
+                                <button class="btn btn-danger btn-sm" onclick="bulkDeleteArticles()">Delete Selected</button>
+                                <button class="btn btn-secondary btn-sm" onclick="clearArticleSelection()">Clear</button>
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="empty-state">
+                            <i class="far fa-newspaper"></i>
+                            <h3>No Articles Found</h3>
+                            <p>Create your first article to get started.</p>
+                            <button class="btn btn-primary" id="addFirstArticleBtn" style="margin-top: 16px;">
+                                <i class="fas fa-plus"></i> Add Article
+                            </button>
+                        </div>
+                    `}
+                </div>
+            `;
+        } catch (error) {
+            return `
+                <div class="content-card">
+                    <div class="card-header">
+                        <h3 class="card-title">Articles Management</h3>
+                        <button class="btn btn-primary" id="addArticleBtn">
+                            <i class="fas fa-plus"></i> Add Article
+                        </button>
+                    </div>
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h3>Unable to Load Articles</h3>
+                        <p>${error.message}</p>
+                        <button class="btn btn-primary" onclick="loadContent('articles')" style="margin-top: 16px;">
+                            Try Again
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    // ==================== FILTERING ====================
+
+    function filterArticles() {
+        const search = document.getElementById('articleSearch')?.value.toLowerCase() || '';
+        const category = document.getElementById('articleCategoryFilter')?.value || '';
+        const status = document.getElementById('articleStatusFilter')?.value || '';
+        
+        const rows = document.querySelectorAll('#articlesTable tbody tr');
+        rows.forEach(row => {
+            const title = row.cells[2]?.textContent.toLowerCase() || '';
+            const excerpt = row.cells[2]?.querySelector('div div:last-child')?.textContent.toLowerCase() || '';
+            const rowCategory = row.cells[3]?.textContent || '';
+            const rowStatus = row.cells[5]?.textContent.toLowerCase().trim() || '';
+            
+            const matchesSearch = title.includes(search) || excerpt.includes(search);
+            const matchesCategory = !category || rowCategory === category;
+            const matchesStatus = !status || rowStatus === status;
+            
+            row.style.display = matchesSearch && matchesCategory && matchesStatus ? '' : 'none';
+        });
+    }
+
+    // ==================== BULK OPERATIONS ====================
+
+    function toggleSelectAllArticles() {
+        const selectAll = document.getElementById('selectAllArticles');
+        const checkboxes = document.querySelectorAll('.article-checkbox');
+        
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = selectAll.checked;
+        });
+        
+        updateArticleBulkActions();
+    }
+
+    function updateSelectAllArticles() {
+        const selectAll = document.getElementById('selectAllArticles');
+        const checkboxes = document.querySelectorAll('.article-checkbox');
+        const checkedCount = document.querySelectorAll('.article-checkbox:checked').length;
+        
+        if (selectAll) {
+            selectAll.checked = checkboxes.length > 0 && checkedCount === checkboxes.length;
+            selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+        }
+        
+        updateArticleBulkActions();
+    }
+
+    function updateArticleBulkActions() {
+        const checkedCount = document.querySelectorAll('.article-checkbox:checked').length;
+        const bulkActions = document.getElementById('articleBulkActions');
+        const selectedCount = document.getElementById('selectedArticlesCount');
+        
+        if (checkedCount > 0) {
+            bulkActions.style.display = 'block';
+            selectedCount.textContent = checkedCount;
+        } else {
+            bulkActions.style.display = 'none';
+        }
+    }
+
+    function clearArticleSelection() {
+        const checkboxes = document.querySelectorAll('.article-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        updateArticleBulkActions();
+    }
+
+    async function bulkUpdateArticleStatus() {
+        const status = document.getElementById('bulkArticleStatus').value;
+        if (!status) {
+            showToast('Please select a status', 'warning');
+            return;
+        }
+        
+        const selectedUuids = Array.from(document.querySelectorAll('.article-checkbox:checked')).map(cb => cb.value);
+        
+        if (!confirm(`Change status to "${status}" for ${selectedUuids.length} article(s)?`)) return;
+        
+        try {
+            showLoading();
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+            
+            const response = await fetch(`${API_BASE_URL}/api/admin/articles/bulk/status`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${getAuthToken()}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    articleUuids: selectedUuids,
+                    status: status
+                }),
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorMsg;
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    errorMsg = errorJson.message || errorJson.error || 'Failed to update articles';
+                } catch {
+                    errorMsg = errorText || `HTTP ${response.status}`;
+                }
+                throw new Error(errorMsg);
+            }
+            
+            showToast('Articles updated successfully!', 'success');
+            await loadContent('articles');
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                showToast('Request timed out. Please try again.', 'error');
+            } else {
+                showToast('Error: ' + error.message, 'error');
+            }
+        } finally {
+            hideLoading();
+        }
+    }
+
+    async function bulkDeleteArticles() {
+        const selectedUuids = Array.from(document.querySelectorAll('.article-checkbox:checked')).map(cb => cb.value);
+        
+        if (!confirm(`Are you sure you want to delete ${selectedUuids.length} article(s)? This action cannot be undone.`)) return;
+        
+        try {
+            showLoading();
+            const response = await fetch(`https://nuesa-biu-pjp0.onrender.com/api/admin/articles/bulk/delete`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${getAuthToken()}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    articleUuids: selectedUuids
+                })
+            });
+            
+            if (!response.ok) throw new Error('Failed to delete articles');
+            
+            showToast('Articles deleted successfully!', 'success');
+            await loadContent('articles');
+        } catch (error) {
+            showToast('Error: ' + error.message, 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    // ==================== ARTICLE CRUD ====================
+    function previewArticleImage(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const preview = document.getElementById('articleImagePreview');
+                if (preview) {
+                    preview.innerHTML = `<img src="${e.target.result}" style="width: 100%; height: 100%; object-fit: cover;">`;
+                }
+            }
+            
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    // Initialize article tags
+    function initArticleTags() {
+        const tagInput = document.getElementById('articleTagInput');
+        const container = document.getElementById('articleTagsContainer');
+        
+        if (!tagInput) return;
+        
+        // Display existing tags
+        renderArticleTags();
+        
+        tagInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                const tag = tagInput.value.trim();
+                if (tag && !articleTags.includes(tag)) {
+                    articleTags.push(tag);
+                    renderArticleTags();
+                    tagInput.value = '';
+                }
+            }
+        });
+    }
+
+    function renderArticleTags() {
+        const container = document.getElementById('articleTagsContainer');
+        if (!container) return;
+        
+        const tagInput = document.getElementById('articleTagInput');
+        
+        // Clear container but keep input
+        container.innerHTML = '';
+        
+        // Add tag bubbles
+        articleTags.forEach(tag => {
+            const tagEl = document.createElement('span');
+            tagEl.className = 'tag-bubble';
+            tagEl.innerHTML = `
+                ${tag}
+                <i class="fas fa-times" onclick="removeArticleTag('${tag}')"></i>
+            `;
+            container.appendChild(tagEl);
+        });
+        
+        // Add input back
+        container.appendChild(tagInput);
+    }
+
+    function removeArticleTag(tag) {
+        articleTags = articleTags.filter(t => t !== tag);
+        renderArticleTags();
+    }
+
+    // Initialize status toggle
+    function initArticleStatusToggle() {
+        const toggleBtns = document.querySelectorAll('.status-toggle-btn');
+        toggleBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                toggleBtns.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+    }
+
+    // Format text in contenteditable
+    function formatText(command) {
+        document.execCommand(command, false, null);
+    }
+
+    function insertLink() {
+        const url = prompt('Enter URL:');
+        if (url) {
+            document.execCommand('createLink', false, url);
+        }
+    }
+
+    function insertList(type) {
+        document.execCommand('insert' + (type === 'ordered' ? 'Ordered' : 'Unordered') + 'List', false, null);
+    }
+
+    // Get content from contenteditable
+    function getArticleContent() {
+        const contentDiv = document.getElementById('articleContent');
+        return contentDiv ? contentDiv.innerHTML : '';
+    }
+
+    // Set content in contenteditable
+    function setArticleContent(html) {
+        const contentDiv = document.getElementById('articleContent');
+        if (contentDiv) {
+            contentDiv.innerHTML = html || '';
+        }
+    }
+
+    async function editArticle(uuid) {
+        try {
+            showLoading();
+            const response = await get(`/api/admin/articles/${uuid}`);
+            const article = response.data;
+            
+            if (!article) {
+                throw new Error('Article not found');
+            }
+            
+            // Store the current article UUID
+            currentArticleUuid = uuid;
+            
+            document.getElementById('articleModalTitle').textContent = 'Edit Article';
+            
+            // Set form values
+            document.getElementById('articleTitle').value = article.title || '';
+            document.getElementById('articleCategory').value = article.category || '';
+            document.getElementById('articleAuthor').value = article.author || '';
+            document.getElementById('articleFeaturedImage').value = article.featured_image || '';
+            document.getElementById('articleExcerpt').value = article.excerpt || '';
+            setArticleContent(article.content || '');
+            
+            // Set tags
+            articleTags = article.tags || [];
+            renderArticleTags();
+            
+            // Set status toggle
+            const statusToggleBtns = document.querySelectorAll('.status-toggle-btn');
+            const status = article.status || 'draft';
+            statusToggleBtns.forEach(btn => {
+                if (btn.dataset.status === status) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            
+            // Set publish date
+            if (article.published_at) {
+                const publishDate = new Date(article.published_at);
+                const year = publishDate.getFullYear();
+                const month = String(publishDate.getMonth() + 1).padStart(2, '0');
+                const day = String(publishDate.getDate()).padStart(2, '0');
+                const hours = String(publishDate.getHours()).padStart(2, '0');
+                const minutes = String(publishDate.getMinutes()).padStart(2, '0');
+                document.getElementById('articlePublishDate').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+            } else {
+                document.getElementById('articlePublishDate').value = '';
+            }
+            
+            // Display existing image
+            const imagePreview = document.getElementById('articleImagePreview');
+            if (article.featured_image) {
+                const imageUrl = article.featured_image.startsWith('http') 
+                    ? article.featured_image 
+                    : `https://nuesa-biu-pjp0.onrender.com${article.featured_image}`;
+                imagePreview.innerHTML = `<img src="${imageUrl}" alt="Preview" style="width: 100%; height: 100%; object-fit: cover;">`;
+            } else {
+                imagePreview.innerHTML = '<i class="far fa-newspaper" style="font-size: 48px; color: var(--slate-400);"></i>';
+            }
+            
+            // Clear the file input
+            document.getElementById('articleImage').value = '';
+            
+            showModal('articleModal');
+        } catch (error) {
+            showToast('Failed to load article details: ' + error.message, 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    async function previewArticle(uuid) {
+        try {
+            // Open in new tab
+            window.open(`/articles/${uuid}`, '_blank');
+        } catch (error) {
+            showToast('Failed to preview article', 'error');
+        }
+    }
+
+    async function togglePublishArticle(uuid, publish) {
+        try {
+            showLoading();
+            const response = await fetch(`https://nuesa-biu-pjp0.onrender.com/api/admin/articles/${uuid}/publish`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${getAuthToken()}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ publish })
+            });
+            
+            if (!response.ok) throw new Error('Failed to update article status');
+            
+            showToast(`Article ${publish ? 'published' : 'unpublished'} successfully!`, 'success');
+            await loadContent('articles');
+        } catch (error) {
+            showToast('Error: ' + error.message, 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    async function deleteArticle(uuid) {
+        if (!confirm('Are you sure you want to delete this article? This action cannot be undone.')) return;
+        
+        try {
+            showLoading();
+            await del(`/api/admin/articles/${uuid}`);
+            showToast('Article deleted successfully', 'success');
+            await loadContent('articles');
+        } catch (error) {
+            showToast('Failed to delete article: ' + error.message, 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    function resetArticleModal() {
+        // Reset form
+        document.getElementById('articleForm').reset();
+        
+        // Reset title
+        document.getElementById('articleModalTitle').textContent = 'Add New Article';
+        
+        // Clear UUID
+        currentArticleUuid = null;
+        
+        // Clear tags
+        articleTags = [];
+        renderArticleTags();
+        
+        // Reset status toggle to default (published)
+        const statusToggleBtns = document.querySelectorAll('.status-toggle-btn');
+        statusToggleBtns.forEach(btn => {
+            if (btn.dataset.status === 'published') {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+        
+        // Reset image preview
+        const imagePreview = document.getElementById('articleImagePreview');
+        imagePreview.innerHTML = '<i class="far fa-newspaper" style="font-size: 48px; color: var(--slate-400);"></i>';
+        
+        // Clear file input
+        document.getElementById('articleImage').value = '';
+        
+        // Clear content
+        setArticleContent('');
+    }
+
+    async function saveArticle() {
+        try {
+            // Show loading state
+            const saveBtn = document.getElementById('saveArticle');
+            const originalText = saveBtn.innerHTML;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            saveBtn.disabled = true;
+
+            // Get status from toggle
+            const activeStatusBtn = document.querySelector('.status-toggle-btn.active');
+            const status = activeStatusBtn ? activeStatusBtn.dataset.status : 'draft';
+            const isPublished = status === 'published';
+
+            // Validate required fields
+            const title = document.getElementById('articleTitle').value;
+            const category = document.getElementById('articleCategory').value;
+            const excerpt = document.getElementById('articleExcerpt').value;
+            const content = getArticleContent();
+            
+            if (!title) {
+                throw new Error('Title is required');
+            }
+            if (!category) {
+                throw new Error('Category is required');
+            }
+            if (!excerpt) {
+                throw new Error('Excerpt is required');
+            }
+            if (!content || content === '<br>' || content.trim() === '') {
+                throw new Error('Content is required');
+            }
+
+            // Create FormData for file upload
+            const formData = new FormData();
+            
+            // Create article data object
+            const articleData = {
+                title: title.trim(),
+                category: category,
+                author: document.getElementById('articleAuthor').value || 'NUESA BIU',
+                excerpt: excerpt.trim(),
+                content: content,
+                featured_image: document.getElementById('articleFeaturedImage').value || null,
+                tags: articleTags,
+                status: status,
+                is_published: isPublished
+            };
+
+            // Add publish date if provided or if publishing
+            const publishDate = document.getElementById('articlePublishDate').value;
+            if (publishDate) {
+                articleData.published_at = new Date(publishDate).toISOString();
+            } else if (isPublished) {
+                articleData.published_at = new Date().toISOString();
+            }
+
+            // Stringify the article data and add to FormData
+            formData.append('data', JSON.stringify(articleData));
+            
+            // Add featured image if selected
+            const imageFile = document.getElementById('articleImage').files[0];
+            if (imageFile) {
+                // Validate file type
+                const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+                if (!validTypes.includes(imageFile.type)) {
+                    throw new Error('Please upload a valid image file (JPEG, PNG, GIF, or WEBP)');
+                }
+                
+                // Validate file size (max 5MB)
+                if (imageFile.size > 5 * 1024 * 1024) {
+                    throw new Error('File size too large. Maximum size is 5MB.');
+                }
+                
+                formData.append('featured_image', imageFile);
+            }
+
+            // Get auth token
+            const token = getAuthToken();
+            if (!token) {
+                throw new Error('No authentication token found. Please login again.');
+            }
+
+            // Determine if we're creating or updating
+            const isEditing = currentArticleUuid ? true : false;
+            const url = isEditing 
+                ? `https://nuesa-biu-pjp0.onrender.com/api/admin/articles/${currentArticleUuid}`
+                : 'https://nuesa-biu-pjp0.onrender.com/api/admin/articles';
+            
+            const method = isEditing ? 'PUT' : 'POST';
+
+            // Send request
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            });
+
+            // Parse response
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.message || `Server error: ${response.status}`);
+            }
+
+            // Show success message
+            showToast('Article saved successfully!', 'success');
+            
+            // Close modal and refresh list
+            closeModal();
+            await loadContent('articles');
+            
+        } catch (error) {
+            console.error('Error saving article:', error);
+            showToast('Error: ' + error.message, 'error');
+        } finally {
+            // Restore button state
+            const saveBtn = document.getElementById('saveArticle');
+            if (saveBtn) {
+                saveBtn.innerHTML = 'Save Article';
+                saveBtn.disabled = false;
+            }
+        }
+    }
+
+    // Initialize event listeners when the page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize article tags functionality
+        initArticleTags();
+        
+        // Initialize status toggle
+        initArticleStatusToggle();
+        
+        // Add click handler for Add Article button
+        const addArticleBtn = document.getElementById('addArticleBtn');
+        if (addArticleBtn) {
+            addArticleBtn.addEventListener('click', function() {
+                resetArticleModal();
+                showModal('articleModal');
+            });
+        }
+        
+        // Add click handler for Add First Article button
+        const addFirstArticleBtn = document.getElementById('addFirstArticleBtn');
+        if (addFirstArticleBtn) {
+            addFirstArticleBtn.addEventListener('click', function() {
+                resetArticleModal();
+                showModal('articleModal');
+            });
+        }
+        
+        // Add click handler for Cancel button
+        const cancelBtn = document.getElementById('cancelArticle');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function() {
+                closeModal();
+            });
+        }
+        
+        // Add click handler for modal close button
+        const modalClose = document.querySelector('#articleModal .modal-close');
+        if (modalClose) {
+            modalClose.addEventListener('click', function() {
+                closeModal();
+            });
+        }
+    });
+
     // ==================== RESOURCES MANAGEMENT ====================
 
     // Global variables
@@ -4629,756 +5379,6 @@ async function uploadPhotoOnly(memberId, file) {
         window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
     }
     
-    // ==================== ARTICLES MANAGEMENT ====================
-
-    // Global variables
-    let currentArticleUuid = null;
-    let articleTags = [];
-
-    async function loadArticles() {
-        try {
-            const response = await get('/api/admin/articles');
-            const articles = response.data || [];
-            
-            return `
-                <div class="content-card">
-                    <div class="card-header">
-                        <h3 class="card-title">Articles Management</h3>
-                        <button class="btn btn-primary" id="addArticleBtn">
-                            <i class="fas fa-plus"></i> Add Article
-                        </button>
-                    </div>
-                    
-                    <div class="search-filter">
-                        <input type="text" class="search-input" id="articleSearch" placeholder="Search articles..." onkeyup="filterArticles()">
-                        <select class="filter-select" id="articleCategoryFilter" onchange="filterArticles()">
-                            <option value="">All Categories</option>
-                            <option value="News">News</option>
-                            <option value="Events">Events</option>
-                            <option value="Academic">Academic</option>
-                            <option value="Technical">Technical</option>
-                            <option value="Announcement">Announcement</option>
-                            <option value="General">General</option>
-                        </select>
-                        <select class="filter-select" id="articleStatusFilter" onchange="filterArticles()">
-                            <option value="">All Status</option>
-                            <option value="published">Published</option>
-                            <option value="draft">Draft</option>
-                            <option value="archived">Archived</option>
-                        </select>
-                    </div>
-                    
-                    ${articles.length > 0 ? `
-                        <div class="table-container">
-                            <table class="data-table" id="articlesTable">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 40px;">
-                                            <input type="checkbox" id="selectAllArticles" onchange="toggleSelectAllArticles()">
-                                        </th>
-                                        <th>Image</th>
-                                        <th>Title</th>
-                                        <th>Category</th>
-                                        <th>Author</th>
-                                        <th>Status</th>
-                                        <th>Published</th>
-                                        <th>Views</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${articles.map(article => {
-                                        const hasImage = article.featured_image || article.image_url;
-                                        const imageUrl = hasImage ? (hasImage.startsWith('http') ? hasImage : `https://nuesa-biu-pjp0.onrender.com${hasImage}`) : null;
-                                        const publishedDate = article.published_at ? new Date(article.published_at).toLocaleDateString() : 'Not published';
-                                        
-                                        return `
-                                            <tr>
-                                                <td>
-                                                    <input type="checkbox" class="article-checkbox" value="${article.uuid}" onchange="updateSelectAllArticles()">
-                                                </td>
-                                                <td>
-                                                    <div class="table-user">
-                                                        <div class="table-avatar" style="background-image: ${imageUrl ? `url('${imageUrl}')` : 'none'}; background-size: cover; background-position: center;">
-                                                            ${!imageUrl ? '<i class="far fa-newspaper"></i>' : ''}
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div>
-                                                        <div style="font-weight: 600;">${article.title || 'Untitled'}</div>
-                                                        <div style="font-size: 12px; color: var(--slate-500);">${article.excerpt?.substring(0, 50)}${article.excerpt?.length > 50 ? '...' : ''}</div>
-                                                    </div>
-                                                </td>
-                                                <td><span class="category-badge">${article.category || 'Uncategorized'}</span></td>
-                                                <td>${article.author || 'NUESA BIU'}</td>
-                                                <td>
-                                                    <span class="status-badge ${article.status === 'published' ? 'badge-success' : article.status === 'draft' ? 'badge-warning' : 'badge-danger'}">
-                                                        ${article.status || 'draft'}
-                                                    </span>
-                                                </td>
-                                                <td>${publishedDate}</td>
-                                                <td>${article.view_count || 0}</td>
-                                                <td>
-                                                    <div class="action-buttons">
-                                                        <button class="icon-btn icon-btn-primary" onclick="previewArticle('${article.uuid}')" title="Preview">
-                                                            <i class="fas fa-eye"></i>
-                                                        </button>
-                                                        <button class="icon-btn icon-btn-primary" onclick="editArticle('${article.uuid}')" title="Edit">
-                                                            <i class="fas fa-edit"></i>
-                                                        </button>
-                                                        <button class="icon-btn icon-btn-success" onclick="togglePublishArticle('${article.uuid}', ${!article.is_published})" title="${article.is_published ? 'Unpublish' : 'Publish'}">
-                                                            <i class="fas fa-${article.is_published ? 'eye-slash' : 'eye'}"></i>
-                                                        </button>
-                                                        <button class="icon-btn icon-btn-danger" onclick="deleteArticle('${article.uuid}')" title="Delete">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        `;
-                                    }).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <!-- Bulk Actions -->
-                        <div class="bulk-actions" id="articleBulkActions" style="display: none; margin-top: 16px; padding: 12px; background: var(--slate-50); border-radius: 8px;">
-                            <span id="selectedArticlesCount">0</span> articles selected
-                            <div style="display: inline-flex; gap: 8px; margin-left: 16px;">
-                                <select class="form-select" id="bulkArticleStatus" style="width: auto;">
-                                    <option value="">Change Status</option>
-                                    <option value="published">Published</option>
-                                    <option value="draft">Draft</option>
-                                    <option value="archived">Archived</option>
-                                </select>
-                                <button class="btn btn-primary btn-sm" onclick="bulkUpdateArticleStatus()">Apply</button>
-                                <button class="btn btn-danger btn-sm" onclick="bulkDeleteArticles()">Delete Selected</button>
-                                <button class="btn btn-secondary btn-sm" onclick="clearArticleSelection()">Clear</button>
-                            </div>
-                        </div>
-                    ` : `
-                        <div class="empty-state">
-                            <i class="far fa-newspaper"></i>
-                            <h3>No Articles Found</h3>
-                            <p>Create your first article to get started.</p>
-                            <button class="btn btn-primary" id="addFirstArticleBtn" style="margin-top: 16px;">
-                                <i class="fas fa-plus"></i> Add Article
-                            </button>
-                        </div>
-                    `}
-                </div>
-            `;
-        } catch (error) {
-            return `
-                <div class="content-card">
-                    <div class="card-header">
-                        <h3 class="card-title">Articles Management</h3>
-                        <button class="btn btn-primary" id="addArticleBtn">
-                            <i class="fas fa-plus"></i> Add Article
-                        </button>
-                    </div>
-                    <div class="empty-state">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <h3>Unable to Load Articles</h3>
-                        <p>${error.message}</p>
-                        <button class="btn btn-primary" onclick="loadContent('articles')" style="margin-top: 16px;">
-                            Try Again
-                        </button>
-                    </div>
-                </div>
-            `;
-        }
-    }
-
-    // ==================== FILTERING ====================
-
-    function filterArticles() {
-        const search = document.getElementById('articleSearch')?.value.toLowerCase() || '';
-        const category = document.getElementById('articleCategoryFilter')?.value || '';
-        const status = document.getElementById('articleStatusFilter')?.value || '';
-        
-        const rows = document.querySelectorAll('#articlesTable tbody tr');
-        rows.forEach(row => {
-            const title = row.cells[2]?.textContent.toLowerCase() || '';
-            const excerpt = row.cells[2]?.querySelector('div div:last-child')?.textContent.toLowerCase() || '';
-            const rowCategory = row.cells[3]?.textContent || '';
-            const rowStatus = row.cells[5]?.textContent.toLowerCase().trim() || '';
-            
-            const matchesSearch = title.includes(search) || excerpt.includes(search);
-            const matchesCategory = !category || rowCategory === category;
-            const matchesStatus = !status || rowStatus === status;
-            
-            row.style.display = matchesSearch && matchesCategory && matchesStatus ? '' : 'none';
-        });
-    }
-
-    // ==================== BULK OPERATIONS ====================
-
-    function toggleSelectAllArticles() {
-        const selectAll = document.getElementById('selectAllArticles');
-        const checkboxes = document.querySelectorAll('.article-checkbox');
-        
-        checkboxes.forEach(checkbox => {
-            checkbox.checked = selectAll.checked;
-        });
-        
-        updateArticleBulkActions();
-    }
-
-    function updateSelectAllArticles() {
-        const selectAll = document.getElementById('selectAllArticles');
-        const checkboxes = document.querySelectorAll('.article-checkbox');
-        const checkedCount = document.querySelectorAll('.article-checkbox:checked').length;
-        
-        if (selectAll) {
-            selectAll.checked = checkboxes.length > 0 && checkedCount === checkboxes.length;
-            selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
-        }
-        
-        updateArticleBulkActions();
-    }
-
-    function updateArticleBulkActions() {
-        const checkedCount = document.querySelectorAll('.article-checkbox:checked').length;
-        const bulkActions = document.getElementById('articleBulkActions');
-        const selectedCount = document.getElementById('selectedArticlesCount');
-        
-        if (checkedCount > 0) {
-            bulkActions.style.display = 'block';
-            selectedCount.textContent = checkedCount;
-        } else {
-            bulkActions.style.display = 'none';
-        }
-    }
-
-    function clearArticleSelection() {
-        const checkboxes = document.querySelectorAll('.article-checkbox');
-        checkboxes.forEach(checkbox => {
-            checkbox.checked = false;
-        });
-        updateArticleBulkActions();
-    }
-
-    async function bulkUpdateArticleStatus() {
-        const status = document.getElementById('bulkArticleStatus').value;
-        if (!status) {
-            showToast('Please select a status', 'warning');
-            return;
-        }
-        
-        const selectedUuids = Array.from(document.querySelectorAll('.article-checkbox:checked')).map(cb => cb.value);
-        
-        if (!confirm(`Change status to "${status}" for ${selectedUuids.length} article(s)?`)) return;
-        
-        try {
-            showLoading();
-            
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-            
-            const response = await fetch(`${API_BASE_URL}/api/admin/articles/bulk/status`, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `Bearer ${getAuthToken()}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    articleUuids: selectedUuids,
-                    status: status
-                }),
-                signal: controller.signal
-            });
-            
-            clearTimeout(timeoutId);
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                let errorMsg;
-                try {
-                    const errorJson = JSON.parse(errorText);
-                    errorMsg = errorJson.message || errorJson.error || 'Failed to update articles';
-                } catch {
-                    errorMsg = errorText || `HTTP ${response.status}`;
-                }
-                throw new Error(errorMsg);
-            }
-            
-            showToast('Articles updated successfully!', 'success');
-            await loadContent('articles');
-        } catch (error) {
-            if (error.name === 'AbortError') {
-                showToast('Request timed out. Please try again.', 'error');
-            } else {
-                showToast('Error: ' + error.message, 'error');
-            }
-        } finally {
-            hideLoading();
-        }
-    }
-
-    async function bulkDeleteArticles() {
-        const selectedUuids = Array.from(document.querySelectorAll('.article-checkbox:checked')).map(cb => cb.value);
-        
-        if (!confirm(`Are you sure you want to delete ${selectedUuids.length} article(s)? This action cannot be undone.`)) return;
-        
-        try {
-            showLoading();
-            const response = await fetch(`https://nuesa-biu-pjp0.onrender.com/api/admin/articles/bulk/delete`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${getAuthToken()}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    articleUuids: selectedUuids
-                })
-            });
-            
-            if (!response.ok) throw new Error('Failed to delete articles');
-            
-            showToast('Articles deleted successfully!', 'success');
-            await loadContent('articles');
-        } catch (error) {
-            showToast('Error: ' + error.message, 'error');
-        } finally {
-            hideLoading();
-        }
-    }
-
-    // ==================== ARTICLE CRUD ====================
-    function previewArticleImage(input) {
-        if (input.files && input.files[0]) {
-            const reader = new FileReader();
-            
-            reader.onload = function(e) {
-                const preview = document.getElementById('articleImagePreview');
-                if (preview) {
-                    preview.innerHTML = `<img src="${e.target.result}" style="width: 100%; height: 100%; object-fit: cover;">`;
-                }
-            }
-            
-            reader.readAsDataURL(input.files[0]);
-        }
-    }
-
-    // Initialize article tags
-    function initArticleTags() {
-        const tagInput = document.getElementById('articleTagInput');
-        const container = document.getElementById('articleTagsContainer');
-        
-        if (!tagInput) return;
-        
-        // Display existing tags
-        renderArticleTags();
-        
-        tagInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ',') {
-                e.preventDefault();
-                const tag = tagInput.value.trim();
-                if (tag && !articleTags.includes(tag)) {
-                    articleTags.push(tag);
-                    renderArticleTags();
-                    tagInput.value = '';
-                }
-            }
-        });
-    }
-
-    function renderArticleTags() {
-        const container = document.getElementById('articleTagsContainer');
-        if (!container) return;
-        
-        const tagInput = document.getElementById('articleTagInput');
-        
-        // Clear container but keep input
-        container.innerHTML = '';
-        
-        // Add tag bubbles
-        articleTags.forEach(tag => {
-            const tagEl = document.createElement('span');
-            tagEl.className = 'tag-bubble';
-            tagEl.innerHTML = `
-                ${tag}
-                <i class="fas fa-times" onclick="removeArticleTag('${tag}')"></i>
-            `;
-            container.appendChild(tagEl);
-        });
-        
-        // Add input back
-        container.appendChild(tagInput);
-    }
-
-    function removeArticleTag(tag) {
-        articleTags = articleTags.filter(t => t !== tag);
-        renderArticleTags();
-    }
-
-    // Initialize status toggle
-    function initArticleStatusToggle() {
-        const toggleBtns = document.querySelectorAll('.status-toggle-btn');
-        toggleBtns.forEach(btn => {
-            btn.addEventListener('click', function() {
-                toggleBtns.forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-            });
-        });
-    }
-
-    // Format text in contenteditable
-    function formatText(command) {
-        document.execCommand(command, false, null);
-    }
-
-    function insertLink() {
-        const url = prompt('Enter URL:');
-        if (url) {
-            document.execCommand('createLink', false, url);
-        }
-    }
-
-    function insertList(type) {
-        document.execCommand('insert' + (type === 'ordered' ? 'Ordered' : 'Unordered') + 'List', false, null);
-    }
-
-    // Get content from contenteditable
-    function getArticleContent() {
-        const contentDiv = document.getElementById('articleContent');
-        return contentDiv ? contentDiv.innerHTML : '';
-    }
-
-    // Set content in contenteditable
-    function setArticleContent(html) {
-        const contentDiv = document.getElementById('articleContent');
-        if (contentDiv) {
-            contentDiv.innerHTML = html || '';
-        }
-    }
-
-    async function editArticle(uuid) {
-        try {
-            showLoading();
-            const response = await get(`/api/admin/articles/${uuid}`);
-            const article = response.data;
-            
-            if (!article) {
-                throw new Error('Article not found');
-            }
-            
-            // Store the current article UUID
-            currentArticleUuid = uuid;
-            
-            document.getElementById('articleModalTitle').textContent = 'Edit Article';
-            
-            // Set form values
-            document.getElementById('articleTitle').value = article.title || '';
-            document.getElementById('articleCategory').value = article.category || '';
-            document.getElementById('articleAuthor').value = article.author || '';
-            document.getElementById('articleFeaturedImage').value = article.featured_image || '';
-            document.getElementById('articleExcerpt').value = article.excerpt || '';
-            setArticleContent(article.content || '');
-            
-            // Set tags
-            articleTags = article.tags || [];
-            renderArticleTags();
-            
-            // Set status toggle
-            const statusToggleBtns = document.querySelectorAll('.status-toggle-btn');
-            const status = article.status || 'draft';
-            statusToggleBtns.forEach(btn => {
-                if (btn.dataset.status === status) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
-                }
-            });
-            
-            // Set publish date
-            if (article.published_at) {
-                const publishDate = new Date(article.published_at);
-                const year = publishDate.getFullYear();
-                const month = String(publishDate.getMonth() + 1).padStart(2, '0');
-                const day = String(publishDate.getDate()).padStart(2, '0');
-                const hours = String(publishDate.getHours()).padStart(2, '0');
-                const minutes = String(publishDate.getMinutes()).padStart(2, '0');
-                document.getElementById('articlePublishDate').value = `${year}-${month}-${day}T${hours}:${minutes}`;
-            } else {
-                document.getElementById('articlePublishDate').value = '';
-            }
-            
-            // Display existing image
-            const imagePreview = document.getElementById('articleImagePreview');
-            if (article.featured_image) {
-                const imageUrl = article.featured_image.startsWith('http') 
-                    ? article.featured_image 
-                    : `https://nuesa-biu-pjp0.onrender.com${article.featured_image}`;
-                imagePreview.innerHTML = `<img src="${imageUrl}" alt="Preview" style="width: 100%; height: 100%; object-fit: cover;">`;
-            } else {
-                imagePreview.innerHTML = '<i class="far fa-newspaper" style="font-size: 48px; color: var(--slate-400);"></i>';
-            }
-            
-            // Clear the file input
-            document.getElementById('articleImage').value = '';
-            
-            showModal('articleModal');
-        } catch (error) {
-            showToast('Failed to load article details: ' + error.message, 'error');
-        } finally {
-            hideLoading();
-        }
-    }
-
-    async function previewArticle(uuid) {
-        try {
-            // Open in new tab
-            window.open(`/articles/${uuid}`, '_blank');
-        } catch (error) {
-            showToast('Failed to preview article', 'error');
-        }
-    }
-
-    async function togglePublishArticle(uuid, publish) {
-        try {
-            showLoading();
-            const response = await fetch(`https://nuesa-biu-pjp0.onrender.com/api/admin/articles/${uuid}/publish`, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `Bearer ${getAuthToken()}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ publish })
-            });
-            
-            if (!response.ok) throw new Error('Failed to update article status');
-            
-            showToast(`Article ${publish ? 'published' : 'unpublished'} successfully!`, 'success');
-            await loadContent('articles');
-        } catch (error) {
-            showToast('Error: ' + error.message, 'error');
-        } finally {
-            hideLoading();
-        }
-    }
-
-    async function deleteArticle(uuid) {
-        if (!confirm('Are you sure you want to delete this article? This action cannot be undone.')) return;
-        
-        try {
-            showLoading();
-            await del(`/api/admin/articles/${uuid}`);
-            showToast('Article deleted successfully', 'success');
-            await loadContent('articles');
-        } catch (error) {
-            showToast('Failed to delete article: ' + error.message, 'error');
-        } finally {
-            hideLoading();
-        }
-    }
-
-    function resetArticleModal() {
-        // Reset form
-        document.getElementById('articleForm').reset();
-        
-        // Reset title
-        document.getElementById('articleModalTitle').textContent = 'Add New Article';
-        
-        // Clear UUID
-        currentArticleUuid = null;
-        
-        // Clear tags
-        articleTags = [];
-        renderArticleTags();
-        
-        // Reset status toggle to default (published)
-        const statusToggleBtns = document.querySelectorAll('.status-toggle-btn');
-        statusToggleBtns.forEach(btn => {
-            if (btn.dataset.status === 'published') {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-        });
-        
-        // Reset image preview
-        const imagePreview = document.getElementById('articleImagePreview');
-        imagePreview.innerHTML = '<i class="far fa-newspaper" style="font-size: 48px; color: var(--slate-400);"></i>';
-        
-        // Clear file input
-        document.getElementById('articleImage').value = '';
-        
-        // Clear content
-        setArticleContent('');
-    }
-
-    async function saveArticle() {
-        try {
-            // Show loading state
-            const saveBtn = document.getElementById('saveArticle');
-            const originalText = saveBtn.innerHTML;
-            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-            saveBtn.disabled = true;
-
-            // Get status from toggle
-            const activeStatusBtn = document.querySelector('.status-toggle-btn.active');
-            const status = activeStatusBtn ? activeStatusBtn.dataset.status : 'draft';
-            const isPublished = status === 'published';
-
-            // Validate required fields
-            const title = document.getElementById('articleTitle').value;
-            const category = document.getElementById('articleCategory').value;
-            const excerpt = document.getElementById('articleExcerpt').value;
-            const content = getArticleContent();
-            
-            if (!title) {
-                throw new Error('Title is required');
-            }
-            if (!category) {
-                throw new Error('Category is required');
-            }
-            if (!excerpt) {
-                throw new Error('Excerpt is required');
-            }
-            if (!content || content === '<br>' || content.trim() === '') {
-                throw new Error('Content is required');
-            }
-
-            // Create FormData for file upload
-            const formData = new FormData();
-            
-            // Create article data object
-            const articleData = {
-                title: title.trim(),
-                category: category,
-                author: document.getElementById('articleAuthor').value || 'NUESA BIU',
-                excerpt: excerpt.trim(),
-                content: content,
-                featured_image: document.getElementById('articleFeaturedImage').value || null,
-                tags: articleTags,
-                status: status,
-                is_published: isPublished
-            };
-
-            // Add publish date if provided or if publishing
-            const publishDate = document.getElementById('articlePublishDate').value;
-            if (publishDate) {
-                articleData.published_at = new Date(publishDate).toISOString();
-            } else if (isPublished) {
-                articleData.published_at = new Date().toISOString();
-            }
-
-            // Stringify the article data and add to FormData
-            formData.append('data', JSON.stringify(articleData));
-            
-            // Add featured image if selected
-            const imageFile = document.getElementById('articleImage').files[0];
-            if (imageFile) {
-                // Validate file type
-                const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-                if (!validTypes.includes(imageFile.type)) {
-                    throw new Error('Please upload a valid image file (JPEG, PNG, GIF, or WEBP)');
-                }
-                
-                // Validate file size (max 5MB)
-                if (imageFile.size > 5 * 1024 * 1024) {
-                    throw new Error('File size too large. Maximum size is 5MB.');
-                }
-                
-                formData.append('featured_image', imageFile);
-            }
-
-            // Get auth token
-            const token = getAuthToken();
-            if (!token) {
-                throw new Error('No authentication token found. Please login again.');
-            }
-
-            // Determine if we're creating or updating
-            const isEditing = currentArticleUuid ? true : false;
-            const url = isEditing 
-                ? `https://nuesa-biu-pjp0.onrender.com/api/admin/articles/${currentArticleUuid}`
-                : 'https://nuesa-biu-pjp0.onrender.com/api/admin/articles';
-            
-            const method = isEditing ? 'PUT' : 'POST';
-
-            // Send request
-            const response = await fetch(url, {
-                method: method,
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
-                body: formData
-            });
-
-            // Parse response
-            const result = await response.json();
-
-            if (!response.ok) {
-                throw new Error(result.message || `Server error: ${response.status}`);
-            }
-
-            // Show success message
-            showToast('Article saved successfully!', 'success');
-            
-            // Close modal and refresh list
-            closeModal();
-            await loadContent('articles');
-            
-        } catch (error) {
-            console.error('Error saving article:', error);
-            showToast('Error: ' + error.message, 'error');
-        } finally {
-            // Restore button state
-            const saveBtn = document.getElementById('saveArticle');
-            if (saveBtn) {
-                saveBtn.innerHTML = 'Save Article';
-                saveBtn.disabled = false;
-            }
-        }
-    }
-
-    // Initialize event listeners when the page loads
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize article tags functionality
-        initArticleTags();
-        
-        // Initialize status toggle
-        initArticleStatusToggle();
-        
-        // Add click handler for Add Article button
-        const addArticleBtn = document.getElementById('addArticleBtn');
-        if (addArticleBtn) {
-            addArticleBtn.addEventListener('click', function() {
-                resetArticleModal();
-                showModal('articleModal');
-            });
-        }
-        
-        // Add click handler for Add First Article button
-        const addFirstArticleBtn = document.getElementById('addFirstArticleBtn');
-        if (addFirstArticleBtn) {
-            addFirstArticleBtn.addEventListener('click', function() {
-                resetArticleModal();
-                showModal('articleModal');
-            });
-        }
-        
-        // Add click handler for Cancel button
-        const cancelBtn = document.getElementById('cancelArticle');
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', function() {
-                closeModal();
-            });
-        }
-        
-        // Add click handler for modal close button
-        const modalClose = document.querySelector('#articleModal .modal-close');
-        if (modalClose) {
-            modalClose.addEventListener('click', function() {
-                closeModal();
-            });
-        }
-    });
-
     // ==================== ARTICLE STATISTICS DASHBOARD ====================
 
     async function loadArticleStats() {
