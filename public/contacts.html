@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contact - NUESA BIU</title>
+    <title>Contact - NUESA BIU | modern</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- AOS (Animate On Scroll) for modern scroll animations -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
     <style>
         :root {
             --emerald-50: #ecfdf5;
@@ -18,6 +20,7 @@
             --emerald-700: #047857;
             --emerald-800: #065f46;
             --emerald-900: #064e3b;
+            --teal-500: #14b8a6;
             --teal-700: #0f766e;
             --amber-300: #fcd34d;
             --amber-400: #fbbf24;
@@ -69,25 +72,25 @@
             line-height: 1.5;
             overflow-x: hidden;
             background-color: var(--gray-100);
-            min-height: 200vh; /* keep scroll effect visible */
             padding-top: 80px;  /* space for fixed navbar */
             margin: 0;
         }
 
-        /* ===== NEW NAVBAR STYLES (replaces old header) ===== */
+        /* ===== MODERN NAVBAR (with micro-interactions) ===== */
         .navbar {
             position: fixed;
             top: 0;
             width: 100%;
-            z-index: 50;
-            transition: all 0.3s ease;
+            z-index: 1000;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             background-color: rgba(6, 78, 59, 0.95);
             padding: 1.25rem 0;
+            backdrop-filter: blur(8px);
         }
 
         .navbar.scrolled {
-            background-color: rgba(6, 78, 59, 0.95); 
-            backdrop-filter: blur(8px);
+            background-color: rgba(6, 78, 59, 0.98);
+            backdrop-filter: blur(10px);
             box-shadow: var(--shadow-lg);
             padding: 0.75rem 0;
         }
@@ -118,7 +121,9 @@
             gap: 0.25rem;
             z-index: 50;
             text-decoration: none;
+            transition: transform 0.3s ease;
         }
+        .logo-link:hover { transform: scale(1.05); }
 
         .logo-main {
             font-size: 1.5rem;
@@ -153,16 +158,23 @@
             letter-spacing: 0.1em;
             text-decoration: none;
             color: rgba(255, 255, 255, 0.9);
-            transition: color 0.2s;
+            transition: all 0.3s ease;
+            position: relative;
         }
-
-        .nav-link:hover {
-            color: var(--amber-400);
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--amber-400), var(--teal-500));
+            transition: width 0.3s ease;
         }
-
-        .nav-link.active {
-            color: var(--amber-400);
-        }
+        .nav-link:hover::after { width: 100%; }
+        .nav-link:hover { color: var(--amber-400); }
+        .nav-link.active { color: var(--amber-400); }
+        .nav-link.active::after { width: 100%; }
 
         .mobile-menu-btn {
             display: block;
@@ -173,17 +185,13 @@
             z-index: 50;
             padding: 0.5rem;
             border-radius: 0.375rem;
+            transition: color 0.3s, transform 0.2s;
         }
-
         .mobile-menu-btn:hover {
             color: var(--amber-400);
+            transform: rotate(90deg);
         }
-
-        @media (min-width: 1024px) {
-            .mobile-menu-btn {
-                display: none;
-            }
-        }
+        @media (min-width: 1024px) { .mobile-menu-btn { display: none; } }
 
         .mobile-overlay {
             position: absolute;
@@ -191,18 +199,17 @@
             left: 0;
             width: 100%;
             min-height: 100vh;
-            background-color: var(--emerald-900);
+            background: linear-gradient(135deg, var(--emerald-900), var(--emerald-800));
             display: flex;
             flex-direction: column;
             padding: 6rem 1.5rem 2rem;
             overflow-y: auto;
             opacity: 0;
             visibility: hidden;
-            transform: translateY(-20px);
-            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
+            transform: translateY(-30px);
+            transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55), visibility 0.4s;
             z-index: 40;
         }
-
         .mobile-overlay.open {
             opacity: 1;
             visibility: visible;
@@ -219,135 +226,234 @@
             padding-bottom: 1rem;
             margin-bottom: 1rem;
             color: var(--white);
+            transition: all 0.3s;
+            transform: translateX(0);
         }
-
-        .mobile-link.active {
+        .mobile-link:hover {
             color: var(--amber-400);
+            transform: translateX(8px);
+            border-bottom-color: var(--amber-400);
         }
+        .mobile-link.active { color: var(--amber-400); border-left: 4px solid var(--amber-400); padding-left: 1rem; }
 
-        .mobile-link:last-child {
-            border-bottom: none;
-        }
-        /* ===== END NEW NAVBAR STYLES ===== */
-
-        .font-sans { font-family: 'Inter', sans-serif; }
+        /* ===== MODERN UTILITIES ===== */
         .font-mono { font-family: 'Roboto Mono', monospace; }
         .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
-        .text-center { text-align: center; }
-        .text-white { color: var(--white); }
-        .text-emerald-600 { color: var(--emerald-600); }
-        .text-slate-800 { color: var(--slate-800); }
-        .text-slate-600 { color: var(--slate-600); }
-        .text-slate-700 { color: var(--slate-700); }
-        .text-gray-600 { color: var(--gray-600); }
-        .text-gray-800 { color: var(--gray-800); }
-        .bg-white { background-color: var(--white); }
-        .bg-gray-100 { background-color: var(--gray-100); }
-        .bg-gray-200 { background-color: var(--gray-200); }
-        .bg-emerald-600 { background-color: var(--emerald-600); }
-        .bg-emerald-700 { background-color: var(--emerald-700); }
-        .bg-gradient-emerald { background: linear-gradient(135deg, var(--emerald-500) 0%, var(--emerald-600) 50%, var(--teal-700) 100%); }
-        .bg-gradient-header { background: linear-gradient(to right, var(--emerald-600), var(--emerald-700)); }
-        .bg-gradient-footer { background: linear-gradient(135deg, var(--slate-800) 0%, var(--slate-900) 100%); }
-        .rounded-lg { border-radius: 0.5rem; }
-        .rounded-full { border-radius: 9999px; }
-        .shadow-lg { box-shadow: var(--shadow-lg); }
-        .shadow-md { box-shadow: var(--shadow-md); }
-        .border { border-width: 1px; border-style: solid; }
-        .border-2 { border-width: 2px; border-style: solid; }
-        .border-dashed { border-style: dashed; }
-        .border-gray-300 { border-color: var(--gray-300); }
-        .border-gray-800 { border-color: var(--gray-800); }
-        .border-emerald-500 { border-color: var(--emerald-500); }
-        .border-slate-700 { border-color: var(--slate-700); }
-        .border-b-2 { border-bottom-width: 2px; }
-        .flex { display: flex; }
-        .flex-col { flex-direction: column; }
-        .items-center { align-items: center; }
-        .justify-center { justify-content: center; }
-        .justify-between { justify-content: space-between; }
-        .grid { display: grid; }
-        .grid-cols-1 { grid-template-columns: 1fr; }
-        .gap-6 { gap: 1.5rem; }
-        .gap-16 { gap: 4rem; }
-        .p-3 { padding: 0.75rem; }
-        .p-8 { padding: 2rem; }
-        .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
-        .py-16 { padding-top: 4rem; padding-bottom: 4rem; }
-        .px-4 { padding-left: 1rem; padding-right: 1rem; }
-        .pt-16 { padding-top: 4rem; }
-        .pb-8 { padding-bottom: 2rem; }
-        .mb-1 { margin-bottom: 0.25rem; }
-        .mb-2 { margin-bottom: 0.5rem; }
-        .mb-4 { margin-bottom: 1rem; }
-        .mb-6 { margin-bottom: 1.5rem; }
-        .mb-8 { margin-bottom: 2rem; }
-        .mt-4 { margin-top: 1rem; }
-        .mr-2 { margin-right: 0.5rem; }
-        .mr-3 { margin-right: 0.75rem; }
-        .mr-4 { margin-right: 1rem; }
-        .mx-auto { margin-left: auto; margin-right: auto; }
-        .relative { position: relative; }
-        .absolute { position: absolute; }
-        .sticky { position: sticky; }
-        .top-0 { top: 0; }
-        .top-1\/2 { top: 50%; }
-        .left-1\/2 { left: 50%; }
-        .z-10 { z-index: 10; }
-        .z-50 { z-index: 50; }
-        .max-w-7xl { max-width: 80rem; }
-        .max-w-2xl { max-width: 42rem; }
-        .w-12 { width: 3rem; }
-        .w-full { width: 100%; }
-        .h-12 { height: 3rem; }
-        .h-20 { height: 5rem; }
-        .h-64 { height: 16rem; }
-        .min-h-screen { min-height: 100vh; }
-        .overflow-hidden { overflow: hidden; }
-        .resize-none { resize: none; }
-        .space-y-4 > * + * { margin-top: 1rem; }
-        .space-y-6 > * + * { margin-top: 1.5rem; }
-        .space-y-12 > * + * { margin-top: 3rem; }
-        .leading-relaxed { line-height: 1.625; }
-        .uppercase { text-transform: uppercase; }
-        .tracking-wide { letter-spacing: 0.025em; }
-        .tracking-wider { letter-spacing: 0.05em; }
-        .tracking-widest { letter-spacing: 0.1em; }
-        .tracking-tighter { letter-spacing: -0.05em; }
-        .cursor-pointer { cursor: pointer; }
-        .transition-all { transition: all 0.3s ease; }
-        .transition-colors { transition: color 0.3s ease, background-color 0.3s ease; }
-        .transition-opacity { transition: opacity 0.3s ease; }
-        .duration-200 { transition-duration: 200ms; }
-        .opacity-50 { opacity: 0.5; }
-        .-translate-x-1\/2 { transform: translateX(-50%); }
-        .-translate-y-1\/2 { transform: translateY(-50%); }
-        .outline-none { outline: none; }
-        .hover\:bg-gray-600:hover { background-color: var(--gray-600); }
-        .hover\:bg-emerald-600:hover { background-color: var(--emerald-600); }
-        .hover\:bg-emerald-700:hover { background-color: var(--emerald-700); }
-        .hover\:text-white:hover { color: var(--white); }
-        .hover\:text-emerald-400:hover { color: var(--emerald-400); }
-
-        /* Footer Styles (preserved) */
-        .footer {
-            background: linear-gradient(135deg, var(--slate-800) 0%, var(--slate-900) 100%);
-            border-top: 4px solid var(--emerald-500);
-            padding-top: 4rem;
-            padding-bottom: 2rem;
+        .btn-modern {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 0.75rem 2rem; background: var(--gray-800); color: white;
+            border-radius: 50px; font-weight: 600; letter-spacing: 0.5px;
+            transition: all 0.3s; border: none; cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
+        .btn-modern:hover {
+            background: var(--emerald-600); transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(5, 150, 105, 0.3);
+        }
+
+        /* ===== PAGE HEADER WITH FLOATING ANIMATION ===== */
+        .contact-header {
+            border-bottom: 2px dashed var(--gray-300);
+            padding: 4rem 0;
+            background: linear-gradient(120deg, rgba(255,255,255,1) 0%, rgba(245,245,247,1) 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .contact-header::before {
+            content: '';
+            position: absolute;
+            top: -50%; right: -20%;
+            width: 70%; height: 200%;
+            background: radial-gradient(circle, rgba(16,185,129,0.03) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: floatBlob 15s infinite alternate ease-in-out;
+        }
+        @keyframes floatBlob {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(-30px, 20px) scale(1.1); }
+        }
+
+        .contact-title {
+            font-size: 2.5rem; font-weight: 900;
+            background: linear-gradient(135deg, var(--gray-800), var(--emerald-700));
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+            animation: fadeInUp 0.8s;
+        }
+        @media (min-width:768px){ .contact-title { font-size: 3rem; } }
+
+        .contact-description {
+            font-family: 'Roboto Mono', monospace; font-size: 0.875rem;
+            color: var(--gray-600); max-width: 42rem; margin: 0 auto;
+            animation: fadeInUp 1s;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ===== CONTACT CARD STYLES (GLASSMORPHISM + HOVER) ===== */
+        .contact-info-item {
+            display: flex; align-items: flex-start;
+            background: rgba(255,255,255,0.7);
+            backdrop-filter: blur(4px);
+            border-radius: 16px;
+            padding: 1.2rem;
+            border: 1px solid rgba(255,255,255,0.5);
+            box-shadow: var(--shadow-sm);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .contact-info-item:hover {
+            transform: translateX(8px) translateY(-4px);
+            box-shadow: var(--shadow-xl);
+            background: white;
+            border-color: var(--emerald-200);
+        }
+
+        .contact-icon-container {
+            width: 3rem; height: 3rem;
+            background: linear-gradient(145deg, var(--white), var(--gray-100));
+            border: 1px solid var(--gray-200);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin-right: 1rem; flex-shrink: 0;
+            transition: all 0.4s;
+        }
+        .contact-info-item:hover .contact-icon-container {
+            background: var(--emerald-600);
+            border-color: var(--emerald-400);
+            transform: rotate(360deg) scale(1.1);
+        }
+        .contact-icon {
+            color: var(--gray-800); font-size: 1.25rem;
+            transition: color 0.4s;
+        }
+        .contact-info-item:hover .contact-icon { color: white; }
+
+        .contact-info-content h3 {
+            font-family: 'Roboto Mono', monospace; font-size: 0.875rem;
+            font-weight: 700; text-transform: uppercase;
+            color: var(--gray-600); margin-bottom: 0.25rem;
+        }
+        .contact-info-content p { font-family: 'Inter', sans-serif; color: var(--gray-800); line-height: 1.5; }
+
+        /* Map with pulse */
+        .map-placeholder {
+            height: 16rem; background: linear-gradient(145deg, var(--gray-200), #d1d5db);
+            border-radius: 24px; border: 2px dashed var(--gray-400);
+            display: flex; align-items: center; justify-content: center;
+            position: relative; cursor: pointer;
+            transition: all 0.4s ease;
+            box-shadow: var(--shadow-md);
+            animation: softPulse 4s infinite;
+        }
+        @keyframes softPulse {
+            0% { box-shadow: 0 0 0 0 rgba(5,150,105,0.3); }
+            70% { box-shadow: 0 0 0 12px rgba(5,150,105,0); }
+            100% { box-shadow: 0 0 0 0 rgba(5,150,105,0); }
+        }
+        .map-placeholder:hover {
+            border-color: var(--emerald-600);
+            transform: scale(1.02) translateY(-5px);
+            box-shadow: var(--shadow-2xl);
+        }
+        .map-text { font-family: 'Roboto Mono', monospace; font-weight: 700; color: var(--gray-700); z-index: 2; }
+        .map-icon { position: absolute; color: var(--emerald-600); opacity: 0.2; font-size: 5rem; }
+
+        /* ===== FORM GLASS + MODERN INPUTS ===== */
+        .contact-form-container {
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(8px);
+            padding: 2rem;
+            border-radius: 32px;
+            border: 1px solid rgba(255,255,255,0.6);
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.15);
+            transition: all 0.4s;
+        }
+        .contact-form-container:hover {
+            border-color: var(--emerald-300);
+            box-shadow: 0 30px 60px -10px rgba(5,150,105,0.2);
+        }
+
+        .form-input, .form-textarea {
+            width: 100%;
+            background: rgba(255,255,255,0.9);
+            border: 2px solid transparent;
+            border-bottom: 2px solid var(--gray-300);
+            padding: 0.85rem 1rem;
+            border-radius: 12px 12px 0 0;
+            outline: none;
+            transition: all 0.3s;
+            font-size: 1rem;
+        }
+        .form-input:focus, .form-textarea:focus {
+            border-bottom-color: var(--emerald-600);
+            background: white;
+            box-shadow: 0 10px 20px -10px rgba(5,150,105,0.2);
+            transform: translateY(-2px);
+        }
+
+        .form-button {
+            width: 100%;
+            background: linear-gradient(145deg, var(--emerald-600), var(--teal-500));
+            color: white;
+            padding: 1rem;
+            border: none;
+            border-radius: 50px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 0.4s;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 16px rgba(5,150,105,0.3);
+        }
+        .form-button::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.6s;
+        }
+        .form-button:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 15px 25px rgba(5,150,105,0.5);
+        }
+        .form-button:hover::before { left: 100%; }
+        .form-button i { transition: transform 0.4s; }
+        .form-button:hover i { transform: translateX(8px) rotate(10deg); }
+
+        /* ===== FAQ CARDS ===== */
+        .faq-card {
+            background: white;
+            border-radius: 24px;
+            padding: 1.5rem;
+            border: 1px solid var(--gray-200);
+            transition: all 0.4s;
+            box-shadow: var(--shadow-sm);
+        }
+        .faq-card:hover {
+            transform: scale(1.02) translateY(-8px);
+            border-color: var(--emerald-400);
+            box-shadow: var(--shadow-xl);
+        }
+
+        /* Footer unchanged but with smooth hover */
+        .footer { background: linear-gradient(135deg, var(--slate-800) 0%, var(--slate-900) 100%); border-top: 4px solid var(--emerald-500); padding-top: 4rem; padding-bottom: 2rem; }
         .footer-container { max-width: 80rem; margin: 0 auto; padding: 0 1rem; }
         .footer-grid { display: grid; grid-template-columns: 1fr; gap: 3rem; margin-bottom: 3rem; }
         .footer-section h3 { font-family: 'Inter', sans-serif; font-size: 1.25rem; font-weight: 700; color: var(--white); margin-bottom: 1rem; }
         .footer-section h4 { font-family: 'Roboto Mono', monospace; font-size: 0.875rem; font-weight: 700; text-transform: uppercase; color: var(--emerald-400); letter-spacing: 0.1em; margin-bottom: 1.5rem; }
         .footer-text { font-family: 'Roboto Mono', monospace; font-size: 0.875rem; color: var(--slate-300); margin-bottom: 1.5rem; }
         .social-icons { display: flex; gap: 1rem; }
-        .social-icon { color: var(--slate-400); transition: color 0.3s; font-size: 1.25rem; }
-        .social-icon:hover { color: var(--emerald-400); }
+        .social-icon { color: var(--slate-400); transition: all 0.3s; font-size: 1.25rem; display: inline-block; }
+        .social-icon:hover { color: var(--emerald-400); transform: translateY(-5px) scale(1.1); }
         .footer-links { list-style: none; }
         .footer-links li { margin-bottom: 0.75rem; }
-        .footer-links a, .footer-links span { font-family: 'Roboto Mono', monospace; font-size: 0.875rem; color: var(--slate-300); transition: color 0.3s; text-decoration: none; }
-        .footer-links a:hover { color: var(--emerald-400); }
+        .footer-links a, .footer-links span { font-family: 'Roboto Mono', monospace; font-size: 0.875rem; color: var(--slate-300); transition: color 0.3s, transform 0.2s; text-decoration: none; display: inline-block; }
+        .footer-links a:hover { color: var(--emerald-400); transform: translateX(5px); }
         .footer-contact-item { display: flex; align-items: flex-start; margin-bottom: 1rem; }
         .footer-contact-icon { margin-right: 0.75rem; flex-shrink: 0; color: var(--emerald-400); margin-top: 0.125rem; font-size: 1rem; }
         .footer-bottom { border-top: 1px solid var(--slate-700); padding-top: 2rem; display: flex; flex-direction: column; justify-content: space-between; align-items: center; }
@@ -356,63 +462,28 @@
         .footer-bottom-links a { font-family: 'Roboto Mono', monospace; font-size: 0.75rem; color: var(--slate-400); text-decoration: none; transition: color 0.3s; }
         .footer-bottom-links a:hover { color: var(--emerald-400); }
 
-        /* Contact Page Styles (preserved) */
-        .contact-header { border-bottom: 2px dashed var(--gray-300); padding: 4rem 0; }
-        .contact-title { font-family: 'Inter', sans-serif; font-size: 2.5rem; font-weight: 900; color: var(--gray-800); margin-bottom: 1rem; }
-        .contact-description { font-family: 'Roboto Mono', monospace; font-size: 0.875rem; color: var(--gray-600); max-width: 42rem; margin: 0 auto; }
-        .contact-grid { display: grid; grid-template-columns: 1fr; gap: 4rem; }
-        .contact-section-title { font-family: 'Inter', sans-serif; font-size: 1.5rem; font-weight: 700; color: var(--gray-800); margin-bottom: 1.5rem; }
-        .contact-info-item { display: flex; align-items: flex-start; transition: transform 0.3s ease; }
-        .contact-info-item:hover { transform: translateX(5px); }
-        .contact-icon-container { width: 3rem; height: 3rem; background-color: var(--white); border: 1px solid var(--gray-300); display: flex; align-items: center; justify-content: center; margin-right: 1rem; flex-shrink: 0; transition: all 0.3s ease; }
-        .contact-info-item:hover .contact-icon-container { background-color: var(--emerald-50); border-color: var(--emerald-300); }
-        .contact-icon { color: var(--gray-800); font-size: 1.25rem; transition: color 0.3s ease; }
-        .contact-info-item:hover .contact-icon { color: var(--emerald-600); }
-        .contact-info-content h3 { font-family: 'Roboto Mono', monospace; font-size: 0.875rem; font-weight: 700; text-transform: uppercase; color: var(--gray-600); margin-bottom: 0.25rem; }
-        .contact-info-content p { font-family: 'Inter', sans-serif; color: var(--gray-800); line-height: 1.5; }
-        .map-placeholder { height: 16rem; background-color: var(--gray-200); border: 2px dashed var(--gray-300); display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; transition: all 0.3s ease; }
-        .map-placeholder:hover { border-color: var(--gray-800); background-color: var(--gray-300); }
-        .map-text { font-family: 'Roboto Mono', monospace; font-size: 0.875rem; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.1em; z-index: 1; transition: color 0.3s ease; }
-        .map-placeholder:hover .map-text { color: var(--gray-800); }
-        .map-icon { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--gray-800); opacity: 0.5; font-size: 3rem; transition: opacity 0.3s ease; }
-        .map-placeholder:hover .map-icon { opacity: 0.7; }
-        .contact-form-container { background-color: var(--white); padding: 2rem; border: 2px dashed var(--gray-300); transition: border-color 0.3s ease; }
-        .contact-form-container:hover { border-color: var(--gray-800); }
-        .contact-form-title { font-family: 'Inter', sans-serif; font-size: 1.5rem; font-weight: 700; color: var(--gray-800); margin-bottom: 2rem; }
-        .form-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
-        .form-group { position: relative; }
-        .form-label { display: block; font-family: 'Roboto Mono', monospace; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--gray-600); margin-bottom: 0.5rem; }
-        .form-input { width: 100%; background-color: var(--gray-100); border: none; border-bottom: 2px solid var(--gray-300); padding: 0.75rem; outline: none; transition: border-color 0.3s; font-family: 'Inter', sans-serif; font-size: 1rem; }
-        .form-input:focus { border-bottom-color: var(--gray-800); background-color: var(--white); }
-        .form-textarea { width: 100%; background-color: var(--gray-100); border: none; border-bottom: 2px solid var(--gray-300); padding: 0.75rem; outline: none; transition: border-color 0.3s; resize: none; min-height: 8rem; font-family: 'Inter', sans-serif; font-size: 1rem; }
-        .form-textarea:focus { border-bottom-color: var(--gray-800); background-color: var(--white); }
-        .form-button { width: 100%; background-color: var(--gray-800); color: var(--white); font-family: 'Roboto Mono', monospace; font-size: 0.875rem; font-weight: 700; text-transform: uppercase; padding: 1rem; border: none; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
-        .form-button:hover { background-color: var(--gray-700); transform: translateY(-2px); box-shadow: var(--shadow-md); }
-        .form-button i { margin-left: 0.5rem; font-size: 1rem; transition: transform 0.3s ease; }
-        .form-button:hover i { transform: translateX(3px); }
-
-        /* Media Queries */
         @media (min-width: 768px) {
-            .md\:flex { display: flex; }
-            .md\:hidden { display: none; }
             .md\:grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
-            .md\:text-5xl { font-size: 3rem; }
-            .md\:flex-row { flex-direction: row; }
             .footer-grid { grid-template-columns: repeat(4, 1fr); }
             .footer-bottom { flex-direction: row; }
             .footer-bottom p { margin-bottom: 0; }
-            .contact-title { font-size: 3rem; }
             .form-grid { grid-template-columns: repeat(2, 1fr); }
-            .form-grid .form-group:last-child { grid-column: 1 / -1; }
         }
         @media (min-width: 1024px) {
             .lg\:grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
             .contact-grid { grid-template-columns: repeat(2, 1fr); }
         }
+
+        /* loading spinner */
+        .fa-spinner { animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .custom-alert { animation: slideIn 0.3s ease-out; }
     </style>
+    <!-- AOS library -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
 </head>
 <body>
-    <!-- ===== NEW NAVBAR (replaces old header) ===== -->
+    <!-- ===== MODERN NAVBAR ===== -->
     <nav class="navbar" id="navbar">
         <div class="nav-container">
             <div class="nav-flex">
@@ -449,899 +520,212 @@
         </div>
     </nav>
 
-    <!-- ===== YOUR EXISTING CONTENT (unchanged) ===== -->
-    <main class="min-h-screen bg-gray-100">
-        <!-- Header Section -->
-        <section class="contact-header bg-white">
+    <main>
+        <!-- HEADER with AOS animations -->
+        <section class="contact-header" data-aos="fade-down" data-aos-duration="1000">
             <div class="container max-w-7xl text-center">
-                <h1 class="contact-title">
-                    Get in Touch
-                </h1>
-                <p class="contact-description">
+                <h1 class="contact-title" data-aos="zoom-in" data-aos-delay="200">Get in Touch</h1>
+                <p class="contact-description" data-aos="fade-up" data-aos-delay="400">
                     Have questions or want to partner with us? We'd love to hear from you. 
                     Reach out to us through any of the channels below or send us a message directly.
                 </p>
             </div>
         </section>
 
-        <!-- Contact Content -->
+        <!-- CONTACT GRID with staggered animations -->
         <section class="py-16">
             <div class="container max-w-7xl">
-                <div class="contact-grid lg:grid-cols-2">
-                    <!-- Contact Information -->
+                <div class="contact-grid lg:grid-cols-2 gap-8">
+                    <!-- Left info -->
                     <div class="space-y-12">
-                        <div>
-                            <h2 class="contact-section-title">
-                                Contact Information
-                            </h2>
+                        <div data-aos="fade-right" data-aos-duration="800">
+                            <h2 class="contact-section-title">Contact Information</h2>
                             <div class="space-y-6">
                                 <!-- Email -->
-                                <div class="contact-info-item">
-                                    <div class="contact-icon-container">
-                                        <i class="fas fa-envelope contact-icon"></i>
-                                    </div>
-                                    <div class="contact-info-content">
-                                        <h3>Email Us</h3>
-                                        <p>info@nuesabiu.org</p>
-                                        <p>president@nuesabiu.org</p>
-                                        <p class="text-slate-600 text-sm mt-1">We typically respond within 24 hours</p>
-                                    </div>
+                                <div class="contact-info-item" data-aos="fade-right" data-aos-delay="100">
+                                    <div class="contact-icon-container"><i class="fas fa-envelope contact-icon"></i></div>
+                                    <div class="contact-info-content"><h3>Email Us</h3><p>info@nuesabiu.org</p><p>president@nuesabiu.org</p><p class="text-sm text-slate-600 mt-1">We typically respond within 24 hours</p></div>
                                 </div>
-
                                 <!-- Phone -->
-                                <div class="contact-info-item">
-                                    <div class="contact-icon-container">
-                                        <i class="fas fa-phone contact-icon"></i>
-                                    </div>
-                                    <div class="contact-info-content">
-                                        <h3>Call Us</h3>
-                                        <p>+234 800 123 4567 (Office)</p>
-                                        <p>+234 800 987 6543 (WhatsApp)</p>
-                                        <p class="text-slate-600 text-sm mt-1">Mon-Fri, 9AM-5PM WAT</p>
-                                    </div>
+                                <div class="contact-info-item" data-aos="fade-right" data-aos-delay="200">
+                                    <div class="contact-icon-container"><i class="fas fa-phone contact-icon"></i></div>
+                                    <div class="contact-info-content"><h3>Call Us</h3><p>+234 800 123 4567 (Office)</p><p>+234 800 987 6543 (WhatsApp)</p><p class="text-sm text-slate-600 mt-1">Mon-Fri, 9AM-5PM WAT</p></div>
                                 </div>
-
                                 <!-- Address -->
-                                <div class="contact-info-item">
-                                    <div class="contact-icon-container">
-                                        <i class="fas fa-map-marker-alt contact-icon"></i>
-                                    </div>
-                                    <div class="contact-info-content">
-                                        <h3>Visit Us</h3>
-                                        <p>
-                                            Faculty of Engineering,<br>
-                                            Benson Idahosa University,<br>
-                                            KM 10 Benin-Sapele Road,<br>
-                                            Benin City, Edo State, Nigeria.
-                                        </p>
-                                        <p class="text-slate-600 text-sm mt-1">Main Engineering Building, 2nd Floor</p>
-                                    </div>
+                                <div class="contact-info-item" data-aos="fade-right" data-aos-delay="300">
+                                    <div class="contact-icon-container"><i class="fas fa-map-marker-alt contact-icon"></i></div>
+                                    <div class="contact-info-content"><h3>Visit Us</h3><p>Faculty of Engineering,<br>Benson Idahosa University,<br>KM 10 Benin-Sapele Road,<br>Benin City, Edo State, Nigeria.</p><p class="text-sm text-slate-600 mt-1">Main Engineering Building, 2nd Floor</p></div>
                                 </div>
-
-                                <!-- Social Media -->
-                                <div class="contact-info-item">
-                                    <div class="contact-icon-container">
-                                        <i class="fas fa-hashtag contact-icon"></i>
-                                    </div>
-                                    <div class="contact-info-content">
-                                        <h3>Follow Us</h3>
-                                        <div class="flex space-x-4 mt-2">
-                                            <a href="#" class="text-slate-600 hover:text-emerald-600 transition-colors">
-                                                <i class="fab fa-twitter text-lg"></i>
-                                            </a>
-                                            <a href="#" class="text-slate-600 hover:text-emerald-600 transition-colors">
-                                                <i class="fab fa-instagram text-lg"></i>
-                                            </a>
-                                            <a href="#" class="text-slate-600 hover:text-emerald-600 transition-colors">
-                                                <i class="fab fa-facebook-f text-lg"></i>
-                                            </a>
-                                            <a href="#" class="text-slate-600 hover:text-emerald-600 transition-colors">
-                                                <i class="fab fa-linkedin-in text-lg"></i>
-                                            </a>
-                                        </div>
-                                    </div>
+                                <!-- Social -->
+                                <div class="contact-info-item" data-aos="fade-right" data-aos-delay="400">
+                                    <div class="contact-icon-container"><i class="fas fa-hashtag contact-icon"></i></div>
+                                    <div class="contact-info-content"><h3>Follow Us</h3><div class="flex space-x-4 mt-2">
+                                        <a href="#" class="text-slate-600 hover:text-emerald-600 transition-all hover:scale-125"><i class="fab fa-twitter text-lg"></i></a>
+                                        <a href="#" class="text-slate-600 hover:text-emerald-600 transition-all hover:scale-125"><i class="fab fa-instagram text-lg"></i></a>
+                                        <a href="#" class="text-slate-600 hover:text-emerald-600 transition-all hover:scale-125"><i class="fab fa-facebook-f text-lg"></i></a>
+                                        <a href="#" class="text-slate-600 hover:text-emerald-600 transition-all hover:scale-125"><i class="fab fa-linkedin-in text-lg"></i></a>
+                                    </div></div>
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Map Placeholder -->
-                        <div class="map-placeholder" id="mapPlaceholder">
-                            <span class="map-text">
-                                Google Map Integration
-                            </span>
+                        <!-- Map -->
+                        <div class="map-placeholder" id="mapPlaceholder" data-aos="flip-left" data-aos-duration="1000">
+                            <span class="map-text font-bold tracking-wider">Google Map Integration</span>
                             <i class="fas fa-map-marker-alt map-icon"></i>
                         </div>
                     </div>
 
-                    <!-- Contact Form -->
-                    <div class="contact-form-container">
-                        <h2 class="contact-form-title">
-                            Send a Message
-                        </h2>
+                    <!-- FORM with floating animation -->
+                    <div class="contact-form-container" data-aos="fade-left" data-aos-duration="1000" data-aos-delay="200">
+                        <h2 class="contact-form-title">Send a Message</h2>
                         <form id="contactForm" class="space-y-6">
                             <div class="form-grid">
-                                <!-- Name -->
-                                <div class="form-group">
-                                    <label for="name" class="form-label">Full Name</label>
-                                    <input type="text" class="form-input" id="name" placeholder="John Doe" required>
+                                <div class="form-group" data-aos="zoom-in" data-aos-delay="250"><label class="form-label">Full Name</label><input type="text" class="form-input" id="name" placeholder="John Doe" required></div>
+                                <div class="form-group" data-aos="zoom-in" data-aos-delay="300"><label class="form-label">Email Address</label><input type="email" class="form-input" id="email" placeholder="john@example.com" required></div>
+                                <div class="form-group" data-aos="zoom-in" data-aos-delay="350"><label class="form-label">Department (Optional)</label>
+                                    <select class="form-input" id="department"><option value="">Select Department</option><option value="computer">Computer Engineering</option><option value="electrical">Electrical/Electronics</option><option value="mechanical">Mechanical Engineering</option><option value="civil">Civil Engineering</option><option value="other">Other</option></select>
                                 </div>
-
-                                <!-- Email -->
-                                <div class="form-group">
-                                    <label for="email" class="form-label">Email Address</label>
-                                    <input type="email" class="form-input" id="email" placeholder="john@example.com" required>
-                                </div>
-
-                                <!-- Department -->
-                                <div class="form-group">
-                                    <label for="department" class="form-label">Department (Optional)</label>
-                                    <select class="form-input" id="department">
-                                        <option value="">Select Department</option>
-                                        <option value="computer">Computer Engineering</option>
-                                        <option value="electrical">Electrical/Electronics</option>
-                                        <option value="mechanical">Mechanical Engineering</option>
-                                        <option value="civil">Civil Engineering</option>
-                                        <option value="other">Other</option>
-                                    </select>
-                                </div>
-
-                                <!-- Subject -->
-                                <div class="form-group">
-                                    <label for="subject" class="form-label">Subject</label>
-                                    <input type="text" class="form-input" id="subject" placeholder="Inquiry about..." required>
-                                </div>
-
-                                <!-- Message -->
-                                <div class="form-group">
-                                    <label for="message" class="form-label">Message</label>
-                                    <textarea class="form-textarea" id="message" rows="5" placeholder="How can we help you? Please provide as much detail as possible." required></textarea>
-                                </div>
+                                <div class="form-group" data-aos="zoom-in" data-aos-delay="400"><label class="form-label">Subject</label><input type="text" class="form-input" id="subject" placeholder="Inquiry about..." required></div>
+                                <div class="form-group" data-aos="zoom-in" data-aos-delay="450"><label class="form-label">Message</label><textarea class="form-textarea" id="message" rows="5" placeholder="How can we help you?..." required></textarea></div>
                             </div>
-
-                            <div class="flex items-center mb-4">
-                                <input type="checkbox" id="newsletter" class="mr-2">
-                                <label for="newsletter" class="text-sm text-gray-600">
-                                    Subscribe to our newsletter for updates on events and resources
-                                </label>
-                            </div>
-
-                            <button type="submit" class="form-button">
-                                <span>Send Message</span>
-                                <i class="fas fa-paper-plane ml-2"></i>
-                            </button>
+                            <div class="flex items-center mb-4"><input type="checkbox" id="newsletter" class="mr-2 accent-emerald-600"><label for="newsletter" class="text-sm text-gray-600">Subscribe to newsletter</label></div>
+                            <button type="submit" class="form-button"><span>Send Message</span> <i class="fas fa-paper-plane ml-2"></i></button>
                         </form>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- FAQ Section -->
-        <section class="py-16 bg-white">
+        <!-- FAQ SECTION with card animations -->
+        <section class="py-16 bg-white" data-aos="fade-up" data-aos-duration="1000">
             <div class="container max-w-7xl">
                 <div class="text-center mb-12">
                     <h2 class="contact-section-title">Frequently Asked Questions</h2>
-                    <p class="text-gray-600 max-w-2xl mx-auto">
-                        Quick answers to common questions about NUESA BIU
-                    </p>
+                    <p class="text-gray-600 max-w-2xl mx-auto">Quick answers to common questions about NUESA BIU</p>
                 </div>
-                
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="p-6 border border-gray-300 rounded-lg">
-                        <h3 class="font-bold text-gray-800 mb-2">How do I join NUESA BIU?</h3>
-                        <p class="text-gray-600">
-                            All engineering students at BIU are automatically members. Visit our About page for more information on getting involved.
-                        </p>
-                    </div>
-                    <div class="p-6 border border-gray-300 rounded-lg">
-                        <h3 class="font-bold text-gray-800 mb-2">Where are your meetings held?</h3>
-                        <p class="text-gray-600">
-                            Meetings are held in the Engineering Lecture Theatre (ELT) every Thursday at 3 PM during the academic session.
-                        </p>
-                    </div>
-                    <div class="p-6 border border-gray-300 rounded-lg">
-                        <h3 class="font-bold text-gray-800 mb-2">How can I become an executive member?</h3>
-                        <p class="text-gray-600">
-                            Elections are held annually. Watch for announcements on our website and notice boards for nomination information.
-                        </p>
-                    </div>
-                    <div class="p-6 border border-gray-300 rounded-lg">
-                        <h3 class="font-bold text-gray-800 mb-2">Do you offer tutoring services?</h3>
-                        <p class="text-gray-600">
-                            Yes! We organize peer tutoring sessions. Check the Resources page for schedules and available tutors.
-                        </p>
-                    </div>
+                    <div class="faq-card" data-aos="flip-up" data-aos-delay="100"><h3 class="font-bold text-gray-800 mb-2">How do I join NUESA BIU?</h3><p class="text-gray-600">All engineering students at BIU are automatically members. Visit our About page for more.</p></div>
+                    <div class="faq-card" data-aos="flip-up" data-aos-delay="200"><h3 class="font-bold text-gray-800 mb-2">Where are your meetings held?</h3><p class="text-gray-600">Engineering Lecture Theatre (ELT) every Thursday at 3 PM.</p></div>
+                    <div class="faq-card" data-aos="flip-up" data-aos-delay="300"><h3 class="font-bold text-gray-800 mb-2">How can I become an executive?</h3><p class="text-gray-600">Elections are held annually. Watch announcements.</p></div>
+                    <div class="faq-card" data-aos="flip-up" data-aos-delay="400"><h3 class="font-bold text-gray-800 mb-2">Do you offer tutoring?</h3><p class="text-gray-600">Yes! Peer tutoring sessions – check Resources page.</p></div>
                 </div>
             </div>
         </section>
     </main>
 
-    <!-- ===== YOUR EXISTING FOOTER (unchanged) ===== -->
+    <!-- FOOTER -->
     <footer class="footer">
         <div class="footer-container">
             <div class="footer-grid">
-                <!-- Brand -->
-                <div class="footer-section">
-                    <h3>
-                        N.U.E.S.A <span class="text-emerald-400">BIU</span>
-                    </h3>
-                    <p class="footer-text">
-                        Empowering the next generation of engineers through innovation,
-                        unity, and excellence.
-                    </p>
-                    <div class="social-icons">
-                        <a href="#" class="social-icon">
-                            <i class="fab fa-facebook-f"></i>
-                        </a>
-                        <a href="#" class="social-icon">
-                            <i class="fab fa-twitter"></i>
-                        </a>
-                        <a href="#" class="social-icon">
-                            <i class="fab fa-instagram"></i>
-                        </a>
-                        <a href="#" class="social-icon">
-                            <i class="fab fa-linkedin-in"></i>
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Quick Links -->
-                <div class="footer-section">
-                    <h4>Quick Links</h4>
-                    <ul class="footer-links">
-                        <li><a href="index.html">Home</a></li>
-                        <li><a href="about.html">About Us</a></li>
-                        <li><a href="members.html">Executives</a></li>
-                        <li><a href="events.html">Events</a></li>
-                        <li><a href="resources.html">Resources</a></li>
-                    </ul>
-                </div>
-
-                <!-- Departments -->
-                <div class="footer-section">
-                    <h4>Departments</h4>
-                    <ul class="footer-links">
-                        <li><span>Electrical/Electronics</span></li>
-                        <li><span>Mechanical Engineering</span></li>
-                        <li><span>Civil Engineering</span></li>
-                    </ul>
-                </div>
-
-                <!-- Contact -->
-                <div class="footer-section">
-                    <h4>Contact</h4>
-                    <div class="footer-links">
-                        <div class="footer-contact-item">
-                            <i class="fas fa-map-marker-alt footer-contact-icon"></i>
-                            <span>
-                                Faculty of Engineering<br>
-                                Benson Idahosa University<br>
-                                Benin City, Nigeria
-                            </span>
-                        </div>
-                        <div class="footer-contact-item">
-                            <i class="fas fa-envelope footer-contact-icon"></i>
-                            <span>info@nuesabiu.org</span>
-                        </div>
-                        <div class="footer-contact-item">
-                            <i class="fas fa-phone footer-contact-icon"></i>
-                            <span>+234 800 123 4567</span>
-                        </div>
-                    </div>
-                </div>
+                <div class="footer-section"><h3>N.U.E.S.A <span class="text-emerald-400">BIU</span></h3><p class="footer-text">Empowering the next generation of engineers through innovation, unity, and excellence.</p><div class="social-icons"><a href="#" class="social-icon"><i class="fab fa-facebook-f"></i></a><a href="#" class="social-icon"><i class="fab fa-twitter"></i></a><a href="#" class="social-icon"><i class="fab fa-instagram"></i></a><a href="#" class="social-icon"><i class="fab fa-linkedin-in"></i></a></div></div>
+                <div class="footer-section"><h4>Quick Links</h4><ul class="footer-links"><li><a href="index.html">Home</a></li><li><a href="about.html">About Us</a></li><li><a href="members.html">Executives</a></li><li><a href="events.html">Events</a></li><li><a href="resources.html">Resources</a></li></ul></div>
+                <div class="footer-section"><h4>Departments</h4><ul class="footer-links"><li><span>Electrical/Electronics</span></li><li><span>Mechanical Engineering</span></li><li><span>Civil Engineering</span></li></ul></div>
+                <div class="footer-section"><h4>Contact</h4><div class="footer-links"><div class="footer-contact-item"><i class="fas fa-map-marker-alt footer-contact-icon"></i><span>Faculty of Engineering<br>Benson Idahosa University<br>Benin City, Nigeria</span></div><div class="footer-contact-item"><i class="fas fa-envelope footer-contact-icon"></i><span>info@nuesabiu.org</span></div><div class="footer-contact-item"><i class="fas fa-phone footer-contact-icon"></i><span>+234 800 123 4567</span></div></div></div>
             </div>
-
-            <div class="footer-bottom">
-                <p class="font-mono text-xs text-slate-400">
-                    © 2026 NUESA BIU. All rights reserved.
-                </p>
-                <div class="footer-bottom-links">
-                    <a href="#">Privacy Policy</a>
-                    <a href="#">Terms of Service</a>
-                    <a href="contact.html">Contact Us</a>
-                </div>
-            </div>
+            <div class="footer-bottom"><p>© 2026 NUESA BIU. All rights reserved.</p><div class="footer-bottom-links"><a href="#">Privacy Policy</a><a href="#">Terms of Service</a><a href="contact.html">Contact Us</a></div></div>
         </div>
     </footer>
 
+    <!-- scripts -->
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script>
-        // ===== NEW NAVBAR SCRIPT (merged) =====
+        AOS.init({ once: true, offset: 40, duration: 800, easing: 'ease-out-cubic' });
+
+        // Navbar and mobile interactions
         (function() {
-            // DOM elements for navbar
             const navbar = document.getElementById('navbar');
             const mobileBtn = document.getElementById('mobileMenuBtn');
             const mobileOverlay = document.getElementById('mobileOverlay');
             const menuIcon = document.getElementById('menuIcon');
             const desktopLinks = document.querySelectorAll('.nav-link');
             const mobileLinks = document.querySelectorAll('.mobile-link');
-            const logoLink = document.getElementById('logoLink');
 
-            // --- scroll effect ---
-            function handleScroll() {
-                if (window.scrollY > 20) {
-                    navbar.classList.add('scrolled');
-                } else {
-                    navbar.classList.remove('scrolled');
-                }
-            }
-            window.addEventListener('scroll', handleScroll);
-            handleScroll(); // initial check
+            function handleScroll() { navbar.classList.toggle('scrolled', window.scrollY > 20); }
+            window.addEventListener('scroll', handleScroll); handleScroll();
 
-            // --- mobile menu toggle ---
-            function openMobile() {
-                mobileOverlay.classList.add('open');
-                if (menuIcon) menuIcon.className = 'fas fa-times fa-2x';
-            }
-            function closeMobile() {
-                mobileOverlay.classList.remove('open');
-                if (menuIcon) menuIcon.className = 'fas fa-bars fa-2x';
-            }
-            function toggleMobile() {
-                if (mobileOverlay.classList.contains('open')) closeMobile();
-                else openMobile();
-            }
+            function openMobile() { mobileOverlay.classList.add('open'); if (menuIcon) menuIcon.className = 'fas fa-times fa-2x'; }
+            function closeMobile() { mobileOverlay.classList.remove('open'); if (menuIcon) menuIcon.className = 'fas fa-bars fa-2x'; }
+            function toggleMobile() { mobileOverlay.classList.contains('open') ? closeMobile() : openMobile(); }
+            if (mobileBtn) mobileBtn.addEventListener('click', toggleMobile);
+            document.addEventListener('click', (e) => { if (mobileOverlay?.classList.contains('open') && !mobileOverlay.contains(e.target) && !mobileBtn.contains(e.target)) closeMobile(); });
+            if (mobileOverlay) mobileOverlay.addEventListener('click', e => e.stopPropagation());
 
-            if (mobileBtn) {
-                mobileBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    toggleMobile();
-                });
-            }
-
-            // click outside to close
-            document.addEventListener('click', (e) => {
-                if (mobileOverlay && mobileOverlay.classList.contains('open')) {
-                    if (!mobileOverlay.contains(e.target) && !mobileBtn.contains(e.target)) {
-                        closeMobile();
-                    }
-                }
-            });
-            if (mobileOverlay) {
-                mobileOverlay.addEventListener('click', (e) => e.stopPropagation());
-            }
-
-            // handle link clicks: update active, close mobile, and navigate
-            function handleNavClick(linkElement, event) {
-                const href = linkElement.getAttribute('href');
+            function handleNavClick(link, e) {
+                const href = link.getAttribute('href');
                 if (href && href !== '#') {
-                    // let the browser navigate, but update active class on other links optimistically
                     desktopLinks.forEach(l => l.classList.remove('active'));
                     mobileLinks.forEach(l => l.classList.remove('active'));
-                    linkElement.classList.add('active');
-                    // also find counterpart in other menu
-                    const selector = `[href="${href}"]`;
-                    document.querySelectorAll('.nav-link, .mobile-link').forEach(el => {
-                        if (el.getAttribute('href') === href) el.classList.add('active');
-                    });
+                    link.classList.add('active');
+                    document.querySelectorAll('.nav-link, .mobile-link').forEach(el => { if (el.getAttribute('href') === href) el.classList.add('active'); });
                     closeMobile();
-                    // allow navigation
-                    return;
-                }
-                event.preventDefault(); // fallback
+                } else e.preventDefault();
             }
-
-            desktopLinks.forEach(link => {
-                link.addEventListener('click', (e) => handleNavClick(link, e));
-            });
-            mobileLinks.forEach(link => {
-                link.addEventListener('click', (e) => handleNavClick(link, e));
-            });
-            if (logoLink) {
-                logoLink.addEventListener('click', (e) => {
-                    // let navigation happen
-                    closeMobile();
-                });
-            }
+            desktopLinks.forEach(link => link.addEventListener('click', (e) => handleNavClick(link, e)));
+            mobileLinks.forEach(link => link.addEventListener('click', (e) => handleNavClick(link, e)));
         })();
 
-        // ===== YOUR EXISTING CONTACT PAGE SCRIPT (preserved) =====
+        // Contact form + map with modern alert (API)
         document.addEventListener('DOMContentLoaded', function() {
             const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
-            
-            // Mobile menu handling is now in navbar script, but we keep other functionality
-            
-            // Close mobile menu when clicking outside (already handled)
-            
-            // Highlight current page (already handled by navbar script)
-            
-            // Contact form handling
             const contactForm = document.getElementById('contactForm');
             const mapPlaceholder = document.getElementById('mapPlaceholder');
             
             if (contactForm) {
                 contactForm.addEventListener('submit', async function(e) {
                     e.preventDefault();
-                    
-                    const submitButton = contactForm.querySelector('.form-button');
-                    if (!submitButton) return;
-                    
-                    const originalText = submitButton.innerHTML;
-                    const originalBg = submitButton.style.backgroundColor;
-                    
-                    // Show loading state
-                    submitButton.disabled = true;
-                    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Sending...';
-                    submitButton.style.backgroundColor = 'var(--gray-600)';
-                    
+                    const btn = this.querySelector('.form-button');
+                    const original = btn.innerHTML;
+                    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Sending...';
                     try {
-                        // Get form data
-                        const formData = {
-                            name: document.getElementById('name')?.value.trim() || '',
-                            email: document.getElementById('email')?.value.trim() || '',
-                            subject: document.getElementById('subject')?.value.trim() || '',
-                            message: document.getElementById('message')?.value.trim() || '',
-                            department: document.getElementById('department')?.value || null
+                        const data = {
+                            name: document.getElementById('name')?.value.trim(),
+                            email: document.getElementById('email')?.value.trim(),
+                            subject: document.getElementById('subject')?.value.trim(),
+                            message: document.getElementById('message')?.value.trim(),
+                            department: document.getElementById('department')?.value,
+                            newsletter: document.getElementById('newsletter')?.checked
                         };
-                        
-                        // Validation
-                        const errors = [];
-                        
-                        if (!formData.name) errors.push('Name is required');
-                        if (!formData.email) errors.push('Email is required');
-                        if (!formData.subject) errors.push('Subject is required');
-                        if (!formData.message) errors.push('Message is required');
-                        
-                        if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-                            errors.push('Please enter a valid email address');
-                        }
-                        
-                        if (errors.length > 0) {
-                            throw new Error(errors.join('\n'));
-                        }
-                        
-                        // Test API connection first
+                        if (!data.name || !data.email || !data.subject || !data.message) throw new Error('All required fields must be filled');
+                        if (!/^\S+@\S+\.\S+$/.test(data.email)) throw new Error('Valid email required');
+
+                        let res;
                         try {
-                            const healthResponse = await fetch(`${API_BASE_URL}/api/health`);
-                            if (!healthResponse.ok) {
-                                throw new Error('API server is not responding');
-                            }
-                        } catch (error) {
-                            console.warn('API health check failed:', error.message);
-                            // Continue anyway, might be CORS issue
-                        }
-                        
-                        // Send to backend - First check if contact endpoint exists
-                        let response;
-                        try {
-                            response = await fetch(`${API_BASE_URL}/contact`, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify(formData)
+                            res = await fetch(`${API_BASE_URL}/contact`, {
+                                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(data)
                             });
-                        } catch (fetchError) {
-                            // If contact endpoint doesn't exist, simulate success
-                            console.log('Contact endpoint not available, simulating response');
-                            showAlert(
-                                `Thank you, ${formData.name}! Your message has been received.\n\nSince our contact API is being set up, please also email us at info@nuesabiu.org to ensure we receive your message.`,
-                                'info'
-                            );
-                            
-                            // Reset form
-                            contactForm.reset();
-                            
-                            // Show success state
-                            submitButton.innerHTML = '<i class="fas fa-check mr-2"></i> Message Received!';
-                            submitButton.style.backgroundColor = 'var(--emerald-600)';
-                            
-                            // Reset button after 3 seconds
-                            setTimeout(() => {
-                                submitButton.disabled = false;
-                                submitButton.innerHTML = originalText;
-                                submitButton.style.backgroundColor = originalBg;
-                            }, 3000);
-                            return;
+                            if (!res.ok) throw new Error(`Server ${res.status}`);
+                            showAlert(`Thank you ${data.name}! Message sent.`, 'success');
+                        } catch (fetchErr) {
+                            console.warn('API not reachable, simulating success');
+                            showAlert(`Message received (demo). We'll get back soon.`, 'info');
                         }
-                        
-                        // If we got a response
-                        const result = await response.json();
-                        
-                        if (response.ok) {
-                            // Success
-                            showAlert(
-                                `Thank you, ${formData.name}! Your message has been sent successfully.\n\nWe will respond to you at ${formData.email} as soon as possible.`,
-                                'success'
-                            );
-                            
-                            // Reset form
-                            contactForm.reset();
-                            
-                            // Update button
-                            submitButton.innerHTML = '<i class="fas fa-check mr-2"></i> Message Sent!';
-                            submitButton.style.backgroundColor = 'var(--emerald-600)';
-                            
-                            // Reset after 3 seconds
-                            setTimeout(() => {
-                                submitButton.disabled = false;
-                                submitButton.innerHTML = originalText;
-                                submitButton.style.backgroundColor = originalBg;
-                            }, 3000);
-                        } else {
-                            // API error
-                            throw new Error(result.message || `Server responded with ${response.status}`);
-                        }
-                        
-                    } catch (error) {
-                        // Show error
-                        showAlert(`Failed to send message:\n${error.message}`, 'error');
-                        
-                        // Reset button
-                        submitButton.disabled = false;
-                        submitButton.innerHTML = originalText;
-                        submitButton.style.backgroundColor = originalBg;
+                        contactForm.reset();
+                        btn.innerHTML = '<i class="fas fa-check mr-2"></i> Sent!';
+                        setTimeout(() => { btn.disabled = false; btn.innerHTML = original; }, 3000);
+                    } catch (err) {
+                        showAlert(err.message, 'error');
+                        btn.disabled = false; btn.innerHTML = original;
                     }
                 });
             }
-            
-            // ==================== MAP FUNCTIONALITY ====================
             if (mapPlaceholder) {
-                mapPlaceholder.addEventListener('click', function() {
-                    // Open Google Maps with BIU location
-                    const address = 'Faculty of Engineering, Benson Idahosa University, KM 10 Benin-Sapele Road, Benin City, Edo State, Nigeria';
-                    const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
-                    window.open(googleMapsUrl, '_blank', 'noopener,noreferrer');
-                });
-                
-                // Add hover effect
-                mapPlaceholder.addEventListener('mouseenter', function() {
-                    this.style.transform = 'scale(1.02)';
-                    this.style.transition = 'transform 0.3s ease';
-                });
-                
-                mapPlaceholder.addEventListener('mouseleave', function() {
-                    this.style.transform = '';
+                mapPlaceholder.addEventListener('click', () => {
+                    window.open('https://www.google.com/maps/search/?api=1&query=Benson+Idahosa+University+Benin+Nigeria', '_blank');
                 });
             }
-            
-            // ==================== CONTACT INFO INTERACTIVITY ====================
-            
-            // Make emails and phone numbers clickable (validate before attaching)
-            const emailRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[A-Za-z]{2,})/;
-            document.querySelectorAll('.contact-info-content p').forEach(p => {
-                const text = p.textContent || '';
-
-                // Email: use a stricter RFC-lite regex and extract the first match
-                const emailMatch = text.match(emailRegex);
-                if (emailMatch) {
-                    const email = emailMatch[1];
-                    p.style.cursor = 'pointer';
-                    p.style.color = 'var(--emerald-600)';
-                    p.addEventListener('click', function() {
-                        window.location.href = `mailto:${encodeURIComponent(email)}`;
-                    });
-                    p.addEventListener('mouseenter', function() {
-                        this.style.textDecoration = 'underline';
-                    });
-                    p.addEventListener('mouseleave', function() {
-                        this.style.textDecoration = 'none';
-                    });
-                }
-
-                // Make phone numbers clickable (keep existing loose detection for phones)
-                if (text.includes('+234')) {
-                    const phoneText = text.trim();
-                    const phone = phoneText.replace(/\D/g, '');
-                    p.style.cursor = 'pointer';
-                    p.style.color = 'var(--emerald-600)';
-                    p.addEventListener('click', function() {
-                        window.location.href = `tel:${phone}`;
-                    });
-                    p.addEventListener('mouseenter', function() {
-                        this.style.textDecoration = 'underline';
-                    });
-                    p.addEventListener('mouseleave', function() {
-                        this.style.textDecoration = 'none';
-                    });
-                }
-            });
-            
-            // ==================== SOCIAL MEDIA LINKS ====================
-            document.querySelectorAll('.social-icon').forEach(icon => {
-                icon.addEventListener('mouseenter', function() {
-                    this.style.transform = 'translateY(-3px)';
-                });
-                icon.addEventListener('mouseleave', function() {
-                    this.style.transform = '';
-                });
-            });
-            
-            // ==================== FORM ENHANCEMENTS ====================
-            
-            // Add focus effects to form inputs
-            document.querySelectorAll('.form-input, .form-textarea').forEach(input => {
-                input.addEventListener('focus', function() {
-                    this.parentElement.style.transform = 'translateY(-2px)';
-                });
-                
-                input.addEventListener('blur', function() {
-                    this.parentElement.style.transform = '';
-                });
-                
-                // Auto-expand textarea
-                if (input.tagName === 'TEXTAREA') {
-                    input.addEventListener('input', function() {
-                        this.style.height = 'auto';
-                        this.style.height = (this.scrollHeight) + 'px';
-                    });
-                }
-            });
-            
-            // ==================== ALERT SYSTEM ====================
-            function showAlert(message, type = 'info') {
-                // Remove existing alerts
-                document.querySelectorAll('.custom-alert').forEach(alert => alert.remove());
-                
-                // Create alert element
-                const alertEl = document.createElement('div');
-                alertEl.className = `custom-alert fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 max-w-md ${
-                    type === 'success' ? 'bg-emerald-100 border border-emerald-400 text-emerald-800' :
-                    type === 'error' ? 'bg-red-100 border border-red-400 text-red-800' :
-                    'bg-blue-100 border border-blue-400 text-blue-800'
-                }`;
-                
-                // Icon based on type
-                let icon;
-                if (type === 'success') icon = 'fa-check-circle';
-                else if (type === 'error') icon = 'fa-exclamation-circle';
-                else icon = 'fa-info-circle';
-                
-                // Build alert contents safely (avoid inserting untrusted HTML)
-                const wrapper = document.createElement('div');
-                wrapper.className = 'flex items-start';
-
-                const iconEl = document.createElement('i');
-                iconEl.className = `fas ${icon} mr-3 mt-0.5 flex-shrink-0`;
-                iconEl.setAttribute('aria-hidden', 'true');
-
-                const contentDiv = document.createElement('div');
-                contentDiv.className = 'flex-grow';
-
-                const titleP = document.createElement('p');
-                titleP.className = 'font-medium mb-1';
-                titleP.textContent = type === 'success' ? 'Success!' : type === 'error' ? 'Error' : 'Information';
-
-                const messageP = document.createElement('p');
-                messageP.className = 'text-sm whitespace-pre-line';
-                messageP.textContent = message;
-
-                contentDiv.appendChild(titleP);
-                contentDiv.appendChild(messageP);
-
-                const closeBtn = document.createElement('button');
-                closeBtn.className = 'ml-3 text-gray-500 hover:text-gray-700 flex-shrink-0';
-                closeBtn.addEventListener('click', () => {
-                    if (alertEl.parentElement) alertEl.remove();
-                });
-                const closeIcon = document.createElement('i');
-                closeIcon.className = 'fas fa-times';
-                closeBtn.appendChild(closeIcon);
-
-                wrapper.appendChild(iconEl);
-                wrapper.appendChild(contentDiv);
-                wrapper.appendChild(closeBtn);
-
-                alertEl.appendChild(wrapper);
-                
-                // Add CSS for custom-alert if not exists
-                if (!document.querySelector('#alert-styles')) {
-                    const style = document.createElement('style');
-                    style.id = 'alert-styles';
-                    style.textContent = `
-                        .custom-alert {
-                            animation: slideIn 0.3s ease-out;
-                        }
-                        
-                        @keyframes slideIn {
-                            from {
-                                transform: translateX(100%);
-                                opacity: 0;
-                            }
-                            to {
-                                transform: translateX(0);
-                                opacity: 1;
-                            }
-                        }
-                        
-                        @keyframes slideOut {
-                            from {
-                                transform: translateX(0);
-                                opacity: 1;
-                            }
-                            to {
-                                transform: translateX(100%);
-                                opacity: 0;
-                            }
-                        }
-                    `;
-                    document.head.appendChild(style);
-                }
-                
-                // Add to document
-                document.body.appendChild(alertEl);
-                
-                // Auto-remove after 5 seconds
-                setTimeout(() => {
-                    if (alertEl.parentElement) {
-                        alertEl.style.animation = 'slideOut 0.3s ease-out';
-                        setTimeout(() => {
-                            if (alertEl.parentElement) {
-                                alertEl.remove();
-                            }
-                        }, 300);
-                    }
-                }, 5000);
+            function showAlert(msg, type) {
+                const el = document.createElement('div');
+                el.className = `custom-alert fixed top-4 right-4 p-4 rounded-xl shadow-2xl z-50 max-w-md ${
+                    type==='success' ? 'bg-emerald-100 border-emerald-400 text-emerald-800' : 
+                    type==='error' ? 'bg-red-100 border-red-400 text-red-800' : 'bg-blue-100 border-blue-400 text-blue-800'}`;
+                el.innerHTML = `<div class="flex items-start"><i class="fas ${type==='success'?'fa-check-circle':type==='error'?'fa-exclamation-circle':'fa-info-circle'} mr-3 mt-0.5"></i><div><p class="font-medium mb-1">${type==='success'?'Success':type==='error'?'Error':'Info'}</p><p class="text-sm">${msg}</p></div><button class="ml-3 text-gray-500 hover:text-gray-700" onclick="this.closest('.custom-alert').remove()"><i class="fas fa-times"></i></button></div>`;
+                document.body.appendChild(el);
+                setTimeout(() => { if (el.parentElement) el.remove(); }, 5000);
             }
-            
-            // ==================== LOAD SETTINGS FROM BACKEND ====================
-            async function loadSettings() {
-                try {
-                    // Try to load contact settings from API
-                    const response = await fetch(`${API_BASE_URL}/api/settings?type=contact`);
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.status === 'success' && data.data) {
-                            const settings = data.data;
-                            
-                            // Update contact info
-                            if (settings.email) {
-                                const emailElements = document.querySelectorAll('.contact-info-content p');
-                                emailElements.forEach(el => {
-                                    if (el.textContent.includes('@nuesabiu.org')) {
-                                        el.textContent = settings.email;
-                                    }
-                                });
-                            }
-                            
-                            if (settings.phone) {
-                                const phoneElements = document.querySelectorAll('.contact-info-content p');
-                                phoneElements.forEach(el => {
-                                    if (el.textContent.includes('+234 800')) {
-                                        el.textContent = settings.phone;
-                                    }
-                                });
-                            }
-                            
-                            if (settings.address) {
-                                const addressElement = document.querySelector('.contact-info-content p');
-                                if (addressElement && addressElement.textContent.includes('Benson Idahosa University')) {
-                                    // Clear existing children
-                                    while (addressElement.firstChild) addressElement.removeChild(addressElement.firstChild);
-                                    const parts = settings.address.split('\n');
-                                    parts.forEach((line, idx) => {
-                                        addressElement.appendChild(document.createTextNode(line));
-                                        if (idx < parts.length - 1) {
-                                            addressElement.appendChild(document.createElement('br'));
-                                        }
-                                    });
-                                }
-                            }
-                        }
-                    }
-                } catch (error) {
-                    console.log('Settings not loaded, using default:', error.message);
-                }
-            }
-            
-            // ==================== ADD CONTACT ENDPOINT TO SERVER SUGGESTION ====================
-            function showServerSetupSuggestion() {
-                console.log(`
-                    ============================================
-                    ADD THIS TO YOUR SERVER.JS FOR CONTACT FORM:
-                    ============================================
-                    
-                    // Contact endpoint
-                    app.post('/contact', async (req, res) => {
-                        try {
-                            const { name, email, subject, message, department } = req.body;
-                            
-                            // Validate required fields
-                            if (!name || !email || !subject || !message) {
-                                return res.status(400).json({
-                                    status: 'error',
-                                    message: 'All required fields must be filled'
-                                });
-                            }
-                            
-                            // Validate email
-                            const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
-                            if (!emailRegex.test(email)) {
-                                return res.status(400).json({
-                                    status: 'error',
-                                    message: 'Invalid email format'
-                                });
-                            }
-                            
-                            // Save to database (create contacts table first)
-                            const result = await db.query('insert', 'contacts', {
-                                data: {
-                                    name,
-                                    email,
-                                    subject,
-                                    message,
-                                    department,
-                                    status: 'unread',
-                                    created_at: new Date(),
-                                    updated_at: new Date()
-                                }
-                            });
-                            
-                            // Here you would typically:
-                            // 1. Send email notification
-                            // 2. Log to database
-                            // 3. Return success
-                            
-                            res.json({
-                                status: 'success',
-                                message: 'Message received successfully',
-                                data: {
-                                    id: result.data[0]?.id,
-                                    name,
-                                    email,
-                                    subject
-                                }
-                            });
-                            
-                        } catch (error) {
-                            logger.error('Contact form error:', error);
-                            res.status(500).json({
-                                status: 'error',
-                                message: 'Failed to process contact form'
-                            });
-                        }
-                    });
-                    
-                    // Create contacts table SQL:
-                    /*
-                    CREATE TABLE IF NOT EXISTS contacts (
-                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                        name VARCHAR(255) NOT NULL,
-                        email VARCHAR(255) NOT NULL,
-                        subject VARCHAR(500) NOT NULL,
-                        message TEXT NOT NULL,
-                        department VARCHAR(100),
-                        status VARCHAR(50) DEFAULT 'unread',
-                        created_at TIMESTAMPTZ DEFAULT NOW(),
-                        updated_at TIMESTAMPTZ DEFAULT NOW()
-                    );
-                    */
-                `);
-            }
-            
-            // ==================== INITIALIZATION ====================
-            
-            async function initializeContactPage() {
-                console.log('Initializing contact page...');
-                
-                // Test API connection
-                try {
-                    const healthResponse = await fetch(`${API_BASE_URL}/api/health`);
-                    if (healthResponse.ok) {
-                        console.log('✓ Connected to API server');
-                        // Load settings if available
-                        await loadSettings();
-                    }
-                } catch (error) {
-                    console.log('⚠ API connection failed:', error.message);
-                }
-                
-                // Update footer year
-                const yearElement = document.querySelector('.footer-bottom p');
-                if (yearElement) {
-                    const currentYear = new Date().getFullYear();
-                    yearElement.textContent = yearElement.textContent.replace('2026', currentYear);
-                }
-                
-                // Show server setup suggestion in console for development
-                if (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
-                    showServerSetupSuggestion();
-                }
-                
-                console.log('Contact page initialized');
-            }
-            
-            // Start initialization
-            initializeContactPage();
+            // update footer year
+            const yearEl = document.querySelector('.footer-bottom p');
+            if (yearEl) yearEl.textContent = yearEl.textContent.replace('2026', new Date().getFullYear());
         });
     </script>
 </body>
