@@ -1998,6 +1998,67 @@
                 justify-content: center !important;
             }
         }
+
+        /* Enhanced Mobile Responsiveness */
+        @media screen and (max-width: 768px) {
+            .event-list-content {
+                flex-direction: column !important;
+            }
+            
+            .event-list-image {
+                width: 100% !important;
+                height: 120px !important;
+            }
+            
+            .event-list-meta {
+                flex-direction: column !important;
+                gap: 0.5rem !important;
+            }
+            
+            .event-list-meta-item {
+                width: 100% !important;
+            }
+            
+            .event-list-actions {
+                width: 100% !important;
+                margin-top: 0.5rem !important;
+            }
+            
+            .event-view-text {
+                justify-content: center !important;
+                width: 100% !important;
+                padding: 0.75rem !important;
+                background: var(--emerald-50) !important;
+                border-radius: 0.5rem !important;
+            }
+        }
+
+        @media screen and (max-width: 480px) {
+            .filter-tabs {
+                overflow-x: auto !important;
+                flex-wrap: nowrap !important;
+                padding-bottom: 0.5rem !important;
+            }
+            
+            .filter-btn {
+                flex-shrink: 0 !important;
+            }
+            
+            .modal-container {
+                margin: 0 !important;
+                max-height: 100vh !important;
+                border-radius: 0 !important;
+            }
+            
+            .info-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 0.5rem !important;
+            }
+            
+            .info-card {
+                padding: 0.75rem !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -2211,695 +2272,677 @@
     </footer>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // ==================== NAVBAR FUNCTIONALITY ====================
-            const navbar = document.getElementById('navbar');
-            const hamburger = document.getElementById('hamburger');
-            const mobileNav = document.getElementById('mobileNav');
-            const mobileLinks = document.querySelectorAll('.mobile-nav ul li a');
-            const desktopLinks = document.querySelectorAll('.nav-links li a');
+    document.addEventListener('DOMContentLoaded', function() {
+        // ==================== NAVBAR FUNCTIONALITY ====================
+        const navbar = document.getElementById('navbar');
+        const hamburger = document.getElementById('hamburger');
+        const mobileNav = document.getElementById('mobileNav');
+        const mobileLinks = document.querySelectorAll('.mobile-nav ul li a');
+        const desktopLinks = document.querySelectorAll('.nav-links li a');
 
-            // Get current path for active link highlighting
-            let currentPath = window.location.pathname;
-            if (currentPath.endsWith('.html')) {
-                currentPath = currentPath.replace('.html', '');
-            }
-            if (currentPath === '/' || currentPath === '/index') {
-                currentPath = '/';
-            }
+        // Get current path for active link highlighting
+        let currentPath = window.location.pathname;
+        if (currentPath.endsWith('.html')) {
+            currentPath = currentPath.replace('.html', '');
+        }
+        if (currentPath === '/' || currentPath === '/index') {
+            currentPath = '/';
+        }
 
-            // Update active links
-            function updateActiveLinks() {
-                desktopLinks.forEach(link => {
-                    const href = link.getAttribute('href').replace('.html', '');
-                    if (href === currentPath || (currentPath === '/' && href === 'index')) {
-                        link.classList.add('active');
-                    } else {
-                        link.classList.remove('active');
-                    }
-                });
-
-                mobileLinks.forEach(link => {
-                    const href = link.getAttribute('href').replace('.html', '');
-                    if (href === currentPath || (currentPath === '/' && href === 'index')) {
-                        link.classList.add('active');
-                    } else {
-                        link.classList.remove('active');
-                    }
-                });
-            }
-
-            // Navbar scroll effect
-            function handleScroll() {
-                if (window.scrollY > 20) {
-                    navbar.classList.add('scrolled');
+        // Update active links
+        function updateActiveLinks() {
+            desktopLinks.forEach(link => {
+                const href = link.getAttribute('href').replace('.html', '');
+                if (href === currentPath || (currentPath === '/' && href === 'index')) {
+                    link.classList.add('active');
                 } else {
-                    navbar.classList.remove('scrolled');
+                    link.classList.remove('active');
                 }
-            }
-            window.addEventListener('scroll', handleScroll);
-            handleScroll();
-
-            // Toggle mobile menu
-            function toggleMobileMenu(open) {
-                if (open) {
-                    hamburger.classList.add('active');
-                    mobileNav.classList.add('active');
-                    document.body.classList.add('menu-open');
-                } else {
-                    hamburger.classList.remove('active');
-                    mobileNav.classList.remove('active');
-                    document.body.classList.remove('menu-open');
-                }
-            }
-
-            hamburger.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const isOpen = hamburger.classList.contains('active');
-                toggleMobileMenu(!isOpen);
             });
 
-            // Close mobile menu when clicking a link
             mobileLinks.forEach(link => {
-                link.addEventListener('click', () => {
-                    toggleMobileMenu(false);
-                });
-            });
-
-            // Close mobile menu when clicking outside
-            document.addEventListener('click', (e) => {
-                if (mobileNav.classList.contains('active') && 
-                    !mobileNav.contains(e.target) && 
-                    !hamburger.contains(e.target)) {
-                    toggleMobileMenu(false);
-                }
-            });
-
-            // Close on escape key
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && mobileNav.classList.contains('active')) {
-                    toggleMobileMenu(false);
-                }
-            });
-
-            updateActiveLinks();
-
-            // ==================== EVENTS PAGE FUNCTIONALITY ====================
-            const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
-            
-            // State
-            let activeFilter = 'All Events';
-            let viewMode = 'grid';
-            let searchQuery = '';
-            let showSearch = false;
-            let allEvents = [];
-
-            // DOM Elements
-            const filterTabs = document.getElementById('filterTabs');
-            const eventsContainer = document.getElementById('eventsContainer');
-            const noResults = document.getElementById('noResults');
-            const eventsCount = document.getElementById('eventsCount');
-            const toggleSearchBtn = document.getElementById('toggleSearchBtn');
-            const searchContainer = document.getElementById('searchContainer');
-            const searchInput = document.getElementById('searchInput');
-            const gridViewBtn = document.getElementById('gridViewBtn');
-            const listViewBtn = document.getElementById('listViewBtn');
-            const loadingSpinner = document.getElementById('loadingSpinner');
-
-            // Helper Functions
-            function formatDate(dateStr) {
-                if (!dateStr) return 'TBA';
-                try {
-                    const date = new Date(dateStr);
-                    if (isNaN(date.getTime())) return dateStr;
-                    return date.toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                    });
-                } catch {
-                    return dateStr;
-                }
-            }
-
-            function formatTime(timeStr) {
-                if (!timeStr) return 'TBA';
-                try {
-                    // Handle different time formats
-                    if (timeStr.includes(':')) {
-                        const [hours, minutes] = timeStr.split(':');
-                        const hour = parseInt(hours);
-                        const ampm = hour >= 12 ? 'PM' : 'AM';
-                        const displayHour = hour % 12 || 12;
-                        return `${displayHour}:${minutes.padStart(2, '0')} ${ampm}`;
-                    }
-                    return timeStr;
-                } catch {
-                    return timeStr;
-                }
-            }
-
-            function getStatusColor(status) {
-                if (!status) return 'status-Upcoming';
-                const statusLower = status.toLowerCase();
-                if (statusLower.includes('upcoming')) return 'status-Upcoming';
-                if (statusLower.includes('ongoing')) return 'status-Ongoing';
-                if (statusLower.includes('postponed')) return 'status-Postponed';
-                if (statusLower.includes('past')) return 'status-Past';
-                return 'status-Upcoming';
-            }
-
-            function getCategoryClass(category) {
-                if (!category) return '';
-                const cat = category.toLowerCase();
-                if (cat.includes('workshop')) return 'category-workshops';
-                if (cat.includes('competition')) return 'category-competitions';
-                if (cat.includes('social')) return 'category-socials';
-                if (cat.includes('career')) return 'category-career';
-                return '';
-            }
-
-            function getFilterCount(filter) {
-                if (filter === 'All Events') return allEvents.length;
-                return allEvents.filter(e => {
-                    if (!e.status) return false;
-                    return e.status.toLowerCase() === filter.toLowerCase();
-                }).length;
-            }
-
-            function filterEvents() {
-                return allEvents.filter(event => {
-                    const matchesFilter = activeFilter === 'All Events' || 
-                        (event.status && event.status.toLowerCase() === activeFilter.toLowerCase());
-                    
-                    const matchesSearch = searchQuery === '' || 
-                        (event.title && event.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                        (event.description && event.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                        (event.category && event.category.toLowerCase().includes(searchQuery.toLowerCase()));
-                    
-                    return matchesFilter && matchesSearch;
-                });
-            }
-
-            // Render Functions
-            function renderFilterTabs() {
-                const filters = ['All Events', 'Upcoming', 'Ongoing', 'Postponed', 'Past'];
-                let html = '';
-                
-                filters.forEach(filter => {
-                    const count = getFilterCount(filter);
-                    const isActive = activeFilter === filter;
-                    html += `
-                        <button class="filter-btn ${isActive ? 'active' : ''}" data-filter="${filter}">
-                            <span class="filter-count">${count}</span>
-                            ${filter}
-                        </button>
-                    `;
-                });
-                
-                filterTabs.innerHTML = html;
-
-                // Add click handlers
-                document.querySelectorAll('.filter-btn').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        activeFilter = btn.dataset.filter;
-                        renderFilterTabs();
-                        renderEvents();
-                    });
-                });
-            }
-
-            function renderEvents() {
-                const filteredEvents = filterEvents();
-                eventsCount.textContent = `${filteredEvents.length} event${filteredEvents.length !== 1 ? 's' : ''}`;
-
-                if (filteredEvents.length === 0) {
-                    eventsContainer.innerHTML = '';
-                    noResults.classList.remove('hidden');
-                    return;
-                }
-
-                noResults.classList.add('hidden');
-
-                if (viewMode === 'grid') {
-                    renderGridView(filteredEvents);
+                const href = link.getAttribute('href').replace('.html', '');
+                if (href === currentPath || (currentPath === '/' && href === 'index')) {
+                    link.classList.add('active');
                 } else {
-                    renderListView(filteredEvents);
+                    link.classList.remove('active');
                 }
-            }
+            });
+        }
 
-            function renderGridView(events) {
-                let html = '<div class="events-grid">';
+        // Navbar scroll effect
+        function handleScroll() {
+            if (window.scrollY > 20) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
+        }
+        window.addEventListener('scroll', handleScroll);
+        handleScroll();
+
+        // Toggle mobile menu
+        function toggleMobileMenu(open) {
+            if (open) {
+                hamburger.classList.add('active');
+                mobileNav.classList.add('active');
+                document.body.classList.add('menu-open');
+            } else {
+                hamburger.classList.remove('active');
+                mobileNav.classList.remove('active');
+                document.body.classList.remove('menu-open');
+            }
+        }
+
+        hamburger.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const isOpen = hamburger.classList.contains('active');
+            toggleMobileMenu(!isOpen);
+        });
+
+        // Close mobile menu when clicking a link
+        mobileLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                toggleMobileMenu(false);
+            });
+        });
+
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (mobileNav.classList.contains('active') && 
+                !mobileNav.contains(e.target) && 
+                !hamburger.contains(e.target)) {
+                toggleMobileMenu(false);
+            }
+        });
+
+        // Close on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && mobileNav.classList.contains('active')) {
+                toggleMobileMenu(false);
+            }
+        });
+
+        updateActiveLinks();
+
+        // ==================== EVENTS PAGE FUNCTIONALITY ====================
+        const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
+
+        // State
+        let activeFilter = 'All Events';
+        let viewMode = 'grid';
+        let searchQuery = '';
+        let showSearch = false;
+        let allEvents = [];
+
+        // DOM Elements
+        const filterTabs = document.getElementById('filterTabs');
+        const eventsContainer = document.getElementById('eventsContainer');
+        const noResults = document.getElementById('noResults');
+        const eventsCount = document.getElementById('eventsCount');
+        const toggleSearchBtn = document.getElementById('toggleSearchBtn');
+        const searchContainer = document.getElementById('searchContainer');
+        const searchInput = document.getElementById('searchInput');
+        const gridViewBtn = document.getElementById('gridViewBtn');
+        const listViewBtn = document.getElementById('listViewBtn');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+
+        // Helper function to escape quotes for HTML attributes
+        function escapeQuotes(str) {
+            if (!str) return '';
+            return String(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        // Helper Functions
+        function formatDate(dateStr) {
+            if (!dateStr) return 'TBA';
+            try {
+                const date = new Date(dateStr);
+                if (isNaN(date.getTime())) return dateStr;
+                return date.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+            } catch {
+                return dateStr;
+            }
+        }
+
+        function formatTime(timeStr) {
+            if (!timeStr) return 'TBA';
+            try {
+                // Handle different time formats
+                if (timeStr.includes(':')) {
+                    const [hours, minutes] = timeStr.split(':');
+                    const hour = parseInt(hours);
+                    const ampm = hour >= 12 ? 'PM' : 'AM';
+                    const displayHour = hour % 12 || 12;
+                    return `${displayHour}:${minutes.padStart(2, '0')} ${ampm}`;
+                }
+                return timeStr;
+            } catch {
+                return timeStr;
+            }
+        }
+
+        function getStatusColor(status) {
+            if (!status) return 'status-Upcoming';
+            const statusLower = status.toLowerCase();
+            if (statusLower.includes('upcoming')) return 'status-Upcoming';
+            if (statusLower.includes('ongoing')) return 'status-Ongoing';
+            if (statusLower.includes('postponed')) return 'status-Postponed';
+            if (statusLower.includes('past')) return 'status-Past';
+            return 'status-Upcoming';
+        }
+
+        function getFilterCount(filter) {
+            if (filter === 'All Events') return allEvents.length;
+            return allEvents.filter(e => {
+                if (!e.status) return false;
+                return e.status.toLowerCase() === filter.toLowerCase();
+            }).length;
+        }
+
+        function filterEvents() {
+            return allEvents.filter(event => {
+                const matchesFilter = activeFilter === 'All Events' || 
+                    (event.status && event.status.toLowerCase() === activeFilter.toLowerCase());
                 
-                events.forEach((event, index) => {
-                    const formattedDate = formatDate(event.date || event.start_date);
-                    const formattedTime = formatTime(event.time || event.start_time);
-                    const category = event.category || 'Event';
-                    const status = event.status || 'Upcoming';
-                    
-                    html += `
-                        <a href="#" class="event-card fade-in" data-event-id="${event.id}" style="animation-delay: ${index * 0.05}s">
-                            <div class="event-card-image">
-                                <i class="fas fa-calendar"></i>
-                                <div class="event-badges">
-                                    <span class="event-category">${category}</span>
-                                    <span class="event-status ${getStatusColor(status)}">${status}</span>
-                                </div>
-                            </div>
-                            <div class="event-card-body">
-                                <h3 class="event-title">${event.title || 'Untitled Event'}</h3>
-                                <div class="event-details">
-                                    <div class="event-detail-item">
-                                        <i class="fas fa-calendar-alt"></i>
-                                        <span>${formattedDate}</span>
-                                    </div>
-                                    <div class="event-detail-item">
-                                        <i class="fas fa-clock"></i>
-                                        <span>${formattedTime}</span>
-                                    </div>
-                                    <div class="event-detail-item">
-                                        <i class="fas fa-map-marker-alt"></i>
-                                        <span class="line-clamp-1">${event.location || 'TBA'}</span>
-                                    </div>
-                                    ${event.organizer ? `
-                                    <div class="event-detail-item">
-                                        <i class="fas fa-user-tie"></i>
-                                        <span class="line-clamp-1">${event.organizer}</span>
-                                    </div>
-                                    ` : ''}
-                                </div>
-                                <div class="event-footer">
-                                    <span class="event-attendees">
-                                        <i class="fas fa-users"></i> ${event.expected_attendees || event.expectedAttendees || 'TBA'}
-                                    </span>
-                                    <span class="event-view-link">
-                                        View <i class="fas fa-chevron-right"></i>
-                                    </span>
-                                </div>
-                            </div>
-                        </a>
-                    `;
-                });
-
-                html += '</div>';
-                eventsContainer.innerHTML = html;
-
-                // Add click handlers for event cards
-                document.querySelectorAll('.event-card').forEach(card => {
-                    card.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        const eventId = card.dataset.eventId;
-                        const event = events.find(e => e.id === eventId);
-                        if (event) {
-                            openEventModal(event);
-                        }
-                    });
-                });
-            }
-
-            function renderListView(events) {
-                let html = '<div class="events-list">';
+                const matchesSearch = searchQuery === '' || 
+                    (event.title && event.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                    (event.description && event.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                    (event.category && event.category.toLowerCase().includes(searchQuery.toLowerCase()));
                 
-                events.forEach((event, index) => {
-                    const formattedDate = formatDate(event.date || event.start_date);
-                    const formattedTime = formatTime(event.time || event.start_time);
-                    const category = event.category || 'Event';
-                    const status = event.status || 'Upcoming';
-                    
-                    html += `
-                        <a href="#" class="event-list-item fade-in" data-event-id="${event.id}" style="animation-delay: ${index * 0.05}s">
-                            <div class="event-list-content">
-                                <div class="event-list-image">
-                                    <i class="fas fa-calendar"></i>
-                                </div>
-                                <div class="event-list-details">
-                                    <div class="event-list-header">
-                                        <span class="event-category">${category}</span>
-                                        <span class="event-status ${getStatusColor(status)}">${status}</span>
-                                    </div>
-                                    <h3 class="event-list-title">${event.title || 'Untitled Event'}</h3>
-                                    <p class="event-list-description">${event.description || event.short_description || 'No description available.'}</p>
-                                    <div class="event-list-meta">
-                                        <span class="event-list-meta-item">
-                                            <i class="fas fa-calendar-alt"></i> ${formattedDate}
-                                        </span>
-                                        <span class="event-list-meta-item">
-                                            <i class="fas fa-clock"></i> ${formattedTime}
-                                        </span>
-                                        <span class="event-list-meta-item">
-                                            <i class="fas fa-map-marker-alt"></i> ${event.location || 'TBA'}
-                                        </span>
-                                        <span class="event-list-meta-item">
-                                            <i class="fas fa-users"></i> ${event.expected_attendees || event.expectedAttendees || 'TBA'}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div class="event-list-actions">
-                                    <span class="event-view-text">
-                                        <i class="fas fa-eye"></i> View
-                                    </span>
-                                </div>
-                            </div>
-                        </a>
-                    `;
-                });
+                return matchesFilter && matchesSearch;
+            });
+        }
 
-                html += '</div>';
-                eventsContainer.innerHTML = html;
+        // Render Functions
+        function renderFilterTabs() {
+            const filters = ['All Events', 'Upcoming', 'Ongoing', 'Postponed', 'Past'];
+            let html = '';
+            
+            filters.forEach(filter => {
+                const count = getFilterCount(filter);
+                const isActive = activeFilter === filter;
+                html += `
+                    <button class="filter-btn ${isActive ? 'active' : ''}" data-filter="${filter}">
+                        <span class="filter-count">${count}</span>
+                        ${filter}
+                    </button>
+                `;
+            });
+            
+            filterTabs.innerHTML = html;
 
-                // Add click handlers for event list items
-                document.querySelectorAll('.event-list-item').forEach(item => {
-                    item.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        const eventId = item.dataset.eventId;
-                        const event = events.find(e => e.id === eventId);
-                        if (event) {
-                            openEventModal(event);
-                        }
-                    });
+            // Add click handlers
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    activeFilter = btn.dataset.filter;
+                    renderFilterTabs();
+                    renderEvents();
                 });
+            });
+        }
+
+        function renderEvents() {
+            const filteredEvents = filterEvents();
+            eventsCount.textContent = `${filteredEvents.length} event${filteredEvents.length !== 1 ? 's' : ''}`;
+
+            if (filteredEvents.length === 0) {
+                eventsContainer.innerHTML = '';
+                noResults.classList.remove('hidden');
+                return;
             }
 
-            // Modal Functions
-            function openEventModal(event) {
-                if (!event) return;
+            noResults.classList.add('hidden');
 
+            if (viewMode === 'grid') {
+                renderGridView(filteredEvents);
+            } else {
+                renderListView(filteredEvents);
+            }
+        }
+
+        function renderGridView(events) {
+            let html = '<div class="events-grid">';
+            
+            events.forEach((event, index) => {
                 const formattedDate = formatDate(event.date || event.start_date);
                 const formattedTime = formatTime(event.time || event.start_time);
                 const category = event.category || 'Event';
                 const status = event.status || 'Upcoming';
-                const fullDescription = event.full_description || event.description || 'No detailed description available.';
                 
-                // Create agenda items if available
-                let agendaHTML = '';
-                if (event.agenda && Array.isArray(event.agenda) && event.agenda.length > 0) {
-                    agendaHTML = event.agenda.map((item, index) => `
-                        <div class="agenda-item">
-                            <div class="agenda-dot"></div>
-                            <p>${item}</p>
+                html += `
+                    <a href="#" class="event-card fade-in" data-event-id="${event.id}" style="animation-delay: ${index * 0.05}s">
+                        <div class="event-card-image">
+                            <i class="fas fa-calendar"></i>
+                            <div class="event-badges">
+                                <span class="event-category">${category}</span>
+                                <span class="event-status ${getStatusColor(status)}">${status}</span>
+                            </div>
                         </div>
-                    `).join('');
-                } else {
-                    // Default agenda if none provided
-                    agendaHTML = `
-                        <div class="agenda-item">
-                            <div class="agenda-dot"></div>
-                            <p>Main Event Session</p>
-                        </div>
-                        <div class="agenda-item">
-                            <div class="agenda-dot"></div>
-                            <p>Q&A Session</p>
-                        </div>
-                        <div class="agenda-item">
-                            <div class="agenda-dot"></div>
-                            <p>Networking</p>
-                        </div>
-                    `;
-                }
-
-                // In renderGridView function, update the modal HTML:
-                const modalHTML = `
-                    <div class="modal-overlay" id="eventModal">
-                        <div class="modal-container">
-                            <div class="modal-header">
-                                <div class="modal-header-left">
+                        <div class="event-card-body">
+                            <h3 class="event-title">${event.title || 'Untitled Event'}</h3>
+                            <div class="event-details">
+                                <div class="event-detail-item">
                                     <i class="fas fa-calendar-alt"></i>
-                                    <div>
-                                        <h2>${event.title || 'Event Details'}</h2>
-                                        <p>Organized by ${event.organizer || 'NUESA BIU'}</p>
-                                    </div>
+                                    <span>${formattedDate}</span>
                                 </div>
-                                <button class="modal-close" onclick="closeEventModal()">
-                                    <i class="fas fa-times"></i>
-                                </button>
+                                <div class="event-detail-item">
+                                    <i class="fas fa-clock"></i>
+                                    <span>${formattedTime}</span>
+                                </div>
+                                <div class="event-detail-item">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    <span class="line-clamp-1">${event.location || 'TBA'}</span>
+                                </div>
+                                ${event.organizer ? `
+                                <div class="event-detail-item">
+                                    <i class="fas fa-user-tie"></i>
+                                    <span class="line-clamp-1">${event.organizer}</span>
+                                </div>
+                                ` : ''}
                             </div>
-                            
-                            <div class="modal-body">
-                                <!-- Event Banner -->
-                                <div class="modal-banner">
-                                    <i class="fas fa-calendar fa-4x"></i>
-                                </div>
+                            <div class="event-footer">
+                                <span class="event-attendees">
+                                    <i class="fas fa-users"></i> ${event.expected_attendees || event.expectedAttendees || 'TBA'}
+                                </span>
+                                <span class="event-view-link">
+                                    View <i class="fas fa-chevron-right"></i>
+                                </span>
+                            </div>
+                        </div>
+                    </a>
+                `;
+            });
 
-                                <!-- Badges -->
-                                <div class="modal-badges">
-                                    <span class="badge badge-category">${category}</span>
-                                    <span class="badge badge-status ${getStatusColor(status)}">${status}</span>
-                                </div>
+            html += '</div>';
+            eventsContainer.innerHTML = html;
 
-                                <!-- Info Cards -->
-                                <div class="info-grid">
-                                    <div class="info-card">
-                                        <i class="fas fa-calendar-alt text-amber-500"></i>
-                                        <div>
-                                            <p class="info-label">Date</p>
-                                            <p class="info-value">${formattedDate}</p>
-                                        </div>
-                                    </div>
-                                    <div class="info-card">
-                                        <i class="fas fa-clock text-emerald-500"></i>
-                                        <div>
-                                            <p class="info-label">Time</p>
-                                            <p class="info-value">${formattedTime}</p>
-                                        </div>
-                                    </div>
-                                    <div class="info-card">
-                                        <i class="fas fa-users text-blue-500"></i>
-                                        <div>
-                                            <p class="info-label">Expected</p>
-                                            <p class="info-value">${event.expected_attendees || event.expectedAttendees || 'TBA'} People</p>
-                                        </div>
-                                    </div>
-                                    <div class="info-card">
-                                        <i class="fas fa-map-marker-alt text-pink-500"></i>
-                                        <div>
-                                            <p class="info-label">Location</p>
-                                            <p class="info-value">${event.location || 'TBA'}</p>
-                                        </div>
-                                    </div>
-                                </div>
+            // Add click handlers for event cards
+            document.querySelectorAll('.event-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const eventId = card.dataset.eventId;
+                    const event = events.find(e => e.id === eventId);
+                    if (event) {
+                        openEventModal(event);
+                    }
+                });
+            });
+        }
 
-                                <!-- Description -->
-                                <div class="modal-section">
-                                    <h3 class="section-title">About This Event</h3>
-                                    <p class="section-text">${fullDescription}</p>
+        function renderListView(events) {
+            let html = '<div class="events-list">';
+            
+            events.forEach((event, index) => {
+                const formattedDate = formatDate(event.date || event.start_date);
+                const formattedTime = formatTime(event.time || event.start_time);
+                const category = event.category || 'Event';
+                const status = event.status || 'Upcoming';
+                const description = event.description || event.short_description || 'No description available.';
+                
+                html += `
+                    <a href="#" class="event-list-item fade-in" data-event-id="${event.id}" style="animation-delay: ${index * 0.05}s">
+                        <div class="event-list-content">
+                            <div class="event-list-image">
+                                <i class="fas fa-calendar"></i>
+                            </div>
+                            <div class="event-list-details">
+                                <div class="event-list-header">
+                                    <span class="event-category">${category}</span>
+                                    <span class="event-status ${getStatusColor(status)}">${status}</span>
                                 </div>
+                                <h3 class="event-list-title">${event.title || 'Untitled Event'}</h3>
+                                <p class="event-list-description line-clamp-2">${description}</p>
+                                <div class="event-list-meta">
+                                    <span class="event-list-meta-item">
+                                        <i class="fas fa-calendar-alt"></i> ${formattedDate}
+                                    </span>
+                                    <span class="event-list-meta-item">
+                                        <i class="fas fa-clock"></i> ${formattedTime}
+                                    </span>
+                                    <span class="event-list-meta-item">
+                                        <i class="fas fa-map-marker-alt"></i> ${event.location || 'TBA'}
+                                    </span>
+                                    <span class="event-list-meta-item">
+                                        <i class="fas fa-users"></i> ${event.expected_attendees || event.expectedAttendees || 'TBA'}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="event-list-actions">
+                                <span class="event-view-text">
+                                    View Details <i class="fas fa-chevron-right"></i>
+                                </span>
+                            </div>
+                        </div>
+                    </a>
+                `;
+            });
 
-                                <!-- Agenda -->
-                                <div class="modal-section">
-                                    <h3 class="section-title">Event Agenda</h3>
-                                    <div class="agenda-list">
-                                        ${agendaHTML}
+            html += '</div>';
+            eventsContainer.innerHTML = html;
+
+            // Add click handlers for event list items
+            document.querySelectorAll('.event-list-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const eventId = item.dataset.eventId;
+                    const event = events.find(e => e.id === eventId);
+                    if (event) {
+                        openEventModal(event);
+                    }
+                });
+            });
+        }
+
+        // Modal Functions
+        function openEventModal(event) {
+            if (!event) return;
+
+            const formattedDate = formatDate(event.date || event.start_date);
+            const formattedTime = formatTime(event.time || event.start_time);
+            const category = event.category || 'Event';
+            const status = event.status || 'Upcoming';
+            const fullDescription = event.full_description || event.description || 'No detailed description available.';
+            const escapedTitle = escapeQuotes(event.title || 'Event');
+            
+            // Create agenda items if available
+            let agendaHTML = '';
+            if (event.agenda && Array.isArray(event.agenda) && event.agenda.length > 0) {
+                agendaHTML = event.agenda.map(item => `
+                    <div class="agenda-item">
+                        <div class="agenda-dot"></div>
+                        <p>${escapeQuotes(item)}</p>
+                    </div>
+                `).join('');
+            } else {
+                // Default agenda if none provided
+                agendaHTML = `
+                    <div class="agenda-item">
+                        <div class="agenda-dot"></div>
+                        <p>Main Event Session</p>
+                    </div>
+                    <div class="agenda-item">
+                        <div class="agenda-dot"></div>
+                        <p>Q&A Session</p>
+                    </div>
+                    <div class="agenda-item">
+                        <div class="agenda-dot"></div>
+                        <p>Networking</p>
+                    </div>
+                `;
+            }
+
+            const modalHTML = `
+                <div class="modal-overlay" id="eventModal" onclick="if(event.target === this) window.closeEventModal()">
+                    <div class="modal-container">
+                        <div class="modal-header">
+                            <div class="modal-header-left">
+                                <i class="fas fa-calendar-alt"></i>
+                                <div>
+                                    <h2>${escapeQuotes(event.title) || 'Event Details'}</h2>
+                                    <p>Organized by ${escapeQuotes(event.organizer) || 'NUESA BIU'}</p>
+                                </div>
+                            </div>
+                            <button class="modal-close" onclick="window.closeEventModal()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="modal-body">
+                            <!-- Event Banner -->
+                            <div class="modal-banner">
+                                <i class="fas fa-calendar fa-4x"></i>
+                            </div>
+
+                            <!-- Badges -->
+                            <div class="modal-badges">
+                                <span class="badge badge-category">${escapeQuotes(category)}</span>
+                                <span class="badge badge-status ${getStatusColor(status)}">${escapeQuotes(status)}</span>
+                            </div>
+
+                            <!-- Info Cards -->
+                            <div class="info-grid">
+                                <div class="info-card">
+                                    <i class="fas fa-calendar-alt text-amber-500"></i>
+                                    <div>
+                                        <p class="info-label">Date</p>
+                                        <p class="info-value">${escapeQuotes(formattedDate)}</p>
                                     </div>
                                 </div>
-
-                                <!-- UPDATED CTA SECTION WITH WHATSAPP -->
-                                <div class="modal-cta">
-                                    <h3>🎉 Ready to join?</h3>
-                                    <p>Click the WhatsApp button below to register instantly. You'll be able to send us your details directly.</p>
-                                    <button class="cta-btn" onclick="handleRegistration('${event.id}', '${escapeQuotes(event.title || 'Event')}')">
-                                        <i class="fab fa-whatsapp"></i>
-                                        Register via WhatsApp 
-                                        <i class="fas fa-external-link-alt"></i>
-                                    </button>
-                                    <p style="font-size: 0.875rem; margin-top: 1rem; color: var(--emerald-100);">
-                                        <i class="fas fa-clock"></i> Quick & easy registration
-                                    </p>
+                                <div class="info-card">
+                                    <i class="fas fa-clock text-emerald-500"></i>
+                                    <div>
+                                        <p class="info-label">Time</p>
+                                        <p class="info-value">${escapeQuotes(formattedTime)}</p>
+                                    </div>
                                 </div>
+                                <div class="info-card">
+                                    <i class="fas fa-users text-blue-500"></i>
+                                    <div>
+                                        <p class="info-label">Expected</p>
+                                        <p class="info-value">${escapeQuotes(event.expected_attendees || event.expectedAttendees || 'TBA')} People</p>
+                                    </div>
+                                </div>
+                                <div class="info-card">
+                                    <i class="fas fa-map-marker-alt text-pink-500"></i>
+                                    <div>
+                                        <p class="info-label">Location</p>
+                                        <p class="info-value">${escapeQuotes(event.location || 'TBA')}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Description -->
+                            <div class="modal-section">
+                                <h3 class="section-title">About This Event</h3>
+                                <p class="section-text">${escapeQuotes(fullDescription)}</p>
+                            </div>
+
+                            <!-- Agenda -->
+                            <div class="modal-section">
+                                <h3 class="section-title">Event Agenda</h3>
+                                <div class="agenda-list">
+                                    ${agendaHTML}
+                                </div>
+                            </div>
+
+                            <!-- CTA SECTION WITH WHATSAPP -->
+                            <div class="modal-cta">
+                                <h3>🎉 Ready to join?</h3>
+                                <p>Click the WhatsApp button below to register instantly. You'll be able to send us your details directly.</p>
+                                <button class="cta-btn" onclick="window.handleRegistration('${event.id}', '${escapedTitle}')">
+                                    <i class="fab fa-whatsapp"></i>
+                                    Register via WhatsApp 
+                                    <i class="fas fa-external-link-alt"></i>
+                                </button>
+                                <p style="font-size: 0.875rem; margin-top: 1rem; color: var(--emerald-100);">
+                                    <i class="fas fa-clock"></i> Quick & easy registration
+                                </p>
                             </div>
                         </div>
                     </div>
-                `;
+                </div>
+            `;
 
-                window.handleRegistration = function(eventId, eventTitle) {
-                    // Find the event
-                    const event = allEvents.find(e => e.id === eventId);
-                    
-                    if (!event) {
-                        alert('Event details not found. Please contact NUESA BIU directly.');
-                        return;
-                    }
+            // Remove any existing modal
+            const existingModal = document.getElementById('eventModal');
+            if (existingModal) existingModal.remove();
 
-                    // WhatsApp number
-                    const whatsappNumber = '2349161461858'; // Format: country code without '+'
-                    
-                    // Format date and time
-                    const eventDate = formatDate(event.date || event.start_date);
-                    const eventTime = formatTime(event.time || event.start_time);
-                    
-                    // Create the WhatsApp message
-                    let message = `Hello NUESA BIU! 👋%0a%0a`;
-                    message += `I'm interested in attending: *${eventTitle}*%0a%0a`;
-                    message += `📅 *Date:* ${eventDate}%0a`;
-                    message += `⏰ *Time:* ${eventTime}%0a`;
-                    message += `📍 *Location:* ${event.location || 'Benson Idahosa University'}%0a%0a`;
-                    message += `Please register me for this event. I look forward to attending!%0a%0a`;
-                    message += `Here are my details (I'll provide them now):%0a`;
-                    message += `*Name:* [Your Full Name]%0a`;
-                    message += `*Department:* [Your Department]%0a`;
-                    message += `*Matric Number:* [Your Matric Number]%0a`;
-                    message += `*Phone:* [Your Phone Number]%0a%0a`;
-                    message += `Thank you! 🙏`;
+            // Add modal to body
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            document.body.style.overflow = 'hidden';
+        }
 
-                    // Create and open WhatsApp URL
-                    const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
-                    
-                    // Close modal
-                    closeEventModal();
-                    
-                    // Open WhatsApp in new tab
-                    window.open(whatsappUrl, '_blank');
-                    
-                    // Show success message
-                    setTimeout(() => {
-                        alert('✅ WhatsApp opened! Please send the message to complete your registration.');
-                    }, 1000);
-                };
+        // Global functions for modal buttons
+        window.closeEventModal = function() {
+            const modal = document.getElementById('eventModal');
+            if (modal) {
+                modal.remove();
+                document.body.style.overflow = 'auto';
+            }
+        };
 
-                // Remove any existing modal
-                const existingModal = document.getElementById('eventModal');
-                if (existingModal) existingModal.remove();
-
-                // Add modal to body
-                document.body.insertAdjacentHTML('beforeend', modalHTML);
-                document.body.style.overflow = 'hidden';
+        window.handleRegistration = function(eventId, eventTitle) {
+            // Find the event
+            const event = allEvents.find(e => e.id === eventId);
+            
+            if (!event) {
+                alert('Event details not found. Please contact NUESA BIU directly.');
+                return;
             }
 
-            window.closeEventModal = function() {
-                const modal = document.getElementById('eventModal');
-                if (modal) {
-                    modal.remove();
-                    document.body.style.overflow = 'auto';
-                }
-            };
+            // WhatsApp number
+            const whatsappNumber = '2349161461858'; // Format: country code without '+'
+            
+            // Format date and time
+            const eventDate = formatDate(event.date || event.start_date);
+            const eventTime = formatTime(event.time || event.start_time);
+            
+            // Create the WhatsApp message
+            let message = `Hello NUESA BIU! 👋%0a%0a`;
+            message += `I'm interested in attending: *${eventTitle}*%0a%0a`;
+            message += `📅 *Date:* ${eventDate}%0a`;
+            message += `⏰ *Time:* ${eventTime}%0a`;
+            message += `📍 *Location:* ${event.location || 'Benson Idahosa University'}%0a%0a`;
+            message += `Please register me for this event. I look forward to attending!%0a%0a`;
+            message += `Here are my details:%0a`;
+            message += `*Name:* [Your Full Name]%0a`;
+            message += `*Department:* [Your Department]%0a`;
+            message += `*Matric Number:* [Your Matric Number]%0a`;
+            message += `*Phone:* [Your Phone Number]%0a%0a`;
+            message += `Thank you! 🙏`;
 
-            function formatTime(timeStr) {
-                if (!timeStr) return 'TBA';
-                try {
-                    if (timeStr.includes(':')) {
-                        const [hours, minutes] = timeStr.split(':');
-                        const hour = parseInt(hours);
-                        const ampm = hour >= 12 ? 'PM' : 'AM';
-                        const displayHour = hour % 12 || 12;
-                        return `${displayHour}:${minutes.padStart(2, '0')} ${ampm}`;
-                    }
-                    return timeStr;
-                } catch {
-                    return timeStr;
-                }
-            }
+            // Create and open WhatsApp URL
+            const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
+            
+            // Close modal
+            window.closeEventModal();
+            
+            // Open WhatsApp in new tab
+            window.open(whatsappUrl, '_blank');
+            
+            // Show success message
+            setTimeout(() => {
+                alert('✅ WhatsApp opened! Please send the message to complete your registration.');
+            }, 1000);
+        };
 
-            // Load Events from API
-            async function loadEventsFromAPI() {
-                try {
-                    loadingSpinner.classList.remove('hidden');
-                    eventsContainer.innerHTML = '';
-                    
-                    const response = await fetch(`${API_BASE_URL}/api/events`, {
-                        method: 'GET',
-                        headers: { 
-                            'Accept': 'application/json', 
-                            'Content-Type': 'application/json' 
-                        },
-                        mode: 'cors'
-                    });
-                    
-                    if (!response.ok) throw new Error(`API returned ${response.status}`);
-                    
-                    const data = await response.json();
-                    
-                    // Handle different response formats
-                    if (data.status === 'success' && data.data) {
-                        allEvents = data.data;
-                    } else if (Array.isArray(data)) {
-                        allEvents = data;
-                    } else if (data.events && Array.isArray(data.events)) {
-                        allEvents = data.events;
-                    } else {
-                        allEvents = [];
-                    }
-
-                    // Hide loading spinner
-                    loadingSpinner.classList.add('hidden');
-
-                    if (allEvents.length === 0) {
-                        showEmptyState('No events found in the database.');
-                    } else {
-                        renderFilterTabs();
-                        renderEvents();
-                    }
-                } catch (error) {
-                    console.error('Error loading events:', error);
-                    loadingSpinner.classList.add('hidden');
-                    showErrorState(error);
-                }
-            }
-
-            function showEmptyState(message) {
-                eventsContainer.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-calendar-times"></i>
-                        <h3>No Events Found</h3>
-                        <p>${message || 'There are no events available at the moment.'}</p>
-                        <button onclick="location.reload()" class="retry-btn">
-                            <i class="fas fa-sync-alt"></i> Refresh
-                        </button>
-                    </div>
-                `;
-            }
-
-            function showErrorState(error) {
-                eventsContainer.innerHTML = `
-                    <div class="error-state">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <h3>Connection Error</h3>
-                        <p>Unable to load events from the server.</p>
-                        <p style="font-size: 0.875rem; color: #94a3b8; margin: 0.5rem 0;">
-                            ${error.message || 'Please check your connection'}
-                        </p>
-                        <button onclick="location.reload()" class="retry-btn">
-                            <i class="fas fa-sync-alt"></i> Try Again
-                        </button>
-                    </div>
-                `;
-            }
-
-            // Event Listeners
-            toggleSearchBtn.addEventListener('click', () => {
-                showSearch = !showSearch;
-                if (showSearch) {
-                    searchContainer.classList.remove('hidden');
-                    searchInput.focus();
+        // Load Events from API
+        async function loadEventsFromAPI() {
+            try {
+                loadingSpinner.classList.remove('hidden');
+                eventsContainer.innerHTML = '';
+                
+                const response = await fetch(`${API_BASE_URL}/api/events`, {
+                    method: 'GET',
+                    headers: { 
+                        'Accept': 'application/json', 
+                        'Content-Type': 'application/json' 
+                    },
+                    mode: 'cors'
+                });
+                
+                if (!response.ok) throw new Error(`API returned ${response.status}`);
+                
+                const data = await response.json();
+                
+                // Handle different response formats
+                if (data.status === 'success' && data.data) {
+                    allEvents = data.data;
+                } else if (Array.isArray(data)) {
+                    allEvents = data;
+                } else if (data.events && Array.isArray(data.events)) {
+                    allEvents = data.events;
                 } else {
-                    searchContainer.classList.add('hidden');
-                    searchQuery = '';
-                    searchInput.value = '';
+                    allEvents = [];
+                }
+
+                // Hide loading spinner
+                loadingSpinner.classList.add('hidden');
+
+                if (allEvents.length === 0) {
+                    showEmptyState('No events found in the database.');
+                } else {
+                    renderFilterTabs();
                     renderEvents();
                 }
-            });
+            } catch (error) {
+                console.error('Error loading events:', error);
+                loadingSpinner.classList.add('hidden');
+                showErrorState(error);
+            }
+        }
 
-            searchInput.addEventListener('input', (e) => {
-                searchQuery = e.target.value;
+        function showEmptyState(message) {
+            eventsContainer.innerHTML = `
+                <div class="no-results">
+                    <i class="fas fa-calendar-times"></i>
+                    <h3>No Events Found</h3>
+                    <p>${message || 'There are no events available at the moment.'}</p>
+                    <button onclick="location.reload()" class="retry-btn">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            `;
+        }
+
+        function showErrorState(error) {
+            eventsContainer.innerHTML = `
+                <div class="error-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>Connection Error</h3>
+                    <p>Unable to load events from the server.</p>
+                    <p style="font-size: 0.875rem; color: #94a3b8; margin: 0.5rem 0;">
+                        ${error.message || 'Please check your connection'}
+                    </p>
+                    <button onclick="location.reload()" class="retry-btn">
+                        <i class="fas fa-sync-alt"></i> Try Again
+                    </button>
+                </div>
+            `;
+        }
+
+        // Event Listeners
+        toggleSearchBtn.addEventListener('click', () => {
+            showSearch = !showSearch;
+            if (showSearch) {
+                searchContainer.classList.remove('hidden');
+                searchInput.focus();
+            } else {
+                searchContainer.classList.add('hidden');
+                searchQuery = '';
+                searchInput.value = '';
                 renderEvents();
-            });
-
-            gridViewBtn.addEventListener('click', () => {
-                viewMode = 'grid';
-                gridViewBtn.classList.add('active');
-                listViewBtn.classList.remove('active');
-                renderEvents();
-            });
-
-            listViewBtn.addEventListener('click', () => {
-                viewMode = 'list';
-                listViewBtn.classList.add('active');
-                gridViewBtn.classList.remove('active');
-                renderEvents();
-            });
-
-            // Initialize
-            loadEventsFromAPI();
+            }
         });
-    </script>
+
+        searchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value;
+            renderEvents();
+        });
+
+        gridViewBtn.addEventListener('click', () => {
+            viewMode = 'grid';
+            gridViewBtn.classList.add('active');
+            listViewBtn.classList.remove('active');
+            renderEvents();
+        });
+
+        listViewBtn.addEventListener('click', () => {
+            viewMode = 'list';
+            listViewBtn.classList.add('active');
+            gridViewBtn.classList.remove('active');
+            renderEvents();
+        });
+
+        // Initialize
+        loadEventsFromAPI();
+    });
+</script>
 </body>
 </html>
