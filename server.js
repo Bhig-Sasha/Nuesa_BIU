@@ -3753,6 +3753,634 @@ adminRouter.get('/articles/stats', verifyToken, requireRole('admin', 'editor'), 
     }
 });
 
+// ============================================================
+// SECTION 16.12: COURSE REPRESENTATIVES ROUTES
+// ============================================================
+
+const courseRepRouter = express.Router();
+
+// Apply authentication and role checking to all course rep routes
+courseRepRouter.use(verifyToken);
+courseRepRouter.use(requireRole('admin', 'editor'));
+
+/**
+ * @swagger
+ * /api/admin/course-reps:
+ *   get:
+ *     summary: Get all course representatives
+ *     tags: [Course Representatives]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: session
+ *         schema:
+ *           type: string
+ *         description: Filter by academic session
+ *       - in: query
+ *         name: level
+ *         schema:
+ *           type: string
+ *         description: Filter by level
+ */
+courseRepRouter.get('/', async (req, res) => {
+    try {
+        const { session, level } = req.query;
+        
+        console.log(`📡 [CR] Fetching course reps for session: ${session || 'all'}, level: ${level || 'all'}`);
+        
+        let query = supabase
+            .from('course_representatives')
+            .select('*');
+        
+        if (session) {
+            query = query.eq('session', session);
+        }
+        
+        if (level && level !== 'all') {
+            query = query.eq('level', level);
+        }
+        
+        const { data, error } = await query.order('level');
+        
+        if (error) throw error;
+        
+        logger.info('Course reps fetched', { 
+            requestId: req.id, 
+            count: data.length,
+            session,
+            level,
+            fetchedBy: req.user.id 
+        });
+        
+        res.json({ 
+            status: 'success', 
+            data: data,
+            pagination: {
+                total: data.length,
+                filtered: data.length
+            }
+        });
+    } catch (error) {
+        logger.error('Error fetching course reps:', { 
+            requestId: req.id, 
+            error: error.message,
+            stack: error.stack 
+        });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to fetch course representatives',
+            debug: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/course-reps/{id}:
+ *   get:
+ *     summary: Get course representative by ID
+ *     tags: [Course Representatives]
+ *     security:
+ *       - bearerAuth: []
+ */
+courseRepRouter.get('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        console.log(`📡 [CR] Fetching course rep with id: ${id}`);
+        
+        const { data, error } = await supabase
+            .from('course_representatives')
+            .select('*')
+            .eq('id', id)
+            .single();
+        
+        if (error) throw error;
+        
+        if (!data) {
+            return res.status(404).json({ 
+                status: 'error', 
+                message: 'Course representative not found' 
+            });
+        }
+        
+        res.json({ 
+            status: 'success', 
+            data: data 
+        });
+    } catch (error) {
+        logger.error('Error fetching course rep:', { 
+            requestId: req.id, 
+            error: error.message,
+            id: req.params.id 
+        });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to fetch course representative' 
+        });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/course-reps:
+ *   post:
+ *     summary: Create new course representatives
+ *     tags: [Course Representatives]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - session
+ *               - level
+ *             properties:
+ *               session:
+ *                 type: string
+ *                 example: "2025/2026"
+ *               level:
+ *                 type: string
+ *                 example: "100"
+ *               gen_rep:
+ *                 type: string
+ *                 example: "John Doe"
+ *               asst_gen_rep:
+ *                 type: string
+ *                 example: "Jane Smith"
+ *               departments:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                     rep:
+ *                       type: string
+ */
+courseRepRouter.post('/', async (req, res) => {
+    try {
+        const { session, level, gen_rep, asst_gen_rep, departments } = req.body;
+        
+        console.log('📡 [CR] Creating course reps:', { session, level });
+        
+        // Validate required fields
+        if (!session || !level) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'Session and level are required' 
+            });
+        }
+        
+        // Check if entry already exists for this session and level
+        const { data: existing, error: checkError } = await supabase
+            .from('course_representatives')
+            .select('id')
+            .eq('session', session)
+            .eq('level', level);
+        
+        if (checkError) throw checkError;
+        
+        if (existing && existing.length > 0) {
+            return res.status(409).json({ 
+                status: 'error', 
+                message: 'Course representatives for this session and level already exist' 
+            });
+        }
+        
+        // Prepare the data
+        const courseRepData = {
+            session,
+            level,
+            gen_rep: gen_rep || 'Not Assigned',
+            asst_gen_rep: asst_gen_rep || 'Not Assigned',
+            departments: departments || [],
+            created_by: req.user.id,
+            updated_by: req.user.id,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        
+        // Insert into database
+        const { data, error } = await supabase
+            .from('course_representatives')
+            .insert([courseRepData])
+            .select();
+        
+        if (error) throw error;
+        
+        // Invalidate cache
+        await cacheManager.invalidateByTags(['course-reps']);
+        
+        logger.info('Course reps created', { 
+            requestId: req.id, 
+            repId: data[0].id,
+            session,
+            level,
+            createdBy: req.user.id 
+        });
+        
+        res.status(201).json({ 
+            status: 'success', 
+            data: data[0], 
+            message: 'Course representatives created successfully' 
+        });
+    } catch (error) {
+        logger.error('Error creating course reps:', { 
+            requestId: req.id, 
+            error: error.message,
+            stack: error.stack 
+        });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to create course representatives',
+            debug: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/course-reps/{id}:
+ *   put:
+ *     summary: Update course representatives
+ *     tags: [Course Representatives]
+ *     security:
+ *       - bearerAuth: []
+ */
+courseRepRouter.put('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { session, level, gen_rep, asst_gen_rep, departments } = req.body;
+        
+        console.log('📡 [CR] Updating course rep with id:', id);
+        
+        // Check if exists
+        const { data: existing, error: checkError } = await supabase
+            .from('course_representatives')
+            .select('id')
+            .eq('id', id)
+            .single();
+        
+        if (checkError || !existing) {
+            return res.status(404).json({ 
+                status: 'error', 
+                message: 'Course representative not found' 
+            });
+        }
+        
+        // Prepare update data
+        const updateData = {};
+        
+        if (session !== undefined) updateData.session = session;
+        if (level !== undefined) updateData.level = level;
+        if (gen_rep !== undefined) updateData.gen_rep = gen_rep;
+        if (asst_gen_rep !== undefined) updateData.asst_gen_rep = asst_gen_rep;
+        if (departments !== undefined) updateData.departments = departments;
+        
+        updateData.updated_by = req.user.id;
+        updateData.updated_at = new Date().toISOString();
+        
+        // Update in database
+        const { data, error } = await supabase
+            .from('course_representatives')
+            .update(updateData)
+            .eq('id', id)
+            .select();
+        
+        if (error) throw error;
+        
+        // Invalidate cache
+        await cacheManager.invalidateByTags(['course-reps']);
+        
+        logger.info('Course reps updated', { 
+            requestId: req.id, 
+            repId: id,
+            updatedBy: req.user.id 
+        });
+        
+        res.json({ 
+            status: 'success', 
+            data: data[0], 
+            message: 'Course representatives updated successfully' 
+        });
+    } catch (error) {
+        logger.error('Error updating course reps:', { 
+            requestId: req.id, 
+            error: error.message,
+            id: req.params.id 
+        });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to update course representatives' 
+        });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/course-reps/{id}:
+ *   delete:
+ *     summary: Delete course representatives
+ *     tags: [Course Representatives]
+ *     security:
+ *       - bearerAuth: []
+ */
+courseRepRouter.delete('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        console.log('📡 [CR] Deleting course rep with id:', id);
+        
+        // Check if exists
+        const { data: existing, error: checkError } = await supabase
+            .from('course_representatives')
+            .select('id')
+            .eq('id', id)
+            .single();
+        
+        if (checkError || !existing) {
+            return res.status(404).json({ 
+                status: 'error', 
+                message: 'Course representative not found' 
+            });
+        }
+        
+        // Delete from database
+        const { error } = await supabase
+            .from('course_representatives')
+            .delete()
+            .eq('id', id);
+        
+        if (error) throw error;
+        
+        // Invalidate cache
+        await cacheManager.invalidateByTags(['course-reps']);
+        
+        logger.info('Course reps deleted', { 
+            requestId: req.id, 
+            repId: id,
+            deletedBy: req.user.id 
+        });
+        
+        res.json({ 
+            status: 'success', 
+            message: 'Course representatives deleted successfully' 
+        });
+    } catch (error) {
+        logger.error('Error deleting course reps:', { 
+            requestId: req.id, 
+            error: error.message,
+            id: req.params.id 
+        });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to delete course representatives' 
+        });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/course-reps/sessions:
+ *   get:
+ *     summary: Get all unique sessions
+ *     tags: [Course Representatives]
+ *     security:
+ *       - bearerAuth: []
+ */
+courseRepRouter.get('/meta/sessions', async (req, res) => {
+    try {
+        console.log('📡 [CR] Fetching unique sessions');
+        
+        const { data, error } = await supabase
+            .from('course_representatives')
+            .select('session')
+            .order('session', { ascending: false });
+        
+        if (error) throw error;
+        
+        // Get unique sessions
+        const sessions = [...new Set(data.map(item => item.session))];
+        
+        res.json({ 
+            status: 'success', 
+            data: sessions 
+        });
+    } catch (error) {
+        logger.error('Error fetching sessions:', { 
+            requestId: req.id, 
+            error: error.message 
+        });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to fetch sessions' 
+        });
+    }
+});
+
+/**
+ * @swagger
+ * /api/admin/course-reps/levels:
+ *   get:
+ *     summary: Get all unique levels
+ *     tags: [Course Representatives]
+ *     security:
+ *       - bearerAuth: []
+ */
+courseRepRouter.get('/meta/levels', async (req, res) => {
+    try {
+        console.log('📡 [CR] Fetching unique levels');
+        
+        const { data, error } = await supabase
+            .from('course_representatives')
+            .select('level')
+            .order('level');
+        
+        if (error) throw error;
+        
+        // Get unique levels and sort numerically
+        const levels = [...new Set(data.map(item => item.level))].sort((a, b) => parseInt(a) - parseInt(b));
+        
+        res.json({ 
+            status: 'success', 
+            data: levels 
+        });
+    } catch (error) {
+        logger.error('Error fetching levels:', { 
+            requestId: req.id, 
+            error: error.message 
+        });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to fetch levels' 
+        });
+    }
+});
+
+// Mount the course reps router to admin
+app.use('/api/admin/course-reps', courseRepRouter);
+
+// ============================================================
+// PUBLIC COURSE REPS ROUTES (for frontend display)
+// ============================================================
+
+const publicCourseRepRouter = express.Router();
+
+/**
+ * @swagger
+ * /api/course-reps:
+ *   get:
+ *     summary: Get course representatives (public)
+ *     tags: [Course Representatives]
+ *     parameters:
+ *       - in: query
+ *         name: session
+ *         schema:
+ *           type: string
+ *         description: Filter by academic session
+ *       - in: query
+ *         name: level
+ *         schema:
+ *           type: string
+ *         description: Filter by level
+ */
+publicCourseRepRouter.get('/', cacheMiddleware(300, ['course-reps']), async (req, res) => {
+    try {
+        const { session = '2025/2026', level } = req.query;
+        
+        console.log(`📡 [CR-Public] Fetching course reps for session: ${session}, level: ${level || 'all'}`);
+        
+        let query = supabase
+            .from('course_representatives')
+            .select('*')
+            .eq('session', session);
+        
+        if (level && level !== 'all') {
+            query = query.eq('level', level);
+        }
+        
+        const { data, error } = await query.order('level');
+        
+        if (error) throw error;
+        
+        res.json({ 
+            status: 'success', 
+            data: data,
+            count: data.length 
+        });
+    } catch (error) {
+        logger.error('Error fetching public course reps:', { 
+            requestId: req.id, 
+            error: error.message 
+        });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to fetch course representatives' 
+        });
+    }
+});
+
+/**
+ * @swagger
+ * /api/course-reps/sessions:
+ *   get:
+ *     summary: Get available sessions (public)
+ *     tags: [Course Representatives]
+ */
+publicCourseRepRouter.get('/sessions', cacheMiddleware(3600, ['course-reps']), async (req, res) => {
+    try {
+        console.log('📡 [CR-Public] Fetching available sessions');
+        
+        const { data, error } = await supabase
+            .from('course_representatives')
+            .select('session')
+            .order('session', { ascending: false });
+        
+        if (error) throw error;
+        
+        const sessions = [...new Set(data.map(item => item.session))];
+        
+        res.json({ 
+            status: 'success', 
+            data: sessions 
+        });
+    } catch (error) {
+        logger.error('Error fetching sessions:', { 
+            requestId: req.id, 
+            error: error.message 
+        });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to fetch sessions' 
+        });
+    }
+});
+
+/**
+ * @swagger
+ * /api/course-reps/levels:
+ *   get:
+ *     summary: Get levels for a session (public)
+ *     tags: [Course Representatives]
+ *     parameters:
+ *       - in: query
+ *         name: session
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Academic session
+ */
+publicCourseRepRouter.get('/levels', cacheMiddleware(300, ['course-reps']), async (req, res) => {
+    try {
+        const { session } = req.query;
+        
+        if (!session) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'Session parameter is required' 
+            });
+        }
+        
+        console.log(`📡 [CR-Public] Fetching levels for session: ${session}`);
+        
+        const { data, error } = await supabase
+            .from('course_representatives')
+            .select('level')
+            .eq('session', session)
+            .order('level');
+        
+        if (error) throw error;
+        
+        const levels = [...new Set(data.map(item => item.level))].sort((a, b) => parseInt(a) - parseInt(b));
+        
+        res.json({ 
+            status: 'success', 
+            data: levels 
+        });
+    } catch (error) {
+        logger.error('Error fetching levels:', { 
+            requestId: req.id, 
+            error: error.message 
+        });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to fetch levels' 
+        });
+    }
+});
+
+// Mount public course reps router
+app.use('/api/course-reps', publicCourseRepRouter);
+
+console.log('✅ Course Representatives routes registered at:');
+console.log('   - /api/admin/course-reps (admin)');
+console.log('   - /api/course-reps (public)');
+
 // ==================== FILE UPLOAD (GENERIC) ====================
 
 /**
