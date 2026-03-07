@@ -8,36 +8,21 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --emerald-900: #064e3b;
-            --emerald-800: #065f46;
-            --emerald-700: #047857;
-            --emerald-600: #059669;
-            --emerald-500: #10b981;
-            --emerald-400: #34d399;
-            --emerald-300: #6ee7b7;
-            --emerald-200: #a7f3d0;
-            --emerald-100: #d1fae5;
-            --amber-400: #fbbf24;
-            --amber-300: #fcd34d;
-            --white: #ffffff;
-            --white-90: rgba(255,255,255,0.9);
-            --gray-100: #f5f5f7;
-            --gray-300: #9ca3af;
-            --gray-600: #4b5563;
-            --gray-800: #1f2933;
-            --slate-300: #cbd5e1;
-            --slate-400: #94a3b8;
-            --slate-700: #334155;
-            --slate-800: #1e293b;
+            --emerald-50: #ecfdf5;  --emerald-100: #d1fae5;  --emerald-200: #a7f3d0;
+            --emerald-300: #6ee7b7;  --emerald-400: #34d399;  --emerald-500: #10b981;
+            --emerald-600: #059669;  --emerald-700: #047857;  --emerald-800: #065f46;
+            --emerald-900: #064e3b;  --teal-400: #2dd4bf;    --teal-500: #14b8a6;
+            --amber-300: #fcd34d;    --amber-400: #fbbf24;    --amber-500: #f59e0b;
+            --slate-50: #f8fafc;     --slate-100: #f1f5f9;    --slate-200: #e2e8f0;
+            --slate-300: #cbd5e1;     --slate-400: #94a3b8;    --slate-500: #64748b;
+            --slate-600: #475569;     --slate-700: #334155;    --slate-800: #1e293b;
+            --slate-900: #0f172a;     --white: #ffffff;        --gray-100: #f5f5f7;
+            --gray-200: #e5e5e7;      --gray-300: #d1d5db;     --gray-400: #9ca3af;
+            --gray-500: #6b7280;      --gray-600: #4b5563;     --gray-700: #374151;
+            --gray-800: #1f2933;      --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
             --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1),0 2px 4px -1px rgba(0,0,0,0.06);
-            --teal-700: #0f766e;
-            --blue-100: #dbeafe;
-            --blue-700: #1d4ed8;
-            --amber-100: #fef3c7;
-            --amber-700: #b45309;
-            --gray-50: #f9fafb;
-            --gray-500: #6b7280;
+            --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
         }
 
         * {
@@ -461,7 +446,7 @@
             text-decoration-style: dashed;
         }
 
-        /* ===== NEW NAVBAR STYLES (FROM STANDALONE) ===== */
+        /* ===== NEW NAVBAR STYLES ===== */
         .navbar {
             position: fixed;
             top: 0;
@@ -624,7 +609,7 @@
             border-bottom: none;
         }
 
-        /* Footer Styles (keep original) */
+        /* Footer Styles */
         .footer {
             background: linear-gradient(135deg, var(--slate-800) 0%, var(--slate-900) 100%);
             border-top: 4px solid var(--emerald-500);
@@ -753,7 +738,7 @@
             color: var(--emerald-400);
         }
 
-        /* Resources Page Styles (keep original) */
+        /* Resources Page Styles */
         .resources-header {
             border-bottom: 2px dashed var(--gray-300);
             padding: 4rem 0;
@@ -1152,6 +1137,699 @@
             text-decoration: underline;
         }
 
+        /* ===== MODAL STYLES FOR CGPA CALCULATOR ===== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            padding: 1rem;
+            backdrop-filter: blur(4px);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-container {
+            background: white;
+            border-radius: 0.75rem;
+            max-width: 1200px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-xl);
+            border: 2px solid var(--emerald-200);
+            animation: slideUp 0.3s ease;
+        }
+
+        .modal-header {
+            background: linear-gradient(to right, var(--emerald-600), var(--emerald-700));
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .modal-header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .modal-header-left i {
+            font-size: 1.5rem;
+        }
+
+        .modal-header-left h2 {
+            font-weight: 700;
+            font-size: 1.25rem;
+        }
+
+        .modal-header-left p {
+            color: var(--emerald-100);
+            font-size: 0.875rem;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            transition: background-color 0.3s;
+        }
+
+        .modal-close:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        /* Stats Bar */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-top: -2rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background-color: var(--emerald-600);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            text-align: center;
+            color: white;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: 900;
+        }
+
+        @media (min-width: 768px) {
+            .stat-number { font-size: 1.875rem; }
+        }
+
+        .stat-label {
+            color: var(--emerald-100);
+            font-size: 0.75rem;
+        }
+
+        /* Main Layout Grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            margin-top: 2.5rem;
+        }
+
+        @media (min-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 3fr 2fr;
+            }
+        }
+
+        /* Card Styles */
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--slate-100);
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+
+        .card:last-child { margin-bottom: 0; }
+
+        .card-header {
+            background-color: var(--emerald-600);
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .card-header i {
+            color: white;
+            width: 1.25rem;
+            height: 1.25rem;
+        }
+
+        .card-header h2 {
+            color: white;
+            font-weight: 700;
+            font-size: 1.125rem;
+        }
+
+        .card-header p {
+            color: var(--emerald-100);
+            font-size: 0.875rem;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        /* Quick Guide */
+        .guide-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .guide-number {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            background-color: var(--emerald-100);
+            color: var(--emerald-700);
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .guide-content h3 {
+            font-weight: 600;
+            color: var(--slate-900);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.25rem;
+            font-size: 1rem;
+        }
+
+        .guide-content p {
+            color: var(--slate-600);
+            font-size: 0.875rem;
+        }
+
+        /* Form Styles */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        @media (min-width: 768px) {
+            .form-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .form-group {
+            margin-bottom: 0;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--slate-700);
+            margin-bottom: 0.25rem;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--slate-200);
+            border-radius: 0.5rem;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px var(--emerald-500);
+            border-color: transparent;
+        }
+
+        /* Course Entry Section */
+        .course-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .course-header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .semester-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .semester-select {
+            padding: 0.375rem 0.75rem;
+            background-color: rgba(255,255,255,0.2);
+            color: white;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+        }
+
+        .semester-select option {
+            color: var(--slate-900);
+        }
+
+        .add-course-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.5rem 1rem;
+            background-color: var(--emerald-600);
+            color: white;
+            font-size: 0.875rem;
+            font-weight: 600;
+            border-radius: 0.5rem;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .add-course-btn:hover {
+            background-color: var(--emerald-700);
+        }
+
+        .courses-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .course-row {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .course-code {
+            grid-column: span 2;
+        }
+
+        .course-title {
+            grid-column: span 4;
+        }
+
+        .course-units {
+            grid-column: span 2;
+        }
+
+        .course-grade {
+            grid-column: span 3;
+        }
+
+        .course-remove {
+            grid-column: span 1;
+            display: flex;
+            justify-content: center;
+        }
+
+        .remove-btn {
+            padding: 0.5rem;
+            color: #ef4444;
+            background: none;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .remove-btn:hover {
+            background-color: #fef2f2;
+        }
+
+        .remove-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .current-gpa-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 1rem;
+            border-top: 1px solid var(--slate-100);
+            margin-bottom: 1rem;
+        }
+
+        .current-gpa-label {
+            color: var(--slate-600);
+        }
+
+        .current-gpa-value {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: var(--emerald-600);
+        }
+
+        .save-semester-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: var(--emerald-600);
+            color: white;
+            font-weight: 700;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .save-semester-btn:hover {
+            background-color: var(--emerald-700);
+        }
+
+        /* Saved Semesters */
+        .saved-semester-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            background-color: var(--slate-50);
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .saved-semester-info h4 {
+            font-weight: 600;
+            color: var(--slate-900);
+        }
+
+        .saved-semester-info p {
+            font-size: 0.875rem;
+            color: var(--slate-600);
+        }
+
+        .saved-semester-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .saved-semester-gpa {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--emerald-600);
+        }
+
+        .delete-semester-btn {
+            padding: 0.5rem;
+            color: #ef4444;
+            background: none;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+        }
+
+        .delete-semester-btn:hover {
+            background-color: #fef2f2;
+        }
+
+        /* Sidebar Cards */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        @media (min-width: 1024px) {
+            .sidebar {
+                position: sticky;
+                top: 6rem;
+                align-self: start;
+            }
+        }
+
+        .gradient-header {
+            background: linear-gradient(to right, var(--emerald-600), var(--teal-500));
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .gradient-header i {
+            color: white;
+        }
+
+        .gradient-header h2 {
+            color: white;
+            font-weight: 700;
+        }
+
+        .gradient-header p {
+            color: var(--emerald-100);
+            font-size: 0.875rem;
+        }
+
+        .current-status {
+            text-align: center;
+            padding: 1.5rem;
+        }
+
+        .cgpa-display {
+            font-size: 3rem;
+            font-weight: 900;
+        }
+
+        .cgpa-display.emerald-600 { color: var(--emerald-600); }
+        .cgpa-display.blue-600 { color: #2563eb; }
+        .cgpa-display.amber-600 { color: #d97706; }
+        .cgpa-display.orange-600 { color: #ea580c; }
+        .cgpa-display.red-600 { color: #dc2626; }
+        .cgpa-display.gray-300 { color: var(--slate-300); }
+
+        .classification-box {
+            margin-top: 1rem;
+            padding: 0.75rem 1rem;
+            background-color: var(--slate-50);
+            border-radius: 0.5rem;
+        }
+
+        .classification-text {
+            font-weight: 700;
+        }
+
+        .classification-text.emerald-600 { color: var(--emerald-600); }
+        .classification-text.blue-600 { color: #2563eb; }
+        .classification-text.amber-600 { color: #d97706; }
+        .classification-text.orange-600 { color: #ea580c; }
+        .classification-text.red-600 { color: #dc2626; }
+        .classification-text.gray-400 { color: var(--slate-400); }
+
+        .stats-mini-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .stat-mini-box {
+            padding: 0.75rem;
+            background-color: var(--slate-50);
+            border-radius: 0.5rem;
+            text-align: center;
+        }
+
+        .stat-mini-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--slate-900);
+        }
+
+        .stat-mini-label {
+            color: var(--slate-600);
+            font-size: 0.875rem;
+        }
+
+        .projection-input {
+            width: 100%;
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--slate-200);
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .projection-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: var(--emerald-600);
+            color: white;
+            font-weight: 700;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .projection-btn:hover {
+            background-color: var(--emerald-700);
+        }
+
+        .projection-result {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: var(--emerald-50);
+            border-radius: 0.5rem;
+            color: var(--emerald-800);
+            font-size: 0.875rem;
+        }
+
+        .data-management-btn {
+            width: 100%;
+            padding: 0.625rem;
+            border: 2px solid;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            background: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .data-management-btn:last-child {
+            margin-bottom: 0;
+        }
+
+        .download-btn {
+            border-color: var(--emerald-600);
+            color: var(--emerald-600);
+        }
+
+        .download-btn:hover {
+            background-color: var(--emerald-50);
+        }
+
+        .clear-btn {
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+
+        .clear-btn:hover {
+            background-color: #fef2f2;
+        }
+
+        .data-note {
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--slate-500);
+            margin-top: 0.5rem;
+        }
+
+        /* Utility Classes */
+        .hidden {
+            display: none !important;
+        }
+
+        .text-sm {
+            font-size: 0.875rem;
+        }
+
+        .text-xs {
+            font-size: 0.75rem;
+        }
+
+        .font-bold {
+            font-weight: 700;
+        }
+
+        .font-black {
+            font-weight: 900;
+        }
+
+        .mb-2 {
+            margin-bottom: 0.5rem;
+        }
+
+        .mb-4 {
+            margin-bottom: 1rem;
+        }
+
+        .mt-4 {
+            margin-top: 1rem;
+        }
+
+        .mt-6 {
+            margin-top: 1.5rem;
+        }
+
+        .py-3 {
+            padding-top: 0.75rem;
+            padding-bottom: 0.75rem;
+        }
+
+        .px-4 {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+
+        .bg-white {
+            background-color: white;
+        }
+
+        .rounded-lg {
+            border-radius: 0.5rem;
+        }
+
+        .border {
+            border: 1px solid var(--slate-200);
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
         /* Media Queries */
         @media (min-width: 768px) {
             .md\:flex {
@@ -1205,7 +1883,7 @@
     </style>
 </head>
 <body>
-    <!-- ===== NEW NAVBAR (REPLACED) ===== -->
+    <!-- ===== NEW NAVBAR ===== -->
     <nav class="navbar" id="navbar">
         <div class="nav-container">
             <div class="nav-flex">
@@ -1220,7 +1898,6 @@
                     <a href="members.html" class="nav-link" data-path="/members">MEMBERS</a>
                     <a href="events.html" class="nav-link" data-path="/events">EVENTS</a>
                     <a href="resources.html" class="nav-link active" data-path="/resources">RESOURCES</a>
-                    <a href="cgpa-Cal.html" class="nav-link" data-path="/cgpa-calculator">CGPA CALC</a>
                     <a href="admission.html" class="nav-link" data-path="/admission">ADMISSION</a>
                     <a href="courseReps.html" class="nav-link" data-path="/course-reps">COURSE REPS</a>
                     <a href="news.html" class="nav-link" data-path="/news">NEWS</a>
@@ -1239,7 +1916,6 @@
             <a href="members.html" class="mobile-link" data-path="/members">MEMBERS</a>
             <a href="events.html" class="mobile-link" data-path="/events">EVENTS</a>
             <a href="resources.html" class="mobile-link active" data-path="/resources">RESOURCES</a>
-            <a href="cgpa-Cal.html" class="mobile-link" data-path="/cgpa-calculator">CGPA CALC</a>
             <a href="admission.html" class="mobile-link" data-path="/admission">ADMISSION</a>
             <a href="courseReps.html" class="mobile-link" data-path="/course-representatives">COURSE REPS</a>
             <a href="news.html" class="mobile-link" data-path="/news">NEWS</a>
@@ -1247,7 +1923,7 @@
         </div>
     </nav>
 
-    <!-- Resources Page Content (EXACTLY AS ORIGINAL) -->
+    <!-- Resources Page Content -->
     <main class="min-h-screen bg-gray-100">
         <!-- Header Section -->
         <section class="resources-header bg-white">
@@ -1351,7 +2027,273 @@
         </section>
     </main>
 
-    <!-- Footer (EXACTLY AS ORIGINAL) -->
+    <!-- CGPA Calculator Modal (Hidden by default) -->
+    <div id="cgpaCalculatorModal" class="modal-overlay" style="display: none;">
+        <div class="modal-container">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <i class="fas fa-calculator"></i>
+                    <div>
+                        <h2>CGPA Calculator</h2>
+                        <p>Calculate and track your academic performance</p>
+                    </div>
+                </div>
+                <button class="modal-close" onclick="closeCGPAModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <!-- Stats Bar -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <p class="stat-number">10K+</p>
+                        <p class="stat-label">Calculations</p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="stat-number">1,300+</p>
+                        <p class="stat-label">Students</p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="stat-number">99.9%</p>
+                        <p class="stat-label">Accuracy</p>
+                    </div>
+                </div>
+
+                <!-- Main Content Grid -->
+                <div class="main-grid">
+                    <!-- LEFT COLUMN -->
+                    <div class="left-column">
+                        <!-- Quick Guide Card -->
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="fas fa-info-circle"></i>
+                                <div>
+                                    <h2>Quick Guide</h2>
+                                    <p>How to use this calculator</p>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="guide-item">
+                                    <span class="guide-number">1</span>
+                                    <div class="guide-content">
+                                        <h3><i class="fas fa-user" style="color: var(--emerald-600); width: 1rem;"></i> Add Student Info</h3>
+                                        <p>Fill in your personal and academic details</p>
+                                    </div>
+                                </div>
+                                <div class="guide-item">
+                                    <span class="guide-number">2</span>
+                                    <div class="guide-content">
+                                        <h3><i class="fas fa-book" style="color: var(--emerald-600);"></i> Enter Courses</h3>
+                                        <p>Add your courses with grades and units</p>
+                                    </div>
+                                </div>
+                                <div class="guide-item">
+                                    <span class="guide-number">3</span>
+                                    <div class="guide-content">
+                                        <h3><i class="fas fa-save" style="color: var(--emerald-600);"></i> Save Semester</h3>
+                                        <p>Save your semester data for CGPA calculation</p>
+                                    </div>
+                                </div>
+                                <div class="guide-item">
+                                    <span class="guide-number">4</span>
+                                    <div class="guide-content">
+                                        <h3><i class="fas fa-chart-line" style="color: var(--emerald-600);"></i> Track Progress</h3>
+                                        <p>Monitor your academic performance over time</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Student Information Card -->
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="fas fa-user"></i>
+                                <div>
+                                    <h2>Student Information</h2>
+                                    <p>Your academic profile</p>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label class="form-label">Full Name</label>
+                                        <input type="text" id="fullName" class="form-input" placeholder="Enter your full name">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Matric Number</label>
+                                        <input type="text" id="matricNumber" class="form-input" placeholder="e.g., BIU/20/ENG/067">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Department</label>
+                                        <select id="department" class="form-select">
+                                            <option value="">Select Department</option>
+                                            <option value="Civil Engineering">Civil Engineering</option>
+                                            <option value="Electrical/Electronics Engineering">Electrical/Electronics Engineering</option>
+                                            <option value="Mechanical Engineering">Mechanical Engineering</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Current Level</label>
+                                        <select id="level" class="form-select">
+                                            <option value="">Select Level</option>
+                                            <option value="100L">100L</option>
+                                            <option value="200L">200L</option>
+                                            <option value="300L">300L</option>
+                                            <option value="400L">400L</option>
+                                            <option value="500L">500L</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Course Entry Card -->
+                        <div class="card">
+                            <div class="card-header">
+                                <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1;">
+                                    <i class="fas fa-book"></i>
+                                    <div style="flex: 1;">
+                                        <h2>Course Entry</h2>
+                                        <p id="semesterLabel">Year 1, Semester 1</p>
+                                    </div>
+                                </div>
+                                <div class="semester-controls">
+                                    <select id="currentYear" class="semester-select">
+                                        <option value="1">Y1</option>
+                                        <option value="2">Y2</option>
+                                        <option value="3">Y3</option>
+                                        <option value="4">Y4</option>
+                                        <option value="5">Y5</option>
+                                    </select>
+                                    <select id="currentSemester" class="semester-select">
+                                        <option value="1">S1</option>
+                                        <option value="2">S2</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="course-header">
+                                    <div class="course-header-left">
+                                        <span class="font-bold">Courses (<span id="courseCount">1</span>)</span>
+                                    </div>
+                                    <button id="addCourseBtn" class="add-course-btn">
+                                        <i class="fas fa-plus"></i> Add Course
+                                    </button>
+                                </div>
+
+                                <div id="coursesContainer" class="courses-container">
+                                    <!-- Courses will be dynamically added here -->
+                                </div>
+
+                                <div class="current-gpa-row">
+                                    <span class="current-gpa-label">Current Semester GPA:</span>
+                                    <span id="currentGpa" class="current-gpa-value">0.00</span>
+                                </div>
+
+                                <button id="saveSemesterBtn" class="save-semester-btn">
+                                    <i class="fas fa-save"></i> Save Semester
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Saved Semesters Card -->
+                        <div id="savedSemestersCard" class="card hidden">
+                            <div class="card-header">
+                                <i class="fas fa-chart-bar"></i>
+                                <div>
+                                    <h2>Saved Semesters</h2>
+                                    <p id="savedSemestersCount">0 semester(s) recorded</p>
+                                </div>
+                            </div>
+                            <div class="card-body" id="savedSemestersList">
+                                <!-- Saved semesters will appear here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT COLUMN -->
+                    <div class="sidebar">
+                        <!-- Current Status Card -->
+                        <div class="card">
+                            <div class="gradient-header">
+                                <i class="fas fa-award"></i>
+                                <div>
+                                    <h2>Current Status</h2>
+                                    <p style="color: var(--emerald-100); font-size: 0.875rem;">Your academic standing</p>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="current-status">
+                                    <p id="currentCgpaDisplay" class="cgpa-display gray-300">0.00</p>
+                                    <p class="text-sm" style="color: var(--slate-600); margin-top: 0.25rem;">Current CGPA</p>
+
+                                    <div id="classificationBox" class="classification-box">
+                                        <p id="classificationText" class="classification-text gray-400">No classification yet</p>
+                                        <p id="classificationSubtext" class="text-xs" style="color: var(--slate-400);">Complete a semester to see your standing</p>
+                                    </div>
+
+                                    <div class="stats-mini-grid">
+                                        <div class="stat-mini-box">
+                                            <p id="totalSemesters" class="stat-mini-number">0</p>
+                                            <p class="stat-mini-label">Semesters</p>
+                                        </div>
+                                        <div class="stat-mini-box">
+                                            <p id="totalUnits" class="stat-mini-number">0</p>
+                                            <p class="stat-mini-label">Total Units</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- CGPA Projection Card -->
+                        <div class="card">
+                            <div class="gradient-header" style="background: linear-gradient(to right, var(--emerald-500), var(--teal-400));">
+                                <i class="fas fa-bullseye"></i>
+                                <div>
+                                    <h2>CGPA Projection</h2>
+                                    <p style="color: var(--emerald-100);">Calculate required GPA for target</p>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <label class="form-label">Target CGPA</label>
+                                <input type="number" id="targetCgpa" step="0.01" min="0" max="5" class="projection-input" placeholder="e.g., 4.50">
+                                
+                                <button id="calculateProjectionBtn" class="projection-btn">
+                                    <i class="fas fa-calculator"></i> Calculate
+                                </button>
+                                
+                                <div id="projectionResult" class="projection-result hidden"></div>
+                            </div>
+                        </div>
+
+                        <!-- Data Management Card -->
+                        <div class="card">
+                            <div class="gradient-header" style="background: linear-gradient(to right, var(--emerald-700), var(--emerald-600));">
+                                <i class="fas fa-save"></i>
+                                <div>
+                                    <h2>Data Management</h2>
+                                    <p style="color: var(--emerald-100);">Manage your academic records</p>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <button id="downloadReportBtn" class="data-management-btn download-btn">
+                                    <i class="fas fa-download"></i> Download Report
+                                </button>
+                                <button id="clearAllDataBtn" class="data-management-btn clear-btn">
+                                    <i class="fas fa-trash"></i> Clear All Data
+                                </button>
+                                <p class="data-note">Data is automatically saved to your browser</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
     <footer class="footer">
         <div class="footer-container">
             <div class="footer-grid">
@@ -1437,7 +2379,7 @@
     </footer>
 
     <script>
-        // ===== NEW NAVBAR SCRIPT =====
+        // ===== NAVBAR SCRIPT =====
         (function() {
             const currentPath = '/resources';
             
@@ -1565,11 +2507,541 @@
             setActiveFromPath();
         })();
 
-        // ===== ORIGINAL RESOURCES PAGE SCRIPT (KEPT EXACTLY) =====
-        // PostgreSQL Database API Configuration
+        // ===== CGPA CALCULATOR FUNCTIONS =====
+        const GRADE_POINTS = {
+            'A': 5.0,
+            'B': 4.0,
+            'C': 3.0,
+            'D': 2.0,
+            'E': 1.0,
+            'F': 0.0
+        };
+
+        let studentInfo = {
+            fullName: '',
+            matricNumber: '',
+            department: '',
+            level: ''
+        };
+
+        let currentYear = 1;
+        let currentSemester = 1;
+        let courses = [{
+            id: '1',
+            code: '',
+            title: '',
+            units: 3,
+            grade: ''
+        }];
+
+        let savedSemesters = [];
+        let targetCgpa = '';
+        let projectionResult = '';
+
+        // Load from localStorage
+        function loadFromStorage() {
+            const savedData = localStorage.getItem('nuesa-cgpa-data');
+            if (savedData) {
+                try {
+                    const data = JSON.parse(savedData);
+                    if (data.studentInfo) studentInfo = data.studentInfo;
+                    if (data.savedSemesters) savedSemesters = data.savedSemesters;
+                } catch (e) {
+                    console.error('Error loading data:', e);
+                }
+            }
+        }
+
+        // Save to localStorage
+        function saveToStorage() {
+            localStorage.setItem('nuesa-cgpa-data', JSON.stringify({
+                studentInfo,
+                savedSemesters
+            }));
+        }
+
+        // Render student info
+        function renderStudentInfo() {
+            const fullNameInput = document.getElementById('fullName');
+            const matricInput = document.getElementById('matricNumber');
+            const deptSelect = document.getElementById('department');
+            const levelSelect = document.getElementById('level');
+            
+            if (fullNameInput) fullNameInput.value = studentInfo.fullName || '';
+            if (matricInput) matricInput.value = studentInfo.matricNumber || '';
+            if (deptSelect) deptSelect.value = studentInfo.department || '';
+            if (levelSelect) levelSelect.value = studentInfo.level || '';
+        }
+
+        // Render courses
+        function renderCourses() {
+            const container = document.getElementById('coursesContainer');
+            const courseCountSpan = document.getElementById('courseCount');
+            const semesterLabel = document.getElementById('semesterLabel');
+            
+            if (!container) return;
+            
+            if (courseCountSpan) courseCountSpan.textContent = courses.length;
+            if (semesterLabel) semesterLabel.textContent = `Year ${currentYear}, Semester ${currentSemester}`;
+
+            let html = '';
+            courses.forEach(course => {
+                html += `
+                    <div class="course-row" data-id="${course.id}">
+                        <input type="text" class="form-input course-code" value="${course.code}" placeholder="Code" data-field="code">
+                        <input type="text" class="form-input course-title" value="${course.title}" placeholder="Course Title" data-field="title">
+                        <select class="form-select course-units" data-field="units">
+                            ${[1,2,3,4,5,6].map(u => `
+                                <option value="${u}" ${course.units === u ? 'selected' : ''}>${u} Unit${u > 1 ? 's' : ''}</option>
+                            `).join('')}
+                        </select>
+                        <select class="form-select course-grade" data-field="grade">
+                            <option value="">Grade</option>
+                            <option value="A" ${course.grade === 'A' ? 'selected' : ''}>A (5.0)</option>
+                            <option value="B" ${course.grade === 'B' ? 'selected' : ''}>B (4.0)</option>
+                            <option value="C" ${course.grade === 'C' ? 'selected' : ''}>C (3.0)</option>
+                            <option value="D" ${course.grade === 'D' ? 'selected' : ''}>D (2.0)</option>
+                            <option value="E" ${course.grade === 'E' ? 'selected' : ''}>E (1.0)</option>
+                            <option value="F" ${course.grade === 'F' ? 'selected' : ''}>F (0.0)</option>
+                        </select>
+                        <div class="course-remove">
+                            <button class="remove-btn" ${courses.length === 1 ? 'disabled' : ''} onclick="removeCourse('${course.id}')">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+
+            // Add event listeners to inputs
+            document.querySelectorAll('#coursesContainer .course-row').forEach(row => {
+                const id = row.dataset.id;
+                row.querySelectorAll('input, select').forEach(input => {
+                    input.addEventListener('change', (e) => {
+                        const field = e.target.dataset.field;
+                        const value = e.target.type === 'number' ? parseInt(e.target.value) : e.target.value;
+                        updateCourse(id, field, value);
+                    });
+                });
+            });
+
+            updateCurrentGpa();
+        }
+
+        // Update course
+        function updateCourse(id, field, value) {
+            courses = courses.map(c => 
+                c.id === id ? { ...c, [field]: value } : c
+            );
+            updateCurrentGpa();
+        }
+
+        // Remove course
+        window.removeCourse = function(id) {
+            if (courses.length > 1) {
+                courses = courses.filter(c => c.id !== id);
+                renderCourses();
+            }
+        };
+
+        // Add course button
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('#addCourseBtn')) {
+                courses.push({
+                    id: Date.now().toString(),
+                    code: '',
+                    title: '',
+                    units: 3,
+                    grade: ''
+                });
+                renderCourses();
+            }
+        });
+
+        // Calculate current GPA
+        function calculateCurrentGpa() {
+            const validCourses = courses.filter(c => c.grade && c.units > 0);
+            if (validCourses.length === 0) {
+                return { gpa: 0, totalUnits: 0, qualityPoints: 0 };
+            }
+
+            let totalUnits = 0;
+            let qualityPoints = 0;
+
+            validCourses.forEach(course => {
+                const gradePoint = GRADE_POINTS[course.grade] || 0;
+                totalUnits += course.units;
+                qualityPoints += gradePoint * course.units;
+            });
+
+            return {
+                gpa: totalUnits > 0 ? qualityPoints / totalUnits : 0,
+                totalUnits,
+                qualityPoints
+            };
+        }
+
+        // Update current GPA display
+        function updateCurrentGpa() {
+            const { gpa } = calculateCurrentGpa();
+            const currentGpaEl = document.getElementById('currentGpa');
+            if (currentGpaEl) currentGpaEl.textContent = gpa.toFixed(2);
+        }
+
+        // Calculate CGPA
+        function calculateCgpa() {
+            if (savedSemesters.length === 0) {
+                return { cgpa: 0, totalUnits: 0, totalQualityPoints: 0 };
+            }
+
+            let totalUnits = 0;
+            let totalQualityPoints = 0;
+
+            savedSemesters.forEach(sem => {
+                totalUnits += sem.totalUnits;
+                totalQualityPoints += sem.qualityPoints;
+            });
+
+            return {
+                cgpa: totalUnits > 0 ? totalQualityPoints / totalUnits : 0,
+                totalUnits,
+                totalQualityPoints
+            };
+        }
+
+        // Get classification
+        function getClassification(cgpa) {
+            if (cgpa >= 4.5) return 'First Class Honours';
+            if (cgpa >= 3.5) return 'Second Class Upper';
+            if (cgpa >= 2.4) return 'Second Class Lower';
+            if (cgpa >= 1.5) return 'Third Class';
+            if (cgpa >= 1.0) return 'Pass';
+            return 'Fail';
+        }
+
+        function getClassificationColor(cgpa) {
+            if (cgpa >= 4.5) return 'emerald-600';
+            if (cgpa >= 3.5) return 'blue-600';
+            if (cgpa >= 2.4) return 'amber-600';
+            if (cgpa >= 1.5) return 'orange-600';
+            return 'red-600';
+        }
+
+        // Update display
+        function updateDisplay() {
+            // Update CGPA display
+            const { cgpa, totalUnits } = calculateCgpa();
+            const cgpaDisplay = document.getElementById('currentCgpaDisplay');
+            if (cgpaDisplay) {
+                cgpaDisplay.textContent = cgpa.toFixed(2);
+                
+                // Update color class
+                cgpaDisplay.className = 'cgpa-display';
+                if (savedSemesters.length > 0) {
+                    cgpaDisplay.classList.add(getClassificationColor(cgpa));
+                } else {
+                    cgpaDisplay.classList.add('gray-300');
+                }
+            }
+
+            // Update classification
+            const classificationBox = document.getElementById('classificationBox');
+            const classificationText = document.getElementById('classificationText');
+            const classificationSubtext = document.getElementById('classificationSubtext');
+
+            if (classificationBox && classificationText && classificationSubtext) {
+                if (savedSemesters.length > 0) {
+                    const classification = getClassification(cgpa);
+                    const colorClass = getClassificationColor(cgpa);
+                    classificationText.textContent = classification;
+                    classificationText.className = `classification-text ${colorClass}`;
+                    classificationSubtext.classList.add('hidden');
+                } else {
+                    classificationText.textContent = 'No classification yet';
+                    classificationText.className = 'classification-text gray-400';
+                    classificationSubtext.classList.remove('hidden');
+                }
+            }
+
+            // Update stats
+            const totalSemestersEl = document.getElementById('totalSemesters');
+            const totalUnitsEl = document.getElementById('totalUnits');
+            if (totalSemestersEl) totalSemestersEl.textContent = savedSemesters.length;
+            if (totalUnitsEl) totalUnitsEl.textContent = totalUnits;
+
+            // Update saved semesters section
+            const savedCard = document.getElementById('savedSemestersCard');
+            const savedCount = document.getElementById('savedSemestersCount');
+            const savedList = document.getElementById('savedSemestersList');
+            
+            if (savedCard && savedCount && savedList) {
+                if (savedSemesters.length > 0) {
+                    savedCard.classList.remove('hidden');
+                    savedCount.textContent = `${savedSemesters.length} semester(s) recorded`;
+                    
+                    let semHtml = '';
+                    savedSemesters.forEach(sem => {
+                        semHtml += `
+                            <div class="saved-semester-item">
+                                <div class="saved-semester-info">
+                                    <h4>Year ${sem.year}, Semester ${sem.semester}</h4>
+                                    <p>${sem.totalUnits} units • ${sem.courses.length} courses</p>
+                                </div>
+                                <div class="saved-semester-actions">
+                                    <span class="saved-semester-gpa">${sem.gpa.toFixed(2)}</span>
+                                    <button class="delete-semester-btn" onclick="deleteSemester('${sem.id}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    savedList.innerHTML = semHtml;
+                } else {
+                    savedCard.classList.add('hidden');
+                }
+            }
+
+            // Update projection result if exists
+            const projectionResultDiv = document.getElementById('projectionResult');
+            if (projectionResultDiv) {
+                if (projectionResult) {
+                    projectionResultDiv.textContent = projectionResult;
+                    projectionResultDiv.classList.remove('hidden');
+                } else {
+                    projectionResultDiv.classList.add('hidden');
+                }
+            }
+        }
+
+        // Save semester
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('#saveSemesterBtn')) {
+                const { gpa, totalUnits, qualityPoints } = calculateCurrentGpa();
+                if (totalUnits === 0) return;
+
+                const newSemester = {
+                    id: Date.now().toString(),
+                    year: currentYear,
+                    semester: currentSemester,
+                    courses: courses.filter(c => c.grade && c.units > 0),
+                    gpa,
+                    totalUnits,
+                    qualityPoints
+                };
+
+                savedSemesters.push(newSemester);
+                saveToStorage();
+
+                // Reset courses
+                courses = [{
+                    id: Date.now().toString(),
+                    code: '',
+                    title: '',
+                    units: 3,
+                    grade: ''
+                }];
+                
+                renderCourses();
+                updateDisplay();
+            }
+        });
+
+        // Delete semester
+        window.deleteSemester = function(id) {
+            savedSemesters = savedSemesters.filter(s => s.id !== id);
+            saveToStorage();
+            updateDisplay();
+        };
+
+        // Calculate projection
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('#calculateProjectionBtn')) {
+                const targetInput = document.getElementById('targetCgpa');
+                if (!targetInput) return;
+                
+                const target = parseFloat(targetInput.value);
+                
+                if (isNaN(target) || target < 0 || target > 5) {
+                    projectionResult = 'Please enter a valid target CGPA (0.00 - 5.00)';
+                    updateDisplay();
+                    return;
+                }
+
+                const { totalUnits, totalQualityPoints } = calculateCgpa();
+                
+                if (savedSemesters.length === 0) {
+                    projectionResult = 'Save at least one semester first to calculate projection.';
+                    updateDisplay();
+                    return;
+                }
+
+                // Assume average 20 units per remaining semester, estimate 2 semesters remaining
+                const remainingUnits = 40;
+                const requiredQualityPoints = target * (totalUnits + remainingUnits) - totalQualityPoints;
+                const requiredGpa = requiredQualityPoints / remainingUnits;
+
+                if (requiredGpa > 5.0) {
+                    const maxPossible = ((totalQualityPoints + 5 * remainingUnits) / (totalUnits + remainingUnits)).toFixed(2);
+                    projectionResult = `Target CGPA of ${target.toFixed(2)} is not achievable. Maximum possible is ${maxPossible}.`;
+                } else if (requiredGpa < 0) {
+                    projectionResult = `You've already exceeded your target! Keep up the great work.`;
+                } else {
+                    projectionResult = `You need an average GPA of ${requiredGpa.toFixed(2)} in your remaining semesters to achieve a CGPA of ${target.toFixed(2)}.`;
+                }
+
+                updateDisplay();
+            }
+        });
+
+        // Download report
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('#downloadReportBtn')) {
+                const { cgpa, totalUnits } = calculateCgpa();
+                
+                let report = `NUESA BIU - CGPA Report\n`;
+                report += `========================\n\n`;
+                report += `Student: ${studentInfo.fullName || 'N/A'}\n`;
+                report += `Matric No: ${studentInfo.matricNumber || 'N/A'}\n`;
+                report += `Department: ${studentInfo.department || 'N/A'}\n`;
+                report += `Level: ${studentInfo.level || 'N/A'}\n\n`;
+                report += `Cumulative GPA: ${cgpa.toFixed(2)}\n`;
+                report += `Total Units: ${totalUnits}\n`;
+                report += `Classification: ${getClassification(cgpa)}\n\n`;
+                report += `Semester Breakdown:\n`;
+                report += `-------------------\n`;
+                
+                savedSemesters.forEach(sem => {
+                    report += `Year ${sem.year}, Semester ${sem.semester}: GPA ${sem.gpa.toFixed(2)} (${sem.totalUnits} units)\n`;
+                });
+
+                const blob = new Blob([report], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'cgpa-report.txt';
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+        });
+
+        // Clear all data
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('#clearAllDataBtn')) {
+                if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
+                    studentInfo = {
+                        fullName: '',
+                        matricNumber: '',
+                        department: '',
+                        level: ''
+                    };
+                    savedSemesters = [];
+                    courses = [{
+                        id: '1',
+                        code: '',
+                        title: '',
+                        units: 3,
+                        grade: ''
+                    }];
+                    targetCgpa = '';
+                    projectionResult = '';
+
+                    localStorage.removeItem('nuesa-cgpa-data');
+                    
+                    renderStudentInfo();
+                    renderCourses();
+                    updateDisplay();
+                    
+                    const targetInput = document.getElementById('targetCgpa');
+                    if (targetInput) targetInput.value = '';
+                }
+            }
+        });
+
+        // Student info change handlers
+        document.addEventListener('input', function(e) {
+            if (e.target.id === 'fullName') {
+                studentInfo.fullName = e.target.value;
+                saveToStorage();
+            }
+            if (e.target.id === 'matricNumber') {
+                studentInfo.matricNumber = e.target.value;
+                saveToStorage();
+            }
+        });
+
+        document.addEventListener('change', function(e) {
+            if (e.target.id === 'department') {
+                studentInfo.department = e.target.value;
+                saveToStorage();
+            }
+            if (e.target.id === 'level') {
+                studentInfo.level = e.target.value;
+                saveToStorage();
+            }
+        });
+
+        // Year/semester change
+        document.addEventListener('change', function(e) {
+            if (e.target.id === 'currentYear') {
+                currentYear = parseInt(e.target.value);
+                const semesterLabel = document.getElementById('semesterLabel');
+                if (semesterLabel) semesterLabel.textContent = `Year ${currentYear}, Semester ${currentSemester}`;
+            }
+            if (e.target.id === 'currentSemester') {
+                currentSemester = parseInt(e.target.value);
+                const semesterLabel = document.getElementById('semesterLabel');
+                if (semesterLabel) semesterLabel.textContent = `Year ${currentYear}, Semester ${currentSemester}`;
+            }
+        });
+
+        // ===== MODAL FUNCTIONS =====
+        function showCGPACalculator() {
+            const modal = document.getElementById('cgpaCalculatorModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+                
+                // Load data and render
+                loadFromStorage();
+                renderStudentInfo();
+                renderCourses();
+                updateDisplay();
+            }
+        }
+
+        function closeCGPAModal() {
+            const modal = document.getElementById('cgpaCalculatorModal');
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        }
+
+        // Close modal when clicking outside
+        document.addEventListener('click', function(e) {
+            const modal = document.getElementById('cgpaCalculatorModal');
+            if (modal && modal.style.display === 'flex') {
+                if (e.target === modal) {
+                    closeCGPAModal();
+                }
+            }
+        });
+
+        // Close on escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('cgpaCalculatorModal');
+                if (modal && modal.style.display === 'flex') {
+                    closeCGPAModal();
+                }
+            }
+        });
+
+        // ===== ORIGINAL RESOURCES PAGE SCRIPT =====
         const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
 
-        // Application State
         const appState = {
             currentTab: 'resources',
             resources: [],
@@ -1586,7 +3058,7 @@
                     name: 'CGPA Calculator',
                     description: 'Calculate your semester and cumulative GPA easily',
                     icon: 'calculator',
-                    action: 'showCGPACalculator'
+                    action: showCGPACalculator
                 },
                 {
                     name: 'Course Registration Portal',
@@ -1598,13 +3070,13 @@
                     name: 'Unit Converter',
                     description: 'Convert between different engineering units',
                     icon: 'exchange-alt',
-                    action: 'showUnitConverter'
+                    action: showUnitConverter
                 },
                 {
                     name: 'Academic Calendar',
                     description: 'View the current academic calendar',
                     icon: 'calendar-alt',
-                    action: 'showAcademicCalendar'
+                    action: showAcademicCalendar
                 }
             ],
             helpfulLinks: [
@@ -1656,32 +3128,25 @@
             ]
         };
 
-        // DOM Elements
-        let searchInput, levelFilter, clearFiltersBtn;
-        let resourcesContainer, resultsList, toolsContainer, linksContainer;
-        let tabButtons;
-
-        // Initialize the application
+        // Initialize resources page
         document.addEventListener('DOMContentLoaded', function() {
             initializeDOM();
             initializeEventListeners();
-            initializeMobileMenu();
-            highlightCurrentPage();
-            
-            // Load initial data
             loadResources();
+            renderTools();
+            renderLinks();
         });
 
         function initializeDOM() {
             // Get DOM elements
-            searchInput = document.getElementById('searchInput');
-            levelFilter = document.getElementById('levelFilter');
-            clearFiltersBtn = document.getElementById('clearFiltersBtn');
-            resultsList = document.getElementById('resultsList');
-            resourcesContainer = document.getElementById('resources-container');
-            toolsContainer = document.getElementById('tools-container');
-            linksContainer = document.getElementById('links-container');
-            tabButtons = document.querySelectorAll('.tab-button');
+            window.searchInput = document.getElementById('searchInput');
+            window.levelFilter = document.getElementById('levelFilter');
+            window.clearFiltersBtn = document.getElementById('clearFiltersBtn');
+            window.resultsList = document.getElementById('resultsList');
+            window.resourcesContainer = document.getElementById('resources-container');
+            window.toolsContainer = document.getElementById('tools-container');
+            window.linksContainer = document.getElementById('links-container');
+            window.tabButtons = document.querySelectorAll('.tab-button');
         }
 
         function initializeEventListeners() {
@@ -1723,61 +3188,6 @@
                     handleDownload(id);
                 }
             });
-
-            // Tool card clicks
-            document.addEventListener('click', (e) => {
-                if (e.target.closest('.tool-card')) {
-                    const toolCard = e.target.closest('.tool-card');
-                    const toolIndex = parseInt(toolCard.dataset.toolIndex);
-                    if (!isNaN(toolIndex) && appState.tools[toolIndex]) {
-                        const tool = appState.tools[toolIndex];
-                        if (typeof tool.action === 'function') {
-                            tool.action();
-                        } else if (typeof window[tool.action] === 'function') {
-                            window[tool.action]();
-                        }
-                    }
-                }
-            });
-        }
-
-        function initializeMobileMenu() {
-            const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-            const mobileNav = document.getElementById('mobileNav');
-            
-            if (!mobileMenuBtn || !mobileNav) return;
-            
-            mobileMenuBtn.addEventListener('click', function() {
-                mobileNav.classList.toggle('open');
-                const icon = this.querySelector('i');
-                if (icon) {
-                    icon.classList.toggle('fa-bars');
-                    icon.classList.toggle('fa-times');
-                }
-            });
-            
-            document.addEventListener('click', function(e) {
-                if (!mobileNav.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
-                    mobileNav.classList.remove('open');
-                    const icon = mobileMenuBtn.querySelector('i');
-                    if (icon) {
-                        icon.classList.remove('fa-times');
-                        icon.classList.add('fa-bars');
-                    }
-                }
-            });
-        }
-
-        function highlightCurrentPage() {
-            const currentPage = window.location.pathname.split('/').pop();
-            
-            document.querySelectorAll('.nav-link, .mobile-nav-link').forEach(link => {
-                if (link.getAttribute('href') === currentPage) {
-                    link.classList.add('active');
-                } else {
-                    link.classList.remove('active');
-                }
-            });
         }
 
         async function loadResources() {
@@ -1786,9 +3196,8 @@
                 
                 console.log('Fetching resources from API...');
                 
-                // Add timeout to fetch
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
                 
                 const response = await fetch(`${API_BASE_URL}/api/resources`, {
                     method: 'GET',
@@ -1806,7 +3215,6 @@
                     throw new Error(`API returned ${response.status}: ${response.statusText}`);
                 }
                 
-                // Check if response is JSON
                 const contentType = response.headers.get('content-type');
                 if (!contentType || !contentType.includes('application/json')) {
                     throw new Error('Server returned non-JSON response');
@@ -1815,18 +3223,13 @@
                 const data = await response.json();
                 console.log('API Response:', data);
                 
-                // Process the data based on your API response structure
                 let resources = [];
                 
-                // Handle different response formats your API might return
                 if (data.status === 'success' && data.data) {
-                    // Format: { status: 'success', data: [...] }
                     resources = data.data;
                 } else if (Array.isArray(data)) {
-                    // Format: directly an array
                     resources = data;
                 } else if (data.resources && Array.isArray(data.resources)) {
-                    // Format: { resources: [...] }
                     resources = data.resources;
                 } else {
                     console.warn('Unexpected API response format:', data);
@@ -1842,7 +3245,6 @@
                     return;
                 }
                 
-                // Map the database fields to what your frontend expects
                 appState.resources = resources.map(resource => ({
                     id: resource.id,
                     title: resource.title || 'Untitled Resource',
@@ -1874,7 +3276,6 @@
                     showError('Failed to load resources. Please try again.');
                 }
                 
-                // Show empty state
                 if (resourcesContainer) {
                     resourcesContainer.innerHTML = `
                         <div style="text-align: center; padding: 3rem; color: var(--gray-600);">
@@ -1897,7 +3298,6 @@
             
             let filtered = [...appState.resources];
             
-            // Apply search filter
             if (appState.filters.search) {
                 const searchTerm = appState.filters.search.toLowerCase();
                 filtered = filtered.filter(resource => 
@@ -1908,7 +3308,6 @@
                 );
             }
             
-            // Apply level filter
             if (appState.filters.level !== 'All') {
                 filtered = filtered.filter(resource => 
                     resource.level && resource.level.toString() === appState.filters.level
@@ -1917,7 +3316,6 @@
             
             appState.filteredResources = filtered;
             
-            // Render based on current tab
             if (appState.currentTab === 'past-questions') {
                 renderPastQuestions();
             } else if (appState.currentTab === 'resources') {
@@ -2026,7 +3424,6 @@
         function renderPastQuestions() {
             if (!resultsList) return;
             
-            // Filter resources to show only past questions
             const pastQuestions = appState.filteredResources.filter(resource => 
                 resource.category && (
                     resource.category.toLowerCase().includes('past') ||
@@ -2081,13 +3478,23 @@
             if (!toolsContainer) return;
             
             toolsContainer.innerHTML = appState.tools.map((tool, index) => `
-                <div class="tool-card" data-tool-index="${index}">
+                <div class="tool-card" onclick="${typeof tool.action === 'function' ? 'tool.action()' : ''}">
                     <i class="fas fa-${tool.icon} tool-icon"></i>
                     <h3 class="tool-title">${tool.name}</h3>
                     <p class="tool-description">${tool.description}</p>
-                    <span class="tool-link">${typeof tool.action === 'function' ? 'Open Link' : 'Launch Tool'}</span>
+                    <span class="tool-link">${typeof tool.action === 'function' ? 'Launch Tool' : 'Open Link'}</span>
                 </div>
             `).join('');
+            
+            // Attach click handlers
+            document.querySelectorAll('.tool-card').forEach((card, index) => {
+                card.addEventListener('click', () => {
+                    const tool = appState.tools[index];
+                    if (typeof tool.action === 'function') {
+                        tool.action();
+                    }
+                });
+            });
         }
 
         function renderLinks() {
@@ -2137,23 +3544,19 @@
                 }
             });
 
-            // Hide all tab panes
             document.querySelectorAll('.tab-pane').forEach(pane => {
                 pane.classList.remove('active');
                 pane.style.display = 'none';
             });
             
-            // Show selected tab
             const tabElement = document.getElementById(`${tabName}-tab`);
             if (tabElement) {
                 tabElement.classList.add('active');
                 tabElement.style.display = 'block';
             }
 
-            // Update app state
             appState.currentTab = tabName;
             
-            // Refresh content for the tab
             if (tabName === 'past-questions') {
                 renderPastQuestions();
             } else if (tabName === 'resources') {
@@ -2167,14 +3570,12 @@
 
         async function handleDownload(id) {
             try {
-                // Find the resource
                 const resource = appState.resources.find(r => r.id == id);
                 if (!resource) {
                     showError('Resource not found');
                     return;
                 }
                 
-                // Show loading state on button
                 const button = document.querySelector(`[data-id="${id}"]`);
                 const originalHTML = button ? button.innerHTML : '';
                 
@@ -2183,38 +3584,30 @@
                     button.disabled = true;
                 }
                 
-                // Handle different types of file URLs
                 let downloadUrl = resource.file_url;
                 
                 if (!downloadUrl || downloadUrl === '#') {
-                    // If no direct URL, use the API download endpoint
                     downloadUrl = `${API_BASE_URL}/api/resources/${id}/download`;
                 } else if (downloadUrl.startsWith('/')) {
-                    // If relative URL, make it absolute
                     downloadUrl = `${API_BASE_URL}${downloadUrl}`;
                 }
                 
                 console.log('Downloading from:', downloadUrl);
                 
-                // Create a temporary anchor element to trigger download
                 const link = document.createElement('a');
                 link.href = downloadUrl;
                 link.download = `${resource.title.replace(/[^a-z0-9]/gi, '_')}.${resource.file_type || 'pdf'}`;
                 link.target = '_blank';
                 link.rel = 'noopener noreferrer';
                 
-                // Append to body, click, and remove
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
                 
-                // Update download count locally
                 resource.download_count = (resource.download_count || 0) + 1;
                 
-                // Show success message
                 showSuccess(`Downloading: ${resource.title}`);
                 
-                // Reset button after a delay
                 setTimeout(() => {
                     if (button) {
                         button.innerHTML = originalHTML;
@@ -2226,67 +3619,12 @@
                 console.error('Download error:', error);
                 showError('Failed to download. Please try again.');
                 
-                // Reset button
                 const button = document.querySelector(`[data-id="${id}"]`);
                 if (button) {
                     button.innerHTML = '<i class="fas fa-download"></i>';
                     button.disabled = false;
                 }
             }
-        }
-
-        // Tool functions
-        function showCGPACalculator() {
-            const modalHTML = `
-                <div class="modal-overlay">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h3>CGPA Calculator</h3>
-                            <button class="close-modal">&times;</button>
-                        </div>
-                        
-                        <div class="modal-body">
-                            <p>Add your courses to calculate your GPA:</p>
-                            
-                            <div class="input-group">
-                                <div class="input-row">
-                                    <input type="text" id="courseName" placeholder="Course Name">
-                                    <input type="number" id="courseUnits" placeholder="Units" min="1" max="10">
-                                    <select id="courseGrade">
-                                        <option value="5">A</option>
-                                        <option value="4">B</option>
-                                        <option value="3">C</option>
-                                        <option value="2">D</option>
-                                        <option value="1">E</option>
-                                        <option value="0">F</option>
-                                    </select>
-                                </div>
-                                <button id="addCourseBtn" class="btn-primary">Add Course</button>
-                            </div>
-                            
-                            <div id="coursesList" class="courses-list"></div>
-                            
-                            <div class="result-container">
-                                <h4>GPA Result</h4>
-                                <div id="gpaResult" class="gpa-result">0.00</div>
-                            </div>
-                            
-                            <button id="calculateGPABtn" class="btn-calculate">Calculate GPA</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            const modal = createModal(modalHTML);
-            document.body.appendChild(modal);
-            
-            // Initialize courses array
-            window.calculatorCourses = [];
-            
-            // Add event listeners for the calculator
-            document.getElementById('addCourseBtn').addEventListener('click', addCourse);
-            document.getElementById('calculateGPABtn').addEventListener('click', calculateGPA);
-            modal.querySelector('.close-modal').addEventListener('click', () => modal.remove());
         }
 
         function showUnitConverter() {
@@ -2342,7 +3680,6 @@
             const modal = createModal(modalHTML);
             document.body.appendChild(modal);
             
-            // Add event listeners
             document.getElementById('convertBtn').addEventListener('click', convertUnits);
             modal.querySelector('.close-modal').addEventListener('click', () => modal.remove());
         }
@@ -2378,54 +3715,7 @@
             modal.querySelector('.close-modal').addEventListener('click', () => modal.remove());
         }
 
-        // Helper functions for calculator (attached to window for modal access)
-        window.addCourse = function() {
-            const name = document.getElementById('courseName').value;
-            const units = parseInt(document.getElementById('courseUnits').value);
-            const grade = parseInt(document.getElementById('courseGrade').value);
-            
-            if (!name || !units || isNaN(units) || units <= 0) {
-                showError('Please enter valid course details');
-                return;
-            }
-            
-            if (!window.calculatorCourses) window.calculatorCourses = [];
-            window.calculatorCourses.push({ name, units, grade });
-            
-            // Update courses list
-            const coursesList = document.getElementById('coursesList');
-            const courseItem = document.createElement('div');
-            courseItem.className = 'course-item';
-            courseItem.innerHTML = `
-                <span>${name}</span>
-                <span>${units} units • Grade: ${getGradeLetter(grade)}</span>
-            `;
-            coursesList.appendChild(courseItem);
-            
-            // Clear inputs
-            document.getElementById('courseName').value = '';
-            document.getElementById('courseUnits').value = '';
-        };
-
-        window.calculateGPA = function() {
-            if (!window.calculatorCourses || window.calculatorCourses.length === 0) {
-                showError('Please add at least one course');
-                return;
-            }
-            
-            let totalPoints = 0;
-            let totalUnits = 0;
-            
-            window.calculatorCourses.forEach(course => {
-                totalPoints += course.units * course.grade;
-                totalUnits += course.units;
-            });
-            
-            const gpa = totalPoints / totalUnits;
-            document.getElementById('gpaResult').textContent = gpa.toFixed(2);
-        };
-
-        window.convertUnits = function() {
+        function convertUnits() {
             const value = parseFloat(document.getElementById('converterValue').value);
             const fromUnit = document.getElementById('fromUnit').value;
             const toUnit = document.getElementById('toUnit').value;
@@ -2437,7 +3727,6 @@
             
             let result;
             
-            // Conversion logic
             const conversions = {
                 'meters-feet': value * 3.28084,
                 'feet-meters': value * 0.3048,
@@ -2452,15 +3741,8 @@
             
             document.getElementById('conversionResult').textContent = 
                 `${value.toFixed(2)} ${fromUnit} = ${result.toFixed(2)} ${toUnit}`;
-        };
+        }
 
-        window.addEventListener('beforeunload', function() {
-            if (mobileOverlay.classList.contains('open')) {
-                closeMobile();
-            }
-        });
-
-        // Utility functions
         function getFileExtension(filename) {
             if (!filename) return 'pdf';
             const parts = filename.split('.');
@@ -2494,11 +3776,6 @@
             const sizes = ['B', 'KB', 'MB', 'GB'];
             const i = Math.floor(Math.log(bytes) / Math.log(k));
             return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-        }
-
-        function getGradeLetter(gradeValue) {
-            const grades = {5: 'A', 4: 'B', 3: 'C', 2: 'D', 1: 'E', 0: 'F'};
-            return grades[gradeValue] || 'F';
         }
 
         function clearFilters() {
@@ -2538,7 +3815,7 @@
                         width: 100%;
                         max-height: 80vh;
                         overflow-y: auto;
-                        box-shadow: var(--shadow-2xl);
+                        box-shadow: var(--shadow-xl);
                         border: 2px solid var(--emerald-200);
                     }
                     .modal-header {
@@ -2593,46 +3870,6 @@
                     .btn-calculate:hover {
                         background: var(--emerald-700);
                     }
-                    .input-row {
-                        display: grid;
-                        grid-template-columns: 2fr 1fr 1fr;
-                        gap: 0.5rem;
-                        margin-bottom: 1rem;
-                    }
-                    .input-row input, .input-row select {
-                        padding: 0.5rem;
-                        border: 1px solid var(--gray-300);
-                        border-radius: 0.25rem;
-                    }
-                    .courses-list {
-                        max-height: 200px;
-                        overflow-y: auto;
-                        margin: 1rem 0;
-                    }
-                    .course-item {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        padding: 0.5rem;
-                        background: var(--gray-50);
-                        border-radius: 0.25rem;
-                        margin-bottom: 0.5rem;
-                    }
-                    .result-container {
-                        text-align: center;
-                        padding: 1rem;
-                        background: var(--gray-100);
-                        border-radius: 0.25rem;
-                        margin: 1rem 0;
-                    }
-                    .gpa-result {
-                        font-size: 2rem;
-                        font-weight: bold;
-                        color: var(--emerald-600);
-                    }
-                    .converter-inputs {
-                        margin: 1rem 0;
-                    }
                     .value-input {
                         width: 100%;
                         padding: 0.75rem;
@@ -2679,14 +3916,12 @@
                 </style>
             `;
             
-            // Close modal on outside click
             modal.addEventListener('click', function(e) {
                 if (e.target === this) {
                     this.remove();
                 }
             });
             
-            // Close modal on escape key
             const escapeHandler = (e) => {
                 if (e.key === 'Escape' && modal.parentNode) {
                     modal.remove();
@@ -2714,29 +3949,13 @@
             appState.loading = false;
         }
 
-        function renderFallbackResources() {
-            if (resourcesContainer) {
-                resourcesContainer.innerHTML = `
-                    <div style="text-align: center; padding: 3rem; color: var(--gray-600);">
-                        <i class="fas fa-wifi-slash" style="font-size: 3rem; margin-bottom: 1rem;"></i>
-                        <p>Unable to load resources. Please check your connection and try again.</p>
-                        <button onclick="loadResources()" style="margin-top: 1rem; padding: 0.5rem 1rem; 
-                                background: var(--emerald-600); color: white; border: none; 
-                                border-radius: 0.25rem; cursor: pointer;">
-                            Retry
-                        </button>
-                    </div>
-                `;
-            }
-        }
-
         function showSuccess(message) {
             const toast = document.createElement('div');
             toast.style.cssText = `
                 position: fixed; top: 1rem; right: 1rem; 
                 background: var(--emerald-600); color: white; 
                 padding: 1rem; border-radius: 0.25rem; 
-                font-family: 'Inter', sans-serif; z-index: 10000;
+                font-family: 'Inter', sans-serif; z-index: 10001;
                 box-shadow: var(--shadow-lg);
                 animation: slideIn 0.3s ease;
                 display: flex;
@@ -2765,7 +3984,7 @@
                 position: fixed; top: 1rem; right: 1rem; 
                 background: #ef4444; color: white; 
                 padding: 1rem; border-radius: 0.25rem; 
-                font-family: 'Inter', sans-serif; z-index: 10000;
+                font-family: 'Inter', sans-serif; z-index: 10001;
                 box-shadow: var(--shadow-lg);
                 animation: slideIn 0.3s ease;
                 display: flex;
@@ -2788,7 +4007,7 @@
             }, 3000);
         }
 
-        // Add spinner and animation styles
+        // Add styles
         const style = document.createElement('style');
         style.textContent = `
             @keyframes spin {
