@@ -2386,6 +2386,7 @@
                     `;
                 }
 
+                // In renderGridView function, update the modal HTML:
                 const modalHTML = `
                     <div class="modal-overlay" id="eventModal">
                         <div class="modal-container">
@@ -2460,18 +2461,68 @@
                                     </div>
                                 </div>
 
-                                <!-- CTA -->
+                                <!-- UPDATED CTA SECTION WITH WHATSAPP -->
                                 <div class="modal-cta">
-                                    <h3>Interested in attending?</h3>
-                                    <p>Register now to secure your spot. Contact your course representative or visit the NUESA BIU office for more details.</p>
-                                    <button class="cta-btn" onclick="handleRegistration('${event.id}', '${event.title}')">
-                                        Register Now <i class="fas fa-external-link-alt"></i>
+                                    <h3>🎉 Ready to join?</h3>
+                                    <p>Click the WhatsApp button below to register instantly. You'll be able to send us your details directly.</p>
+                                    <button class="cta-btn" onclick="handleRegistration('${event.id}', '${escapeQuotes(event.title || 'Event')}')">
+                                        <i class="fab fa-whatsapp"></i>
+                                        Register via WhatsApp 
+                                        <i class="fas fa-external-link-alt"></i>
                                     </button>
+                                    <p style="font-size: 0.875rem; margin-top: 1rem; color: var(--emerald-100);">
+                                        <i class="fas fa-clock"></i> Quick & easy registration
+                                    </p>
                                 </div>
                             </div>
                         </div>
                     </div>
                 `;
+
+                window.handleRegistration = function(eventId, eventTitle) {
+                    // Find the event
+                    const event = allEvents.find(e => e.id === eventId);
+                    
+                    if (!event) {
+                        alert('Event details not found. Please contact NUESA BIU directly.');
+                        return;
+                    }
+
+                    // WhatsApp number
+                    const whatsappNumber = '2349161461858'; // Format: country code without '+'
+                    
+                    // Format date and time
+                    const eventDate = formatDate(event.date || event.start_date);
+                    const eventTime = formatTime(event.time || event.start_time);
+                    
+                    // Create the WhatsApp message
+                    let message = `Hello NUESA BIU! 👋%0a%0a`;
+                    message += `I'm interested in attending: *${eventTitle}*%0a%0a`;
+                    message += `📅 *Date:* ${eventDate}%0a`;
+                    message += `⏰ *Time:* ${eventTime}%0a`;
+                    message += `📍 *Location:* ${event.location || 'Benson Idahosa University'}%0a%0a`;
+                    message += `Please register me for this event. I look forward to attending!%0a%0a`;
+                    message += `Here are my details (I'll provide them now):%0a`;
+                    message += `*Name:* [Your Full Name]%0a`;
+                    message += `*Department:* [Your Department]%0a`;
+                    message += `*Matric Number:* [Your Matric Number]%0a`;
+                    message += `*Phone:* [Your Phone Number]%0a%0a`;
+                    message += `Thank you! 🙏`;
+
+                    // Create and open WhatsApp URL
+                    const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
+                    
+                    // Close modal
+                    closeEventModal();
+                    
+                    // Open WhatsApp in new tab
+                    window.open(whatsappUrl, '_blank');
+                    
+                    // Show success message
+                    setTimeout(() => {
+                        alert('✅ WhatsApp opened! Please send the message to complete your registration.');
+                    }, 1000);
+                };
 
                 // Remove any existing modal
                 const existingModal = document.getElementById('eventModal');
@@ -2490,99 +2541,21 @@
                 }
             };
 
-            // Updated handleRegistration function
-            window.handleRegistration = function(eventId, eventTitle) {
-                if (eventId) {
-                    // Redirect to registration page with event details
-                    window.location.href = `register.html?event=${eventId}&title=${encodeURIComponent(eventTitle)}`;
-                } else {
-                    // Fallback if no event ID
-                    showNotification('Event registration information', 'Please contact the NUESA BIU office for registration details.');
+            function formatTime(timeStr) {
+                if (!timeStr) return 'TBA';
+                try {
+                    if (timeStr.includes(':')) {
+                        const [hours, minutes] = timeStr.split(':');
+                        const hour = parseInt(hours);
+                        const ampm = hour >= 12 ? 'PM' : 'AM';
+                        const displayHour = hour % 12 || 12;
+                        return `${displayHour}:${minutes.padStart(2, '0')} ${ampm}`;
+                    }
+                    return timeStr;
+                } catch {
+                    return timeStr;
                 }
-            };
-
-            // Add notification function for fallback
-            function showNotification(message, type) {
-                // Create notification element if it doesn't exist
-                let notification = document.getElementById('customNotification');
-                if (!notification) {
-                    notification = document.createElement('div');
-                    notification.id = 'customNotification';
-                    notification.style.cssText = `
-                        position: fixed;
-                        top: 20px;
-                        right: 20px;
-                        background: white;
-                        border-radius: 0.75rem;
-                        padding: 1rem 1.5rem;
-                        box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
-                        border-left: 4px solid #10b981;
-                        transform: translateX(120%);
-                        transition: transform 0.3s ease;
-                        z-index: 2001;
-                        max-width: 350px;
-                    `;
-                    document.body.appendChild(notification);
-                }
-                
-                // Set notification content
-                notification.innerHTML = `
-                    <div style="display: flex; align-items: center; gap: 1rem;">
-                        <i class="fas ${type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}" 
-                        style="font-size: 1.5rem; color: ${type === 'error' ? '#ef4444' : '#10b981'};"></i>
-                        <p style="color: #374151; font-weight: 500; margin: 0;">${message}</p>
-                    </div>
-                `;
-                
-                // Show notification
-                setTimeout(() => {
-                    notification.style.transform = 'translateX(0)';
-                }, 100);
-                
-                // Hide after 4 seconds
-                setTimeout(() => {
-                    notification.style.transform = 'translateX(120%)';
-                }, 4000);
             }
-
-            // Updated modal CTA HTML (replace in your renderGridView and renderListView functions)
-            const modalCTAHtml = `
-                <div class="modal-cta">
-                    <h3>Interested in attending?</h3>
-                    <p>Register now to secure your spot. Click the button below to register via WhatsApp.</p>
-                    <button class="cta-btn" onclick="handleRegistration('${event.id}', '${escapeQuotes(event.title)}')">
-                        <i class="fab fa-whatsapp"></i>
-                        Register via WhatsApp 
-                        <i class="fas fa-external-link-alt"></i>
-                    </button>
-                </div>
-            `;
-
-            // Helper function to escape quotes in event title
-            function escapeQuotes(str) {
-                if (!str) return '';
-                return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-            }
-
-            // Add WhatsApp icon styles
-            const whatsappStyle = document.createElement('style');
-            whatsappStyle.textContent = `
-                .cta-btn i.fa-whatsapp {
-                    color: #25D366;
-                    animation: whatsappPulse 2s infinite;
-                }
-                
-                @keyframes whatsappPulse {
-                    0%, 100% { transform: scale(1); }
-                    50% { transform: scale(1.2); }
-                }
-                
-                .cta-btn:hover i.fa-whatsapp {
-                    animation: none;
-                    transform: scale(1.1);
-                }
-            `;
-            document.head.appendChild(whatsappStyle);
 
             // Load Events from API
             async function loadEventsFromAPI() {
