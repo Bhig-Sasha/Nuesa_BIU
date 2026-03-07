@@ -11,7 +11,9 @@
       referrerpolicy="no-referrer" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* [Keep all your existing CSS styles - they're good] */
+        /* ============================================
+           EXISTING CSS STYLES - KEPT INTACT
+           ============================================ */
         * {
             margin: 0;
             padding: 0;
@@ -1151,9 +1153,55 @@
             color: var(--primary);
             margin-bottom: 12px;
         }
+
+        /* ============================================
+           ADDITIONAL STYLES FOR COURSE REPS
+           ============================================ */
+        .dept-list {
+            margin-top: 16px;
+            border: 1px solid var(--slate-200);
+            border-radius: var(--radius);
+            padding: 16px;
+            background: var(--slate-50);
+        }
+
+        .dept-item {
+            background: white;
+            border: 1px solid var(--slate-200);
+            border-radius: var(--radius);
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .dept-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .dept-item-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--slate-700);
+        }
+
+        .dept-rep-field {
+            margin-top: 8px;
+        }
+
+        .dept-rep-label {
+            font-size: 12px;
+            color: var(--slate-500);
+            margin-bottom: 4px;
+            display: block;
+        }
     </style>
 </head>
 <body>
+    <!-- ============================================
+         EXISTING MODALS AND OVERLAYS - KEPT INTACT
+         ============================================ -->
     <!-- Loading Overlay -->
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-spinner"></div>
@@ -1577,7 +1625,6 @@
                             <label class="form-label">Department</label>
                             <select class="form-select" id="resourceDepartment">
                                 <option value="All">All Departments</option>
-                                <option value="Computer">Computer Engineering</option>
                                 <option value="Electrical">Electrical/Electronics</option>
                                 <option value="Mechanical">Mechanical Engineering</option>
                                 <option value="Civil">Civil Engineering</option>
@@ -1689,6 +1736,69 @@
         </div>
     </div>
 
+    <!-- ============================================
+         NEW COURSE REP MODAL - ADDED
+         ============================================ -->
+    <!-- Course Rep Modal -->
+    <div class="modal" id="courseRepModal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3 class="modal-title" id="courseRepModalTitle">Add Course Representatives</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="courseRepForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Academic Session *</label>
+                            <select class="form-select" id="repSession" required>
+                                <option value="">Select Session</option>
+                                <option value="2025/2026">2025/2026</option>
+                                <option value="2024/2025">2024/2025</option>
+                                <option value="2023/2024">2023/2024</option>
+                                <option value="2022/2023">2022/2023</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Level *</label>
+                            <select class="form-select" id="repLevel" required>
+                                <option value="">Select Level</option>
+                                <option value="100">100 Level</option>
+                                <option value="200">200 Level</option>
+                                <option value="300">300 Level</option>
+                                <option value="400">400 Level</option>
+                                <option value="500">500 Level</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">General Representative</label>
+                        <input type="text" class="form-input" id="genRep" placeholder="Full name of general rep">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Assistant General Representative</label>
+                        <input type="text" class="form-input" id="asstGenRep" placeholder="Full name of assistant general rep">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Department Representatives</label>
+                        <div class="dept-list" id="departmentFields">
+                            <!-- Department fields will be dynamically populated here -->
+                        </div>
+                    </div>
+
+                    <input type="hidden" id="courseRepId">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelCourseRep">Cancel</button>
+                <button class="btn btn-primary" id="saveCourseRep">Save Representatives</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Connection Status -->
     <div class="connection-status" id="connectionStatus">
         <i class="fas fa-wifi"></i>
@@ -1713,6 +1823,13 @@
                 <button class="nav-item" data-page="members">
                     <i class="fas fa-users"></i>
                     <span>Members</span>
+                </button>
+                <!-- ============================================
+                     NEW COURSE REP SIDEBAR ITEM - ADDED
+                     ============================================ -->
+                <button class="nav-item" data-page="courseReps">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                    <span>Course Reps</span>
                 </button>
                 <button class="nav-item" data-page="events">
                     <i class="far fa-calendar-alt"></i>
@@ -1785,8 +1902,9 @@
 
 <script>
     // ============================================
-    // CONFIGURATION - FIXED
+    // EXISTING JAVASCRIPT CODE - KEPT INTACT
     // ============================================
+    // CONFIGURATION - FIXED
     const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
     
     // Get token from cookies or localStorage
@@ -1924,6 +2042,7 @@
         if (parts.length === 2) return parts.pop().split(';').shift();
         return null;
     }
+    
     // ==================== SESSION MANAGEMENT ====================
     function resetInactivityTimer() {
         clearTimeout(inactivityTimeout);
@@ -2342,6 +2461,9 @@
                     break;
                 case 'members':
                     html = await loadMembers();
+                    break;
+                case 'courseReps':
+                    html = await loadCourseReps();
                     break;
                 case 'events':
                     html = await loadEvents();
@@ -5850,6 +5972,360 @@ async function uploadPhotoOnly(memberId, file) {
     window.uploadResource = uploadResource;
     window.showModal = showModal;
     window.hideModal = hideModal;
+            
+    // ============================================
+    // NEW COURSE REPS MANAGEMENT CODE - ADDED
+    // ============================================
+    let currentCourseRepId = null;
+    
+    // List of departments for course reps
+    const departments = [
+        'Electrical/Electronics Engineering',
+        'Mechanical Engineering',
+        'Civil Engineering',
+        'Computer Engineering'
+    ];
+
+    // Load Course Reps Page
+    async function loadCourseReps() {
+        try {
+            const response = await get('/api/admin/course-reps');
+            const reps = response.data || [];
+            
+            return `
+                <div class="content-card">
+                    <div class="card-header">
+                        <h3 class="card-title">Course Representatives Management</h3>
+                        <button class="btn btn-primary" id="addCourseRepBtn">
+                            <i class="fas fa-plus"></i> Add Course Reps
+                        </button>
+                    </div>
+                    
+                    <div class="search-filter">
+                        <input type="text" class="search-input" id="repSearch" placeholder="Search by level..." onkeyup="filterCourseReps()">
+                        <select class="filter-select" id="repSessionFilter" onchange="filterCourseReps()">
+                            <option value="">All Sessions</option>
+                            <option value="2025/2026">2025/2026</option>
+                            <option value="2024/2025">2024/2025</option>
+                            <option value="2023/2024">2023/2024</option>
+                        </select>
+                    </div>
+                    
+                    ${reps.length > 0 ? `
+                        <div class="table-container">
+                            <table class="data-table" id="courseRepsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Level</th>
+                                        <th>Session</th>
+                                        <th>General Rep</th>
+                                        <th>Assistant</th>
+                                        <th>Departments</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${reps.map(rep => {
+                                        let departments = rep.departments;
+                                        if (typeof departments === 'string') {
+                                            try {
+                                                departments = JSON.parse(departments);
+                                            } catch (e) {
+                                                departments = [];
+                                            }
+                                        }
+                                        
+                                        const deptCount = departments?.length || 0;
+                                        
+                                        return `
+                                            <tr>
+                                                <td><strong>${rep.level || 'N/A'}</strong></td>
+                                                <td>${rep.session || 'N/A'}</td>
+                                                <td>${rep.gen_rep || 'Not Assigned'}</td>
+                                                <td>${rep.asst_gen_rep || 'Not Assigned'}</td>
+                                                <td>
+                                                    <span class="status-badge badge-info">${deptCount} departments</span>
+                                                </td>
+                                                <td>
+                                                    <div class="action-buttons">
+                                                        <button class="icon-btn icon-btn-primary" onclick="editCourseRep('${rep.id}')" title="Edit">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                        <button class="icon-btn icon-btn-danger" onclick="deleteCourseRep('${rep.id}')" title="Delete">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    ` : `
+                        <div class="empty-state">
+                            <i class="fas fa-chalkboard-teacher"></i>
+                            <h3>No Course Representatives Found</h3>
+                            <p>Add course representatives for different levels.</p>
+                            <button class="btn btn-primary" id="emptyAddRepBtn" style="margin-top: 16px;">
+                                <i class="fas fa-plus"></i> Add Course Reps
+                            </button>
+                        </div>
+                    `}
+                </div>
+            `;
+        } catch (error) {
+            return `
+                <div class="content-card">
+                    <div class="card-header">
+                        <h3 class="card-title">Course Representatives Management</h3>
+                        <button class="btn btn-primary" id="addCourseRepBtn">
+                            <i class="fas fa-plus"></i> Add Course Reps
+                        </button>
+                    </div>
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h3>Unable to Load Course Representatives</h3>
+                        <p>${error.message}</p>
+                        <button class="btn btn-primary" onclick="loadContent('courseReps')" style="margin-top: 16px;">
+                            Try Again
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    // Filter Course Reps
+    function filterCourseReps() {
+        const search = document.getElementById('repSearch')?.value.toLowerCase() || '';
+        const session = document.getElementById('repSessionFilter')?.value || '';
+        
+        const rows = document.querySelectorAll('#courseRepsTable tbody tr');
+        rows.forEach(row => {
+            const level = row.cells[0]?.textContent.toLowerCase() || '';
+            const rowSession = row.cells[1]?.textContent || '';
+            
+            const matchesSearch = level.includes(search);
+            const matchesSession = !session || rowSession === session;
+            
+            row.style.display = matchesSearch && matchesSession ? '' : 'none';
+        });
+    }
+
+    // Open Course Rep Modal
+    function openCourseRepModal() {
+        currentCourseRepId = null;
+        document.getElementById('courseRepModalTitle').textContent = 'Add Course Representatives';
+        document.getElementById('courseRepForm').reset();
+        document.getElementById('courseRepId').value = '';
+        
+        // Populate department fields
+        const deptContainer = document.getElementById('departmentFields');
+        deptContainer.innerHTML = departments.map(dept => {
+            const deptId = dept.replace(/[^a-zA-Z0-9]/g, '');
+            return `
+                <div class="dept-item">
+                    <div class="dept-item-header">
+                        <span class="dept-item-title">${dept}</span>
+                    </div>
+                    <div class="dept-rep-field">
+                        <label class="dept-rep-label">Representative</label>
+                        <input type="text" class="form-input" id="dept_${deptId}" placeholder="Full name">
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        showModal('courseRepModal');
+    }
+
+    // Edit Course Rep
+    async function editCourseRep(repId) {
+        try {
+            showLoading();
+            const response = await get(`/api/admin/course-reps/${repId}`);
+            const rep = response.data;
+            
+            if (!rep) {
+                throw new Error('Course rep not found');
+            }
+            
+            currentCourseRepId = repId;
+            
+            document.getElementById('courseRepModalTitle').textContent = 'Edit Course Representatives';
+            document.getElementById('repSession').value = rep.session || '2025/2026';
+            document.getElementById('repLevel').value = rep.level || '';
+            document.getElementById('genRep').value = rep.gen_rep || '';
+            document.getElementById('asstGenRep').value = rep.asst_gen_rep || '';
+            document.getElementById('courseRepId').value = rep.id;
+            
+            // Parse departments
+            let departments = rep.departments;
+            if (typeof departments === 'string') {
+                try {
+                    departments = JSON.parse(departments);
+                } catch (e) {
+                    departments = [];
+                }
+            }
+            
+            // Populate department fields
+            const deptContainer = document.getElementById('departmentFields');
+            deptContainer.innerHTML = departments.map(dept => {
+                const deptId = dept.name.replace(/[^a-zA-Z0-9]/g, '');
+                return `
+                    <div class="dept-item">
+                        <div class="dept-item-header">
+                            <span class="dept-item-title">${dept.name}</span>
+                        </div>
+                        <div class="dept-rep-field">
+                            <label class="dept-rep-label">Representative</label>
+                            <input type="text" class="form-input" id="dept_${deptId}" value="${dept.rep || ''}" placeholder="Full name">
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            showModal('courseRepModal');
+        } catch (error) {
+            showToast('Failed to load course rep details: ' + error.message, 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    // Save Course Rep
+    async function saveCourseRep() {
+        try {
+            const saveBtn = document.getElementById('saveCourseRep');
+            const originalText = saveBtn.innerHTML;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            saveBtn.disabled = true;
+
+            const session = document.getElementById('repSession').value;
+            const level = document.getElementById('repLevel').value;
+            
+            if (!session || !level) {
+                throw new Error('Session and level are required');
+            }
+
+            // Collect department representatives
+            const departmentsList = [];
+            departments.forEach(dept => {
+                const deptId = dept.replace(/[^a-zA-Z0-9]/g, '');
+                const rep = document.getElementById(`dept_${deptId}`)?.value || '';
+                departmentsList.push({
+                    name: dept,
+                    rep: rep || 'Pending'
+                });
+            });
+
+            const repData = {
+                session: session,
+                level: level,
+                gen_rep: document.getElementById('genRep').value || 'Not Assigned',
+                asst_gen_rep: document.getElementById('asstGenRep').value || 'Not Assigned',
+                departments: departmentsList
+            };
+
+            const token = getAuthToken();
+            if (!token) {
+                throw new Error('No authentication token found. Please login again.');
+            }
+
+            const isEditing = currentCourseRepId ? true : false;
+            const url = isEditing 
+                ? `${API_BASE_URL}/api/admin/course-reps/${currentCourseRepId}`
+                : `${API_BASE_URL}/api/admin/course-reps`;
+            
+            const method = isEditing ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(repData)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.message || `Server error: ${response.status}`);
+            }
+
+            showToast('Course representatives saved successfully!', 'success');
+            closeModal();
+            await loadContent('courseReps');
+            
+        } catch (error) {
+            console.error('Error saving course rep:', error);
+            showToast('Error: ' + error.message, 'error');
+        } finally {
+            const saveBtn = document.getElementById('saveCourseRep');
+            if (saveBtn) {
+                saveBtn.innerHTML = 'Save Representatives';
+                saveBtn.disabled = false;
+            }
+        }
+    }
+
+    // Delete Course Rep
+    async function deleteCourseRep(repId) {
+        if (!confirm('Are you sure you want to delete these course representatives?')) return;
+        
+        try {
+            showLoading();
+            await del(`/api/admin/course-reps/${repId}`);
+            showToast('Course representatives deleted successfully', 'success');
+            await loadContent('courseReps');
+        } catch (error) {
+            showToast('Failed to delete: ' + error.message, 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    // Initialize Course Reps Page
+    function initializeCourseRepsPage() {
+        const addCourseRepBtn = document.getElementById('addCourseRepBtn');
+        const emptyAddRepBtn = document.getElementById('emptyAddRepBtn');
+        const saveCourseRepBtn = document.getElementById('saveCourseRep');
+        const cancelCourseRepBtn = document.getElementById('cancelCourseRep');
+        
+        if (addCourseRepBtn) {
+            addCourseRepBtn.addEventListener('click', openCourseRepModal);
+        }
+        
+        if (emptyAddRepBtn) {
+            emptyAddRepBtn.addEventListener('click', openCourseRepModal);
+        }
+        
+        if (saveCourseRepBtn) {
+            saveCourseRepBtn.addEventListener('click', saveCourseRep);
+        }
+        
+        if (cancelCourseRepBtn) {
+            cancelCourseRepBtn.addEventListener('click', () => hideModal('courseRepModal'));
+        }
+    }
+
+    // Add Course Reps to initializePageEvents
+    const originalInitializePageEvents = initializePageEvents;
+    initializePageEvents = function(page) {
+        originalInitializePageEvents(page);
+        if (page === 'courseReps') {
+            initializeCourseRepsPage();
+        }
+    };
+
+    // Make course rep functions globally available
+    window.loadCourseReps = loadCourseReps;
+    window.editCourseRep = editCourseRep;
+    window.deleteCourseRep = deleteCourseRep;
+    window.filterCourseReps = filterCourseReps;
 </script>
 </body>
 </html>
