@@ -2490,13 +2490,99 @@
                 }
             };
 
+            // Updated handleRegistration function
             window.handleRegistration = function(eventId, eventTitle) {
                 if (eventId) {
-                    window.location.href = `register.html?event=${eventId}`;
+                    // Redirect to registration page with event details
+                    window.location.href = `register.html?event=${eventId}&title=${encodeURIComponent(eventTitle)}`;
                 } else {
-                    alert('Registration feature coming soon!');
+                    // Fallback if no event ID
+                    showNotification('Event registration information', 'Please contact the NUESA BIU office for registration details.');
                 }
             };
+
+            // Add notification function for fallback
+            function showNotification(message, type) {
+                // Create notification element if it doesn't exist
+                let notification = document.getElementById('customNotification');
+                if (!notification) {
+                    notification = document.createElement('div');
+                    notification.id = 'customNotification';
+                    notification.style.cssText = `
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        background: white;
+                        border-radius: 0.75rem;
+                        padding: 1rem 1.5rem;
+                        box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+                        border-left: 4px solid #10b981;
+                        transform: translateX(120%);
+                        transition: transform 0.3s ease;
+                        z-index: 2001;
+                        max-width: 350px;
+                    `;
+                    document.body.appendChild(notification);
+                }
+                
+                // Set notification content
+                notification.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <i class="fas ${type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}" 
+                        style="font-size: 1.5rem; color: ${type === 'error' ? '#ef4444' : '#10b981'};"></i>
+                        <p style="color: #374151; font-weight: 500; margin: 0;">${message}</p>
+                    </div>
+                `;
+                
+                // Show notification
+                setTimeout(() => {
+                    notification.style.transform = 'translateX(0)';
+                }, 100);
+                
+                // Hide after 4 seconds
+                setTimeout(() => {
+                    notification.style.transform = 'translateX(120%)';
+                }, 4000);
+            }
+
+            // Updated modal CTA HTML (replace in your renderGridView and renderListView functions)
+            const modalCTAHtml = `
+                <div class="modal-cta">
+                    <h3>Interested in attending?</h3>
+                    <p>Register now to secure your spot. Click the button below to register via WhatsApp.</p>
+                    <button class="cta-btn" onclick="handleRegistration('${event.id}', '${escapeQuotes(event.title)}')">
+                        <i class="fab fa-whatsapp"></i>
+                        Register via WhatsApp 
+                        <i class="fas fa-external-link-alt"></i>
+                    </button>
+                </div>
+            `;
+
+            // Helper function to escape quotes in event title
+            function escapeQuotes(str) {
+                if (!str) return '';
+                return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            }
+
+            // Add WhatsApp icon styles
+            const whatsappStyle = document.createElement('style');
+            whatsappStyle.textContent = `
+                .cta-btn i.fa-whatsapp {
+                    color: #25D366;
+                    animation: whatsappPulse 2s infinite;
+                }
+                
+                @keyframes whatsappPulse {
+                    0%, 100% { transform: scale(1); }
+                    50% { transform: scale(1.2); }
+                }
+                
+                .cta-btn:hover i.fa-whatsapp {
+                    animation: none;
+                    transform: scale(1.1);
+                }
+            `;
+            document.head.appendChild(whatsappStyle);
 
             // Load Events from API
             async function loadEventsFromAPI() {
