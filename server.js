@@ -6,9 +6,10 @@
  * Production-ready Express.js server for NUESA BIU (Benson Idahosa University)
  * with comprehensive security, caching, logging, and database features.
  * 
- * @author NUESA BIU Team
+ * @author Sasha Troger
  * @version 1.0.0
  * @license MIT
+ * @DevSignature ST-BIU-2026
  */
 
 // ============================================================
