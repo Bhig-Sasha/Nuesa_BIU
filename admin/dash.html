@@ -5977,10 +5977,10 @@ async function uploadPhotoOnly(memberId, file) {
     // FIXED COURSE REPS MANAGEMENT
     // ============================================
 
-    // Global variables - DECLARE ONLY ONCE at the top level
+    // Global variables
     let currentCourseRepId = null;
 
-    // Departments list - must match your frontend display
+    // Departments list
     const departments = [
         'Electrical/Electronics Engineering',
         'Mechanical Engineering',
@@ -5999,7 +5999,7 @@ async function uploadPhotoOnly(memberId, file) {
                 <div class="content-card">
                     <div class="card-header">
                         <h3 class="card-title">Course Representatives Management</h3>
-                        <button class="btn btn-primary" id="addCourseRepBtn" onclick="openCourseRepModal()">
+                        <button class="btn btn-primary" id="addCourseRepBtn">
                             <i class="fas fa-plus"></i> Add Course Reps
                         </button>
                     </div>
@@ -6082,7 +6082,7 @@ async function uploadPhotoOnly(memberId, file) {
                             <i class="fas fa-chalkboard-teacher"></i>
                             <h3>No Course Representatives Found</h3>
                             <p>Add course representatives for different levels and sessions.</p>
-                            <button class="btn btn-primary" onclick="openCourseRepModal()" style="margin-top: 16px;">
+                            <button class="btn btn-primary" id="emptyAddRepBtn" style="margin-top: 16px;">
                                 <i class="fas fa-plus"></i> Add Course Reps
                             </button>
                         </div>
@@ -6095,7 +6095,7 @@ async function uploadPhotoOnly(memberId, file) {
                 <div class="content-card">
                     <div class="card-header">
                         <h3 class="card-title">Course Representatives Management</h3>
-                        <button class="btn btn-primary" onclick="openCourseRepModal()">
+                        <button class="btn btn-primary" id="addCourseRepBtn">
                             <i class="fas fa-plus"></i> Add Course Reps
                         </button>
                     </div>
@@ -6152,7 +6152,6 @@ async function uploadPhotoOnly(memberId, file) {
                 return;
             }
             
-            // Create a formatted list
             const deptList = departments.map(d => `${d.name}: ${d.rep || 'Not Assigned'}`).join('\n');
             alert(`Department Representatives for ${rep.level} Level (${rep.session}):\n\n${deptList}`);
         } catch (error) {
@@ -6172,7 +6171,7 @@ async function uploadPhotoOnly(memberId, file) {
         document.getElementById('courseRepForm').reset();
         document.getElementById('courseRepId').value = '';
         
-        // Set default session to current year
+        // Set default session
         const currentYear = new Date().getFullYear();
         const defaultSession = `${currentYear}/${currentYear + 1}`;
         document.getElementById('repSession').value = defaultSession;
@@ -6212,10 +6211,7 @@ async function uploadPhotoOnly(memberId, file) {
             
             currentCourseRepId = repId;
             
-            // Set modal title
             document.getElementById('courseRepModalTitle').textContent = 'Edit Course Representatives';
-            
-            // Set form values
             document.getElementById('repSession').value = rep.session || '';
             document.getElementById('repLevel').value = rep.level || '';
             document.getElementById('genRep').value = rep.gen_rep || '';
@@ -6232,13 +6228,11 @@ async function uploadPhotoOnly(memberId, file) {
                 }
             }
             
-            // Create a map for quick lookup
             const deptMap = {};
             departmentsData.forEach(dept => {
                 deptMap[dept.name] = dept.rep || '';
             });
             
-            // Populate department fields
             const deptContainer = document.getElementById('departmentFields');
             deptContainer.innerHTML = departments.map(dept => {
                 const deptId = dept.replace(/[^a-zA-Z0-9]/g, '');
@@ -6272,21 +6266,14 @@ async function uploadPhotoOnly(memberId, file) {
             saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
             saveBtn.disabled = true;
 
-            // Get form values
             const session = document.getElementById('repSession').value;
             const level = document.getElementById('repLevel').value;
             const genRep = document.getElementById('genRep').value.trim();
             const asstGenRep = document.getElementById('asstGenRep').value.trim();
             
-            // Validate required fields
-            if (!session) {
-                throw new Error('Academic session is required');
-            }
-            if (!level) {
-                throw new Error('Level is required');
-            }
+            if (!session) throw new Error('Academic session is required');
+            if (!level) throw new Error('Level is required');
 
-            // Collect department representatives
             const departmentsList = [];
             departments.forEach(dept => {
                 const deptId = dept.replace(/[^a-zA-Z0-9]/g, '');
@@ -6297,7 +6284,6 @@ async function uploadPhotoOnly(memberId, file) {
                 });
             });
 
-            // Prepare data for API
             const repData = {
                 session: session,
                 level: level,
@@ -6306,15 +6292,9 @@ async function uploadPhotoOnly(memberId, file) {
                 departments: departmentsList
             };
 
-            console.log('📡 Saving course rep data:', repData);
-
-            // Get auth token
             const token = getAuthToken();
-            if (!token) {
-                throw new Error('No authentication token found. Please login again.');
-            }
+            if (!token) throw new Error('No authentication token found');
 
-            // Determine if creating or updating
             const isEditing = currentCourseRepId ? true : false;
             const url = isEditing 
                 ? `${API_BASE_URL}/api/admin/course-reps/${currentCourseRepId}`
@@ -6322,9 +6302,6 @@ async function uploadPhotoOnly(memberId, file) {
             
             const method = isEditing ? 'PUT' : 'POST';
 
-            console.log(`📡 ${method} request to ${url}`);
-            
-            // Send request
             const response = await fetch(url, {
                 method: method,
                 headers: {
@@ -6334,15 +6311,12 @@ async function uploadPhotoOnly(memberId, file) {
                 body: JSON.stringify(repData)
             });
 
-            // Parse response
             let result;
             const responseText = await response.text();
-            console.log('📡 Raw response:', responseText);
             
             try {
                 result = JSON.parse(responseText);
             } catch (e) {
-                console.error('Failed to parse response:', responseText);
                 throw new Error('Invalid server response');
             }
 
@@ -6350,7 +6324,6 @@ async function uploadPhotoOnly(memberId, file) {
                 throw new Error(result.message || `Server error: ${response.status}`);
             }
 
-            // Success
             showToast('Course representatives saved successfully!', 'success');
             closeModal();
             await loadContent('courseReps');
@@ -6375,7 +6348,6 @@ async function uploadPhotoOnly(memberId, file) {
         
         try {
             showLoading();
-            console.log('📡 Deleting course rep:', repId);
             
             const token = getAuthToken();
             const response = await fetch(`${API_BASE_URL}/api/admin/course-reps/${repId}`, {
@@ -6409,12 +6381,22 @@ async function uploadPhotoOnly(memberId, file) {
         }
     }
 
-    // ==================== INITIALIZE COURSE REPS PAGE ====================
+    // ==================== INITIALIZE PAGE ====================
     function initializeCourseRepsPage() {
         console.log('📡 Initializing Course Reps page...');
         
-        // Note: We're using onclick attributes in the HTML, so we don't need to add event listeners here
-        // But we still need to attach the save button listener
+        // Add button click handlers
+        const addCourseRepBtn = document.getElementById('addCourseRepBtn');
+        if (addCourseRepBtn) {
+            addCourseRepBtn.addEventListener('click', openCourseRepModal);
+        }
+        
+        const emptyAddRepBtn = document.getElementById('emptyAddRepBtn');
+        if (emptyAddRepBtn) {
+            emptyAddRepBtn.addEventListener('click', openCourseRepModal);
+        }
+        
+        // Save button
         const saveCourseRepBtn = document.getElementById('saveCourseRep');
         if (saveCourseRepBtn) {
             saveCourseRepBtn.removeEventListener('click', saveCourseRep);
@@ -6436,18 +6418,13 @@ async function uploadPhotoOnly(memberId, file) {
         }
     }
 
-    // ==================== UPDATE INITIALIZE PAGE EVENTS ====================
-    // Preserve the original function
+    // ==================== UPDATE PAGE EVENTS ====================
     const originalInitializePageEvents = window.initializePageEvents || function(){};
 
-    // Override with enhanced version
     window.initializePageEvents = function(page) {
-        // Call original
         if (typeof originalInitializePageEvents === 'function') {
             originalInitializePageEvents(page);
         }
-        
-        // Initialize course reps page when needed
         if (page === 'courseReps') {
             setTimeout(initializeCourseRepsPage, 100);
         }
