@@ -4223,6 +4223,126 @@ courseRepRouter.get('/meta/levels', async (req, res) => {
     }
 });
 
+// ============================================================
+// ADMIN DEPARTMENT REPS ROUTES
+// ============================================================
+
+const adminDeptRepRouter = express.Router();
+
+// Get department reps for a specific level
+adminDeptRepRouter.get('/:levelId', async (req, res) => {
+    try {
+        const { levelId } = req.params;
+        const { session } = req.query;
+        
+        let query = supabase
+            .from('department_reps')
+            .select('*')
+            .eq('level_id', levelId);
+        
+        if (session) {
+            query = query.eq('session', session);
+        }
+        
+        const { data, error } = await query.order('department_name');
+        
+        if (error) throw error;
+        
+        res.json({ 
+            status: 'success', 
+            data 
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            status: 'error', 
+            message: error.message 
+        });
+    }
+});
+
+// Add a department rep
+adminDeptRepRouter.post('/', async (req, res) => {
+    try {
+        const { level_id, department_name, session, representative_name, status } = req.body;
+        
+        const { data, error } = await supabase
+            .from('department_reps')
+            .insert([{
+                level_id,
+                department_name,
+                session,
+                representative_name,
+                status: status || 'active'
+            }])
+            .select();
+        
+        if (error) throw error;
+        
+        res.json({ 
+            status: 'success', 
+            data: data[0] 
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            status: 'error', 
+            message: error.message 
+        });
+    }
+});
+
+// Update a department rep
+adminDeptRepRouter.put('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updates = req.body;
+        
+        const { data, error } = await supabase
+            .from('department_reps')
+            .update(updates)
+            .eq('id', id)
+            .select();
+        
+        if (error) throw error;
+        
+        res.json({ 
+            status: 'success', 
+            data: data[0] 
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            status: 'error', 
+            message: error.message 
+        });
+    }
+});
+
+// Delete a department rep
+adminDeptRepRouter.delete('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const { error } = await supabase
+            .from('department_reps')
+            .delete()
+            .eq('id', id);
+        
+        if (error) throw error;
+        
+        res.json({ 
+            status: 'success', 
+            message: 'Department rep deleted successfully' 
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            status: 'error', 
+            message: error.message 
+        });
+    }
+});
+
+// Mount admin department reps router
+app.use('/api/admin/department-reps', adminDeptRepRouter);
+
 // Mount the course reps router to admin
 app.use('/api/admin/course-reps', courseRepRouter);
 
@@ -4256,32 +4376,70 @@ publicCourseRepRouter.get('/', cacheMiddleware(300, ['course-reps']), async (req
         
         console.log(`📡 [CR-Public] Fetching course reps for session: ${session}, level: ${level || 'all'}`);
         
-        let query = supabase
+        // First, get all course representatives for the session
+        let courseRepsQuery = supabase
             .from('course_representatives')
             .select('*')
             .eq('session', session);
         
         if (level && level !== 'all') {
-            query = query.eq('level', level);
+            courseRepsQuery = courseRepsQuery.eq('level', level);
         }
         
-        const { data, error } = await query.order('level');
+        const { data: courseReps, error: courseRepsError } = await courseRepsQuery.order('level');
         
-        if (error) throw error;
+        if (courseRepsError) throw courseRepsError;
+        
+        // If no course reps found, return empty array
+        if (!courseReps || courseReps.length === 0) {
+            return res.json({ 
+                status: 'success', 
+                data: [],
+                count: 0 
+            });
+        }
+        
+        // Get all department reps for these course reps
+        const levelIds = courseReps.map(rep => rep.id);
+        
+        const { data: deptReps, error: deptRepsError } = await supabase
+            .from('department_reps')
+            .select('*')
+            .in('level_id', levelIds)
+            .eq('session', session)
+            .eq('status', 'active');
+        
+        if (deptRepsError) throw deptRepsError;
+        
+        // Transform data to match frontend expectations
+        const transformedData = courseReps.map(courseRep => {
+            // Filter department reps for this course rep
+            const filteredDeptReps = deptReps?.filter(dept => dept.level_id === courseRep.id) || [];
+            
+            return {
+                level: courseRep.level,
+                genRep: courseRep.gen_rep || 'Not Assigned',
+                asstGenRep: courseRep.asst_gen_rep || 'Not Assigned',
+                deptCount: filteredDeptReps.length,
+                departments: filteredDeptReps.map(dept => ({
+                    name: dept.department_name,
+                    rep: dept.representative_name || 'Pending'
+                }))
+            };
+        });
         
         res.json({ 
             status: 'success', 
-            data: data,
-            count: data.length 
+            data: transformedData,
+            count: transformedData.length 
         });
+        
     } catch (error) {
-        logger.error('Error fetching public course reps:', { 
-            requestId: req.id, 
-            error: error.message 
-        });
+        console.error('Error fetching public course reps:', error);
         res.status(500).json({ 
             status: 'error', 
-            message: 'Failed to fetch course representatives' 
+            message: 'Failed to fetch course representatives',
+            error: error.message 
         });
     }
 });
@@ -4297,6 +4455,7 @@ publicCourseRepRouter.get('/sessions', cacheMiddleware(3600, ['course-reps']), a
     try {
         console.log('📡 [CR-Public] Fetching available sessions');
         
+        // Get sessions from course_representatives table
         const { data, error } = await supabase
             .from('course_representatives')
             .select('session')
@@ -4311,10 +4470,7 @@ publicCourseRepRouter.get('/sessions', cacheMiddleware(3600, ['course-reps']), a
             data: sessions 
         });
     } catch (error) {
-        logger.error('Error fetching sessions:', { 
-            requestId: req.id, 
-            error: error.message 
-        });
+        console.error('Error fetching sessions:', error);
         res.status(500).json({ 
             status: 'error', 
             message: 'Failed to fetch sessions' 
@@ -4364,10 +4520,7 @@ publicCourseRepRouter.get('/levels', cacheMiddleware(300, ['course-reps']), asyn
             data: levels 
         });
     } catch (error) {
-        logger.error('Error fetching levels:', { 
-            requestId: req.id, 
-            error: error.message 
-        });
+        console.error('Error fetching levels:', error);
         res.status(500).json({ 
             status: 'error', 
             message: 'Failed to fetch levels' 
