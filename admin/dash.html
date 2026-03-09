@@ -1737,7 +1737,7 @@
     </div>
 
     <!-- ============================================
-         NEW COURSE REP MODAL - ADDED
+         COURSE REP MODAL
          ============================================ -->
     <!-- Course Rep Modal -->
     <div class="modal" id="courseRepModal">
@@ -1825,7 +1825,7 @@
                     <span>Members</span>
                 </button>
                 <!-- ============================================
-                     NEW COURSE REP SIDEBAR ITEM - ADDED
+                     SIDEBAR ITEM
                      ============================================ -->
                 <button class="nav-item" data-page="courseReps">
                     <i class="fas fa-chalkboard-teacher"></i>
@@ -5974,22 +5974,26 @@ async function uploadPhotoOnly(memberId, file) {
     window.hideModal = hideModal;
             
     // ============================================
-    // NEW COURSE REPS MANAGEMENT CODE - ADDED
+    // COMPLETE FIXED COURSE REPS MANAGEMENT
     // ============================================
+
+    // Global variables
     let currentCourseRepId = null;
-    
-    // List of departments for course reps
+
+    // Departments list - must match your frontend display
     const departments = [
         'Electrical/Electronics Engineering',
         'Mechanical Engineering',
         'Civil Engineering'
     ];
 
-    // Load Course Reps Page
+    // ==================== LOAD COURSE REPS ====================
     async function loadCourseReps() {
         try {
+            console.log('📡 Loading course reps...');
             const response = await get('/api/admin/course-reps');
             const reps = response.data || [];
+            console.log(`📡 Found ${reps.length} course reps:`, reps);
             
             return `
                 <div class="content-card">
@@ -6001,12 +6005,20 @@ async function uploadPhotoOnly(memberId, file) {
                     </div>
                     
                     <div class="search-filter">
-                        <input type="text" class="search-input" id="repSearch" placeholder="Search by level..." onkeyup="filterCourseReps()">
+                        <input type="text" class="search-input" id="repSearch" placeholder="Search by level or session..." onkeyup="filterCourseReps()">
                         <select class="filter-select" id="repSessionFilter" onchange="filterCourseReps()">
                             <option value="">All Sessions</option>
                             <option value="2025/2026">2025/2026</option>
                             <option value="2024/2025">2024/2025</option>
                             <option value="2023/2024">2023/2024</option>
+                        </select>
+                        <select class="filter-select" id="repLevelFilter" onchange="filterCourseReps()">
+                            <option value="">All Levels</option>
+                            <option value="100">100 Level</option>
+                            <option value="200">200 Level</option>
+                            <option value="300">300 Level</option>
+                            <option value="400">400 Level</option>
+                            <option value="500">500 Level</option>
                         </select>
                     </div>
                     
@@ -6035,15 +6047,22 @@ async function uploadPhotoOnly(memberId, file) {
                                         }
                                         
                                         const deptCount = departments?.length || 0;
+                                        const previewDepts = departments?.slice(0, 2).map(d => d.name).join(', ') + (deptCount > 2 ? ` +${deptCount-2} more` : '');
                                         
                                         return `
-                                            <tr>
+                                            <tr data-id="${rep.id}">
                                                 <td><strong>${rep.level || 'N/A'}</strong></td>
                                                 <td>${rep.session || 'N/A'}</td>
-                                                <td>${rep.gen_rep || 'Not Assigned'}</td>
-                                                <td>${rep.asst_gen_rep || 'Not Assigned'}</td>
+                                                <td>${rep.gen_rep || '<span class="text-muted">Not Assigned</span>'}</td>
+                                                <td>${rep.asst_gen_rep || '<span class="text-muted">Not Assigned</span>'}</td>
                                                 <td>
                                                     <span class="status-badge badge-info">${deptCount} departments</span>
+                                                    <button class="icon-btn icon-btn-sm" onclick="viewDepartmentDetails('${rep.id}')" title="View Details">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                    <div class="dept-preview" style="font-size: 12px; color: var(--slate-500); margin-top: 4px;">
+                                                        ${previewDepts || 'No departments'}
+                                                    </div>
                                                 </td>
                                                 <td>
                                                     <div class="action-buttons">
@@ -6065,7 +6084,7 @@ async function uploadPhotoOnly(memberId, file) {
                         <div class="empty-state">
                             <i class="fas fa-chalkboard-teacher"></i>
                             <h3>No Course Representatives Found</h3>
-                            <p>Add course representatives for different levels.</p>
+                            <p>Add course representatives for different levels and sessions.</p>
                             <button class="btn btn-primary" id="emptyAddRepBtn" style="margin-top: 16px;">
                                 <i class="fas fa-plus"></i> Add Course Reps
                             </button>
@@ -6074,6 +6093,7 @@ async function uploadPhotoOnly(memberId, file) {
                 </div>
             `;
         } catch (error) {
+            console.error('Error loading course reps:', error);
             return `
                 <div class="content-card">
                     <div class="card-header">
@@ -6095,29 +6115,75 @@ async function uploadPhotoOnly(memberId, file) {
         }
     }
 
-    // Filter Course Reps
+    // ==================== FILTER FUNCTION ====================
     function filterCourseReps() {
         const search = document.getElementById('repSearch')?.value.toLowerCase() || '';
         const session = document.getElementById('repSessionFilter')?.value || '';
+        const level = document.getElementById('repLevelFilter')?.value || '';
         
         const rows = document.querySelectorAll('#courseRepsTable tbody tr');
         rows.forEach(row => {
-            const level = row.cells[0]?.textContent.toLowerCase() || '';
-            const rowSession = row.cells[1]?.textContent || '';
+            const levelText = row.cells[0]?.textContent.toLowerCase() || '';
+            const sessionText = row.cells[1]?.textContent || '';
             
-            const matchesSearch = level.includes(search);
-            const matchesSession = !session || rowSession === session;
+            const matchesSearch = levelText.includes(search) || sessionText.toLowerCase().includes(search);
+            const matchesSession = !session || sessionText === session;
+            const matchesLevel = !level || levelText === level;
             
-            row.style.display = matchesSearch && matchesSession ? '' : 'none';
+            row.style.display = matchesSearch && matchesSession && matchesLevel ? '' : 'none';
         });
     }
 
-    // Open Course Rep Modal
+    // ==================== VIEW DEPARTMENT DETAILS ====================
+    function viewDepartmentDetails(repId) {
+        // We need to fetch the rep data first
+        showLoading();
+        get(`/api/admin/course-reps/${repId}`)
+            .then(response => {
+                const rep = response.data;
+                let departments = rep.departments;
+                if (typeof departments === 'string') {
+                    try {
+                        departments = JSON.parse(departments);
+                    } catch (e) {
+                        departments = [];
+                    }
+                }
+                
+                if (!departments || departments.length === 0) {
+                    showToast('No departments assigned', 'info');
+                    return;
+                }
+                
+                // Create a modal or alert with department details
+                const deptList = departments.map(d => 
+                    `${d.name}: ${d.rep || 'Not Assigned'}`
+                ).join('\n');
+                
+                alert(`Department Representatives for ${rep.level} Level (${rep.session}):\n\n${deptList}`);
+            })
+            .catch(error => {
+                showToast('Failed to load department details', 'error');
+            })
+            .finally(() => {
+                hideLoading();
+            });
+    }
+
+    // ==================== OPEN MODAL ====================
     function openCourseRepModal() {
+        console.log('📡 Opening course rep modal');
         currentCourseRepId = null;
+        
+        // Reset form
         document.getElementById('courseRepModalTitle').textContent = 'Add Course Representatives';
         document.getElementById('courseRepForm').reset();
         document.getElementById('courseRepId').value = '';
+        
+        // Set default session to current year
+        const currentYear = new Date().getFullYear();
+        const defaultSession = `${currentYear}/${currentYear + 1}`;
+        document.getElementById('repSession').value = defaultSession;
         
         // Populate department fields
         const deptContainer = document.getElementById('departmentFields');
@@ -6130,7 +6196,7 @@ async function uploadPhotoOnly(memberId, file) {
                     </div>
                     <div class="dept-rep-field">
                         <label class="dept-rep-label">Representative</label>
-                        <input type="text" class="form-input" id="dept_${deptId}" placeholder="Full name">
+                        <input type="text" class="form-input" id="dept_${deptId}" placeholder="Full name of department rep">
                     </div>
                 </div>
             `;
@@ -6139,10 +6205,12 @@ async function uploadPhotoOnly(memberId, file) {
         showModal('courseRepModal');
     }
 
-    // Edit Course Rep
+    // ==================== EDIT COURSE REP ====================
     async function editCourseRep(repId) {
         try {
             showLoading();
+            console.log('📡 Editing course rep:', repId);
+            
             const response = await get(`/api/admin/course-reps/${repId}`);
             const rep = response.data;
             
@@ -6152,35 +6220,44 @@ async function uploadPhotoOnly(memberId, file) {
             
             currentCourseRepId = repId;
             
+            // Set modal title
             document.getElementById('courseRepModalTitle').textContent = 'Edit Course Representatives';
-            document.getElementById('repSession').value = rep.session || '2025/2026';
+            
+            // Set form values
+            document.getElementById('repSession').value = rep.session || '';
             document.getElementById('repLevel').value = rep.level || '';
             document.getElementById('genRep').value = rep.gen_rep || '';
             document.getElementById('asstGenRep').value = rep.asst_gen_rep || '';
             document.getElementById('courseRepId').value = rep.id;
             
             // Parse departments
-            let departments = rep.departments;
-            if (typeof departments === 'string') {
+            let departmentsData = rep.departments;
+            if (typeof departmentsData === 'string') {
                 try {
-                    departments = JSON.parse(departments);
+                    departmentsData = JSON.parse(departmentsData);
                 } catch (e) {
-                    departments = [];
+                    departmentsData = [];
                 }
             }
+            
+            // Create a map for quick lookup
+            const deptMap = {};
+            departmentsData.forEach(dept => {
+                deptMap[dept.name] = dept.rep || '';
+            });
             
             // Populate department fields
             const deptContainer = document.getElementById('departmentFields');
             deptContainer.innerHTML = departments.map(dept => {
-                const deptId = dept.name.replace(/[^a-zA-Z0-9]/g, '');
+                const deptId = dept.replace(/[^a-zA-Z0-9]/g, '');
                 return `
                     <div class="dept-item">
                         <div class="dept-item-header">
-                            <span class="dept-item-title">${dept.name}</span>
+                            <span class="dept-item-title">${dept}</span>
                         </div>
                         <div class="dept-rep-field">
                             <label class="dept-rep-label">Representative</label>
-                            <input type="text" class="form-input" id="dept_${deptId}" value="${dept.rep || ''}" placeholder="Full name">
+                            <input type="text" class="form-input" id="dept_${deptId}" value="${deptMap[dept] || ''}" placeholder="Full name of department rep">
                         </div>
                     </div>
                 `;
@@ -6188,13 +6265,14 @@ async function uploadPhotoOnly(memberId, file) {
             
             showModal('courseRepModal');
         } catch (error) {
+            console.error('Error editing course rep:', error);
             showToast('Failed to load course rep details: ' + error.message, 'error');
         } finally {
             hideLoading();
         }
     }
 
-    // Save Course Rep
+    // ==================== SAVE COURSE REP ====================
     async function saveCourseRep() {
         try {
             const saveBtn = document.getElementById('saveCourseRep');
@@ -6202,37 +6280,49 @@ async function uploadPhotoOnly(memberId, file) {
             saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
             saveBtn.disabled = true;
 
+            // Get form values
             const session = document.getElementById('repSession').value;
             const level = document.getElementById('repLevel').value;
+            const genRep = document.getElementById('genRep').value.trim();
+            const asstGenRep = document.getElementById('asstGenRep').value.trim();
             
-            if (!session || !level) {
-                throw new Error('Session and level are required');
+            // Validate required fields
+            if (!session) {
+                throw new Error('Academic session is required');
+            }
+            if (!level) {
+                throw new Error('Level is required');
             }
 
             // Collect department representatives
             const departmentsList = [];
             departments.forEach(dept => {
                 const deptId = dept.replace(/[^a-zA-Z0-9]/g, '');
-                const rep = document.getElementById(`dept_${deptId}`)?.value || '';
+                const rep = document.getElementById(`dept_${deptId}`)?.value.trim() || '';
                 departmentsList.push({
                     name: dept,
                     rep: rep || 'Pending'
                 });
             });
 
+            // Prepare data for API
             const repData = {
                 session: session,
                 level: level,
-                gen_rep: document.getElementById('genRep').value || 'Not Assigned',
-                asst_gen_rep: document.getElementById('asstGenRep').value || 'Not Assigned',
+                gen_rep: genRep || null,
+                asst_gen_rep: asstGenRep || null,
                 departments: departmentsList
             };
 
+            console.log('📡 Saving course rep data:', repData);
+
+            // Get auth token
             const token = getAuthToken();
             if (!token) {
                 throw new Error('No authentication token found. Please login again.');
             }
 
+            // Determine if creating or updating
             const isEditing = currentCourseRepId ? true : false;
             const url = isEditing 
                 ? `${API_BASE_URL}/api/admin/course-reps/${currentCourseRepId}`
@@ -6240,6 +6330,9 @@ async function uploadPhotoOnly(memberId, file) {
             
             const method = isEditing ? 'PUT' : 'POST';
 
+            console.log(`📡 ${method} request to ${url}`);
+            
+            // Send request
             const response = await fetch(url, {
                 method: method,
                 headers: {
@@ -6249,12 +6342,23 @@ async function uploadPhotoOnly(memberId, file) {
                 body: JSON.stringify(repData)
             });
 
-            const result = await response.json();
+            // Parse response
+            let result;
+            const responseText = await response.text();
+            console.log('📡 Raw response:', responseText);
+            
+            try {
+                result = JSON.parse(responseText);
+            } catch (e) {
+                console.error('Failed to parse response:', responseText);
+                throw new Error('Invalid server response');
+            }
 
             if (!response.ok) {
                 throw new Error(result.message || `Server error: ${response.status}`);
             }
 
+            // Success
             showToast('Course representatives saved successfully!', 'success');
             closeModal();
             await loadContent('courseReps');
@@ -6271,60 +6375,112 @@ async function uploadPhotoOnly(memberId, file) {
         }
     }
 
-    // Delete Course Rep
+    // ==================== DELETE COURSE REP ====================
     async function deleteCourseRep(repId) {
-        if (!confirm('Are you sure you want to delete these course representatives?')) return;
+        if (!confirm('Are you sure you want to delete these course representatives? This action cannot be undone.')) {
+            return;
+        }
         
         try {
             showLoading();
-            await del(`/api/admin/course-reps/${repId}`);
+            console.log('📡 Deleting course rep:', repId);
+            
+            const token = getAuthToken();
+            const response = await fetch(`${API_BASE_URL}/api/admin/course-reps/${repId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            let result;
+            const responseText = await response.text();
+            
+            try {
+                result = JSON.parse(responseText);
+            } catch (e) {
+                result = { message: responseText };
+            }
+
+            if (!response.ok) {
+                throw new Error(result.message || `Server error: ${response.status}`);
+            }
+            
             showToast('Course representatives deleted successfully', 'success');
             await loadContent('courseReps');
         } catch (error) {
+            console.error('Error deleting course rep:', error);
             showToast('Failed to delete: ' + error.message, 'error');
         } finally {
             hideLoading();
         }
     }
 
-    // Initialize Course Reps Page
+    // ==================== INITIALIZE PAGE ====================
     function initializeCourseRepsPage() {
-        const addCourseRepBtn = document.getElementById('addCourseRepBtn');
-        const emptyAddRepBtn = document.getElementById('emptyAddRepBtn');
-        const saveCourseRepBtn = document.getElementById('saveCourseRep');
-        const cancelCourseRepBtn = document.getElementById('cancelCourseRep');
+        console.log('📡 Initializing Course Reps page...');
         
+        // Add button click handlers
+        const addCourseRepBtn = document.getElementById('addCourseRepBtn');
         if (addCourseRepBtn) {
             addCourseRepBtn.addEventListener('click', openCourseRepModal);
         }
         
+        const emptyAddRepBtn = document.getElementById('emptyAddRepBtn');
         if (emptyAddRepBtn) {
             emptyAddRepBtn.addEventListener('click', openCourseRepModal);
         }
         
+        // Save button
+        const saveCourseRepBtn = document.getElementById('saveCourseRep');
         if (saveCourseRepBtn) {
+            // Remove any existing listeners to prevent duplicates
+            saveCourseRepBtn.removeEventListener('click', saveCourseRep);
             saveCourseRepBtn.addEventListener('click', saveCourseRep);
         }
         
+        // Cancel button
+        const cancelCourseRepBtn = document.getElementById('cancelCourseRep');
         if (cancelCourseRepBtn) {
-            cancelCourseRepBtn.addEventListener('click', () => hideModal('courseRepModal'));
+            cancelCourseRepBtn.removeEventListener('click', closeModal);
+            cancelCourseRepBtn.addEventListener('click', closeModal);
+        }
+        
+        // Modal close button
+        const modalCloseBtn = document.querySelector('#courseRepModal .modal-close');
+        if (modalCloseBtn) {
+            modalCloseBtn.removeEventListener('click', closeModal);
+            modalCloseBtn.addEventListener('click', closeModal);
         }
     }
 
-    // Add Course Reps to initializePageEvents
-    const originalInitializePageEvents = initializePageEvents;
-    initializePageEvents = function(page) {
-        originalInitializePageEvents(page);
+    // ==================== UPDATE INITIALIZE PAGE EVENTS ====================
+    // Preserve the original function if it exists
+    const originalInitializePageEvents = window.initializePageEvents || function(){};
+
+    // Override with our enhanced version
+    window.initializePageEvents = function(page) {
+        // Call original if it exists
+        if (typeof originalInitializePageEvents === 'function') {
+            originalInitializePageEvents(page);
+        }
+        
+        // Initialize course reps page when needed
         if (page === 'courseReps') {
-            initializeCourseRepsPage();
+            // Small delay to ensure DOM is ready
+            setTimeout(initializeCourseRepsPage, 100);
         }
     };
 
-    // Make course rep functions globally available
+    // ==================== MAKE FUNCTIONS GLOBAL ====================
     window.loadCourseReps = loadCourseReps;
+    window.filterCourseReps = filterCourseReps;
     window.editCourseRep = editCourseRep;
     window.deleteCourseRep = deleteCourseRep;
-    window.filterCourseReps = filterCourseReps;
+    window.viewDepartmentDetails = viewDepartmentDetails;
+    window.openCourseRepModal = openCourseRepModal;
+    window.saveCourseRep = saveCourseRep;
 </script>
 </body>
 </html>
