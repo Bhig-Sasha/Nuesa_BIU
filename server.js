@@ -12,10 +12,29 @@
  * @DevSignature ST-BIU-2026
  */
 
+/**
+ * ============================================================
+ * NUESA BIU API SERVER - FULLY ORGANIZED VERSION
+ * ============================================================
+ * 
+ * Production-ready Express.js server with clear separation of:
+ * - Core Infrastructure (lines 1-1000)
+ * - Shared Middleware (lines 1000-1500)
+ * - Public Routes (lines 1500-3000)
+ * - Admin Routes (lines 3000-5000)
+ * - Error Handling & Server (lines 5000-5500)
+ * 
+ * @author Sasha Troger
+ * @version 1.0.0
+ * @license MIT
+ * @DevSignature ST-BIU-2026
+ */
+
 // ============================================================
-// SECTION 1: ENVIRONMENT & CORE DEPENDENCIES
+// ================ SECTION 1: CORE INFRASTRUCTURE ===========
 // ============================================================
 
+// -------------------- 1.1 ENVIRONMENT ----------------------
 require('dotenv').config();
 
 const express = require('express');
@@ -48,10 +67,7 @@ const { exec } = require('child_process');
 const util = require('util');
 const execPromise = util.promisify(exec);
 
-// ============================================================
-// SECTION 2: CONFIGURATION & VALIDATION
-// ============================================================
-
+// -------------------- 1.2 CONFIGURATION --------------------
 const REQUIRED_ENV_VARS = [
     'JWT_SECRET',
     'SUPABASE_URL',
@@ -76,11 +92,7 @@ const JWT_EXPIRE = process.env.JWT_EXPIRE || '7d';
 const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024;
 const MAX_REQUEST_SIZE = process.env.MAX_REQUEST_SIZE || '10mb';
 
-// ============================================================
-// SECTION 3: DATABASE & CACHE SETUP
-// ============================================================
-
-// Redis Setup
+// -------------------- 1.3 DATABASE SETUP -------------------
 let redis = null;
 if (process.env.REDIS_URL) {
     try {
@@ -98,7 +110,6 @@ if (process.env.REDIS_URL) {
     }
 }
 
-// Supabase Setup
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -123,10 +134,7 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
     }
 });
 
-// ============================================================
-// SECTION 4: CUSTOM ERROR CLASSES
-// ============================================================
-
+// -------------------- 1.4 CUSTOM ERROR CLASSES -------------
 class DatabaseError extends Error {
     constructor(message, code, table, operation) {
         super(message);
@@ -173,10 +181,7 @@ class ForbiddenError extends Error {
     }
 }
 
-// ============================================================
-// SECTION 5: DATABASE SERVICE LAYER
-// ============================================================
-
+// -------------------- 1.5 DATABASE SERVICE -----------------
 class DatabaseService {
     constructor(supabase) {
         this.supabase = supabase;
@@ -292,10 +297,7 @@ class DatabaseService {
 
 const db = new DatabaseService(supabase);
 
-// ============================================================
-// SECTION 6: LOGGING SYSTEM
-// ============================================================
-
+// -------------------- 1.6 LOGGING SYSTEM -------------------
 const LOG_DIR = 'logs';
 if (!fsSync.existsSync(LOG_DIR)) {
     fsSync.mkdirSync(LOG_DIR, { recursive: true });
@@ -351,10 +353,7 @@ if (!IS_PRODUCTION) {
     }));
 }
 
-// ============================================================
-// SECTION 7: CACHE MANAGEMENT
-// ============================================================
-
+// -------------------- 1.7 CACHE MANAGEMENT -----------------
 class LRUCache {
     constructor(maxSize = 100, ttl = 300000) {
         this.cache = new Map();
@@ -498,269 +497,7 @@ const cacheManager = new CacheManager();
 const userCache = cacheManager.getCache('users', { maxSize: 200, ttl: 300000 });
 const dataCache = cacheManager.getCache('data', { maxSize: 100, ttl: 60000 });
 
-// ============================================================
-// SECTION 8: SECURITY MIDDLEWARE SETUP
-// ============================================================
-
-app.set('trust proxy', 1);
-
-// Request ID Middleware
-app.use((req, res, next) => {
-    req.id = uuid.v4();
-    res.setHeader('X-Request-ID', req.id);
-    next();
-});
-
-// Security Headers
-app.use((req, res, next) => {
-    res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
-    next();
-});
-
-// Compression
-app.use(compression({
-    level: 6,
-    threshold: 1024,
-    filter: (req, res) => {
-        if (req.headers['x-no-compression']) return false;
-        return compression.filter(req, res);
-    }
-}));
-
-// Helmet with custom CSP
-const CSP_DIRECTIVES = {
-    defaultSrc: ["'self'"],
-    styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-    scriptSrc: ["'self'", "'unsafe-inline'"],
-    imgSrc: ["'self'", "data:", "https:", "blob:"],
-    connectSrc: ["'self'", supabaseUrl, "https://*.supabase.co"],
-    fontSrc: ["'self'", "https://fonts.gstatic.com"],
-    objectSrc: ["'none'"],
-    mediaSrc: ["'self'"],
-    frameSrc: ["'none'"],
-    baseUri: ["'self'"],
-    formAction: ["'self'"],
-    frameAncestors: ["'none'"]
-};
-
-if (process.env.FRONTEND_URL) {
-    CSP_DIRECTIVES.connectSrc.push(process.env.FRONTEND_URL);
-}
-
-app.use(helmet({
-    contentSecurityPolicy: false,
-    crossOriginEmbedderPolicy: false,
-    crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
-
-// CSRF Protection (except API routes)
-const csrfProtection = csrf({ cookie: true });
-app.use('/portal', (req, res, next) => {
-    if (req.path === '/login') return next();
-    csrfProtection(req, res, next);
-});
-
-// XSS & HPP Protection
-app.use(xss());
-app.use(hpp({ whitelist: ['page', 'limit', 'sort', 'fields'] }));
-
-// CORS Configuration
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
-    .split(',')
-    .map(origin => origin.trim())
-    .filter(origin => origin.length > 0);
-
-if (process.env.FRONTEND_URL && !ALLOWED_ORIGINS.includes(process.env.FRONTEND_URL)) {
-    ALLOWED_ORIGINS.push(process.env.FRONTEND_URL);
-}
-
-ALLOWED_ORIGINS.push('https://nuesa-biu-pjp0.onrender.com');
-ALLOWED_ORIGINS.push('https://www.nuesa-biu-pjp0.onrender.com');
-
-const corsOptions = {
-    origin: function (origin, callback) {
-        if (!origin) return callback(null, true);
-        if (!IS_PRODUCTION) return callback(null, true);
-        if (ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin)) {
-            callback(null, true);
-        } else {
-            logger.warn(`Blocked by CORS: ${origin}`, { allowedOrigins: ALLOWED_ORIGINS });
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
-    allowedHeaders: [
-        'Content-Type', 'Authorization', 'Accept', 'Origin', 
-        'X-Requested-With', 'X-API-Key', 'X-Total-Count', 
-        'X-Page-Count', 'X-CSRF-Token'
-    ],
-    exposedHeaders: [
-        'X-Total-Count', 'X-Page-Count', 'X-RateLimit-Limit',
-        'X-RateLimit-Remaining', 'X-RateLimit-Reset', 'X-Request-ID'
-    ],
-    maxAge: 86400,
-    preflightContinue: false,
-    optionsSuccessStatus: 204
-};
-
-app.use(cors(corsOptions));
-app.use(cookieParser());
-
-// Body Parsing
-app.use(express.json({
-    limit: MAX_REQUEST_SIZE,
-    verify: (req, res, buf, encoding) => { req.rawBody = buf; }
-}));
-
-app.use(express.urlencoded({
-    extended: true,
-    limit: MAX_REQUEST_SIZE,
-    parameterLimit: 100
-}));
-
-// Request Logging
-const morganFormat = IS_PRODUCTION ? 'combined' : 'dev';
-app.use(morgan(morganFormat, {
-    stream: { write: (message) => logger.http(message.trim()) },
-    skip: (req, res) => req.path === '/api/health' && req.method === 'GET'
-}));
-
-// Timeout Handling
-app.use(timeout('30s'));
-app.use((req, res, next) => {
-    if (req.timedout) {
-        logger.error('Request timeout', {
-            requestId: req.id, url: req.url, method: req.method,
-            ip: req.ip, userId: req.user?.id
-        });
-        return res.status(503).json({
-            status: 'error', code: 'TIMEOUT',
-            message: 'Request timeout. Please try again.'
-        });
-    }
-    next();
-});
-
-// Response Time Tracking
-app.use((req, res, next) => {
-    const start = Date.now();
-    res.on('finish', () => {
-        const duration = Date.now() - start;
-        logger.info('Request completed', {
-            requestId: req.id, method: req.method, url: req.url,
-            status: res.statusCode, duration: `${duration}ms`, userId: req.user?.id
-        });
-    });
-    next();
-});
-
-// ============================================================
-// SECTION 9: RATE LIMITING & CACHE MIDDLEWARE
-// ============================================================
-
-const createRateLimiter = (max, windowMs = 15 * 60 * 1000, message = 'Too many requests') => {
-    return rateLimit({
-        windowMs, max,
-        message: { status: 'error', code: 'TOO_MANY_REQUESTS', message },
-        standardHeaders: true,
-        legacyHeaders: false,
-        skipSuccessfulRequests: false,
-        keyGenerator: (req) => req.headers['x-forwarded-for'] || req.ip,
-        handler: (req, res) => {
-            logger.warn('Rate limit exceeded', {
-                requestId: req.id, ip: req.ip, url: req.url, method: req.method
-            });
-            res.status(429).json({
-                status: 'error', code: 'TOO_MANY_REQUESTS', message
-            });
-        }
-    });
-};
-
-// Apply rate limits
-app.use('/api/auth/login', createRateLimiter(10, 15 * 60 * 1000, 'Too many login attempts'));
-app.use('/api/admin/login', createRateLimiter(10, 15 * 60 * 1000, 'Too many admin login attempts'));
-app.use('/api/contact/submit', createRateLimiter(10, 15 * 60 * 1000, 'Too many contact form submissions'));
-app.use('/api/', createRateLimiter(200, 15 * 60 * 1000));
-
-// Cache Middleware
-const cacheMiddleware = (duration = 60, tags = []) => {
-    return async (req, res, next) => {
-        if (req.method !== 'GET' || req.headers.authorization) return next();
-
-        const key = `cache:${req.originalUrl || req.url}`;
-        
-        try {
-            const cachedResponse = await cacheManager.get(key);
-            if (cachedResponse) return res.json(cachedResponse);
-
-            const originalSend = res.json;
-            res.json = async function (body) {
-                if (res.statusCode >= 200 && res.statusCode < 300) {
-                    await cacheManager.set(key, body, duration * 1000);
-                    if (tags.length > 0) {
-                        for (const tag of tags) {
-                            await cacheManager.set(`tag:${tag}:${key}`, true, duration * 1000);
-                        }
-                    }
-                }
-                originalSend.call(this, body);
-            };
-            next();
-        } catch (error) {
-            logger.error('Cache middleware error:', { requestId: req.id, error: error.message });
-            next();
-        }
-    };
-};
-
-// ============================================================
-// SECTION 10: ACCOUNT LOCKOUT SYSTEM
-// ============================================================
-
-const loginAttempts = new Map();
-
-async function checkLoginAttempts(identifier) {
-    const attempts = loginAttempts.get(identifier) || { count: 0, lockedUntil: null };
-    
-    if (attempts.lockedUntil && attempts.lockedUntil > Date.now()) {
-        throw new AuthError('Account temporarily locked. Try again later.', 'ACCOUNT_LOCKED');
-    }
-    
-    if (attempts.lockedUntil && attempts.lockedUntil <= Date.now()) {
-        loginAttempts.delete(identifier);
-        return;
-    }
-    
-    return attempts;
-}
-
-async function recordFailedAttempt(identifier) {
-    const attempts = loginAttempts.get(identifier) || { count: 0, lockedUntil: null };
-    attempts.count += 1;
-    
-    if (attempts.count >= 5) {
-        attempts.lockedUntil = Date.now() + 15 * 60 * 1000;
-        attempts.count = 0;
-        logger.warn('Account locked due to multiple failed attempts', { identifier });
-    }
-    
-    loginAttempts.set(identifier, attempts);
-}
-
-async function resetLoginAttempts(identifier) {
-    loginAttempts.delete(identifier);
-}
-
-// ============================================================
-// SECTION 11: FILE UPLOAD CONFIGURATION
-// ============================================================
-
+// -------------------- 1.8 FILE UPLOAD CONFIG ---------------
 const UPLOAD_DIRS = {
     images: './uploads/images',
     resources: './uploads/resources',
@@ -838,10 +575,7 @@ const upload = multer({
     fileFilter: fileFilter
 });
 
-// ============================================================
-// SECTION 12: VALIDATION SCHEMAS
-// ============================================================
-
+// -------------------- 1.9 VALIDATION SCHEMAS ---------------
 const schemas = {
     login: Joi.object({
         email: Joi.string().email().required(),
@@ -922,10 +656,7 @@ const validate = (schema) => {
     };
 };
 
-// ============================================================
-// SECTION 13: AUTHENTICATION SERVICE
-// ============================================================
-
+// -------------------- 1.10 AUTHENTICATION SERVICE ----------
 class AuthService {
     constructor() {
         this.secret = JWT_SECRET;
@@ -1016,10 +747,298 @@ class AuthService {
 
 const authService = new AuthService();
 
+// -------------------- 1.11 ACCOUNT LOCKOUT -----------------
+const loginAttempts = new Map();
+
+async function checkLoginAttempts(identifier) {
+    const attempts = loginAttempts.get(identifier) || { count: 0, lockedUntil: null };
+    
+    if (attempts.lockedUntil && attempts.lockedUntil > Date.now()) {
+        throw new AuthError('Account temporarily locked. Try again later.', 'ACCOUNT_LOCKED');
+    }
+    
+    if (attempts.lockedUntil && attempts.lockedUntil <= Date.now()) {
+        loginAttempts.delete(identifier);
+        return;
+    }
+    
+    return attempts;
+}
+
+async function recordFailedAttempt(identifier) {
+    const attempts = loginAttempts.get(identifier) || { count: 0, lockedUntil: null };
+    attempts.count += 1;
+    
+    if (attempts.count >= 5) {
+        attempts.lockedUntil = Date.now() + 15 * 60 * 1000;
+        attempts.count = 0;
+        logger.warn('Account locked due to multiple failed attempts', { identifier });
+    }
+    
+    loginAttempts.set(identifier, attempts);
+}
+
+async function resetLoginAttempts(identifier) {
+    loginAttempts.delete(identifier);
+}
+
+// -------------------- 1.12 DATABASE INIT -------------------
+async function initializeDatabase() {
+    try {
+        const { error } = await supabase.from('users').select('count').limit(1);
+        if (error) throw new Error(`Database connection failed: ${error.message}`);
+
+        logger.info('Database connected successfully');
+        await createDefaultAdmin();
+        await createDefaultTables();
+        logger.info('Database initialization complete');
+    } catch (error) {
+        logger.error('Database initialization failed:', error);
+        throw error;
+    }
+}
+
+async function createDefaultAdmin() {
+    try {
+        const adminEmail = process.env.ADMIN_EMAIL;
+        if (!adminEmail) {
+            logger.warn('ADMIN_EMAIL not set, skipping admin creation');
+            return;
+        }
+
+        const result = await db.query('select', 'users', {
+            where: { email: adminEmail },
+            select: 'id'
+        });
+
+        if (result.data.length === 0) {
+            const adminPassword = process.env.ADMIN_PASSWORD;
+            if (!adminPassword) {
+                logger.warn('ADMIN_PASSWORD not set, skipping admin creation');
+                return;
+            }
+
+            const hashedPassword = await bcrypt.hash(adminPassword, 12);
+            const adminData = {
+                email: adminEmail,
+                password_hash: hashedPassword,
+                full_name: process.env.ADMIN_FULL_NAME || 'System Administrator',
+                role: 'admin',
+                department: process.env.ADMIN_DEPARTMENT || 'Computer Engineering',
+                username: process.env.ADMIN_USERNAME || 'admin',
+                is_active: true,
+                created_at: new Date(),
+                updated_at: new Date()
+            };
+
+            await db.query('insert', 'users', { data: adminData });
+            logger.info(`Admin user created: ${adminEmail}`);
+        } else {
+            logger.info('Admin user already exists');
+        }
+    } catch (error) {
+        logger.error('Could not create admin user:', error);
+    }
+}
+
+async function createDefaultTables() {
+    logger.info('Checking database tables...');
+}
+
 // ============================================================
-// SECTION 14: AUTHENTICATION MIDDLEWARE
+// ================ SECTION 2: SHARED MIDDLEWARE =============
 // ============================================================
 
+// -------------------- 2.1 REQUEST MIDDLEWARE ---------------
+app.set('trust proxy', 1);
+
+app.use((req, res, next) => {
+    req.id = uuid.v4();
+    res.setHeader('X-Request-ID', req.id);
+    next();
+});
+
+app.use((req, res, next) => {
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+    next();
+});
+
+app.use(compression({
+    level: 6,
+    threshold: 1024,
+    filter: (req, res) => {
+        if (req.headers['x-no-compression']) return false;
+        return compression.filter(req, res);
+    }
+}));
+
+app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
+const csrfProtection = csrf({ cookie: true });
+app.use('/portal', (req, res, next) => {
+    if (req.path === '/login') return next();
+    csrfProtection(req, res, next);
+});
+
+app.use(xss());
+app.use(hpp({ whitelist: ['page', 'limit', 'sort', 'fields'] }));
+
+// -------------------- 2.2 CORS CONFIG -----------------------
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(origin => origin.length > 0);
+
+if (process.env.FRONTEND_URL && !ALLOWED_ORIGINS.includes(process.env.FRONTEND_URL)) {
+    ALLOWED_ORIGINS.push(process.env.FRONTEND_URL);
+}
+
+ALLOWED_ORIGINS.push('https://nuesa-biu-pjp0.onrender.com');
+ALLOWED_ORIGINS.push('https://www.nuesa-biu-pjp0.onrender.com');
+
+const corsOptions = {
+    origin: function (origin, callback) {
+        if (!origin) return callback(null, true);
+        if (!IS_PRODUCTION) return callback(null, true);
+        if (ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin)) {
+            callback(null, true);
+        } else {
+            logger.warn(`Blocked by CORS: ${origin}`, { allowedOrigins: ALLOWED_ORIGINS });
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+    allowedHeaders: [
+        'Content-Type', 'Authorization', 'Accept', 'Origin', 
+        'X-Requested-With', 'X-API-Key', 'X-Total-Count', 
+        'X-Page-Count', 'X-CSRF-Token'
+    ],
+    exposedHeaders: [
+        'X-Total-Count', 'X-Page-Count', 'X-RateLimit-Limit',
+        'X-RateLimit-Remaining', 'X-RateLimit-Reset', 'X-Request-ID'
+    ],
+    maxAge: 86400,
+    preflightContinue: false,
+    optionsSuccessStatus: 204
+};
+
+app.use(cors(corsOptions));
+app.use(cookieParser());
+
+// -------------------- 2.3 BODY PARSING ----------------------
+app.use(express.json({
+    limit: MAX_REQUEST_SIZE,
+    verify: (req, res, buf, encoding) => { req.rawBody = buf; }
+}));
+
+app.use(express.urlencoded({
+    extended: true,
+    limit: MAX_REQUEST_SIZE,
+    parameterLimit: 100
+}));
+
+// -------------------- 2.4 LOGGING & TIMEOUT -----------------
+const morganFormat = IS_PRODUCTION ? 'combined' : 'dev';
+app.use(morgan(morganFormat, {
+    stream: { write: (message) => logger.http(message.trim()) },
+    skip: (req, res) => req.path === '/api/health' && req.method === 'GET'
+}));
+
+app.use(timeout('30s'));
+app.use((req, res, next) => {
+    if (req.timedout) {
+        logger.error('Request timeout', {
+            requestId: req.id, url: req.url, method: req.method,
+            ip: req.ip, userId: req.user?.id
+        });
+        return res.status(503).json({
+            status: 'error', code: 'TIMEOUT',
+            message: 'Request timeout. Please try again.'
+        });
+    }
+    next();
+});
+
+app.use((req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        logger.info('Request completed', {
+            requestId: req.id, method: req.method, url: req.url,
+            status: res.statusCode, duration: `${duration}ms`, userId: req.user?.id
+        });
+    });
+    next();
+});
+
+// -------------------- 2.5 RATE LIMITING ---------------------
+const createRateLimiter = (max, windowMs = 15 * 60 * 1000, message = 'Too many requests') => {
+    return rateLimit({
+        windowMs, max,
+        message: { status: 'error', code: 'TOO_MANY_REQUESTS', message },
+        standardHeaders: true,
+        legacyHeaders: false,
+        skipSuccessfulRequests: false,
+        keyGenerator: (req) => req.headers['x-forwarded-for'] || req.ip,
+        handler: (req, res) => {
+            logger.warn('Rate limit exceeded', {
+                requestId: req.id, ip: req.ip, url: req.url, method: req.method
+            });
+            res.status(429).json({
+                status: 'error', code: 'TOO_MANY_REQUESTS', message
+            });
+        }
+    });
+};
+
+// Apply general rate limit to all API routes
+app.use('/api/', createRateLimiter(200, 15 * 60 * 1000));
+
+// Apply specific rate limits
+app.use('/api/auth/login', createRateLimiter(10, 15 * 60 * 1000, 'Too many login attempts'));
+app.use('/api/contact/submit', createRateLimiter(10, 15 * 60 * 1000, 'Too many contact form submissions'));
+
+// -------------------- 2.6 CACHE MIDDLEWARE ------------------
+const cacheMiddleware = (duration = 60, tags = []) => {
+    return async (req, res, next) => {
+        if (req.method !== 'GET' || req.headers.authorization) return next();
+
+        const key = `cache:${req.originalUrl || req.url}`;
+        
+        try {
+            const cachedResponse = await cacheManager.get(key);
+            if (cachedResponse) return res.json(cachedResponse);
+
+            const originalSend = res.json;
+            res.json = async function (body) {
+                if (res.statusCode >= 200 && res.statusCode < 300) {
+                    await cacheManager.set(key, body, duration * 1000);
+                    if (tags.length > 0) {
+                        for (const tag of tags) {
+                            await cacheManager.set(`tag:${tag}:${key}`, true, duration * 1000);
+                        }
+                    }
+                }
+                originalSend.call(this, body);
+            };
+            next();
+        } catch (error) {
+            logger.error('Cache middleware error:', { requestId: req.id, error: error.message });
+            next();
+        }
+    };
+};
+
+// -------------------- 2.7 AUTH MIDDLEWARE -------------------
 const verifyToken = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
@@ -1100,86 +1119,93 @@ const requirePermission = (permission) => {
 };
 
 // ============================================================
-// SECTION 15: DATABASE INITIALIZATION
+// ================== SECTION 3: PUBLIC ROUTES ===============
 // ============================================================
 
-async function initializeDatabase() {
+// -------------------- 3.1 HEALTH & SYSTEM -------------------
+app.get('/api/health', async (req, res) => {
     try {
-        const { error } = await supabase.from('users').select('count').limit(1);
-        if (error) throw new Error(`Database connection failed: ${error.message}`);
-
-        logger.info('Database connected successfully');
-        await createDefaultAdmin();
-        await createDefaultTables();
-        logger.info('Database initialization complete');
-    } catch (error) {
-        logger.error('Database initialization failed:', error);
-        throw error;
-    }
-}
-
-async function createDefaultAdmin() {
-    try {
-        const adminEmail = process.env.ADMIN_EMAIL;
-        if (!adminEmail) {
-            logger.warn('ADMIN_EMAIL not set, skipping admin creation');
-            return;
-        }
-
-        const result = await db.query('select', 'users', {
-            where: { email: adminEmail },
-            select: 'id'
+        const dbStatus = await checkDatabase();
+        res.status(200).json({
+            status: 'healthy',
+            database: dbStatus,
+            uptime: process.uptime(),
+            timestamp: new Date().toISOString(),
+            version: '1.0.0'
         });
-
-        if (result.data.length === 0) {
-            const adminPassword = process.env.ADMIN_PASSWORD;
-            if (!adminPassword) {
-                logger.warn('ADMIN_PASSWORD not set, skipping admin creation');
-                return;
-            }
-
-            const hashedPassword = await bcrypt.hash(adminPassword, 12);
-            const adminData = {
-                email: adminEmail,
-                password_hash: hashedPassword,
-                full_name: process.env.ADMIN_FULL_NAME || 'System Administrator',
-                role: 'admin',
-                department: process.env.ADMIN_DEPARTMENT || 'Computer Engineering',
-                username: process.env.ADMIN_USERNAME || 'admin',
-                is_active: true,
-                created_at: new Date(),
-                updated_at: new Date()
-            };
-
-            await db.query('insert', 'users', { data: adminData });
-            logger.info(`Admin user created: ${adminEmail}`);
-        } else {
-            logger.info('Admin user already exists');
-        }
     } catch (error) {
-        logger.error('Could not create admin user:', error);
+        res.status(200).json({
+            status: 'degraded',
+            message: 'Partial service disruption',
+            timestamp: new Date().toISOString()
+        });
     }
-}
+});
 
-async function createDefaultTables() {
-    logger.info('Checking database tables...');
-}
+app.get('/api/ping', (req, res) => {
+    res.json({
+        status: 'success',
+        message: 'pong',
+        timestamp: new Date().toISOString(),
+        version: '1.0.0',
+        requestId: req.id
+    });
+});
 
-// ============================================================
-// SECTION 16: ROUTE HANDLERS
-// ============================================================
+app.get('/api', (req, res) => {
+    res.json({
+        message: 'NUESA BIU API Server',
+        version: '1.0.0',
+        environment: NODE_ENV,
+        status: 'operational',
+        timestamp: new Date().toISOString(),
+        documentation: `${req.protocol}://${req.get('host')}/api/docs`,
+        endpoints: {
+            auth: '/api/auth',
+            users: '/api/users',
+            members: '/api/members',
+            events: '/api/events',
+            resources: '/api/resources',
+            articles: '/api/articles',
+            profile: '/api/profile',
+            health: '/api/health',
+            contact: '/api/contact/submit',
+            docs: '/api/docs',
+            'course-reps': '/api/course-reps'
+        },
+        requestId: req.id
+    });
+});
 
-// --- 16.1 AUTHENTICATION ROUTES (Regular Users) ---
+// -------------------- 3.2 DOCUMENTATION ---------------------
+const swaggerOptions = {
+    definition: {
+        openapi: '3.0.0',
+        info: {
+            title: 'NUESA BIU API',
+            version: '1.0.0',
+            description: 'API documentation for NUESA BIU application',
+            contact: { name: 'NUESA BIU', email: process.env.ADMIN_EMAIL }
+        },
+        servers: [{
+            url: IS_PRODUCTION ? 'https://nuesa-biu-pjp0.onrender.com' : `http://localhost:${PORT}`,
+            description: IS_PRODUCTION ? 'Production server' : 'Development server'
+        }],
+        components: {
+            securitySchemes: {
+                bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }
+            }
+        }
+    },
+    apis: ['./server.js'],
+};
 
+const swaggerSpecs = swaggerJsdoc(swaggerOptions);
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
+
+// -------------------- 3.3 PUBLIC AUTH ROUTES ----------------
 const authRouter = express.Router();
 
-/**
- * @swagger
- * /api/auth/login:
- *   post:
- *     summary: User login
- *     tags: [Authentication]
- */
 authRouter.post('/login', validate(schemas.login), async (req, res) => {
     try {
         const { email, password, rememberMe } = req.body;
@@ -1211,13 +1237,6 @@ authRouter.post('/login', validate(schemas.login), async (req, res) => {
     }
 });
 
-/**
- * @swagger
- * /api/auth/logout:
- *   post:
- *     summary: User logout
- *     tags: [Authentication]
- */
 authRouter.post('/logout', verifyToken, async (req, res) => {
     try {
         await cacheManager.delete(`user:${req.user.id}`);
@@ -1230,24 +1249,10 @@ authRouter.post('/logout', verifyToken, async (req, res) => {
     }
 });
 
-/**
- * @swagger
- * /api/auth/verify:
- *   get:
- *     summary: Verify token validity
- *     tags: [Authentication]
- */
 authRouter.get('/verify', verifyToken, async (req, res) => {
     res.json({ status: 'success', data: req.user, message: 'Token is valid' });
 });
 
-/**
- * @swagger
- * /api/auth/refresh:
- *   post:
- *     summary: Refresh access token
- *     tags: [Authentication]
- */
 authRouter.post('/refresh', verifyToken, async (req, res) => {
     try {
         const newToken = authService.generateToken(authService.createTokenPayload(req.user));
@@ -1262,13 +1267,6 @@ authRouter.post('/refresh', verifyToken, async (req, res) => {
     }
 });
 
-/**
- * @swagger
- * /api/auth/forgot-password:
- *   post:
- *     summary: Request password reset
- *     tags: [Authentication]
- */
 authRouter.post('/forgot-password', validate(Joi.object({ email: Joi.string().email().required() })), async (req, res) => {
     try {
         logger.info('Password reset requested', { email: req.body.email });
@@ -1284,3276 +1282,16 @@ authRouter.post('/forgot-password', validate(Joi.object({ email: Joi.string().em
 
 app.use('/api/auth', authRouter);
 
-// --- 16.2 ADMIN AUTHENTICATION (Single Endpoint) ---
-
-/**
- * @swagger
- * /api/admin/login:
- *   post:
- *     summary: Admin login (single endpoint for admin portal)
- *     tags: [Admin Authentication]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [email, password]
- *             properties:
- *               email: { type: string, format: email }
- *               password: { type: string }
- *               rememberMe: { type: boolean }
- *     responses:
- *       200: { description: Login successful }
- *       401: { description: Invalid credentials or not admin }
- *       403: { description: Access denied - not admin role }
- */
-app.post('/api/admin/login', createRateLimiter(10, 15 * 60 * 1000), validate(schemas.login), async (req, res) => {
-    try {
-        const { email, password, rememberMe } = req.body;
-
-        // Check login attempts
-        await checkLoginAttempts(email.toLowerCase());
-
-        // Fetch user
-        const result = await db.query('select', 'users', {
-            where: { email: email.toLowerCase().trim() },
-            select: 'id, email, password_hash, full_name, role, department, is_active, created_at, last_login'
-        });
-
-        if (result.data.length === 0) {
-            await recordFailedAttempt(email.toLowerCase());
-            logger.warn('Admin login failed - user not found', { email });
-            return res.status(401).json({
-                status: 'error',
-                code: 'INVALID_CREDENTIALS',
-                message: 'Invalid email or password'
-            });
-        }
-
-        const user = result.data[0];
-
-        // STRICT ADMIN CHECK - Only admins can use this endpoint
-        if (user.role !== 'admin') {
-            logger.warn('Admin login failed - not admin', { email, role: user.role });
-            return res.status(403).json({
-                status: 'error',
-                code: 'FORBIDDEN',
-                message: 'Access denied. Admin privileges required.'
-            });
-        }
-
-        if (!user.is_active) {
-            logger.warn('Admin login failed - account deactivated', { email });
-            return res.status(401).json({
-                status: 'error',
-                code: 'ACCOUNT_DEACTIVATED',
-                message: 'Your account has been deactivated'
-            });
-        }
-
-        // Verify password
-        const validPassword = await bcrypt.compare(password, user.password_hash);
-        if (!validPassword) {
-            await recordFailedAttempt(email.toLowerCase());
-            logger.warn('Admin login failed - invalid password', { email });
-            return res.status(401).json({
-                status: 'error',
-                code: 'INVALID_CREDENTIALS',
-                message: 'Invalid email or password'
-            });
-        }
-
-        // Reset login attempts
-        await resetLoginAttempts(email.toLowerCase());
-
-        // Update last login
-        await db.query('update', 'users', {
-            data: { last_login: new Date() },
-            where: { id: user.id }
-        });
-
-        // Create response
-        const userResponse = authService.createUserResponse(user);
-        const tokenPayload = authService.createTokenPayload(user);
-        const token = authService.generateToken(tokenPayload);
-
-        // Set cookie
-        res.cookie('auth_token', token, {
-            httpOnly: true,
-            secure: IS_PRODUCTION,
-            sameSite: 'strict',
-            maxAge: rememberMe ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000,
-            path: '/'
-        });
-
-        // Cache user
-        await cacheManager.set(`user:${user.id}`, userResponse, rememberMe ? 604800000 : 300000);
-
-        logger.info('Admin logged in successfully', { 
-            requestId: req.id, userId: user.id, email: user.email 
-        });
-
-        res.json({
-            status: 'success',
-            data: {
-                user: userResponse,
-                token,
-                expiresIn: JWT_EXPIRE
-            },
-            message: 'Admin login successful'
-        });
-
-    } catch (error) {
-        logger.error('Admin login error:', { requestId: req.id, error: error.message });
-        res.status(500).json({
-            status: 'error',
-            code: 'SERVER_ERROR',
-            message: 'Login failed. Please try again.'
-        });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/logout:
- *   post:
- *     summary: Admin logout
- *     tags: [Admin Authentication]
- */
-app.post('/api/admin/logout', verifyToken, async (req, res) => {
-    try {
-        await cacheManager.delete(`user:${req.user.id}`);
-        res.clearCookie('auth_token');
-        logger.info('Admin logged out', { requestId: req.id, userId: req.user.id });
-        res.json({ status: 'success', message: 'Logged out successfully' });
-    } catch (error) {
-        logger.error('Admin logout error:', { requestId: req.id, error: error.message });
-        res.status(500).json({ status: 'error', message: 'Logout failed' });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/session:
- *   get:
- *     summary: Check admin session
- *     tags: [Admin Authentication]
- */
-app.get('/api/admin/session', verifyToken, async (req, res) => {
-    try {
-        if (req.user.role !== 'admin') {
-            return res.status(403).json({
-                status: 'error', code: 'FORBIDDEN', message: 'Not authorized'
-            });
-        }
-        res.json({ status: 'success', data: req.user, message: 'Session valid' });
-    } catch (error) {
-        logger.error('Session check error:', { requestId: req.id, error: error.message });
-        res.status(401).json({
-            status: 'error', code: 'INVALID_SESSION', message: 'No valid session'
-        });
-    }
-});
-
-// --- 16.3 PUBLIC ROUTES ---
-
-/**
- * @swagger
- * /api/contact/submit:
- *   post:
- *     summary: Submit contact form
- *     tags: [Public]
- */
-app.post('/api/contact/submit', createRateLimiter(10), validate(schemas.contactForm), async (req, res) => {
-    try {
-        const { name, email, message, subject } = req.body;
-        logger.info('Contact form submitted', { 
-            requestId: req.id, name, email, subject: subject || 'No subject' 
-        });
-        res.json({
-            status: 'success',
-            message: 'Thank you for your message! We will get back to you soon.'
-        });
-    } catch (error) {
-        logger.error('Contact form error:', { requestId: req.id, error: error.message });
-        res.status(500).json({
-            status: 'error', message: 'Failed to submit form. Please try again later.'
-        });
-    }
-});
-
-// --- 16.4 USER MANAGEMENT ROUTES ---
-
-const userRouter = express.Router();
-
-/**
- * @swagger
- * /api/users:
- *   get:
- *     summary: Get all users (admin only)
- *     tags: [Users]
- */
-userRouter.get('/', verifyToken, requireRole('admin'), async (req, res) => {
-    try {
-        const { page = 1, limit = 20, role, department, search, sort = 'created_at', order = 'desc' } = req.query;
-        const offset = (page - 1) * limit;
-        let where = {};
-
-        if (role && role !== 'all') where.role = role;
-        if (department && department !== 'all') where.department = department;
-        if (search) where.full_name = { operator: 'ilike', value: `%${search}%` };
-
-        const [usersResult, totalResult] = await Promise.all([
-            db.query('select', 'users', {
-                where,
-                select: 'id, email, full_name, role, department, is_active, created_at, updated_at, last_login',
-                order: { column: sort, ascending: order === 'asc' },
-                limit: parseInt(limit),
-                offset: parseInt(offset)
-            }),
-            db.query('select', 'users', { where, count: true })
-        ]);
-
-        res.setHeader('X-Total-Count', totalResult.count || 0);
-        res.setHeader('X-Page-Count', Math.ceil((totalResult.count || 0) / limit));
-
-        res.json({
-            status: 'success',
-            data: usersResult.data,
-            pagination: {
-                page: parseInt(page),
-                limit: parseInt(limit),
-                total: totalResult.count || 0,
-                pages: Math.ceil((totalResult.count || 0) / limit),
-                hasMore: (parseInt(page) * parseInt(limit)) < (totalResult.count || 0)
-            }
-        });
-    } catch (error) {
-        logger.error('Error fetching users:', { requestId: req.id, error: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to fetch users' });
-    }
-});
-
-/**
- * @swagger
- * /api/users:
- *   post:
- *     summary: Create new user (admin only)
- *     tags: [Users]
- */
-userRouter.post('/', verifyToken, requireRole('admin'), validate(schemas.createUser), async (req, res) => {
-    try {
-        const { email, password, full_name, department, role = 'member', is_active = true } = req.body;
-
-        const existing = await db.query('select', 'users', {
-            where: { email: email.toLowerCase() },
-            select: 'id'
-        });
-
-        if (existing.data.length > 0) throw new ValidationError('User with this email already exists');
-
-        const hashedPassword = await bcrypt.hash(password, 12);
-        const username = email.split('@')[0].toLowerCase();
-
-        const userData = {
-            email: email.toLowerCase(),
-            password_hash: hashedPassword,
-            full_name: full_name.trim(),
-            username,
-            department: department || null,
-            role,
-            is_active,
-            created_at: new Date(),
-            updated_at: new Date()
-        };
-
-        const result = await db.query('insert', 'users', { data: userData });
-        const user = authService.createUserResponse(result.data[0]);
-
-        logger.info('User created', { requestId: req.id, userId: user.id, createdBy: req.user.id });
-
-        res.status(201).json({ status: 'success', data: user, message: 'User created successfully' });
-    } catch (error) {
-        logger.error('Error creating user:', { requestId: req.id, error: error.message });
-        if (error instanceof ValidationError) {
-            return res.status(400).json({ status: 'error', code: 'VALIDATION_ERROR', message: error.message });
-        }
-        res.status(500).json({ status: 'error', message: 'Failed to create user' });
-    }
-});
-
-/**
- * @swagger
- * /api/users/{id}:
- *   get:
- *     summary: Get user by ID
- *     tags: [Users]
- */
-userRouter.get('/:id', verifyToken, async (req, res) => {
-    try {
-        if (req.user.role !== 'admin' && req.user.id !== req.params.id) {
-            throw new ForbiddenError('Access denied');
-        }
-
-        const result = await db.query('select', 'users', {
-            where: { id: req.params.id },
-            select: 'id, email, full_name, role, department, is_active, created_at, updated_at, last_login, profile_picture'
-        });
-
-        if (result.data.length === 0) throw new NotFoundError('User');
-
-        res.json({ status: 'success', data: authService.createUserResponse(result.data[0]) });
-    } catch (error) {
-        logger.error('Error fetching user:', { requestId: req.id, error: error.message });
-        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
-        if (error instanceof ForbiddenError) return res.status(403).json({ status: 'error', message: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to fetch user' });
-    }
-});
-
-/**
- * @swagger
- * /api/users/{id}:
- *   put:
- *     summary: Update user
- *     tags: [Users]
- */
-userRouter.put('/:id', verifyToken, validate(schemas.updateUser), async (req, res) => {
-    try {
-        if (req.user.role !== 'admin' && req.user.id !== req.params.id) {
-            throw new ForbiddenError('Access denied');
-        }
-
-        const { full_name, department, role, is_active, password } = req.body;
-        const updateData = { updated_at: new Date() };
-
-        if (full_name) updateData.full_name = full_name.trim();
-        if (department !== undefined) updateData.department = department;
-
-        if (req.user.role === 'admin') {
-            if (role !== undefined) updateData.role = role;
-            if (is_active !== undefined) updateData.is_active = is_active;
-        }
-
-        if (password) updateData.password_hash = await bcrypt.hash(password, 12);
-
-        const cleanUpdateData = Object.fromEntries(
-            Object.entries(updateData).filter(([_, v]) => v !== undefined)
-        );
-
-        const result = await db.query('update', 'users', {
-            data: cleanUpdateData,
-            where: { id: req.params.id }
-        });
-
-        if (result.data.length === 0) throw new NotFoundError('User');
-
-        await cacheManager.delete(`user:${req.params.id}`);
-        await cacheManager.invalidate('data:*');
-
-        if (req.user.id === req.params.id) req.user = authService.createUserResponse(result.data[0]);
-
-        logger.info('User updated', { requestId: req.id, userId: req.params.id, updatedBy: req.user.id });
-
-        res.json({
-            status: 'success',
-            data: authService.createUserResponse(result.data[0]),
-            message: 'User updated successfully'
-        });
-    } catch (error) {
-        logger.error('Error updating user:', { requestId: req.id, error: error.message });
-        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
-        if (error instanceof ForbiddenError) return res.status(403).json({ status: 'error', message: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to update user' });
-    }
-});
-
-/**
- * @swagger
- * /api/users/{id}:
- *   delete:
- *     summary: Delete user (admin only)
- *     tags: [Users]
- */
-userRouter.delete('/:id', verifyToken, requireRole('admin'), async (req, res) => {
-    try {
-        if (req.params.id === req.user.id) throw new ValidationError('Cannot delete your own account');
-
-        const result = await db.query('delete', 'users', { where: { id: req.params.id } });
-        if (result.data.length === 0) throw new NotFoundError('User');
-
-        await cacheManager.delete(`user:${req.params.id}`);
-        await cacheManager.invalidate('data:*');
-
-        logger.info('User deleted', { requestId: req.id, userId: req.params.id, deletedBy: req.user.id });
-
-        res.json({ status: 'success', message: 'User deleted successfully' });
-    } catch (error) {
-        logger.error('Error deleting user:', { requestId: req.id, error: error.message });
-        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
-        if (error instanceof ValidationError) return res.status(400).json({ status: 'error', message: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to delete user' });
-    }
-});
-
-app.use('/api/users', userRouter);
-
-// --- 16.5 PROFILE ROUTES ---
-
-/**
- * @swagger
- * /api/profile:
- *   get:
- *     summary: Get current user profile
- *     tags: [Profile]
- */
-app.get('/api/profile', verifyToken, async (req, res) => {
-    res.json({ status: 'success', data: req.user });
-});
-
-/**
- * @swagger
- * /api/profile:
- *   put:
- *     summary: Update current user profile
- *     tags: [Profile]
- */
-app.put('/api/profile', verifyToken, validate(Joi.object({ 
-    full_name: Joi.string().min(2).max(100).required(),
-    department: Joi.string().optional()
-})), async (req, res) => {
-    try {
-        const { full_name, department } = req.body;
-        const updateData = {
-            full_name: full_name.trim(),
-            department: department || null,
-            updated_at: new Date()
-        };
-
-        const result = await db.query('update', 'users', {
-            data: updateData,
-            where: { id: req.user.id }
-        });
-
-        const updatedUser = authService.createUserResponse(result.data[0]);
-        await cacheManager.set(`user:${req.user.id}`, updatedUser, 300000);
-        req.user = updatedUser;
-
-        res.json({ status: 'success', data: updatedUser, message: 'Profile updated successfully' });
-    } catch (error) {
-        logger.error('Error updating profile:', { requestId: req.id, error: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to update profile' });
-    }
-});
-
-/**
- * @swagger
- * /api/profile/password:
- *   put:
- *     summary: Change user password
- *     tags: [Profile]
- */
-app.put('/api/profile/password', verifyToken, validate(schemas.changePassword), async (req, res) => {
-    try {
-        const { currentPassword, newPassword } = req.body;
-
-        const result = await db.query('select', 'users', {
-            where: { id: req.user.id },
-            select: 'password_hash'
-        });
-
-        const validPassword = await bcrypt.compare(currentPassword, result.data[0].password_hash);
-        if (!validPassword) throw new ValidationError('Current password is incorrect');
-
-        const hashedPassword = await bcrypt.hash(newPassword, 12);
-        await db.query('update', 'users', {
-            data: { password_hash: hashedPassword, updated_at: new Date() },
-            where: { id: req.user.id }
-        });
-
-        logger.info('Password updated', { requestId: req.id, userId: req.user.id });
-        res.json({ status: 'success', message: 'Password updated successfully' });
-    } catch (error) {
-        logger.error('Error updating password:', { requestId: req.id, error: error.message });
-        if (error instanceof ValidationError) return res.status(400).json({ status: 'error', message: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to update password' });
-    }
-});
-
-// ============================================================
-// SECTION 16.6: ADMIN DASHBOARD ROUTES (COMPLETE & ORGANIZED)
-// ============================================================
-
-const adminRouter = express.Router();
-adminRouter.use(verifyToken);
-adminRouter.use(requireRole('admin'));
-
-// ==================== DASHBOARD STATS ====================
-
-/**
- * @swagger
- * /api/admin/stats:
- *   get:
- *     summary: Get dashboard statistics
- *     tags: [Admin]
- */
-adminRouter.get('/stats', async (req, res) => {
-    try {
-        const [users, members, events, resources, articles] = await Promise.allSettled([
-            db.query('select', 'users', { count: true }),
-            db.query('select', 'executive_members', { count: true }),
-            db.query('select', 'biu_events', { count: true }),
-            db.query('select', 'resources', { count: true }),
-            db.query('select', 'articles', { count: true })
-        ]);
-
-        res.json({
-            status: 'success',
-            data: {
-                users: users.status === 'fulfilled' ? users.value.count || 0 : 0,
-                members: members.status === 'fulfilled' ? members.value.count || 0 : 0,
-                events: events.status === 'fulfilled' ? events.value.count || 0 : 0,
-                resources: resources.status === 'fulfilled' ? resources.value.count || 0 : 0,
-                articles: articles.status === 'fulfilled' ? articles.value.count || 0 : 0,
-                uptime: process.uptime(),
-                environment: NODE_ENV
-            }
-        });
-    } catch (error) {
-        logger.error('Admin stats error:', error);
-        res.status(500).json({ status: 'error', message: 'Failed to fetch statistics' });
-    }
-});
-
-// ==================== MEMBERS MANAGEMENT ====================
-
-/**
- * @swagger
- * /api/admin/members:
- *   get:
- *     summary: Get all members (with filtering)
- *     tags: [Admin]
- */
-adminRouter.get('/members', async (req, res) => {
-    try {
-        const { status, committee, search, page = 1, limit = 50 } = req.query;
-        let where = {};
-
-        if (status && status !== 'all') where.status = status;
-        if (committee && committee !== 'all') where.committee = committee;
-        if (search) {
-            where.full_name = { operator: 'ilike', value: `%${search}%` };
-        }
-
-        const offset = (parseInt(page) - 1) * parseInt(limit);
-
-        const result = await db.query('select', 'executive_members', {
-            where,
-            order: { column: 'display_order', ascending: true },
-            limit: parseInt(limit),
-            offset: parseInt(offset)
-        });
-
-        // Get total count for pagination
-        const countResult = await db.query('select', 'executive_members', {
-            where,
-            count: true
-        });
-
-        res.json({ 
-            status: 'success', 
-            data: result.data,
-            pagination: {
-                page: parseInt(page),
-                limit: parseInt(limit),
-                total: countResult.count || 0,
-                pages: Math.ceil((countResult.count || 0) / parseInt(limit))
-            }
-        });
-    } catch (error) {
-        logger.error('Admin members error:', error);
-        res.status(500).json({ status: 'error', message: 'Failed to fetch members' });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/members/{id}:
- *   get:
- *     summary: Get member by ID
- *     tags: [Admin]
- */
-adminRouter.get('/members/:id', async (req, res) => {
-    try {
-        const result = await db.query('select', 'executive_members', { 
-            where: { id: req.params.id } 
-        });
-        
-        if (result.data.length === 0) {
-            return res.status(404).json({ status: 'error', message: 'Member not found' });
-        }
-        
-        res.json({ status: 'success', data: result.data[0] });
-    } catch (error) {
-        logger.error('Admin member fetch error:', error);
-        res.status(500).json({ status: 'error', message: 'Failed to fetch member' });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/members:
- *   post:
- *     summary: Create member
- *     tags: [Admin]
- */
-adminRouter.post('/members', upload.single('profile_image'), async (req, res) => {
-    try {
-        // Parse the data from form-data
-        let memberData;
-        if (req.body.data) {
-            // If data is sent as JSON string
-            memberData = JSON.parse(req.body.data);
-        } else {
-            // If data is sent as form fields
-            memberData = req.body;
-        }
-
-        const { 
-            full_name, 
-            position, 
-            department, 
-            level, 
-            email, 
-            phone, 
-            bio, 
-            committee, 
-            display_order, 
-            status, 
-            social_links 
-        } = memberData;
-
-        // Validate required fields
-        if (!full_name || !position) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'Full name and position are required' 
-            });
-        }
-
-        // Parse social_links if it's a string
-        let parsedSocialLinks = {};
-        if (social_links) {
-            try {
-                parsedSocialLinks = typeof social_links === 'string' 
-                    ? JSON.parse(social_links) 
-                    : social_links;
-            } catch (e) {
-                parsedSocialLinks = {};
-            }
-        }
-
-        const newMember = {
-            full_name: full_name?.trim(),
-            position: position?.trim(),
-            department: department?.trim() || null,
-            level: level?.trim() || null,
-            email: email?.toLowerCase().trim() || null,
-            phone: phone?.trim() || null,
-            bio: bio?.trim() || null,
-            committee: committee?.trim() || null,
-            display_order: display_order ? parseInt(display_order) : 0,
-            status: status || 'active',
-            social_links: parsedSocialLinks,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-        };
-
-        // Add profile image if uploaded
-        if (req.file) {
-            newMember.profile_image = `/uploads/${req.file.filename}`;
-        }
-
-        const result = await db.query('insert', 'executive_members', { data: newMember });
-        
-        // Invalidate cache
-        await cacheManager.invalidateByTags(['members']);
-
-        logger.info('Admin created member', { 
-            requestId: req.id, 
-            memberId: result.data[0].id,
-            hasPhoto: !!req.file 
-        });
-
-        res.status(201).json({ 
-            status: 'success', 
-            data: result.data[0], 
-            message: 'Member created successfully' 
-        });
-    } catch (error) {
-        logger.error('Admin create member error:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to create member',
-            debug: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/members/{id}:
- *   put:
- *     summary: Update member
- *     tags: [Admin]
- */
-adminRouter.put('/members/:id', upload.single('profile_image'), async (req, res) => {
-    try {
-        // Parse the data from form-data
-        let memberData;
-        if (req.body.data) {
-            memberData = JSON.parse(req.body.data);
-        } else {
-            memberData = req.body;
-        }
-
-        // Build update object with only provided fields
-        const updateData = {};
-        
-        // Only add fields that are provided
-        const fields = [
-            'full_name', 'position', 'department', 'level', 
-            'email', 'phone', 'bio', 'committee', 
-            'display_order', 'status', 'social_links'
-        ];
-
-        fields.forEach(field => {
-            if (memberData[field] !== undefined && memberData[field] !== null) {
-                if (field === 'email') {
-                    updateData[field] = memberData[field]?.toLowerCase().trim();
-                } else if (field === 'display_order') {
-                    updateData[field] = parseInt(memberData[field]);
-                } else if (field === 'social_links') {
-                    try {
-                        updateData[field] = typeof memberData[field] === 'string' 
-                            ? JSON.parse(memberData[field]) 
-                            : memberData[field];
-                    } catch (e) {
-                        updateData[field] = {};
-                    }
-                } else if (typeof memberData[field] === 'string') {
-                    updateData[field] = memberData[field].trim();
-                } else {
-                    updateData[field] = memberData[field];
-                }
-            }
-        });
-
-        // Add profile image if uploaded
-        if (req.file) {
-            updateData.profile_image = `/uploads/${req.file.filename}`;
-        }
-
-        // Always update the updated_at timestamp
-        updateData.updated_at = new Date().toISOString();
-
-        // Only proceed if there's something to update
-        if (Object.keys(updateData).length === 0) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'No fields to update' 
-            });
-        }
-
-        const result = await db.query('update', 'executive_members', {
-            data: updateData,
-            where: { id: req.params.id }
-        });
-
-        if (result.data.length === 0) {
-            return res.status(404).json({ status: 'error', message: 'Member not found' });
-        }
-
-        // Invalidate cache
-        await cacheManager.invalidateByTags(['members']);
-        
-        logger.info('Member updated', { 
-            requestId: req.id, 
-            memberId: req.params.id,
-            photoUpdated: !!req.file 
-        });
-
-        res.json({ 
-            status: 'success', 
-            data: result.data[0], 
-            message: 'Member updated successfully' 
-        });
-    } catch (error) {
-        logger.error('Admin update member error:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to update member',
-            debug: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/members/{id}:
- *   delete:
- *     summary: Delete member
- *     tags: [Admin]
- */
-adminRouter.delete('/members/:id', async (req, res) => {
-    try {
-        // First check if member exists
-        const checkResult = await db.query('select', 'executive_members', { 
-            where: { id: req.params.id },
-            select: 'id, profile_image'
-        });
-        
-        if (checkResult.data.length === 0) {
-            return res.status(404).json({ status: 'error', message: 'Member not found' });
-        }
-
-        // Delete the member
-        const result = await db.query('delete', 'executive_members', { 
-            where: { id: req.params.id } 
-        });
-
-        // Optional: Delete the profile image file if it exists
-        const profileImage = checkResult.data[0].profile_image;
-        if (profileImage) {
-            const filename = profileImage.split('/').pop();
-            const filePath = path.join(__dirname, 'uploads', filename);
-            try {
-                await fs.unlink(filePath);
-                logger.info('Profile image deleted', { 
-                    requestId: req.id, 
-                    filename,
-                    memberId: req.params.id 
-                });
-            } catch (fileError) {
-                // Log but don't fail if file doesn't exist
-                logger.warn('Could not delete profile image file', { 
-                    requestId: req.id, 
-                    error: fileError.message 
-                });
-            }
-        }
-
-        // Invalidate cache
-        await cacheManager.invalidateByTags(['members']);
-        
-        logger.info('Member deleted', { 
-            requestId: req.id, 
-            memberId: req.params.id, 
-            deletedBy: req.user.id 
-        });
-
-        res.json({ status: 'success', message: 'Member deleted successfully' });
-    } catch (error) {
-        logger.error('Admin delete member error:', error);
-        res.status(500).json({ status: 'error', message: 'Failed to delete member' });
-    }
-});
-
-// ==================== MEMBER PHOTO UPLOAD ====================
-
-/**
- * @swagger
- * /api/admin/members/{id}/photo:
- *   post:
- *     summary: Upload member photo
- *     tags: [Admin]
- */
-adminRouter.post('/members/:id/photo', upload.single('photo'), async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'No photo file uploaded' 
-            });
-        }
-
-        // Validate file type
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-        if (!allowedTypes.includes(req.file.mimetype)) {
-            // Delete the uploaded file if invalid
-            await fs.unlink(req.file.path);
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'Invalid file type. Only JPEG, PNG, GIF, and WEBP are allowed.' 
-            });
-        }
-
-        // Validate file size (max 5MB)
-        const maxSize = 5 * 1024 * 1024; // 5MB
-        if (req.file.size > maxSize) {
-            // Delete the uploaded file if too large
-            await fs.unlink(req.file.path);
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'File too large. Maximum size is 5MB.' 
-            });
-        }
-
-        // Check if member exists
-        const checkResult = await db.query('select', 'executive_members', { 
-            where: { id: req.params.id },
-            select: 'id, profile_image'
-        });
-        
-        if (checkResult.data.length === 0) {
-            // Delete the uploaded file if member not found
-            await fs.unlink(req.file.path);
-            return res.status(404).json({ 
-                status: 'error', 
-                message: 'Member not found' 
-            });
-        }
-
-        // Delete old profile image if it exists
-        const oldProfileImage = checkResult.data[0].profile_image;
-        if (oldProfileImage) {
-            const oldFilename = oldProfileImage.split('/').pop();
-            const oldFilePath = path.join(__dirname, 'uploads', oldFilename);
-            try {
-                await fs.unlink(oldFilePath);
-                logger.info('Old profile image deleted', { 
-                    requestId: req.id, 
-                    filename: oldFilename 
-                });
-            } catch (fileError) {
-                // Log but continue if old file doesn't exist
-                logger.warn('Could not delete old profile image', { 
-                    requestId: req.id, 
-                    error: fileError.message 
-                });
-            }
-        }
-
-        // Generate photo URL
-        const photoUrl = `/uploads/${req.file.filename}`;
-
-        // Update member with photo URL
-        const result = await db.query('update', 'executive_members', {
-            data: { 
-                profile_image: photoUrl,
-                updated_at: new Date().toISOString()
-            },
-            where: { id: req.params.id }
-        });
-
-        // Invalidate cache
-        await cacheManager.invalidateByTags(['members']);
-
-        logger.info('Member photo uploaded', { 
-            requestId: req.id, 
-            memberId: req.params.id, 
-            filename: req.file.filename,
-            uploadedBy: req.user.id 
-        });
-
-        res.json({ 
-            status: 'success', 
-            data: { 
-                photo_url: photoUrl,
-                member: result.data[0]
-            }, 
-            message: 'Photo uploaded successfully' 
-        });
-
-    } catch (error) {
-        // Clean up uploaded file if there's an error
-        if (req.file && req.file.path) {
-            try {
-                await fs.unlink(req.file.path);
-            } catch (unlinkError) {
-                logger.error('Failed to clean up file after error', { 
-                    requestId: req.id, 
-                    error: unlinkError.message 
-                });
-            }
-        }
-
-        logger.error('Member photo upload error:', { 
-            requestId: req.id, 
-            error: error.message,
-            memberId: req.params.id 
-        });
-        
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to upload photo' 
-        });
-    }
-});
-
-// Add to adminRouter section
-adminRouter.patch('/members/:id/session', verifyToken, requireRole('admin'), async (req, res) => {
-    try {
-        const { session } = req.body;
-        
-        if (!session) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'Session is required' 
-            });
-        }
-
-        const result = await db.query('update', 'executive_members', {
-            data: { 
-                session,
-                updated_at: new Date().toISOString()
-            },
-            where: { id: req.params.id }
-        });
-
-        if (result.data.length === 0) {
-            return res.status(404).json({ status: 'error', message: 'Member not found' });
-        }
-
-        await cacheManager.invalidateByTags(['members']);
-
-        logger.info('Member session updated', { 
-            requestId: req.id, 
-            memberId: req.params.id,
-            session,
-            updatedBy: req.user.id 
-        });
-
-        res.json({ 
-            status: 'success', 
-            data: result.data[0], 
-            message: 'Member session updated successfully' 
-        });
-    } catch (error) {
-        logger.error('Error updating member session:', { requestId: req.id, error: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to update session' });
-    }
-});
-
-// ==================== BULK OPERATIONS ====================
-
-/**
- * @swagger
- * /api/admin/members/bulk/status:
- *   patch:
- *     summary: Update status for multiple members
- *     tags: [Admin]
- */
-adminRouter.patch('/members/bulk/status', async (req, res) => {
-    try {
-        const { memberIds, status } = req.body;
-
-        if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'Member IDs array is required' 
-            });
-        }
-
-        if (!status || !['active', 'inactive', 'alumni'].includes(status)) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'Valid status is required (active, inactive, or alumni)' 
-            });
-        }
-
-        const result = await db.query('update', 'executive_members', {
-            data: { 
-                status,
-                updated_at: new Date().toISOString()
-            },
-            where: { 
-                id: { operator: 'in', value: memberIds }
-            }
-        });
-
-        // Invalidate cache
-        await cacheManager.invalidateByTags(['members']);
-
-        logger.info('Bulk status update', { 
-            requestId: req.id, 
-            memberCount: memberIds.length,
-            status,
-            updatedBy: req.user.id 
-        });
-
-        res.json({ 
-            status: 'success', 
-            message: `Updated ${result.data.length} members successfully`,
-            data: result.data
-        });
-    } catch (error) {
-        logger.error('Bulk status update error:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to update members' 
-        });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/members/bulk/delete:
- *   delete:
- *     summary: Delete multiple members
- *     tags: [Admin]
- */
-adminRouter.delete('/members/bulk/delete', async (req, res) => {
-    try {
-        const { memberIds } = req.body;
-
-        if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'Member IDs array is required' 
-            });
-        }
-
-        // Get profile images before deletion
-        const imagesResult = await db.query('select', 'executive_members', {
-            where: { 
-                id: { operator: 'in', value: memberIds }
-            },
-            select: 'profile_image'
-        });
-
-        // Delete members
-        const result = await db.query('delete', 'executive_members', {
-            where: { 
-                id: { operator: 'in', value: memberIds }
-            }
-        });
-
-        // Delete profile image files
-        for (const member of imagesResult.data) {
-            if (member.profile_image) {
-                const filename = member.profile_image.split('/').pop();
-                const filePath = path.join(__dirname, 'uploads', filename);
-                try {
-                    await fs.unlink(filePath);
-                } catch (fileError) {
-                    // Log but continue
-                    logger.warn('Could not delete profile image file', { 
-                        requestId: req.id, 
-                        filename,
-                        error: fileError.message 
-                    });
-                }
-            }
-        }
-
-        // Invalidate cache
-        await cacheManager.invalidateByTags(['members']);
-
-        logger.info('Bulk delete', { 
-            requestId: req.id, 
-            memberCount: memberIds.length,
-            deletedBy: req.user.id 
-        });
-
-        res.json({ 
-            status: 'success', 
-            message: `Deleted ${result.data.length} members successfully` 
-        });
-    } catch (error) {
-        logger.error('Bulk delete error:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to delete members' 
-        });
-    }
-});
-
-// ==================== EVENTS MANAGEMENT ====================
-
-/**
- * @swagger
- * /api/admin/events:
- *   get:
- *     summary: Get all events
- *     tags: [Admin]
- */
-adminRouter.get('/events', async (req, res) => {
-    try {
-        const { status, category } = req.query;
-        let where = {};
-
-        if (status && status !== 'all') where.status = status;
-        if (category && category !== 'all') where.category = category;
-
-        const result = await db.query('select', 'biu_events', {
-            where,
-            order: { column: 'date', ascending: true }
-        });
-
-        res.json({ status: 'success', data: result.data });
-    } catch (error) {
-        logger.error('Admin events error:', error);
-        res.status(500).json({ status: 'error', message: 'Failed to fetch events' });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/events/{id}:
- *   get:
- *     summary: Get event by ID
- *     tags: [Admin]
- */
-adminRouter.get('/events/:id', async (req, res) => {
-    try {
-        const result = await db.query('select', 'biu_events', { 
-            where: { id: req.params.id } 
-        });
-        if (result.data.length === 0) {
-            return res.status(404).json({ status: 'error', message: 'Event not found' });
-        }
-        res.json({ status: 'success', data: result.data[0] });
-    } catch (error) {
-        logger.error('Admin event fetch error:', error);
-        res.status(500).json({ status: 'error', message: 'Failed to fetch event' });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/events:
- *   post:
- *     summary: Create event
- *     tags: [Admin]
- */
-adminRouter.post('/events', async (req, res) => {
-    try {
-        const { title, description, date, start_time, end_time, location, category, organizer, max_participants, status } = req.body;
-
-        const eventData = {
-            title: title?.trim(),
-            description: description?.trim(),
-            date,
-            start_time,
-            end_time,
-            location: location?.trim(),
-            category: category?.trim(),
-            organizer: organizer?.trim(),
-            max_participants: max_participants ? parseInt(max_participants) : null,
-            status: status || 'upcoming',
-            created_at: new Date(),
-            updated_at: new Date()
-        };
-
-        const result = await db.query('insert', 'biu_events', { data: eventData });
-        await cacheManager.invalidateByTags(['biu_events']);
-
-        res.status(201).json({ status: 'success', data: result.data[0], message: 'Event created successfully' });
-    } catch (error) {
-        logger.error('Admin create event error:', error);
-        res.status(500).json({ status: 'error', message: 'Failed to create event' });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/events/{id}:
- *   put:
- *     summary: Update event
- *     tags: [Admin]
- */
-adminRouter.put('/events/:id', async (req, res) => {
-    try {
-        const { title, description, date, start_time, end_time, location, category, organizer, max_participants, status } = req.body;
-
-        const updateData = {
-            title: title?.trim(),
-            description: description?.trim(),
-            date,
-            start_time,
-            end_time,
-            location: location?.trim(),
-            category: category?.trim(),
-            organizer: organizer?.trim(),
-            max_participants: max_participants ? parseInt(max_participants) : null,
-            status,
-            updated_at: new Date()
-        };
-
-        // Remove undefined fields
-        Object.keys(updateData).forEach(key => 
-            updateData[key] === undefined && delete updateData[key]
-        );
-
-        const result = await db.query('update', 'biu_events', {
-            data: updateData,
-            where: { id: req.params.id }
-        });
-
-        if (result.data.length === 0) {
-            return res.status(404).json({ status: 'error', message: 'Event not found' });
-        }
-
-        await cacheManager.invalidateByTags(['biu_events']);
-        res.json({ status: 'success', data: result.data[0], message: 'Event updated successfully' });
-    } catch (error) {
-        logger.error('Admin update event error:', error);
-        res.status(500).json({ status: 'error', message: 'Failed to update event' });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/events/{id}:
- *   delete:
- *     summary: Delete event
- *     tags: [Admin]
- */
-adminRouter.delete('/events/:id', async (req, res) => {
-    try {
-        const result = await db.query('delete', 'biu_events', { where: { id: req.params.id } });
-        if (result.data.length === 0) {
-            return res.status(404).json({ status: 'error', message: 'Event not found' });
-        }
-        await cacheManager.invalidateByTags(['biu_events']);
-        res.json({ status: 'success', message: 'Event deleted successfully' });
-    } catch (error) {
-        logger.error('Admin delete event error:', error);
-        res.status(500).json({ status: 'error', message: 'Failed to delete event' });
-    }
-});
-
-// ==================== RESOURCES MANAGEMENT ====================
-
-adminRouter.post('/resources', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
-    try {
-        // Parse the data
-        let resourceData;
-        let file = null;
-        
-        if (req.is('multipart/form-data')) {
-            const dataStr = req.body.data;
-            resourceData = JSON.parse(dataStr);
-            file = req.file;
-        } else {
-            resourceData = req.body;
-        }
-
-        // DEBUGGING: Log the data and its lengths
-        console.log('=== RESOURCE UPLOAD DEBUG ===');
-        console.log('Title:', resourceData.title, 'Length:', resourceData.title?.length);
-        console.log('Category:', resourceData.category, 'Length:', resourceData.category?.length);
-        console.log('Description:', resourceData.description, 'Length:', resourceData.description?.length);
-        console.log('Course Code:', resourceData.course_code, 'Length:', resourceData.course_code?.length);
-        console.log('Department:', resourceData.department, 'Length:', resourceData.department?.length);
-        
-        // Check if any field might be too long (just in case)
-        const longFields = [];
-        if (resourceData.title && resourceData.title.length > 1000) longFields.push('title');
-        if (resourceData.category && resourceData.category.length > 200) longFields.push('category');
-        if (resourceData.description && resourceData.description.length > 5000) longFields.push('description');
-        
-        if (longFields.length > 0) {
-            console.warn('Warning: Very long fields detected:', longFields);
-        }
-
-        // Prepare the data for insertion
-        const resourceRecord = {
-            uuid: uuid.v4(),
-            title: resourceData.title,
-            category: resourceData.category,
-            description: resourceData.description || null,
-            department: resourceData.department || null,
-            level: resourceData.level ? parseInt(resourceData.level) : null,
-            course_code: resourceData.course_code || null,
-            course_title: resourceData.course_title || null,
-            year: resourceData.year || null,
-            semester: resourceData.semester || null,
-            file_type: file ? file.mimetype : (resourceData.file_type || null),
-            file_size: file ? file.size : (resourceData.file_size || null),
-            download_count: 0,
-            uploaded_by: req.user.id,
-            created_at: new Date().toISOString()
-        };
-
-        // Handle file URL
-        if (file) {
-            // Store file URL/path
-            resourceRecord.file_url = `/uploads/${file.filename}`;
-        } else if (resourceData.file_url) {
-            resourceRecord.file_url = resourceData.file_url;
-        }
-
-        console.log('Attempting to insert with data keys:', Object.keys(resourceRecord));
-        
-        // Try the insert with error handling
-        try {
-            const result = await db.query('insert', 'resources', { 
-                data: resourceRecord 
-            });
-            
-            console.log('Insert successful!');
-            res.status(201).json({ 
-                status: 'success', 
-                data: result.data[0],
-                message: 'Resource uploaded successfully' 
-            });
-            
-        } catch (dbError) {
-            console.error('Database insert error:', dbError);
-            
-            // Check for specific error codes
-            if (dbError.code === '22001') {
-                // Value too long - let's find which column
-                console.error('Value too long error. Full record:', JSON.stringify(resourceRecord));
-                
-                // Try to identify the problematic field
-                const fieldLengths = {};
-                for (const [key, value] of Object.entries(resourceRecord)) {
-                    if (typeof value === 'string') {
-                        fieldLengths[key] = value.length;
-                    }
-                }
-                console.error('Field lengths:', fieldLengths);
-                
-                return res.status(400).json({
-                    status: 'error',
-                    message: 'One or more fields exceed the maximum allowed length. Please check your input.',
-                    debug: {
-                        error: dbError.message,
-                        fieldLengths: fieldLengths
-                    }
-                });
-            }
-            
-            throw dbError; // Re-throw other errors
-        }
-        
-    } catch (error) {
-        console.error('Error in resource upload:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to upload resource',
-            debug: error.message
-        });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/resources:
- *   get:
- *     summary: Get all resources
- *     tags: [Admin]
- */
-adminRouter.get('/resources', async (req, res) => {
-    try {
-        const { category, department } = req.query;
-        let where = {};
-
-        if (category && category !== 'all') where.category = category;
-        if (department && department !== 'all') where.department = department;
-
-        const result = await db.query('select', 'resources', {
-            where,
-            order: { column: 'created_at', ascending: false }
-        });
-
-        res.json({ status: 'success', data: result.data });
-    } catch (error) {
-        logger.error('Admin resources error:', error);
-        res.status(500).json({ status: 'error', message: 'Failed to fetch resources' });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/resources/{id}:
- *   get:
- *     summary: Get resource by ID
- *     tags: [Admin]
- */
-adminRouter.get('/resources/:id', async (req, res) => {
-    try {
-        const result = await db.query('select', 'resources', { 
-            where: { id: req.params.id } 
-        });
-        if (result.data.length === 0) {
-            return res.status(404).json({ status: 'error', message: 'Resource not found' });
-        }
-        res.json({ status: 'success', data: result.data[0] });
-    } catch (error) {
-        logger.error('Admin resource fetch error:', error);
-        res.status(500).json({ status: 'error', message: 'Failed to fetch resource' });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/resources:
- *   post:
- *     summary: Upload resource
- *     tags: [Admin]
- */
-adminRouter.post('/resources', upload.single('file'), async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ status: 'error', message: 'No file uploaded' });
-        }
-
-        const resourceData = JSON.parse(req.body.data || '{}');
-
-        const newResource = {
-            title: resourceData.title?.trim(),
-            category: resourceData.category?.trim(),
-            description: resourceData.description?.trim(),
-            department: resourceData.department?.trim(),
-            course_code: resourceData.course_code?.trim(),
-            year: resourceData.year,
-            level: resourceData.level ? parseInt(resourceData.level) : null,
-            file_url: `/uploads/${req.file.filename}`,
-            file_size: req.file.size,
-            file_type: req.file.mimetype,
-            download_count: 0,
-            uploaded_by: req.user.id,
-            created_at: new Date()
-        };
-
-        const result = await db.query('insert', 'resources', { data: newResource });
-        await cacheManager.invalidateByTags(['resources']);
-
-        res.status(201).json({ status: 'success', data: result.data[0], message: 'Resource uploaded successfully' });
-    } catch (error) {
-        logger.error('Admin upload resource error:', error);
-        res.status(500).json({ status: 'error', message: 'Failed to upload resource' });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/resources/{id}:
- *   delete:
- *     summary: Delete resource
- *     tags: [Admin]
- */
-adminRouter.delete('/resources/:id', async (req, res) => {
-    try {
-        const result = await db.query('delete', 'resources', { where: { id: req.params.id } });
-        if (result.data.length === 0) {
-            return res.status(404).json({ status: 'error', message: 'Resource not found' });
-        }
-        await cacheManager.invalidateByTags(['resources']);
-        res.json({ status: 'success', message: 'Resource deleted successfully' });
-    } catch (error) {
-        logger.error('Admin delete resource error:', error);
-        res.status(500).json({ status: 'error', message: 'Failed to delete resource' });
-    }
-});
-
-// ==================== MESSAGES MANAGEMENT ====================
-
-/**
- * @swagger
- * /api/admin/messages:
- *   get:
- *     summary: Get all messages (from contact form)
- *     tags: [Admin]
- */
-adminRouter.get('/messages', async (req, res) => {
-    try {
-        const result = await db.query('select', 'contact_messages', {
-            order: { column: 'created_at', ascending: false }
-        });
-        res.json({ status: 'success', data: result.data });
-    } catch (error) {
-        logger.error('Admin messages error:', error);
-        // If table doesn't exist, return empty array
-        if (error.message && error.message.includes('relation') && error.message.includes('does not exist')) {
-            return res.json({ status: 'success', data: [] });
-        }
-        res.status(500).json({ status: 'error', message: 'Failed to fetch messages' });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/messages/{id}:
- *   get:
- *     summary: Get message by ID
- *     tags: [Admin]
- */
-adminRouter.get('/messages/:id', async (req, res) => {
-    try {
-        const result = await db.query('select', 'contact_messages', { 
-            where: { id: req.params.id } 
-        });
-        if (result.data.length === 0) {
-            return res.status(404).json({ status: 'error', message: 'Message not found' });
-        }
-        res.json({ status: 'success', data: result.data[0] });
-    } catch (error) {
-        logger.error('Admin message fetch error:', error);
-        res.status(500).json({ status: 'error', message: 'Failed to fetch message' });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/messages/{id}/read:
- *   put:
- *     summary: Mark message as read
- *     tags: [Admin]
- */
-adminRouter.put('/messages/:id/read', async (req, res) => {
-    try {
-        await db.query('update', 'contact_messages', {
-            data: { is_read: true, read_at: new Date() },
-            where: { id: req.params.id }
-        });
-        res.json({ status: 'success', message: 'Message marked as read' });
-    } catch (error) {
-        logger.error('Admin mark message read error:', error);
-        res.status(500).json({ status: 'error', message: 'Failed to update message' });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/messages/{id}:
- *   delete:
- *     summary: Delete message
- *     tags: [Admin]
- */
-adminRouter.delete('/messages/:id', async (req, res) => {
-    try {
-        await db.query('delete', 'contact_messages', { where: { id: req.params.id } });
-        res.json({ status: 'success', message: 'Message deleted successfully' });
-    } catch (error) {
-        logger.error('Admin delete message error:', error);
-        res.status(500).json({ status: 'error', message: 'Failed to delete message' });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/messages/mark-all-read:
- *   post:
- *     summary: Mark all messages as read
- *     tags: [Admin]
- */
-adminRouter.post('/messages/mark-all-read', async (req, res) => {
-    try {
-        await db.query('update', 'contact_messages', {
-            data: { is_read: true, read_at: new Date() },
-            where: { is_read: false }
-        });
-        res.json({ status: 'success', message: 'All messages marked as read' });
-    } catch (error) {
-        logger.error('Admin mark all read error:', error);
-        res.status(500).json({ status: 'error', message: 'Failed to mark messages as read' });
-    }
-});
-
-// ==================== ADMIN ARTICLES MANAGEMENT ====================
-
-// In your admin routes file, update these endpoints:
-
-/**
- * @swagger
- * /api/admin/articles:
- *   post:
- *     summary: Create article (admin/editor only)
- *     tags: [Admin]
- */
-adminRouter.post('/articles', verifyToken, requireRole('admin', 'editor'), upload.single('featured_image'), async (req, res) => {
-    try {
-        // Parse the article data from FormData
-        const articleData = JSON.parse(req.body.data);
-        
-        const { 
-            title, 
-            content, 
-            excerpt, 
-            author, 
-            category, 
-            tags, 
-            status, 
-            is_published, 
-            published_at,
-            meta_title,
-            meta_description,
-            meta_keywords
-        } = articleData;
-
-        // Generate slug from title
-        let articleSlug = title.toLowerCase()
-            .replace(/[^\w\s-]/g, '')
-            .replace(/\s+/g, '-')
-            .replace(/--+/g, '-')
-            .trim();
-
-        // Check for duplicate slug
-        const existing = await db.query('select', 'articles', { 
-            where: { slug: articleSlug } 
-        });
-        
-        if (existing.data.length > 0) {
-            articleSlug = `${articleSlug}-${Date.now()}`;
-        }
-
-        // Handle featured image
-        let featuredImage = null;
-        if (req.file) {
-            featuredImage = `/uploads/${req.file.filename}`;
-        } else if (articleData.featured_image) {
-            featuredImage = articleData.featured_image;
-        }
-
-        const newArticle = {
-            uuid: uuid.v4(),
-            title: title.trim(),
-            slug: articleSlug,
-            content,
-            excerpt: excerpt || null,
-            author: author || req.user.fullName || 'NUESA BIU',
-            category: category || null,
-            tags: tags || [],
-            status: status || 'draft',
-            is_published: is_published || false,
-            published_at: published_at || (is_published ? new Date().toISOString() : null),
-            featured_image: featuredImage,
-            meta_title: meta_title || null,
-            meta_description: meta_description || null,
-            meta_keywords: meta_keywords || null,
-            view_count: 0,
-            created_by: req.user.id,
-            updated_by: req.user.id,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-        };
-
-        const result = await db.query('insert', 'articles', { data: newArticle });
-        
-        // Invalidate cache
-        if (cacheManager) {
-            await cacheManager.invalidateByTags(['articles']);
-        }
-
-        logger.info('Admin created article', { 
-            requestId: req.id, 
-            articleId: result.data[0].uuid,
-            createdBy: req.user.id 
-        });
-
-        res.status(201).json({ 
-            status: 'success', 
-            data: result.data[0], 
-            message: 'Article created successfully' 
-        });
-    } catch (error) {
-        logger.error('Admin create article error:', { requestId: req.id, error: error.message });
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to create article',
-            debug: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/articles/{uuid}:
- *   put:
- *     summary: Update article (admin/editor only)
- *     tags: [Admin]
- */
-adminRouter.put('/articles/:uuid', verifyToken, requireRole('admin', 'editor'), upload.single('featured_image'), async (req, res) => {
-    try {
-        // Parse the article data from FormData
-        const articleData = JSON.parse(req.body.data);
-        
-        // Allowed fields for update
-        const allowedFields = [
-            'title', 'content', 'excerpt', 'author', 
-            'category', 'tags', 'status', 'is_published', 
-            'published_at', 'meta_title',
-            'meta_description', 'meta_keywords'
-        ];
-
-        const updateData = {};
-
-        // Build update object with only provided fields
-        allowedFields.forEach(field => {
-            if (articleData[field] !== undefined && articleData[field] !== null) {
-                if (field === 'tags') {
-                    // Ensure tags is array
-                    updateData[field] = Array.isArray(articleData[field]) 
-                        ? articleData[field] 
-                        : typeof articleData[field] === 'string'
-                            ? articleData[field].split(',').map(t => t.trim())
-                            : [];
-                } else if (field === 'is_published') {
-                    updateData[field] = Boolean(articleData[field]);
-                    // Auto-set published_at if publishing
-                    if (updateData[field] && !articleData.published_at) {
-                        updateData.published_at = new Date().toISOString();
-                    }
-                } else if (typeof articleData[field] === 'string') {
-                    updateData[field] = articleData[field].trim();
-                } else {
-                    updateData[field] = articleData[field];
-                }
-            }
-        });
-
-        // Handle slug generation if title is updated
-        if (articleData.title) {
-            let newSlug = articleData.title.toLowerCase()
-                .replace(/[^\w\s-]/g, '')
-                .replace(/\s+/g, '-')
-                .replace(/--+/g, '-')
-                .trim();
-            
-            // Check for duplicate slug
-            const existing = await db.query('select', 'articles', {
-                where: { 
-                    slug: newSlug,
-                    uuid: { operator: 'neq', value: req.params.uuid }
-                }
-            });
-            
-            if (existing.data.length > 0) {
-                newSlug = `${newSlug}-${Date.now()}`;
-            }
-            
-            updateData.slug = newSlug;
-        }
-
-        // Handle featured image upload
-        if (req.file) {
-            updateData.featured_image = `/uploads/${req.file.filename}`;
-        }
-
-        // Always update the updated_at and updated_by
-        updateData.updated_at = new Date().toISOString();
-        updateData.updated_by = req.user.id;
-
-        // Check if there's anything to update
-        if (Object.keys(updateData).length === 2) { // only updated_at and updated_by
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'No fields to update' 
-            });
-        }
-
-        const result = await db.query('update', 'articles', {
-            data: updateData,
-            where: { uuid: req.params.uuid }
-        });
-
-        if (result.data.length === 0) {
-            return res.status(404).json({ status: 'error', message: 'Article not found' });
-        }
-
-        // Invalidate cache
-        if (cacheManager) {
-            await cacheManager.invalidateByTags(['articles']);
-        }
-
-        logger.info('Article updated', { 
-            requestId: req.id, 
-            articleId: req.params.uuid,
-            updatedBy: req.user.id,
-            updatedFields: Object.keys(updateData)
-        });
-
-        res.json({ 
-            status: 'success', 
-            data: result.data[0], 
-            message: 'Article updated successfully' 
-        });
-    } catch (error) {
-        logger.error('Admin update article error:', { requestId: req.id, error: error.message });
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to update article',
-            debug: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/articles:
- *   post:
- *     summary: Create article (admin/editor only)
- *     tags: [Admin]
- */
-adminRouter.post('/articles', verifyToken, requireRole('admin', 'editor'), validate(schemas.article), async (req, res) => {
-    try {
-        const { 
-            title, 
-            slug, 
-            content, 
-            excerpt, 
-            author, 
-            category, 
-            tags, 
-            status, 
-            is_published, 
-            published_at,
-            featured_image,
-            meta_title,
-            meta_description,
-            meta_keywords
-        } = req.body;
-
-        // Generate slug if not provided
-        let articleSlug = slug;
-        if (!articleSlug) {
-            articleSlug = title.toLowerCase()
-                .replace(/[^\w\s-]/g, '')
-                .replace(/\s+/g, '-')
-                .replace(/--+/g, '-')
-                .trim();
-        }
-
-        // Check for duplicate slug
-        const existing = await db.query('select', 'articles', { 
-            where: { slug: articleSlug } 
-        });
-        
-        if (existing.data.length > 0) {
-            articleSlug = `${articleSlug}-${Date.now()}`;
-        }
-
-        const articleData = {
-            uuid: uuid.v4(),
-            title: title.trim(),
-            slug: articleSlug,
-            content,
-            excerpt: excerpt || null,
-            author: author || req.user.fullName || 'NUESA BIU',
-            category: category || null,
-            tags: tags || [],
-            status: status || 'draft',
-            is_published: is_published || false,
-            published_at: published_at || (is_published ? new Date().toISOString() : null),
-            featured_image: featured_image || null,
-            meta_title: meta_title || null,
-            meta_description: meta_description || null,
-            meta_keywords: meta_keywords || null,
-            view_count: 0,
-            created_by: req.user.id,
-            updated_by: req.user.id,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-        };
-
-        const result = await db.query('insert', 'articles', { data: articleData });
-        
-        // Invalidate cache
-        await cacheManager.invalidateByTags(['articles']);
-
-        logger.info('Admin created article', { 
-            requestId: req.id, 
-            articleId: result.data[0].uuid,
-            createdBy: req.user.id 
-        });
-
-        res.status(201).json({ 
-            status: 'success', 
-            data: result.data[0], 
-            message: 'Article created successfully' 
-        });
-    } catch (error) {
-        logger.error('Admin create article error:', { requestId: req.id, error: error.message });
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to create article',
-            debug: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/articles/{uuid}:
- *   put:
- *     summary: Update article (admin/editor only)
- *     tags: [Admin]
- */
-adminRouter.put('/articles/:uuid', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
-    try {
-        // Allowed fields for update
-        const allowedFields = [
-            'title', 'slug', 'content', 'excerpt', 'author', 
-            'category', 'tags', 'status', 'is_published', 
-            'published_at', 'featured_image', 'meta_title',
-            'meta_description', 'meta_keywords'
-        ];
-
-        const updateData = {};
-
-        // Build update object with only provided fields
-        allowedFields.forEach(field => {
-            if (req.body[field] !== undefined && req.body[field] !== null) {
-                if (field === 'slug') {
-                    // Sanitize slug if provided
-                    updateData[field] = req.body[field]
-                        .toLowerCase()
-                        .replace(/[^\w\s-]/g, '')
-                        .replace(/\s+/g, '-')
-                        .replace(/--+/g, '-')
-                        .trim();
-                } else if (field === 'tags') {
-                    // Ensure tags is array
-                    updateData[field] = Array.isArray(req.body[field]) 
-                        ? req.body[field] 
-                        : typeof req.body[field] === 'string'
-                            ? req.body[field].split(',').map(t => t.trim())
-                            : [];
-                } else if (field === 'is_published') {
-                    updateData[field] = Boolean(req.body[field]);
-                    // Auto-set published_at if publishing
-                    if (updateData[field] && !req.body.published_at) {
-                        updateData.published_at = new Date().toISOString();
-                    }
-                } else if (typeof req.body[field] === 'string') {
-                    updateData[field] = req.body[field].trim();
-                } else {
-                    updateData[field] = req.body[field];
-                }
-            }
-        });
-
-        // Always update the updated_at and updated_by
-        updateData.updated_at = new Date().toISOString();
-        updateData.updated_by = req.user.id;
-
-        // Check if there's anything to update
-        if (Object.keys(updateData).length === 2) { // only updated_at and updated_by
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'No fields to update' 
-            });
-        }
-
-        // Check for slug uniqueness if slug is being updated
-        if (updateData.slug) {
-            const existing = await db.query('select', 'articles', {
-                where: { 
-                    slug: updateData.slug,
-                    uuid: { operator: 'neq', value: req.params.uuid }
-                }
-            });
-            
-            if (existing.data.length > 0) {
-                updateData.slug = `${updateData.slug}-${Date.now()}`;
-            }
-        }
-
-        const result = await db.query('update', 'articles', {
-            data: updateData,
-            where: { uuid: req.params.uuid }
-        });
-
-        if (result.data.length === 0) {
-            return res.status(404).json({ status: 'error', message: 'Article not found' });
-        }
-
-        // Invalidate cache
-        await cacheManager.invalidateByTags(['articles']);
-
-        logger.info('Article updated', { 
-            requestId: req.id, 
-            articleId: req.params.uuid,
-            updatedBy: req.user.id,
-            updatedFields: Object.keys(updateData)
-        });
-
-        res.json({ 
-            status: 'success', 
-            data: result.data[0], 
-            message: 'Article updated successfully' 
-        });
-    } catch (error) {
-        logger.error('Admin update article error:', { requestId: req.id, error: error.message });
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to update article',
-            debug: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/articles/{uuid}:
- *   delete:
- *     summary: Delete article (admin only)
- *     tags: [Admin]
- */
-adminRouter.delete('/articles/:uuid', verifyToken, requireRole('admin'), async (req, res) => {
-    try {
-        // Check if article exists
-        const checkResult = await db.query('select', 'articles', { 
-            where: { uuid: req.params.uuid },
-            select: 'uuid, title, featured_image'
-        });
-        
-        if (checkResult.data.length === 0) {
-            return res.status(404).json({ status: 'error', message: 'Article not found' });
-        }
-
-        // Delete the article
-        const result = await db.query('delete', 'articles', { 
-            where: { uuid: req.params.uuid } 
-        });
-
-        // Optional: Delete featured image if it exists and is stored locally
-        const featuredImage = checkResult.data[0].featured_image;
-        if (featuredImage && featuredImage.startsWith('/uploads/')) {
-            const filename = featuredImage.split('/').pop();
-            const filePath = path.join(__dirname, 'uploads', filename);
-            try {
-                await fs.unlink(filePath);
-                logger.info('Featured image deleted', { 
-                    requestId: req.id, 
-                    filename,
-                    articleId: req.params.uuid 
-                });
-            } catch (fileError) {
-                // Log but don't fail if file doesn't exist
-                logger.warn('Could not delete featured image file', { 
-                    requestId: req.id, 
-                    error: fileError.message 
-                });
-            }
-        }
-
-        // Invalidate cache
-        await cacheManager.invalidateByTags(['articles']);
-
-        logger.info('Article deleted', { 
-            requestId: req.id, 
-            articleId: req.params.uuid,
-            title: checkResult.data[0].title,
-            deletedBy: req.user.id 
-        });
-
-        res.json({ 
-            status: 'success', 
-            message: 'Article deleted successfully',
-            data: { uuid: req.params.uuid }
-        });
-    } catch (error) {
-        logger.error('Admin delete article error:', { requestId: req.id, error: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to delete article' });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/articles/{uuid}/publish:
- *   patch:
- *     summary: Publish or unpublish article
- *     tags: [Admin]
- */
-adminRouter.patch('/articles/:uuid/publish', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
-    try {
-        const { publish } = req.body;
-        
-        if (publish === undefined) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'publish field is required (true/false)' 
-            });
-        }
-
-        const updateData = {
-            is_published: Boolean(publish),
-            status: Boolean(publish) ? 'published' : 'draft',
-            updated_at: new Date().toISOString(),
-            updated_by: req.user.id
-        };
-
-        // Set published_at if publishing and not already set
-        if (publish) {
-            const article = await db.query('select', 'articles', {
-                where: { uuid: req.params.uuid },
-                select: 'published_at'
-            });
-            
-            if (article.data.length > 0 && !article.data[0].published_at) {
-                updateData.published_at = new Date().toISOString();
-            }
-        }
-
-        const result = await db.query('update', 'articles', {
-            data: updateData,
-            where: { uuid: req.params.uuid }
-        });
-
-        if (result.data.length === 0) {
-            return res.status(404).json({ status: 'error', message: 'Article not found' });
-        }
-
-        // Invalidate cache
-        await cacheManager.invalidateByTags(['articles']);
-
-        logger.info('Article publish status changed', { 
-            requestId: req.id, 
-            articleId: req.params.uuid,
-            is_published: Boolean(publish),
-            updatedBy: req.user.id 
-        });
-
-        res.json({ 
-            status: 'success', 
-            data: result.data[0],
-            message: `Article ${publish ? 'published' : 'unpublished'} successfully` 
-        });
-    } catch (error) {
-        logger.error('Admin article publish error:', { requestId: req.id, error: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to update article status' });
-    }
-});
-
-adminRouter.post('/articles/:uuid/photo', upload.single('photo'), async (req, res) => {
-    try {
-        if (!req.file) throw new Error('No file uploaded');
-        
-        // Update article with new image
-        const result = await db.query('update', 'articles', {
-            data: { 
-                featured_image: `/uploads/${req.file.filename}`,
-                updated_at: new Date()
-            },
-            where: { uuid: req.params.uuid }
-        });
-        
-        res.json({ status: 'success', data: result.data[0] });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
-
-// ==================== BULK OPERATIONS ====================
-
-/**
- * @swagger
- * /api/admin/articles/bulk/delete:
- *   delete:
- *     summary: Delete multiple articles (admin only)
- *     tags: [Admin]
- */
-adminRouter.delete('/articles/bulk/delete', verifyToken, requireRole('admin'), async (req, res) => {
-    try {
-        const { articleUuids } = req.body;
-
-        if (!articleUuids || !Array.isArray(articleUuids) || articleUuids.length === 0) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'Article UUIDs array is required' 
-            });
-        }
-
-        // Get featured images before deletion
-        const imagesResult = await db.query('select', 'articles', {
-            where: { 
-                uuid: { operator: 'in', value: articleUuids }
-            },
-            select: 'featured_image'
-        });
-
-        // Delete articles
-        const result = await db.query('delete', 'articles', {
-            where: { 
-                uuid: { operator: 'in', value: articleUuids }
-            }
-        });
-
-        // Delete featured image files (if local)
-        for (const article of imagesResult.data) {
-            if (article.featured_image && article.featured_image.startsWith('/uploads/')) {
-                const filename = article.featured_image.split('/').pop();
-                const filePath = path.join(__dirname, 'uploads', filename);
-                try {
-                    await fs.unlink(filePath);
-                } catch (fileError) {
-                    // Log but continue
-                    logger.warn('Could not delete featured image file', { 
-                        requestId: req.id, 
-                        filename,
-                        error: fileError.message 
-                    });
-                }
-            }
-        }
-
-        // Invalidate cache
-        await cacheManager.invalidateByTags(['articles']);
-
-        logger.info('Bulk delete articles', { 
-            requestId: req.id, 
-            articleCount: articleUuids.length,
-            deletedBy: req.user.id 
-        });
-
-        res.json({ 
-            status: 'success', 
-            message: `Deleted ${result.data.length} articles successfully`,
-            data: { deleted: result.data.length }
-        });
-    } catch (error) {
-        logger.error('Bulk delete articles error:', { requestId: req.id, error: error.message });
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to delete articles' 
-        });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/articles/bulk/status:
- *   patch:
- *     summary: Update status for multiple articles
- *     tags: [Admin]
- */
-adminRouter.patch('/articles/bulk/status', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
-    try {
-        const { articleUuids, status } = req.body;
-
-        if (!articleUuids || !Array.isArray(articleUuids) || articleUuids.length === 0) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'Article UUIDs array is required' 
-            });
-        }
-
-        if (!status || !['draft', 'published', 'archived'].includes(status)) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'Valid status is required (draft, published, or archived)' 
-            });
-        }
-
-        const updateData = {
-            status,
-            is_published: status === 'published',
-            updated_at: new Date().toISOString(),
-            updated_by: req.user.id
-        };
-
-        // Set published_at if publishing
-        if (status === 'published') {
-            updateData.published_at = new Date().toISOString();
-        }
-
-        const result = await db.query('update', 'articles', {
-            data: updateData,
-            where: { 
-                uuid: { operator: 'in', value: articleUuids }
-            }
-        });
-
-        // Invalidate cache
-        await cacheManager.invalidateByTags(['articles']);
-
-        logger.info('Bulk status update articles', { 
-            requestId: req.id, 
-            articleCount: articleUuids.length,
-            status,
-            updatedBy: req.user.id 
-        });
-
-        res.json({ 
-            status: 'success', 
-            message: `Updated ${result.data.length} articles successfully`,
-            data: result.data
-        });
-    } catch (error) {
-        logger.error('Bulk status update articles error:', { requestId: req.id, error: error.message });
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to update articles' 
-        });
-    }
-});
-
-/**
- * @swagger
- * /api/articles/meta/categories:
- *   get:
- *     summary: Get unique article categories (public)
- *     tags: [Articles]
- */
-
-/**
- * @swagger
- * /api/articles/meta/tags:
- *   get:
- *     summary: Get unique article tags (public)
- *     tags: [Articles]
- */
-
-/**
- * @swagger
- * /api/admin/articles/stats:
- *   get:
- *     summary: Get article statistics
- *     tags: [Admin]
- */
-adminRouter.get('/articles/stats', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
-    try {
-        // Get total counts by status
-        const [total, published, drafts, archived, categories, authors] = await Promise.all([
-            db.query('select', 'articles', { count: true }),
-            db.query('select', 'articles', { where: { status: 'published' }, count: true }),
-            db.query('select', 'articles', { where: { status: 'draft' }, count: true }),
-            db.query('select', 'articles', { where: { status: 'archived' }, count: true }),
-            db.query('select', 'articles', {
-                select: 'category, COUNT(*) as count',
-                where: { category: { operator: 'isNull', value: false } },
-                groupBy: 'category'
-            }),
-            db.query('select', 'articles', {
-                select: 'author, COUNT(*) as count',
-                groupBy: 'author'
-            })
-        ]);
-
-        // Get recent activity
-        const recentActivity = await db.query('select', 'articles', {
-            select: 'uuid, title, status, updated_at, updated_by',
-            order: { column: 'updated_at', ascending: false },
-            limit: 10
-        });
-
-        res.json({
-            status: 'success',
-            data: {
-                counts: {
-                    total: total.count || 0,
-                    published: published.count || 0,
-                    drafts: drafts.count || 0,
-                    archived: archived.count || 0
-                },
-                byCategory: categories.data || [],
-                byAuthor: authors.data || [],
-                recentActivity: recentActivity.data || []
-            }
-        });
-    } catch (error) {
-        logger.error('Admin articles stats error:', { requestId: req.id, error: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to fetch article statistics' });
-    }
-});
-
-// ============================================================
-// SECTION 16.12: COURSE REPRESENTATIVES ROUTES
-// ============================================================
-
-const courseRepRouter = express.Router();
-
-// Apply authentication and role checking to all course rep routes
-courseRepRouter.use(verifyToken);
-courseRepRouter.use(requireRole('admin', 'editor'));
-
-/**
- * @swagger
- * /api/admin/course-reps:
- *   get:
- *     summary: Get all course representatives
- *     tags: [Course Representatives]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: session
- *         schema:
- *           type: string
- *         description: Filter by academic session
- *       - in: query
- *         name: level
- *         schema:
- *           type: string
- *         description: Filter by level
- */
-courseRepRouter.get('/', async (req, res) => {
-    try {
-        const { session, level } = req.query;
-        
-        console.log(`📡 [CR] Fetching course reps for session: ${session || 'all'}, level: ${level || 'all'}`);
-        
-        let query = supabase
-            .from('course_representatives')
-            .select('*');
-        
-        if (session) {
-            query = query.eq('session', session);
-        }
-        
-        if (level && level !== 'all') {
-            query = query.eq('level', level);
-        }
-        
-        const { data, error } = await query.order('level');
-        
-        if (error) {
-            console.error('Supabase error:', error);
-            throw error;
-        }
-        
-        // Fetch department reps for each course rep
-        const enrichedData = await Promise.all(data.map(async (rep) => {
-            const { data: deptReps, error: deptError } = await supabase
-                .from('department_reps')
-                .select('*')
-                .eq('course_rep_id', rep.id)
-                .eq('session', rep.session);
-            
-            if (deptError) {
-                console.error('Error fetching department reps:', deptError);
-                return { ...rep, departments: [] };
-            }
-            
-            // Transform department reps to the format expected by frontend
-            const departments = deptReps.map(dept => ({
-                name: dept.department_name,
-                rep: dept.representative_name || 'Pending'
-            }));
-            
-            return { ...rep, departments };
-        }));
-        
-        console.log(`✅ Found ${enrichedData.length} course reps`);
-        
-        res.json({ 
-            status: 'success', 
-            data: enrichedData,
-            pagination: {
-                total: enrichedData.length,
-                filtered: enrichedData.length
-            }
-        });
-    } catch (error) {
-        console.error('Error fetching course reps:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to fetch course representatives',
-            error: error.message
-        });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/course-reps/{id}:
- *   get:
- *     summary: Get course representative by ID
- *     tags: [Course Representatives]
- *     security:
- *       - bearerAuth: []
- */
-courseRepRouter.get('/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        
-        console.log(`📡 [CR] Fetching course rep with id: ${id}`);
-        
-        // Get course rep
-        const { data: courseRep, error } = await supabase
-            .from('course_representatives')
-            .select('*')
-            .eq('id', id)
-            .single();
-        
-        if (error) {
-            console.error('Supabase error:', error);
-            throw error;
-        }
-        
-        if (!courseRep) {
-            return res.status(404).json({ 
-                status: 'error', 
-                message: 'Course representative not found' 
-            });
-        }
-        
-        // Get department reps for this course rep
-        const { data: deptReps, error: deptError } = await supabase
-            .from('department_reps')
-            .select('*')
-            .eq('course_rep_id', id)
-            .eq('session', courseRep.session);
-        
-        if (deptError) {
-            console.error('Error fetching department reps:', deptError);
-            throw deptError;
-        }
-        
-        // Transform to frontend format
-        const departments = deptReps.map(dept => ({
-            name: dept.department_name,
-            rep: dept.representative_name || 'Pending'
-        }));
-        
-        res.json({ 
-            status: 'success', 
-            data: {
-                ...courseRep,
-                departments
-            }
-        });
-    } catch (error) {
-        console.error('Error fetching course rep:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to fetch course representative',
-            error: error.message
-        });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/course-reps:
- *   post:
- *     summary: Create new course representatives
- *     tags: [Course Representatives]
- *     security:
- *       - bearerAuth: []
- */
-courseRepRouter.post('/', async (req, res) => {
-    try {
-        const { session, level, gen_rep, asst_gen_rep, departments } = req.body;
-        
-        console.log('📡 [CR] Creating course reps:', { session, level });
-        
-        // Validate required fields
-        if (!session || !level) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'Session and level are required' 
-            });
-        }
-        
-        // Check if entry already exists for this session and level
-        const { data: existing, error: checkError } = await supabase
-            .from('course_representatives')
-            .select('id')
-            .eq('session', session)
-            .eq('level', level);
-        
-        if (checkError) throw checkError;
-        
-        if (existing && existing.length > 0) {
-            return res.status(409).json({ 
-                status: 'error', 
-                message: 'Course representatives for this session and level already exist' 
-            });
-        }
-        
-        // Insert the main course rep
-        const courseRepData = {
-            session,
-            level,
-            gen_rep: gen_rep || 'Not Assigned',
-            asst_gen_rep: asst_gen_rep || 'Not Assigned',
-            created_by: req.user.id,
-            updated_by: req.user.id,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-        };
-        
-        const { data: courseRep, error: insertError } = await supabase
-            .from('course_representatives')
-            .insert([courseRepData])
-            .select()
-            .single();
-        
-        if (insertError) {
-            console.error('Insert error:', insertError);
-            throw insertError;
-        }
-        
-        // Insert department reps if provided
-        if (departments && departments.length > 0) {
-            const deptRepsData = departments.map(dept => ({
-                course_rep_id: courseRep.id,
-                department_name: dept.name,
-                session: session,
-                level: level,
-                representative_name: dept.rep || 'Pending',
-                status: 'active',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            }));
-            
-            const { error: deptError } = await supabase
-                .from('department_reps')
-                .insert(deptRepsData);
-            
-            if (deptError) {
-                console.error('Department insert error:', deptError);
-                throw deptError;
-            }
-        }
-        
-        // Get the complete data with departments
-        const { data: deptReps } = await supabase
-            .from('department_reps')
-            .select('*')
-            .eq('course_rep_id', courseRep.id);
-        
-        const departmentsWithReps = deptReps?.map(dept => ({
-            name: dept.department_name,
-            rep: dept.representative_name
-        })) || [];
-        
-        console.log('✅ Course reps created successfully');
-        
-        res.status(201).json({ 
-            status: 'success', 
-            data: {
-                ...courseRep,
-                departments: departmentsWithReps
-            }, 
-            message: 'Course representatives created successfully' 
-        });
-    } catch (error) {
-        console.error('Error creating course reps:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to create course representatives',
-            error: error.message
-        });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/course-reps/{id}:
- *   put:
- *     summary: Update course representatives
- *     tags: [Course Representatives]
- *     security:
- *       - bearerAuth: []
- */
-courseRepRouter.put('/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { session, level, gen_rep, asst_gen_rep, departments } = req.body;
-        
-        console.log('📡 [CR] Updating course rep with id:', id);
-        
-        // Check if exists
-        const { data: existing, error: checkError } = await supabase
-            .from('course_representatives')
-            .select('id, session, level')
-            .eq('id', id)
-            .single();
-        
-        if (checkError || !existing) {
-            return res.status(404).json({ 
-                status: 'error', 
-                message: 'Course representative not found' 
-            });
-        }
-        
-        // Prepare update data for main course rep
-        const updateData = {};
-        if (session !== undefined) updateData.session = session;
-        if (level !== undefined) updateData.level = level;
-        if (gen_rep !== undefined) updateData.gen_rep = gen_rep;
-        if (asst_gen_rep !== undefined) updateData.asst_gen_rep = asst_gen_rep;
-        
-        updateData.updated_by = req.user.id;
-        updateData.updated_at = new Date().toISOString();
-        
-        // Update main course rep
-        if (Object.keys(updateData).length > 0) {
-            const { error: updateError } = await supabase
-                .from('course_representatives')
-                .update(updateData)
-                .eq('id', id);
-            
-            if (updateError) throw updateError;
-        }
-        
-        // Update department reps if provided
-        if (departments !== undefined) {
-            // Delete existing department reps
-            const { error: deleteError } = await supabase
-                .from('department_reps')
-                .delete()
-                .eq('course_rep_id', id);
-            
-            if (deleteError) throw deleteError;
-            
-            // Insert new department reps
-            if (departments.length > 0) {
-                const deptRepsData = departments.map(dept => ({
-                    course_rep_id: id,
-                    department_name: dept.name,
-                    session: session || existing.session,
-                    level: level || existing.level,
-                    representative_name: dept.rep || 'Pending',
-                    status: 'active',
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }));
-                
-                const { error: insertError } = await supabase
-                    .from('department_reps')
-                    .insert(deptRepsData);
-                
-                if (insertError) throw insertError;
-            }
-        }
-        
-        // Get updated data
-        const { data: updatedCourseRep } = await supabase
-            .from('course_representatives')
-            .select('*')
-            .eq('id', id)
-            .single();
-        
-        const { data: updatedDeptReps } = await supabase
-            .from('department_reps')
-            .select('*')
-            .eq('course_rep_id', id);
-        
-        const departmentsWithReps = updatedDeptReps?.map(dept => ({
-            name: dept.department_name,
-            rep: dept.representative_name
-        })) || [];
-        
-        console.log('✅ Course reps updated successfully');
-        
-        res.json({ 
-            status: 'success', 
-            data: {
-                ...updatedCourseRep,
-                departments: departmentsWithReps
-            }, 
-            message: 'Course representatives updated successfully' 
-        });
-    } catch (error) {
-        console.error('Error updating course reps:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to update course representatives',
-            error: error.message
-        });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/course-reps/{id}:
- *   delete:
- *     summary: Delete course representatives
- *     tags: [Course Representatives]
- *     security:
- *       - bearerAuth: []
- */
-courseRepRouter.delete('/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        
-        console.log('📡 [CR] Deleting course rep with id:', id);
-        
-        // Check if exists
-        const { data: existing, error: checkError } = await supabase
-            .from('course_representatives')
-            .select('id')
-            .eq('id', id)
-            .single();
-        
-        if (checkError || !existing) {
-            return res.status(404).json({ 
-                status: 'error', 
-                message: 'Course representative not found' 
-            });
-        }
-        
-        // Delete department reps first (foreign key constraint)
-        const { error: deptError } = await supabase
-            .from('department_reps')
-            .delete()
-            .eq('course_rep_id', id);
-        
-        if (deptError) throw deptError;
-        
-        // Delete main course rep
-        const { error } = await supabase
-            .from('course_representatives')
-            .delete()
-            .eq('id', id);
-        
-        if (error) throw error;
-        
-        console.log('✅ Course reps deleted successfully');
-        
-        res.json({ 
-            status: 'success', 
-            message: 'Course representatives deleted successfully' 
-        });
-    } catch (error) {
-        console.error('Error deleting course reps:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to delete course representatives',
-            error: error.message
-        });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/course-reps/meta/sessions:
- *   get:
- *     summary: Get all unique sessions
- *     tags: [Course Representatives]
- *     security:
- *       - bearerAuth: []
- */
-courseRepRouter.get('/meta/sessions', async (req, res) => {
-    try {
-        console.log('📡 [CR] Fetching unique sessions');
-        
-        const { data, error } = await supabase
-            .from('course_representatives')
-            .select('session')
-            .order('session', { ascending: false });
-        
-        if (error) throw error;
-        
-        // Get unique sessions
-        const sessions = [...new Set(data.map(item => item.session))];
-        
-        res.json({ 
-            status: 'success', 
-            data: sessions 
-        });
-    } catch (error) {
-        console.error('Error fetching sessions:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to fetch sessions' 
-        });
-    }
-});
-
-/**
- * @swagger
- * /api/admin/course-reps/meta/levels:
- *   get:
- *     summary: Get all unique levels
- *     tags: [Course Representatives]
- *     security:
- *       - bearerAuth: []
- */
-courseRepRouter.get('/meta/levels', async (req, res) => {
-    try {
-        console.log('📡 [CR] Fetching unique levels');
-        
-        const { data, error } = await supabase
-            .from('course_representatives')
-            .select('level')
-            .order('level');
-        
-        if (error) throw error;
-        
-        // Get unique levels and sort numerically
-        const levels = [...new Set(data.map(item => item.level))].sort((a, b) => parseInt(a) - parseInt(b));
-        
-        res.json({ 
-            status: 'success', 
-            data: levels 
-        });
-    } catch (error) {
-        console.error('Error fetching levels:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to fetch levels' 
-        });
-    }
-});
-
-// Mount the course reps router to admin
-app.use('/api/admin/course-reps', courseRepRouter);
-
-console.log('✅ Course Representatives routes registered at /api/admin/course-reps');
-
-// ============================================================
-// PUBLIC COURSE REPS ROUTES
-// ============================================================
-
-const publicCourseRepRouter = express.Router();
-
-/**
- * @swagger
- * /api/course-reps:
- *   get:
- *     summary: Get course representatives (public)
- *     tags: [Course Representatives]
- *     parameters:
- *       - in: query
- *         name: session
- *         schema:
- *           type: string
- *         description: Filter by academic session
- *       - in: query
- *         name: level
- *         schema:
- *           type: string
- *         description: Filter by level
- */
-publicCourseRepRouter.get('/', cacheMiddleware(300, ['course-reps']), async (req, res) => {
-    try {
-        const { session = '2025/2026', level } = req.query;
-        
-        console.log(`📡 [CR-Public] Fetching course reps for session: ${session}, level: ${level || 'all'}`);
-        
-        // First, get all course representatives for the session
-        let courseRepsQuery = supabase
-            .from('course_representatives')
-            .select('*')
-            .eq('session', session);
-        
-        if (level && level !== 'all') {
-            courseRepsQuery = courseRepsQuery.eq('level', level);
-        }
-        
-        const { data: courseReps, error: courseRepsError } = await courseRepsQuery.order('level');
-        
-        if (courseRepsError) throw courseRepsError;
-        
-        // If no course reps found, return empty array
-        if (!courseReps || courseReps.length === 0) {
-            return res.json({ 
-                status: 'success', 
-                data: [],
-                count: 0 
-            });
-        }
-        
-        // Get department reps for these course reps
-        const courseRepIds = courseReps.map(rep => rep.id);
-        
-        const { data: deptReps, error: deptRepsError } = await supabase
-            .from('department_reps')
-            .select('*')
-            .in('course_rep_id', courseRepIds)
-            .eq('session', session)
-            .eq('status', 'active');
-        
-        if (deptRepsError) throw deptRepsError;
-        
-        // Group department reps by course_rep_id
-        const deptRepsByCourseRepId = {};
-        deptReps.forEach(dept => {
-            if (!deptRepsByCourseRepId[dept.course_rep_id]) {
-                deptRepsByCourseRepId[dept.course_rep_id] = [];
-            }
-            deptRepsByCourseRepId[dept.course_rep_id].push(dept);
-        });
-        
-        // Transform data to match frontend expectations
-        const transformedData = courseReps.map(courseRep => {
-            const filteredDeptReps = deptRepsByCourseRepId[courseRep.id] || [];
-            
-            return {
-                level: courseRep.level,
-                genRep: courseRep.gen_rep || 'Not Assigned',
-                asstGenRep: courseRep.asst_gen_rep || 'Not Assigned',
-                deptCount: filteredDeptReps.length,
-                departments: filteredDeptReps.map(dept => ({
-                    name: dept.department_name,
-                    rep: dept.representative_name || 'Pending'
-                }))
-            };
-        });
-        
-        res.json({ 
-            status: 'success', 
-            data: transformedData,
-            count: transformedData.length 
-        });
-        
-    } catch (error) {
-        console.error('Error fetching public course reps:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to fetch course representatives',
-            error: error.message 
-        });
-    }
-});
-
-/**
- * @swagger
- * /api/course-reps/sessions:
- *   get:
- *     summary: Get available sessions (public)
- *     tags: [Course Representatives]
- */
-publicCourseRepRouter.get('/sessions', cacheMiddleware(3600, ['course-reps']), async (req, res) => {
-    try {
-        console.log('📡 [CR-Public] Fetching available sessions');
-        
-        // Get sessions from course_representatives table
-        const { data, error } = await supabase
-            .from('course_representatives')
-            .select('session')
-            .order('session', { ascending: false });
-        
-        if (error) throw error;
-        
-        const sessions = [...new Set(data.map(item => item.session))];
-        
-        res.json({ 
-            status: 'success', 
-            data: sessions 
-        });
-    } catch (error) {
-        console.error('Error fetching sessions:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to fetch sessions' 
-        });
-    }
-});
-
-/**
- * @swagger
- * /api/course-reps/levels:
- *   get:
- *     summary: Get levels for a session (public)
- *     tags: [Course Representatives]
- *     parameters:
- *       - in: query
- *         name: session
- *         schema:
- *           type: string
- *         required: true
- *         description: Academic session
- */
-publicCourseRepRouter.get('/levels', cacheMiddleware(300, ['course-reps']), async (req, res) => {
-    try {
-        const { session } = req.query;
-        
-        if (!session) {
-            return res.status(400).json({ 
-                status: 'error', 
-                message: 'Session parameter is required' 
-            });
-        }
-        
-        console.log(`📡 [CR-Public] Fetching levels for session: ${session}`);
-        
-        const { data, error } = await supabase
-            .from('course_representatives')
-            .select('level')
-            .eq('session', session)
-            .order('level');
-        
-        if (error) throw error;
-        
-        const levels = [...new Set(data.map(item => item.level))].sort((a, b) => parseInt(a) - parseInt(b));
-        
-        res.json({ 
-            status: 'success', 
-            data: levels 
-        });
-    } catch (error) {
-        console.error('Error fetching levels:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Failed to fetch levels' 
-        });
-    }
-});
-
-// Mount public course reps router
-app.use('/api/course-reps', publicCourseRepRouter);
-
-console.log('✅ Course Representatives routes registered at:');
-console.log('   - /api/admin/course-reps (admin)');
-console.log('   - /api/course-reps (public)');
-
-// ==================== FILE UPLOAD (GENERIC) ====================
-
-/**
- * @swagger
- * /api/admin/upload:
- *   post:
- *     summary: File upload (generic)
- *     tags: [Admin]
- */
-adminRouter.post('/upload', upload.single('file'), async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ status: 'error', message: 'No file uploaded' });
-        }
-
-        const fileInfo = {
-            filename: req.file.filename,
-            originalname: req.file.originalname,
-            mimetype: req.file.mimetype,
-            size: req.file.size,
-            url: `/uploads/${req.file.filename}`,
-            uploaded_at: new Date()
-        };
-
-        res.json({ status: 'success', data: fileInfo, message: 'File uploaded successfully' });
-    } catch (error) {
-        logger.error('Admin upload error:', error);
-        res.status(500).json({ status: 'error', message: 'Failed to upload file' });
-    }
-});
-
-// ==================== MOUNT ADMIN ROUTER ====================
-app.use('/api/admin', adminRouter);
-
-
-// --- 16.7 MEMBERS ROUTES (Public) ---
-
+// -------------------- 3.4 PUBLIC MEMBERS ROUTES -------------
 const memberRouter = express.Router();
 
-/**
- * @swagger
- * /api/members:
- *   get:
- *     summary: Get all executive members
- *     tags: [Members]
- */
-// SECTION 16.7 - MEMBERS ROUTES (Public)
 memberRouter.get('/', cacheMiddleware(120, ['members']), async (req, res) => {
     try {
-        const { 
-            committee, 
-            status = 'active', 
-            session,           // 👈 ADD THIS
-            sort = 'display_order', 
-            order = 'asc' 
-        } = req.query;
+        const { committee, status = 'active', session, sort = 'display_order', order = 'asc' } = req.query;
         
         let where = { status };
-        
         if (committee && committee !== 'all') where.committee = committee;
-        
-        // 👇 ADD SESSION FILTERING
-        if (session) {
-            where.session = session;
-        }
+        if (session) where.session = session;
 
         const result = await db.query('select', 'executive_members', {
             where,
@@ -4571,13 +1309,6 @@ memberRouter.get('/', cacheMiddleware(120, ['members']), async (req, res) => {
     }
 });
 
-/**
- * @swagger
- * /api/members/{id}:
- *   get:
- *     summary: Get member by ID
- *     tags: [Members]
- */
 memberRouter.get('/:id', cacheMiddleware(300, ['members']), async (req, res) => {
     try {
         const result = await db.query('select', 'executive_members', { where: { id: req.params.id } });
@@ -4591,119 +1322,9 @@ memberRouter.get('/:id', cacheMiddleware(300, ['members']), async (req, res) => 
     }
 });
 
-/**
- * @swagger
- * /api/members:
- *   post:
- *     summary: Create new member (admin/editor only)
- *     tags: [Members]
- */
-memberRouter.post('/', verifyToken, requireRole('admin', 'editor'), upload.single('profile_image'), validate(schemas.createMember), async (req, res) => {
-    try {
-        const { full_name, position, department, level, email, phone, bio, committee, display_order, status, social_links } = req.body;
-
-        const memberData = {
-            full_name: full_name.trim(),
-            position: position.trim(),
-            department: department ? department.trim() : null,
-            level: level ? level.trim() : null,
-            email: email ? email.toLowerCase().trim() : null,
-            phone: phone ? phone.trim() : null,
-            bio: bio ? bio.trim() : null,
-            committee: committee ? committee.trim() : null,
-            display_order: display_order || 0,
-            status: status || 'active',
-            social_links: social_links ? (typeof social_links === 'string' ? JSON.parse(social_links) : social_links) : {},
-            created_at: new Date(),
-            updated_at: new Date()
-        };
-
-        if (req.file) memberData.profile_image = `/uploads/${req.file.filename}`;
-
-        const result = await db.query('insert', 'executive_members', { data: memberData });
-        await cacheManager.invalidateByTags(['members']);
-
-        logger.info('Member created', { requestId: req.id, memberId: result.data[0].id, createdBy: req.user.id });
-
-        res.status(201).json({ status: 'success', data: result.data[0], message: 'Member created successfully' });
-    } catch (error) {
-        logger.error('Error creating member:', { requestId: req.id, error: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to create member' });
-    }
-});
-
-/**
- * @swagger
- * /api/members/{id}:
- *   put:
- *     summary: Update member
- *     tags: [Members]
- */
-memberRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), upload.single('profile_image'), async (req, res) => {
-    try {
-        const memberData = {};
-        const fields = ['full_name', 'position', 'department', 'level', 'email', 'phone', 'bio', 'committee', 'display_order', 'status'];
-
-        fields.forEach(field => {
-            if (req.body[field] !== undefined) {
-                memberData[field] = typeof req.body[field] === 'string' ? req.body[field].trim() : req.body[field];
-            }
-        });
-
-        if (req.body.social_links) {
-            memberData.social_links = typeof req.body.social_links === 'string' 
-                ? JSON.parse(req.body.social_links) 
-                : req.body.social_links;
-        }
-
-        if (req.file) memberData.profile_image = `/uploads/${req.file.filename}`;
-        memberData.updated_at = new Date();
-
-        const result = await db.query('update', 'executive_members', {
-            data: memberData,
-            where: { id: req.params.id }
-        });
-
-        if (result.data.length === 0) throw new NotFoundError('Member');
-
-        await cacheManager.invalidateByTags(['members']);
-        logger.info('Member updated', { requestId: req.id, memberId: req.params.id, updatedBy: req.user.id });
-
-        res.json({ status: 'success', data: result.data[0], message: 'Member updated successfully' });
-    } catch (error) {
-        logger.error('Error updating member:', { requestId: req.id, error: error.message });
-        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to update member' });
-    }
-});
-
-/**
- * @swagger
- * /api/members/{id}:
- *   delete:
- *     summary: Delete member (admin/editor only)
- *     tags: [Members]
- */
-memberRouter.delete('/:id', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
-    try {
-        const result = await db.query('delete', 'executive_members', { where: { id: req.params.id } });
-        if (result.data.length === 0) throw new NotFoundError('Member');
-
-        await cacheManager.invalidateByTags(['members']);
-        logger.info('Member deleted', { requestId: req.id, memberId: req.params.id, deletedBy: req.user.id });
-
-        res.json({ status: 'success', message: 'Member deleted successfully' });
-    } catch (error) {
-        logger.error('Error deleting member:', { requestId: req.id, error: error.message });
-        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to delete member' });
-    }
-});
-
 app.use('/api/members', memberRouter);
 
-// --- 16.8 EVENTS ROUTES ---
-
+// -------------------- 3.5 PUBLIC EVENTS ROUTES --------------
 const eventRouter = express.Router();
 
 eventRouter.get('/test', (req, res) => {
@@ -4715,13 +1336,6 @@ eventRouter.get('/test', (req, res) => {
     });
 });
 
-/**
- * @swagger
- * /api/events:
- *   get:
- *     summary: Get all events
- *     tags: [Events]
- */
 eventRouter.get('/', cacheMiddleware(120, ['biu_events']), async (req, res) => {
     console.log('📡 [3] GET /api/events called at:', new Date().toISOString());
     console.log('📡 [3a] Query params:', req.query);
@@ -4782,13 +1396,6 @@ eventRouter.get('/', cacheMiddleware(120, ['biu_events']), async (req, res) => {
     }
 });
 
-/**
- * @swagger
- * /api/events/{id}:
- *   get:
- *     summary: Get event by ID
- *     tags: [Events]
- */
 eventRouter.get('/:id', cacheMiddleware(300, ['biu_events']), async (req, res) => {
     console.log(`📡 GET /api/events/${req.params.id} called`);
     
@@ -4808,13 +1415,6 @@ eventRouter.get('/:id', cacheMiddleware(300, ['biu_events']), async (req, res) =
     }
 });
 
-/**
- * @swagger
- * /api/events/status/upcoming:
- *   get:
- *     summary: Get upcoming events
- *     tags: [Events]
- */
 eventRouter.get('/status/upcoming', cacheMiddleware(60, ['biu_events']), async (req, res) => {
     console.log('📡 GET /api/events/status/upcoming called');
     
@@ -4832,13 +1432,6 @@ eventRouter.get('/status/upcoming', cacheMiddleware(60, ['biu_events']), async (
     }
 });
 
-/**
- * @swagger
- * /api/events/status/past:
- *   get:
- *     summary: Get past events
- *     tags: [Events]
- */
 eventRouter.get('/status/past', cacheMiddleware(300, ['biu_events']), async (req, res) => {
     console.log('📡 GET /api/events/status/past called');
     
@@ -4856,13 +1449,6 @@ eventRouter.get('/status/past', cacheMiddleware(300, ['biu_events']), async (req
     }
 });
 
-/**
- * @swagger
- * /api/events/category/{category}:
- *   get:
- *     summary: Get events by category
- *     tags: [Events]
- */
 eventRouter.get('/category/:category', cacheMiddleware(120, ['biu_events']), async (req, res) => {
     console.log(`📡 GET /api/events/category/${req.params.category} called`);
     
@@ -4880,153 +1466,10 @@ eventRouter.get('/category/:category', cacheMiddleware(120, ['biu_events']), asy
     }
 });
 
-/**
- * @swagger
- * /api/events:
- *   post:
- *     summary: Create new event (admin/editor only)
- *     tags: [Events]
- */
-eventRouter.post('/', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
-    console.log('📡 POST /api/events called');
-    console.log('📡 Request body:', req.body);
-    
-    try {
-        const { title, date, description, category, start_time, end_time, location, organizer, max_participants, status = 'upcoming' } = req.body;
-
-        if (!title || !date) throw new ValidationError('Title and date are required');
-
-        let formattedDate = date;
-        if (typeof date === 'string' && date.includes('/')) {
-            const [day, month, year] = date.split('/');
-            formattedDate = `${year}-${month}-${day}`;
-            console.log('📡 Date formatted:', formattedDate);
-        }
-
-        const eventData = {
-            title: title.trim(),
-            date: formattedDate,
-            description: description || null,
-            category: category || null,
-            start_time: start_time || null,
-            end_time: end_time || null,
-            location: location || null,
-            organizer: organizer || null,
-            max_participants: max_participants ? parseInt(max_participants) : null,
-            status,
-            created_at: new Date(),
-            updated_at: new Date()
-        };
-
-        console.log('📡 Inserting event data into biu_events:', eventData);
-
-        const result = await db.query('insert', 'biu_events', { data: eventData });
-
-        console.log('✅ Event created with ID:', result.data[0].id);
-
-        await cacheManager.invalidateByTags(['biu_events']);
-
-        res.status(201).json({ status: 'success', data: result.data[0], message: 'Event created successfully' });
-    } catch (error) {
-        console.error('❌ Error creating event:', error.message);
-        if (error instanceof ValidationError) return res.status(400).json({ status: 'error', message: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to create event', debug: error.message });
-    }
-});
-
-/**
- * @swagger
- * /api/events/{id}:
- *   put:
- *     summary: Update event (admin/editor only)
- *     tags: [Events]
- */
-eventRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
-    console.log(`📡 PUT /api/events/${req.params.id} called`);
-    console.log('📡 Update data:', req.body);
-    
-    try {
-        const allowedFields = ['title', 'date', 'description', 'category', 'start_time', 'end_time', 'location', 'organizer', 'max_participants', 'status'];
-        const updateData = {};
-
-        allowedFields.forEach(field => {
-            if (req.body[field] !== undefined) {
-                if (field === 'date' && req.body[field] && typeof req.body[field] === 'string' && req.body[field].includes('/')) {
-                    const [day, month, year] = req.body[field].split('/');
-                    updateData[field] = `${year}-${month}-${day}`;
-                } else if (field === 'max_participants' && req.body[field]) {
-                    updateData[field] = parseInt(req.body[field]);
-                } else if (typeof req.body[field] === 'string') {
-                    updateData[field] = req.body[field].trim();
-                } else {
-                    updateData[field] = req.body[field];
-                }
-            }
-        });
-
-        if (Object.keys(updateData).length === 0) throw new ValidationError('No fields to update');
-        updateData.updated_at = new Date();
-
-        console.log('📡 Executing update on biu_events with:', updateData);
-
-        const result = await db.query('update', 'biu_events', {  
-            data: updateData,
-            where: { id: req.params.id }
-        });
-
-        if (result.data.length === 0) {
-            console.log(`📡 Event ${req.params.id} not found`);
-            return res.status(404).json({ status: 'error', message: 'Event not found' });
-        }
-
-        console.log('✅ Event updated:', result.data[0].id);
-
-        await cacheManager.invalidateByTags(['biu_events']);
-
-        res.json({ status: 'success', data: result.data[0], message: 'Event updated successfully' });
-    } catch (error) {
-        console.error('❌ Error updating event:', error.message);
-        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
-        if (error instanceof ValidationError) return res.status(400).json({ status: 'error', message: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to update event' });
-    }
-});
-
-/**
- * @swagger
- * /api/events/{id}:
- *   delete:
- *     summary: Delete event (admin only)
- *     tags: [Events]
- */
-eventRouter.delete('/:id', verifyToken, requireRole('admin'), async (req, res) => {
-    console.log(`📡 DELETE /api/events/${req.params.id} called`);
-    
-    try {
-        const result = await db.query('delete', 'biu_events', { where: { id: req.params.id } });
-
-        if (result.data.length === 0) {
-            console.log(`📡 Event ${req.params.id} not found`);
-            return res.status(404).json({ status: 'error', message: 'Event not found' });
-        }
-
-        console.log('✅ Event deleted:', req.params.id);
-
-        await cacheManager.invalidateByTags(['biu_events']);
-
-        res.json({ status: 'success', message: 'Event deleted successfully' });
-    } catch (error) {
-        console.error('❌ Error deleting event:', error.message);
-        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to delete event' });
-    }
-});
-
 app.use('/api/events', eventRouter);
 console.log('✅ [12] /api/events router registered');
 
-// --- 16.9 RESOURCES ROUTES ---
-
+// -------------------- 3.6 PUBLIC RESOURCES ROUTES -----------
 const resourceRouter = express.Router();
 
 resourceRouter.get('/test', (req, res) => {
@@ -5038,13 +1481,6 @@ resourceRouter.get('/test', (req, res) => {
     });
 });
 
-/**
- * @swagger
- * /api/resources:
- *   get:
- *     summary: Get all resources
- *     tags: [Resources]
- */
 resourceRouter.get('/', cacheMiddleware(120, ['resources']), async (req, res) => {
     console.log('📡 [R3] GET /api/resources called at:', new Date().toISOString());
     console.log('📡 [R3a] Query params:', req.query);
@@ -5112,13 +1548,6 @@ resourceRouter.get('/', cacheMiddleware(120, ['resources']), async (req, res) =>
     }
 });
 
-/**
- * @swagger
- * /api/resources/past-questions:
- *   get:
- *     summary: Get past questions (legacy endpoint)
- *     tags: [Resources]
- */
 resourceRouter.get('/past-questions', cacheMiddleware(120, ['resources']), async (req, res) => {
     console.log('📡 [R11] GET /api/resources/past-questions called');
     console.log('📡 [R11a] Query params:', req.query);
@@ -5167,13 +1596,6 @@ resourceRouter.get('/past-questions', cacheMiddleware(120, ['resources']), async
     }
 });
 
-/**
- * @swagger
- * /api/resources/{id}:
- *   get:
- *     summary: Get resource by ID
- *     tags: [Resources]
- */
 resourceRouter.get('/:id', cacheMiddleware(300, ['resources']), async (req, res) => {
     console.log(`📡 [R18] GET /api/resources/${req.params.id} called`);
     
@@ -5197,185 +1619,74 @@ resourceRouter.get('/:id', cacheMiddleware(300, ['resources']), async (req, res)
     }
 });
 
-/**
- * @swagger
- * /api/resources:
- *   post:
- *     summary: Create new resource (admin/editor only)
- *     tags: [Resources]
- */
-resourceRouter.post('/', verifyToken, requireRole('admin', 'editor'), upload.single('file'), async (req, res) => {
-    console.log('📡 [R22] POST /api/resources called');
-    console.log('📡 [R22a] Request body:', req.body);
-    console.log('📡 [R22b] File uploaded:', req.file ? {
-        filename: req.file.filename,
-        size: req.file.size,
-        mimetype: req.file.mimetype
-    } : 'No file');
+resourceRouter.get('/meta/categories', async (req, res) => {
+    console.log('📡 [R44] GET /api/resources/meta/categories called');
     
     try {
-        const { title, category, description, department, level, course_code, course_title, year, semester, file_type, file_size } = req.body;
-
-        if (!title || !category) {
-            console.log('❌ [R23] Validation failed: missing title or category');
-            throw new ValidationError('Title and category are required');
-        }
-
-        const resourceData = {
-            title: title.trim(),
-            category: category.trim(),
-            description: description || null,
-            department: department || null,
-            level: level ? parseInt(level) : null,
-            course_code: course_code || null,
-            course_title: course_title || null,
-            year: year || null,
-            semester: semester || null,
-            file_type: file_type || null,
-            file_size: file_size ? parseInt(file_size) : null,
-            download_count: 0,
-            uploaded_by: req.user.id,
-            created_at: new Date()
-        };
-
-        console.log('📡 [R24] Prepared resource data:', resourceData);
-
-        if (req.file) {
-            resourceData.file_url = `/uploads/${req.file.filename}`;
-            resourceData.file_size = req.file.size;
-            resourceData.file_type = req.file.mimetype;
-            console.log('📡 [R25] File data added:', {
-                file_url: resourceData.file_url,
-                file_size: resourceData.file_size,
-                file_type: resourceData.file_type
-            });
-        }
-
-        console.log('📡 [R26] Inserting resource into database...');
-        const result = await db.query('insert', 'resources', { data: resourceData });
-
-        console.log('✅ [R27] Resource created with ID:', result.data[0].id);
-
-        await cacheManager.invalidateByTags(['resources']);
-
-        logger.info('Resource created', { requestId: req.id, resourceId: result.data[0].id, createdBy: req.user.id });
-
-        res.status(201).json({ status: 'success', data: result.data[0], message: 'Resource created successfully' });
-    } catch (error) {
-        console.error('❌ [R-ERROR] Error creating resource:', error.message);
-        logger.error('Error creating resource:', { requestId: req.id, error: error.message });
-        if (error instanceof ValidationError) return res.status(400).json({ status: 'error', message: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to create resource', debug: error.message });
-    }
-});
-
-/**
- * @swagger
- * /api/resources/{id}:
- *   put:
- *     summary: Update resource (admin/editor only)
- *     tags: [Resources]
- */
-resourceRouter.put('/:id', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
-    console.log(`📡 [R28] PUT /api/resources/${req.params.id} called`);
-    console.log('📡 [R28a] Update data:', req.body);
-    
-    try {
-        const allowedFields = ['title', 'category', 'description', 'department', 'level', 'course_code', 'course_title', 'year', 'semester', 'file_type', 'file_size', 'file_url'];
-        const updateData = {};
-
-        allowedFields.forEach(field => {
-            if (req.body[field] !== undefined) {
-                if (field === 'level' || field === 'file_size') {
-                    updateData[field] = parseInt(req.body[field]);
-                    console.log(`📡 [R29] Parsed ${field} as integer:`, updateData[field]);
-                } else if (typeof req.body[field] === 'string') {
-                    updateData[field] = req.body[field].trim();
-                    console.log(`📡 [R29a] Processed ${field} as string:`, updateData[field]);
-                } else {
-                    updateData[field] = req.body[field];
-                    console.log(`📡 [R29b] Processed ${field}:`, updateData[field]);
-                }
-            }
+        const result = await db.query('select', 'resources', {
+            select: 'DISTINCT category',
+            where: { category: { operator: 'isNull', value: false } }
         });
-
-        if (Object.keys(updateData).length === 0) {
-            console.log('❌ [R30] No fields to update');
-            throw new ValidationError('No fields to update');
-        }
-
-        updateData.updated_at = new Date();
-
-        console.log('📡 [R31] Executing update with:', updateData);
-
-        const result = await db.query('update', 'resources', {
-            data: updateData,
-            where: { id: req.params.id }
-        });
-
-        if (result.data.length === 0) {
-            console.log(`📡 [R32] Resource ${req.params.id} not found`);
-            return res.status(404).json({ status: 'error', message: 'Resource not found' });
-        }
-
-        console.log('✅ [R33] Resource updated:', result.data[0].id);
-
-        await cacheManager.invalidateByTags(['resources']);
-
-        logger.info('Resource updated', { requestId: req.id, resourceId: req.params.id, updatedBy: req.user.id });
-
-        res.json({ status: 'success', data: result.data[0], message: 'Resource updated successfully' });
-    } catch (error) {
-        console.error('❌ [R-ERROR] Error updating resource:', error.message);
-        logger.error('Error updating resource:', { requestId: req.id, error: error.message });
-        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
-        if (error instanceof ValidationError) return res.status(400).json({ status: 'error', message: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to update resource', debug: error.message });
-    }
-});
-
-/**
- * @swagger
- * /api/resources/{id}:
- *   delete:
- *     summary: Delete resource (admin only)
- *     tags: [Resources]
- */
-resourceRouter.delete('/:id', verifyToken, requireRole('admin'), async (req, res) => {
-    console.log(`📡 [R34] DELETE /api/resources/${req.params.id} called`);
-    
-    try {
-        console.log('📡 [R35] Deleting resource:', req.params.id);
         
-        const result = await db.query('delete', 'resources', { where: { id: req.params.id } });
-
-        if (result.data.length === 0) {
-            console.log(`📡 [R36] Resource ${req.params.id} not found`);
-            return res.status(404).json({ status: 'error', message: 'Resource not found' });
-        }
-
-        console.log('✅ [R37] Resource deleted:', req.params.id);
-
-        await cacheManager.invalidateByTags(['resources']);
-
-        logger.info('Resource deleted', { requestId: req.id, resourceId: req.params.id, deletedBy: req.user.id });
-
-        res.json({ status: 'success', message: 'Resource deleted successfully' });
+        const categories = result.data.map(item => item.category).filter(Boolean);
+        console.log(`📡 [R45] Found ${categories.length} unique categories`);
+        
+        res.json({ status: 'success', data: categories });
     } catch (error) {
-        console.error('❌ [R-ERROR] Error deleting resource:', error.message);
-        logger.error('Error deleting resource:', { requestId: req.id, error: error.message });
-        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to delete resource', debug: error.message });
+        console.error('❌ [R-ERROR] Error fetching categories:', error.message);
+        logger.error('Error fetching categories:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch categories' });
     }
 });
 
-/**
- * @swagger
- * /api/resources/{id}/download:
- *   post:
- *     summary: Increment download count for resource
- *     tags: [Resources]
- */
+resourceRouter.get('/meta/departments', async (req, res) => {
+    console.log('📡 [R46] GET /api/resources/meta/departments called');
+    
+    try {
+        const result = await db.query('select', 'resources', {
+            select: 'DISTINCT department',
+            where: { department: { operator: 'isNull', value: false } }
+        });
+        
+        const departments = result.data.map(item => item.department).filter(Boolean);
+        console.log(`📡 [R47] Found ${departments.length} unique departments`);
+        
+        res.json({ status: 'success', data: departments });
+    } catch (error) {
+        console.error('❌ [R-ERROR] Error fetching departments:', error.message);
+        logger.error('Error fetching departments:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch departments' });
+    }
+});
+
+resourceRouter.get('/meta/courses', async (req, res) => {
+    console.log('📡 [R48] GET /api/resources/meta/courses called');
+    console.log('📡 [R48a] Query params:', req.query);
+    
+    try {
+        const { department } = req.query;
+        
+        let where = { course_code: { operator: 'isNull', value: false } };
+        if (department) {
+            where.department = department;
+            console.log('📡 [R49] Filtering by department:', department);
+        }
+        
+        const result = await db.query('select', 'resources', {
+            select: 'DISTINCT course_code, course_title',
+            where
+        });
+        
+        console.log(`📡 [R50] Found ${result.data.length} unique courses`);
+        
+        res.json({ status: 'success', data: result.data });
+    } catch (error) {
+        console.error('❌ [R-ERROR] Error fetching courses:', error.message);
+        logger.error('Error fetching courses:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch courses' });
+    }
+});
+
 resourceRouter.post('/:id/download', async (req, res) => {
     console.log(`📡 [R38] POST /api/resources/${req.params.id}/download called`);
     
@@ -5414,109 +1725,12 @@ resourceRouter.post('/:id/download', async (req, res) => {
     }
 });
 
-/**
- * @swagger
- * /api/resources/meta/categories:
- *   get:
- *     summary: Get unique resource categories
- *     tags: [Resources]
- */
-resourceRouter.get('/meta/categories', async (req, res) => {
-    console.log('📡 [R44] GET /api/resources/meta/categories called');
-    
-    try {
-        const result = await db.query('select', 'resources', {
-            select: 'DISTINCT category',
-            where: { category: { operator: 'isNull', value: false } }
-        });
-        
-        const categories = result.data.map(item => item.category).filter(Boolean);
-        console.log(`📡 [R45] Found ${categories.length} unique categories`);
-        
-        res.json({ status: 'success', data: categories });
-    } catch (error) {
-        console.error('❌ [R-ERROR] Error fetching categories:', error.message);
-        logger.error('Error fetching categories:', { requestId: req.id, error: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to fetch categories' });
-    }
-});
-
-/**
- * @swagger
- * /api/resources/meta/departments:
- *   get:
- *     summary: Get unique resource departments
- *     tags: [Resources]
- */
-resourceRouter.get('/meta/departments', async (req, res) => {
-    console.log('📡 [R46] GET /api/resources/meta/departments called');
-    
-    try {
-        const result = await db.query('select', 'resources', {
-            select: 'DISTINCT department',
-            where: { department: { operator: 'isNull', value: false } }
-        });
-        
-        const departments = result.data.map(item => item.department).filter(Boolean);
-        console.log(`📡 [R47] Found ${departments.length} unique departments`);
-        
-        res.json({ status: 'success', data: departments });
-    } catch (error) {
-        console.error('❌ [R-ERROR] Error fetching departments:', error.message);
-        logger.error('Error fetching departments:', { requestId: req.id, error: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to fetch departments' });
-    }
-});
-
-/**
- * @swagger
- * /api/resources/meta/courses:
- *   get:
- *     summary: Get unique course codes with titles
- *     tags: [Resources]
- */
-resourceRouter.get('/meta/courses', async (req, res) => {
-    console.log('📡 [R48] GET /api/resources/meta/courses called');
-    console.log('📡 [R48a] Query params:', req.query);
-    
-    try {
-        const { department } = req.query;
-        
-        let where = { course_code: { operator: 'isNull', value: false } };
-        if (department) {
-            where.department = department;
-            console.log('📡 [R49] Filtering by department:', department);
-        }
-        
-        const result = await db.query('select', 'resources', {
-            select: 'DISTINCT course_code, course_title',
-            where
-        });
-        
-        console.log(`📡 [R50] Found ${result.data.length} unique courses`);
-        
-        res.json({ status: 'success', data: result.data });
-    } catch (error) {
-        console.error('❌ [R-ERROR] Error fetching courses:', error.message);
-        logger.error('Error fetching courses:', { requestId: req.id, error: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to fetch courses' });
-    }
-});
-
 app.use('/api/resources', resourceRouter);
 console.log('✅ [R52] /api/resources router registered');
 
-// --- 16.10 ARTICLES/NEWS ROUTES ---
-
+// -------------------- 3.7 PUBLIC ARTICLES ROUTES ------------
 const articleRouter = express.Router();
 
-/**
- * @swagger
- * /api/articles:
- *   get:
- *     summary: Get all published articles
- *     tags: [Articles]
- */
 articleRouter.get('/', cacheMiddleware(120, ['articles']), async (req, res) => {
     try {
         const { category, tag, limit = 50, page = 1, sort = 'published_at', order = 'desc' } = req.query;
@@ -5555,13 +1769,6 @@ articleRouter.get('/', cacheMiddleware(120, ['articles']), async (req, res) => {
     }
 });
 
-/**
- * @swagger
- * /api/articles/{identifier}:
- *   get:
- *     summary: Get article by ID or slug
- *     tags: [Articles]
- */
 articleRouter.get('/:identifier', cacheMiddleware(300, ['articles']), async (req, res) => {
     try {
         const { identifier } = req.params;
@@ -5582,13 +1789,6 @@ articleRouter.get('/:identifier', cacheMiddleware(300, ['articles']), async (req
     }
 });
 
-/**
- * @swagger
- * /api/articles/category/{category}:
- *   get:
- *     summary: Get articles by category
- *     tags: [Articles]
- */
 articleRouter.get('/category/:category', cacheMiddleware(120, ['articles']), async (req, res) => {
     try {
         const result = await db.query('select', 'articles', {
@@ -5603,122 +1803,6 @@ articleRouter.get('/category/:category', cacheMiddleware(120, ['articles']), asy
     }
 });
 
-/**
- * @swagger
- * /api/articles:
- *   post:
- *     summary: Create new article (admin/editor only)
- *     tags: [Articles]
- */
-articleRouter.post('/', verifyToken, requireRole('admin', 'editor'), validate(schemas.article), async (req, res) => {
-    try {
-        const { title, slug, content, excerpt, author, category, tags, status, is_published, published_at } = req.body;
-
-        let articleSlug = slug;
-        if (!articleSlug) {
-            articleSlug = title.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/--+/g, '-').trim();
-        }
-
-        const existing = await db.query('select', 'articles', { where: { slug: articleSlug } });
-        if (existing.data.length > 0) articleSlug = `${articleSlug}-${Date.now()}`;
-
-        const articleData = {
-            uuid: uuid.v4(),
-            title: title.trim(),
-            slug: articleSlug,
-            content,
-            excerpt: excerpt || null,
-            author: author || req.user.fullName || 'NUESA BIU',
-            category: category || null,
-            tags: tags || [],
-            status: status || 'draft',
-            is_published: is_published || false,
-            published_at: published_at || (is_published ? new Date() : null),
-            created_at: new Date(),
-            updated_at: new Date()
-        };
-
-        const result = await db.query('insert', 'articles', { data: articleData });
-        await cacheManager.invalidateByTags(['articles']);
-
-        logger.info('Article created', { requestId: req.id, articleId: result.data[0].uuid, createdBy: req.user.id });
-
-        res.status(201).json({ status: 'success', data: result.data[0], message: 'Article created successfully' });
-    } catch (error) {
-        logger.error('Error creating article:', { requestId: req.id, error: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to create article' });
-    }
-});
-
-/**
- * @swagger
- * /api/articles/{uuid}:
- *   put:
- *     summary: Update article (admin/editor only)
- *     tags: [Articles]
- */
-articleRouter.put('/:uuid', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
-    try {
-        const allowedFields = ['title', 'slug', 'content', 'excerpt', 'author', 'category', 'tags', 'status', 'is_published', 'published_at'];
-        const updateData = {};
-
-        allowedFields.forEach(field => {
-            if (req.body[field] !== undefined) updateData[field] = req.body[field];
-        });
-
-        if (Object.keys(updateData).length === 0) throw new ValidationError('No fields to update');
-        updateData.updated_at = new Date();
-
-        const result = await db.query('update', 'articles', {
-            data: updateData,
-            where: { uuid: req.params.uuid }
-        });
-
-        if (result.data.length === 0) throw new NotFoundError('Article');
-
-        await cacheManager.invalidateByTags(['articles']);
-
-        logger.info('Article updated', { requestId: req.id, articleId: req.params.uuid, updatedBy: req.user.id });
-
-        res.json({ status: 'success', data: result.data[0], message: 'Article updated successfully' });
-    } catch (error) {
-        logger.error('Error updating article:', { requestId: req.id, error: error.message });
-        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to update article' });
-    }
-});
-
-/**
- * @swagger
- * /api/articles/{uuid}:
- *   delete:
- *     summary: Delete article (admin only)
- *     tags: [Articles]
- */
-articleRouter.delete('/:uuid', verifyToken, requireRole('admin'), async (req, res) => {
-    try {
-        const result = await db.query('delete', 'articles', { where: { uuid: req.params.uuid } });
-        if (result.data.length === 0) throw new NotFoundError('Article');
-
-        await cacheManager.invalidateByTags(['articles']);
-
-        logger.info('Article deleted', { requestId: req.id, articleId: req.params.uuid, deletedBy: req.user.id });
-
-        res.json({ status: 'success', message: 'Article deleted successfully' });
-    } catch (error) {
-        logger.error('Error deleting article:', { requestId: req.id, error: error.message });
-        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to delete article' });
-    }
-});
-
-/**
- * @swagger
- * /api/articles/meta/categories:
- *   get:
- *     summary: Get unique article categories
- *     tags: [Articles]
- */
 articleRouter.get('/meta/categories', async (req, res) => {
     try {
         const result = await db.query('select', 'articles', {
@@ -5734,13 +1818,6 @@ articleRouter.get('/meta/categories', async (req, res) => {
     }
 });
 
-/**
- * @swagger
- * /api/articles/meta/tags:
- *   get:
- *     summary: Get unique article tags
- *     tags: [Articles]
- */
 articleRouter.get('/meta/tags', async (req, res) => {
     try {
         const result = await db.query('select', 'articles', {
@@ -5762,11 +1839,7 @@ app.use('/api/articles', articleRouter);
 app.use('/api/news', articleRouter);
 console.log('✅ Articles/News router registered at /api/articles and /api/news');
 
-// ============================================================
-// COURSE REPRESENTATIVES ROUTES - DIRECT VERSION
-// ============================================================
-
-// GET course representatives
+// -------------------- 3.8 PUBLIC COURSE REPS ROUTES ---------
 app.get('/api/course-reps', async (req, res) => {
     try {
         const { session = '2025/2026', level } = req.query;
@@ -5800,7 +1873,6 @@ app.get('/api/course-reps', async (req, res) => {
     }
 });
 
-// GET unique sessions - FIX THIS ENDPOINT
 app.get('/api/course-reps/sessions', async (req, res) => {
     try {
         console.log('📡 Fetching available sessions...');
@@ -5812,7 +1884,6 @@ app.get('/api/course-reps/sessions', async (req, res) => {
         
         if (error) throw error;
         
-        // Get unique sessions
         const sessions = [...new Set(data.map(item => item.session))];
         
         console.log(`✅ Found ${sessions.length} unique sessions`);
@@ -5830,15 +1901,2611 @@ app.get('/api/course-reps/sessions', async (req, res) => {
     }
 });
 
-// --- 16.11 FILE MANAGEMENT ROUTES ---
+// Public course reps with detailed department info
+app.get('/api/course-reps/detailed', cacheMiddleware(300, ['course-reps']), async (req, res) => {
+    try {
+        const { session = '2025/2026', level } = req.query;
+        
+        console.log(`📡 [CR-Public] Fetching course reps for session: ${session}, level: ${level || 'all'}`);
+        
+        let courseRepsQuery = supabase
+            .from('course_representatives')
+            .select('*')
+            .eq('session', session);
+        
+        if (level && level !== 'all') {
+            courseRepsQuery = courseRepsQuery.eq('level', level);
+        }
+        
+        const { data: courseReps, error: courseRepsError } = await courseRepsQuery.order('level');
+        
+        if (courseRepsError) throw courseRepsError;
+        
+        if (!courseReps || courseReps.length === 0) {
+            return res.json({ 
+                status: 'success', 
+                data: [],
+                count: 0 
+            });
+        }
+        
+        const courseRepIds = courseReps.map(rep => rep.id);
+        
+        const { data: deptReps, error: deptRepsError } = await supabase
+            .from('department_reps')
+            .select('*')
+            .in('course_rep_id', courseRepIds)
+            .eq('session', session)
+            .eq('status', 'active');
+        
+        if (deptRepsError) throw deptRepsError;
+        
+        const deptRepsByCourseRepId = {};
+        deptReps.forEach(dept => {
+            if (!deptRepsByCourseRepId[dept.course_rep_id]) {
+                deptRepsByCourseRepId[dept.course_rep_id] = [];
+            }
+            deptRepsByCourseRepId[dept.course_rep_id].push(dept);
+        });
+        
+        const transformedData = courseReps.map(courseRep => {
+            const filteredDeptReps = deptRepsByCourseRepId[courseRep.id] || [];
+            
+            return {
+                level: courseRep.level,
+                genRep: courseRep.gen_rep || 'Not Assigned',
+                asstGenRep: courseRep.asst_gen_rep || 'Not Assigned',
+                deptCount: filteredDeptReps.length,
+                departments: filteredDeptReps.map(dept => ({
+                    name: dept.department_name,
+                    rep: dept.representative_name || 'Pending'
+                }))
+            };
+        });
+        
+        res.json({ 
+            status: 'success', 
+            data: transformedData,
+            count: transformedData.length 
+        });
+        
+    } catch (error) {
+        console.error('Error fetching public course reps:', error);
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to fetch course representatives',
+            error: error.message 
+        });
+    }
+});
 
-/**
- * @swagger
- * /api/upload:
- *   post:
- *     summary: Upload a file (admin/editor only)
- *     tags: [Files]
- */
+app.get('/api/course-reps/levels', cacheMiddleware(300, ['course-reps']), async (req, res) => {
+    try {
+        const { session } = req.query;
+        
+        if (!session) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'Session parameter is required' 
+            });
+        }
+        
+        console.log(`📡 [CR-Public] Fetching levels for session: ${session}`);
+        
+        const { data, error } = await supabase
+            .from('course_representatives')
+            .select('level')
+            .eq('session', session)
+            .order('level');
+        
+        if (error) throw error;
+        
+        const levels = [...new Set(data.map(item => item.level))].sort((a, b) => parseInt(a) - parseInt(b));
+        
+        res.json({ 
+            status: 'success', 
+            data: levels 
+        });
+    } catch (error) {
+        console.error('Error fetching levels:', error);
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to fetch levels' 
+        });
+    }
+});
+
+// -------------------- 3.9 PUBLIC CONTACT FORM -----------------
+app.post('/api/contact/submit', createRateLimiter(10), validate(schemas.contactForm), async (req, res) => {
+    try {
+        const { name, email, message, subject } = req.body;
+        
+        const contactData = {
+            name: name.trim(),
+            email: email.toLowerCase().trim(),
+            subject: subject || 'No Subject',
+            message: message.trim(),
+            is_read: false,
+            created_at: new Date()
+        };
+        
+        try {
+            await db.query('insert', 'contact_messages', { data: contactData });
+        } catch (dbError) {
+            if (dbError.message && dbError.message.includes('relation') && dbError.message.includes('does not exist')) {
+                logger.warn('contact_messages table does not exist, skipping database save');
+            } else {
+                throw dbError;
+            }
+        }
+        
+        logger.info('Contact form submitted', { 
+            requestId: req.id, name, email, subject: subject || 'No subject' 
+        });
+        
+        res.json({
+            status: 'success',
+            message: 'Thank you for your message! We will get back to you soon.'
+        });
+    } catch (error) {
+        logger.error('Contact form error:', { requestId: req.id, error: error.message });
+        res.status(500).json({
+            status: 'error', 
+            message: 'Failed to submit form. Please try again later.'
+        });
+    }
+});
+
+// -------------------- 3.10 PUBLIC PROFILE ROUTES -------------
+app.get('/api/profile', verifyToken, async (req, res) => {
+    res.json({ status: 'success', data: req.user });
+});
+
+app.put('/api/profile', verifyToken, validate(Joi.object({ 
+    full_name: Joi.string().min(2).max(100).required(),
+    department: Joi.string().optional()
+})), async (req, res) => {
+    try {
+        const { full_name, department } = req.body;
+        const updateData = {
+            full_name: full_name.trim(),
+            department: department || null,
+            updated_at: new Date()
+        };
+
+        const result = await db.query('update', 'users', {
+            data: updateData,
+            where: { id: req.user.id }
+        });
+
+        const updatedUser = authService.createUserResponse(result.data[0]);
+        await cacheManager.set(`user:${req.user.id}`, updatedUser, 300000);
+        req.user = updatedUser;
+
+        res.json({ status: 'success', data: updatedUser, message: 'Profile updated successfully' });
+    } catch (error) {
+        logger.error('Error updating profile:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to update profile' });
+    }
+});
+
+app.put('/api/profile/password', verifyToken, validate(schemas.changePassword), async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+
+        const result = await db.query('select', 'users', {
+            where: { id: req.user.id },
+            select: 'password_hash'
+        });
+
+        const validPassword = await bcrypt.compare(currentPassword, result.data[0].password_hash);
+        if (!validPassword) throw new ValidationError('Current password is incorrect');
+
+        const hashedPassword = await bcrypt.hash(newPassword, 12);
+        await db.query('update', 'users', {
+            data: { password_hash: hashedPassword, updated_at: new Date() },
+            where: { id: req.user.id }
+        });
+
+        logger.info('Password updated', { requestId: req.id, userId: req.user.id });
+        res.json({ status: 'success', message: 'Password updated successfully' });
+    } catch (error) {
+        logger.error('Error updating password:', { requestId: req.id, error: error.message });
+        if (error instanceof ValidationError) return res.status(400).json({ status: 'error', message: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to update password' });
+    }
+});
+
+// ============================================================
+// ================== SECTION 4: ADMIN ROUTES =================
+// ============================================================
+
+// -------------------- 4.1 ADMIN AUTH ROUTES -----------------
+app.post('/api/admin/login', createRateLimiter(10, 15 * 60 * 1000), validate(schemas.login), async (req, res) => {
+    try {
+        const { email, password, rememberMe } = req.body;
+
+        await checkLoginAttempts(email.toLowerCase());
+
+        const result = await db.query('select', 'users', {
+            where: { email: email.toLowerCase().trim() },
+            select: 'id, email, password_hash, full_name, role, department, is_active, created_at, last_login'
+        });
+
+        if (result.data.length === 0) {
+            await recordFailedAttempt(email.toLowerCase());
+            logger.warn('Admin login failed - user not found', { email });
+            return res.status(401).json({
+                status: 'error',
+                code: 'INVALID_CREDENTIALS',
+                message: 'Invalid email or password'
+            });
+        }
+
+        const user = result.data[0];
+
+        if (user.role !== 'admin') {
+            logger.warn('Admin login failed - not admin', { email, role: user.role });
+            return res.status(403).json({
+                status: 'error',
+                code: 'FORBIDDEN',
+                message: 'Access denied. Admin privileges required.'
+            });
+        }
+
+        if (!user.is_active) {
+            logger.warn('Admin login failed - account deactivated', { email });
+            return res.status(401).json({
+                status: 'error',
+                code: 'ACCOUNT_DEACTIVATED',
+                message: 'Your account has been deactivated'
+            });
+        }
+
+        const validPassword = await bcrypt.compare(password, user.password_hash);
+        if (!validPassword) {
+            await recordFailedAttempt(email.toLowerCase());
+            logger.warn('Admin login failed - invalid password', { email });
+            return res.status(401).json({
+                status: 'error',
+                code: 'INVALID_CREDENTIALS',
+                message: 'Invalid email or password'
+            });
+        }
+
+        await resetLoginAttempts(email.toLowerCase());
+
+        await db.query('update', 'users', {
+            data: { last_login: new Date() },
+            where: { id: user.id }
+        });
+
+        const userResponse = authService.createUserResponse(user);
+        const tokenPayload = authService.createTokenPayload(user);
+        const token = authService.generateToken(tokenPayload);
+
+        res.cookie('auth_token', token, {
+            httpOnly: true,
+            secure: IS_PRODUCTION,
+            sameSite: 'strict',
+            maxAge: rememberMe ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000,
+            path: '/'
+        });
+
+        await cacheManager.set(`user:${user.id}`, userResponse, rememberMe ? 604800000 : 300000);
+
+        logger.info('Admin logged in successfully', { 
+            requestId: req.id, userId: user.id, email: user.email 
+        });
+
+        res.json({
+            status: 'success',
+            data: {
+                user: userResponse,
+                token,
+                expiresIn: JWT_EXPIRE
+            },
+            message: 'Admin login successful'
+        });
+
+    } catch (error) {
+        logger.error('Admin login error:', { requestId: req.id, error: error.message });
+        res.status(500).json({
+            status: 'error',
+            code: 'SERVER_ERROR',
+            message: 'Login failed. Please try again.'
+        });
+    }
+});
+
+app.post('/api/admin/logout', verifyToken, async (req, res) => {
+    try {
+        await cacheManager.delete(`user:${req.user.id}`);
+        res.clearCookie('auth_token');
+        logger.info('Admin logged out', { requestId: req.id, userId: req.user.id });
+        res.json({ status: 'success', message: 'Logged out successfully' });
+    } catch (error) {
+        logger.error('Admin logout error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Logout failed' });
+    }
+});
+
+app.get('/api/admin/session', verifyToken, async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({
+                status: 'error', code: 'FORBIDDEN', message: 'Not authorized'
+            });
+        }
+        res.json({ status: 'success', data: req.user, message: 'Session valid' });
+    } catch (error) {
+        logger.error('Session check error:', { requestId: req.id, error: error.message });
+        res.status(401).json({
+            status: 'error', code: 'INVALID_SESSION', message: 'No valid session'
+        });
+    }
+});
+
+// -------------------- 4.2 ADMIN MAIN ROUTER ------------------
+const adminRouter = express.Router();
+adminRouter.use(verifyToken);
+adminRouter.use(requireRole('admin'));
+
+// ==================== DASHBOARD STATS ====================
+adminRouter.get('/stats', async (req, res) => {
+    try {
+        const [users, members, events, resources, articles] = await Promise.allSettled([
+            db.query('select', 'users', { count: true }),
+            db.query('select', 'executive_members', { count: true }),
+            db.query('select', 'biu_events', { count: true }),
+            db.query('select', 'resources', { count: true }),
+            db.query('select', 'articles', { count: true })
+        ]);
+
+        res.json({
+            status: 'success',
+            data: {
+                users: users.status === 'fulfilled' ? users.value.count || 0 : 0,
+                members: members.status === 'fulfilled' ? members.value.count || 0 : 0,
+                events: events.status === 'fulfilled' ? events.value.count || 0 : 0,
+                resources: resources.status === 'fulfilled' ? resources.value.count || 0 : 0,
+                articles: articles.status === 'fulfilled' ? articles.value.count || 0 : 0,
+                uptime: process.uptime(),
+                environment: NODE_ENV
+            }
+        });
+    } catch (error) {
+        logger.error('Admin stats error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to fetch statistics' });
+    }
+});
+
+// ==================== MEMBERS MANAGEMENT ====================
+adminRouter.get('/members', async (req, res) => {
+    try {
+        const { status, committee, search, page = 1, limit = 50 } = req.query;
+        let where = {};
+
+        if (status && status !== 'all') where.status = status;
+        if (committee && committee !== 'all') where.committee = committee;
+        if (search) {
+            where.full_name = { operator: 'ilike', value: `%${search}%` };
+        }
+
+        const offset = (parseInt(page) - 1) * parseInt(limit);
+
+        const result = await db.query('select', 'executive_members', {
+            where,
+            order: { column: 'display_order', ascending: true },
+            limit: parseInt(limit),
+            offset: parseInt(offset)
+        });
+
+        const countResult = await db.query('select', 'executive_members', {
+            where,
+            count: true
+        });
+
+        res.json({ 
+            status: 'success', 
+            data: result.data,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total: countResult.count || 0,
+                pages: Math.ceil((countResult.count || 0) / parseInt(limit))
+            }
+        });
+    } catch (error) {
+        logger.error('Admin members error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to fetch members' });
+    }
+});
+
+adminRouter.get('/members/:id', async (req, res) => {
+    try {
+        const result = await db.query('select', 'executive_members', { 
+            where: { id: req.params.id } 
+        });
+        
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Member not found' });
+        }
+        
+        res.json({ status: 'success', data: result.data[0] });
+    } catch (error) {
+        logger.error('Admin member fetch error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to fetch member' });
+    }
+});
+
+adminRouter.post('/members', upload.single('profile_image'), async (req, res) => {
+    try {
+        let memberData;
+        if (req.body.data) {
+            memberData = JSON.parse(req.body.data);
+        } else {
+            memberData = req.body;
+        }
+
+        const { 
+            full_name, 
+            position, 
+            department, 
+            level, 
+            email, 
+            phone, 
+            bio, 
+            committee, 
+            display_order, 
+            status, 
+            social_links 
+        } = memberData;
+
+        if (!full_name || !position) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'Full name and position are required' 
+            });
+        }
+
+        let parsedSocialLinks = {};
+        if (social_links) {
+            try {
+                parsedSocialLinks = typeof social_links === 'string' 
+                    ? JSON.parse(social_links) 
+                    : social_links;
+            } catch (e) {
+                parsedSocialLinks = {};
+            }
+        }
+
+        const newMember = {
+            full_name: full_name?.trim(),
+            position: position?.trim(),
+            department: department?.trim() || null,
+            level: level?.trim() || null,
+            email: email?.toLowerCase().trim() || null,
+            phone: phone?.trim() || null,
+            bio: bio?.trim() || null,
+            committee: committee?.trim() || null,
+            display_order: display_order ? parseInt(display_order) : 0,
+            status: status || 'active',
+            social_links: parsedSocialLinks,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        if (req.file) {
+            newMember.profile_image = `/uploads/${req.file.filename}`;
+        }
+
+        const result = await db.query('insert', 'executive_members', { data: newMember });
+        await cacheManager.invalidateByTags(['members']);
+
+        logger.info('Admin created member', { 
+            requestId: req.id, 
+            memberId: result.data[0].id,
+            hasPhoto: !!req.file 
+        });
+
+        res.status(201).json({ 
+            status: 'success', 
+            data: result.data[0], 
+            message: 'Member created successfully' 
+        });
+    } catch (error) {
+        logger.error('Admin create member error:', error);
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to create member',
+            debug: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+adminRouter.put('/members/:id', upload.single('profile_image'), async (req, res) => {
+    try {
+        let memberData;
+        if (req.body.data) {
+            memberData = JSON.parse(req.body.data);
+        } else {
+            memberData = req.body;
+        }
+
+        const updateData = {};
+        
+        const fields = [
+            'full_name', 'position', 'department', 'level', 
+            'email', 'phone', 'bio', 'committee', 
+            'display_order', 'status', 'social_links'
+        ];
+
+        fields.forEach(field => {
+            if (memberData[field] !== undefined && memberData[field] !== null) {
+                if (field === 'email') {
+                    updateData[field] = memberData[field]?.toLowerCase().trim();
+                } else if (field === 'display_order') {
+                    updateData[field] = parseInt(memberData[field]);
+                } else if (field === 'social_links') {
+                    try {
+                        updateData[field] = typeof memberData[field] === 'string' 
+                            ? JSON.parse(memberData[field]) 
+                            : memberData[field];
+                    } catch (e) {
+                        updateData[field] = {};
+                    }
+                } else if (typeof memberData[field] === 'string') {
+                    updateData[field] = memberData[field].trim();
+                } else {
+                    updateData[field] = memberData[field];
+                }
+            }
+        });
+
+        if (req.file) {
+            updateData.profile_image = `/uploads/${req.file.filename}`;
+        }
+
+        updateData.updated_at = new Date().toISOString();
+
+        if (Object.keys(updateData).length === 0) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'No fields to update' 
+            });
+        }
+
+        const result = await db.query('update', 'executive_members', {
+            data: updateData,
+            where: { id: req.params.id }
+        });
+
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Member not found' });
+        }
+
+        await cacheManager.invalidateByTags(['members']);
+        
+        logger.info('Member updated', { 
+            requestId: req.id, 
+            memberId: req.params.id,
+            photoUpdated: !!req.file 
+        });
+
+        res.json({ 
+            status: 'success', 
+            data: result.data[0], 
+            message: 'Member updated successfully' 
+        });
+    } catch (error) {
+        logger.error('Admin update member error:', error);
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to update member',
+            debug: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+adminRouter.delete('/members/:id', async (req, res) => {
+    try {
+        const checkResult = await db.query('select', 'executive_members', { 
+            where: { id: req.params.id },
+            select: 'id, profile_image'
+        });
+        
+        if (checkResult.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Member not found' });
+        }
+
+        const result = await db.query('delete', 'executive_members', { 
+            where: { id: req.params.id } 
+        });
+
+        const profileImage = checkResult.data[0].profile_image;
+        if (profileImage) {
+            const filename = profileImage.split('/').pop();
+            const filePath = path.join(__dirname, 'uploads', filename);
+            try {
+                await fs.unlink(filePath);
+                logger.info('Profile image deleted', { 
+                    requestId: req.id, 
+                    filename,
+                    memberId: req.params.id 
+                });
+            } catch (fileError) {
+                logger.warn('Could not delete profile image file', { 
+                    requestId: req.id, 
+                    error: fileError.message 
+                });
+            }
+        }
+
+        await cacheManager.invalidateByTags(['members']);
+        
+        logger.info('Member deleted', { 
+            requestId: req.id, 
+            memberId: req.params.id, 
+            deletedBy: req.user.id 
+        });
+
+        res.json({ status: 'success', message: 'Member deleted successfully' });
+    } catch (error) {
+        logger.error('Admin delete member error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to delete member' });
+    }
+});
+
+adminRouter.post('/members/:id/photo', upload.single('photo'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'No photo file uploaded' 
+            });
+        }
+
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(req.file.mimetype)) {
+            await fs.unlink(req.file.path);
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'Invalid file type. Only JPEG, PNG, GIF, and WEBP are allowed.' 
+            });
+        }
+
+        const maxSize = 5 * 1024 * 1024;
+        if (req.file.size > maxSize) {
+            await fs.unlink(req.file.path);
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'File too large. Maximum size is 5MB.' 
+            });
+        }
+
+        const checkResult = await db.query('select', 'executive_members', { 
+            where: { id: req.params.id },
+            select: 'id, profile_image'
+        });
+        
+        if (checkResult.data.length === 0) {
+            await fs.unlink(req.file.path);
+            return res.status(404).json({ 
+                status: 'error', 
+                message: 'Member not found' 
+            });
+        }
+
+        const oldProfileImage = checkResult.data[0].profile_image;
+        if (oldProfileImage) {
+            const oldFilename = oldProfileImage.split('/').pop();
+            const oldFilePath = path.join(__dirname, 'uploads', oldFilename);
+            try {
+                await fs.unlink(oldFilePath);
+                logger.info('Old profile image deleted', { 
+                    requestId: req.id, 
+                    filename: oldFilename 
+                });
+            } catch (fileError) {
+                logger.warn('Could not delete old profile image', { 
+                    requestId: req.id, 
+                    error: fileError.message 
+                });
+            }
+        }
+
+        const photoUrl = `/uploads/${req.file.filename}`;
+
+        const result = await db.query('update', 'executive_members', {
+            data: { 
+                profile_image: photoUrl,
+                updated_at: new Date().toISOString()
+            },
+            where: { id: req.params.id }
+        });
+
+        await cacheManager.invalidateByTags(['members']);
+
+        logger.info('Member photo uploaded', { 
+            requestId: req.id, 
+            memberId: req.params.id, 
+            filename: req.file.filename,
+            uploadedBy: req.user.id 
+        });
+
+        res.json({ 
+            status: 'success', 
+            data: { 
+                photo_url: photoUrl,
+                member: result.data[0]
+            }, 
+            message: 'Photo uploaded successfully' 
+        });
+
+    } catch (error) {
+        if (req.file && req.file.path) {
+            try {
+                await fs.unlink(req.file.path);
+            } catch (unlinkError) {
+                logger.error('Failed to clean up file after error', { 
+                    requestId: req.id, 
+                    error: unlinkError.message 
+                });
+            }
+        }
+
+        logger.error('Member photo upload error:', { 
+            requestId: req.id, 
+            error: error.message,
+            memberId: req.params.id 
+        });
+        
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to upload photo' 
+        });
+    }
+});
+
+adminRouter.patch('/members/:id/session', async (req, res) => {
+    try {
+        const { session } = req.body;
+        
+        if (!session) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'Session is required' 
+            });
+        }
+
+        const result = await db.query('update', 'executive_members', {
+            data: { 
+                session,
+                updated_at: new Date().toISOString()
+            },
+            where: { id: req.params.id }
+        });
+
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Member not found' });
+        }
+
+        await cacheManager.invalidateByTags(['members']);
+
+        logger.info('Member session updated', { 
+            requestId: req.id, 
+            memberId: req.params.id,
+            session,
+            updatedBy: req.user.id 
+        });
+
+        res.json({ 
+            status: 'success', 
+            data: result.data[0], 
+            message: 'Member session updated successfully' 
+        });
+    } catch (error) {
+        logger.error('Error updating member session:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to update session' });
+    }
+});
+
+adminRouter.patch('/members/bulk/status', async (req, res) => {
+    try {
+        const { memberIds, status } = req.body;
+
+        if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'Member IDs array is required' 
+            });
+        }
+
+        if (!status || !['active', 'inactive', 'alumni'].includes(status)) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'Valid status is required (active, inactive, or alumni)' 
+            });
+        }
+
+        const result = await db.query('update', 'executive_members', {
+            data: { 
+                status,
+                updated_at: new Date().toISOString()
+            },
+            where: { 
+                id: { operator: 'in', value: memberIds }
+            }
+        });
+
+        await cacheManager.invalidateByTags(['members']);
+
+        logger.info('Bulk status update', { 
+            requestId: req.id, 
+            memberCount: memberIds.length,
+            status,
+            updatedBy: req.user.id 
+        });
+
+        res.json({ 
+            status: 'success', 
+            message: `Updated ${result.data.length} members successfully`,
+            data: result.data
+        });
+    } catch (error) {
+        logger.error('Bulk status update error:', error);
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to update members' 
+        });
+    }
+});
+
+adminRouter.delete('/members/bulk/delete', async (req, res) => {
+    try {
+        const { memberIds } = req.body;
+
+        if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'Member IDs array is required' 
+            });
+        }
+
+        const imagesResult = await db.query('select', 'executive_members', {
+            where: { 
+                id: { operator: 'in', value: memberIds }
+            },
+            select: 'profile_image'
+        });
+
+        const result = await db.query('delete', 'executive_members', {
+            where: { 
+                id: { operator: 'in', value: memberIds }
+            }
+        });
+
+        for (const member of imagesResult.data) {
+            if (member.profile_image) {
+                const filename = member.profile_image.split('/').pop();
+                const filePath = path.join(__dirname, 'uploads', filename);
+                try {
+                    await fs.unlink(filePath);
+                } catch (fileError) {
+                    logger.warn('Could not delete profile image file', { 
+                        requestId: req.id, 
+                        filename,
+                        error: fileError.message 
+                    });
+                }
+            }
+        }
+
+        await cacheManager.invalidateByTags(['members']);
+
+        logger.info('Bulk delete', { 
+            requestId: req.id, 
+            memberCount: memberIds.length,
+            deletedBy: req.user.id 
+        });
+
+        res.json({ 
+            status: 'success', 
+            message: `Deleted ${result.data.length} members successfully` 
+        });
+    } catch (error) {
+        logger.error('Bulk delete error:', error);
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to delete members' 
+        });
+    }
+});
+
+// ==================== EVENTS MANAGEMENT ====================
+adminRouter.get('/events', async (req, res) => {
+    try {
+        const { status, category } = req.query;
+        let where = {};
+
+        if (status && status !== 'all') where.status = status;
+        if (category && category !== 'all') where.category = category;
+
+        const result = await db.query('select', 'biu_events', {
+            where,
+            order: { column: 'date', ascending: true }
+        });
+
+        res.json({ status: 'success', data: result.data });
+    } catch (error) {
+        logger.error('Admin events error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to fetch events' });
+    }
+});
+
+adminRouter.get('/events/:id', async (req, res) => {
+    try {
+        const result = await db.query('select', 'biu_events', { 
+            where: { id: req.params.id } 
+        });
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Event not found' });
+        }
+        res.json({ status: 'success', data: result.data[0] });
+    } catch (error) {
+        logger.error('Admin event fetch error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to fetch event' });
+    }
+});
+
+adminRouter.post('/events', async (req, res) => {
+    try {
+        const { title, description, date, start_time, end_time, location, category, organizer, max_participants, status } = req.body;
+
+        const eventData = {
+            title: title?.trim(),
+            description: description?.trim(),
+            date,
+            start_time,
+            end_time,
+            location: location?.trim(),
+            category: category?.trim(),
+            organizer: organizer?.trim(),
+            max_participants: max_participants ? parseInt(max_participants) : null,
+            status: status || 'upcoming',
+            created_at: new Date(),
+            updated_at: new Date()
+        };
+
+        const result = await db.query('insert', 'biu_events', { data: eventData });
+        await cacheManager.invalidateByTags(['biu_events']);
+
+        res.status(201).json({ status: 'success', data: result.data[0], message: 'Event created successfully' });
+    } catch (error) {
+        logger.error('Admin create event error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to create event' });
+    }
+});
+
+adminRouter.put('/events/:id', async (req, res) => {
+    try {
+        const { title, description, date, start_time, end_time, location, category, organizer, max_participants, status } = req.body;
+
+        const updateData = {
+            title: title?.trim(),
+            description: description?.trim(),
+            date,
+            start_time,
+            end_time,
+            location: location?.trim(),
+            category: category?.trim(),
+            organizer: organizer?.trim(),
+            max_participants: max_participants ? parseInt(max_participants) : null,
+            status,
+            updated_at: new Date()
+        };
+
+        Object.keys(updateData).forEach(key => 
+            updateData[key] === undefined && delete updateData[key]
+        );
+
+        const result = await db.query('update', 'biu_events', {
+            data: updateData,
+            where: { id: req.params.id }
+        });
+
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Event not found' });
+        }
+
+        await cacheManager.invalidateByTags(['biu_events']);
+        res.json({ status: 'success', data: result.data[0], message: 'Event updated successfully' });
+    } catch (error) {
+        logger.error('Admin update event error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to update event' });
+    }
+});
+
+adminRouter.delete('/events/:id', async (req, res) => {
+    try {
+        const result = await db.query('delete', 'biu_events', { where: { id: req.params.id } });
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Event not found' });
+        }
+        await cacheManager.invalidateByTags(['biu_events']);
+        res.json({ status: 'success', message: 'Event deleted successfully' });
+    } catch (error) {
+        logger.error('Admin delete event error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to delete event' });
+    }
+});
+
+// ==================== RESOURCES MANAGEMENT ====================
+adminRouter.get('/resources', async (req, res) => {
+    try {
+        const { category, department } = req.query;
+        let where = {};
+
+        if (category && category !== 'all') where.category = category;
+        if (department && department !== 'all') where.department = department;
+
+        const result = await db.query('select', 'resources', {
+            where,
+            order: { column: 'created_at', ascending: false }
+        });
+
+        res.json({ status: 'success', data: result.data });
+    } catch (error) {
+        logger.error('Admin resources error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to fetch resources' });
+    }
+});
+
+adminRouter.get('/resources/:id', async (req, res) => {
+    try {
+        const result = await db.query('select', 'resources', { 
+            where: { id: req.params.id } 
+        });
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Resource not found' });
+        }
+        res.json({ status: 'success', data: result.data[0] });
+    } catch (error) {
+        logger.error('Admin resource fetch error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to fetch resource' });
+    }
+});
+
+adminRouter.post('/resources', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
+    try {
+        let resourceData;
+        let file = null;
+        
+        if (req.is('multipart/form-data')) {
+            const dataStr = req.body.data;
+            resourceData = JSON.parse(dataStr);
+            file = req.file;
+        } else {
+            resourceData = req.body;
+        }
+
+        console.log('=== RESOURCE UPLOAD DEBUG ===');
+        console.log('Title:', resourceData.title, 'Length:', resourceData.title?.length);
+        console.log('Category:', resourceData.category, 'Length:', resourceData.category?.length);
+        console.log('Description:', resourceData.description, 'Length:', resourceData.description?.length);
+        console.log('Course Code:', resourceData.course_code, 'Length:', resourceData.course_code?.length);
+        console.log('Department:', resourceData.department, 'Length:', resourceData.department?.length);
+        
+        const longFields = [];
+        if (resourceData.title && resourceData.title.length > 1000) longFields.push('title');
+        if (resourceData.category && resourceData.category.length > 200) longFields.push('category');
+        if (resourceData.description && resourceData.description.length > 5000) longFields.push('description');
+        
+        if (longFields.length > 0) {
+            console.warn('Warning: Very long fields detected:', longFields);
+        }
+
+        const resourceRecord = {
+            uuid: uuid.v4(),
+            title: resourceData.title,
+            category: resourceData.category,
+            description: resourceData.description || null,
+            department: resourceData.department || null,
+            level: resourceData.level ? parseInt(resourceData.level) : null,
+            course_code: resourceData.course_code || null,
+            course_title: resourceData.course_title || null,
+            year: resourceData.year || null,
+            semester: resourceData.semester || null,
+            file_type: file ? file.mimetype : (resourceData.file_type || null),
+            file_size: file ? file.size : (resourceData.file_size || null),
+            download_count: 0,
+            uploaded_by: req.user.id,
+            created_at: new Date().toISOString()
+        };
+
+        if (file) {
+            resourceRecord.file_url = `/uploads/${file.filename}`;
+        } else if (resourceData.file_url) {
+            resourceRecord.file_url = resourceData.file_url;
+        }
+
+        console.log('Attempting to insert with data keys:', Object.keys(resourceRecord));
+        
+        try {
+            const result = await db.query('insert', 'resources', { 
+                data: resourceRecord 
+            });
+            
+            console.log('Insert successful!');
+            res.status(201).json({ 
+                status: 'success', 
+                data: result.data[0],
+                message: 'Resource uploaded successfully' 
+            });
+            
+        } catch (dbError) {
+            console.error('Database insert error:', dbError);
+            
+            if (dbError.code === '22001') {
+                console.error('Value too long error. Full record:', JSON.stringify(resourceRecord));
+                
+                const fieldLengths = {};
+                for (const [key, value] of Object.entries(resourceRecord)) {
+                    if (typeof value === 'string') {
+                        fieldLengths[key] = value.length;
+                    }
+                }
+                console.error('Field lengths:', fieldLengths);
+                
+                return res.status(400).json({
+                    status: 'error',
+                    message: 'One or more fields exceed the maximum allowed length. Please check your input.',
+                    debug: {
+                        error: dbError.message,
+                        fieldLengths: fieldLengths
+                    }
+                });
+            }
+            
+            throw dbError;
+        }
+        
+    } catch (error) {
+        console.error('Error in resource upload:', error);
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to upload resource',
+            debug: error.message
+        });
+    }
+});
+
+adminRouter.post('/resources', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ status: 'error', message: 'No file uploaded' });
+        }
+
+        const resourceData = JSON.parse(req.body.data || '{}');
+
+        const newResource = {
+            title: resourceData.title?.trim(),
+            category: resourceData.category?.trim(),
+            description: resourceData.description?.trim(),
+            department: resourceData.department?.trim(),
+            course_code: resourceData.course_code?.trim(),
+            year: resourceData.year,
+            level: resourceData.level ? parseInt(resourceData.level) : null,
+            file_url: `/uploads/${req.file.filename}`,
+            file_size: req.file.size,
+            file_type: req.file.mimetype,
+            download_count: 0,
+            uploaded_by: req.user.id,
+            created_at: new Date()
+        };
+
+        const result = await db.query('insert', 'resources', { data: newResource });
+        await cacheManager.invalidateByTags(['resources']);
+
+        res.status(201).json({ status: 'success', data: result.data[0], message: 'Resource uploaded successfully' });
+    } catch (error) {
+        logger.error('Admin upload resource error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to upload resource' });
+    }
+});
+
+adminRouter.delete('/resources/:id', async (req, res) => {
+    try {
+        const result = await db.query('delete', 'resources', { where: { id: req.params.id } });
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Resource not found' });
+        }
+        await cacheManager.invalidateByTags(['resources']);
+        res.json({ status: 'success', message: 'Resource deleted successfully' });
+    } catch (error) {
+        logger.error('Admin delete resource error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to delete resource' });
+    }
+});
+
+// ==================== MESSAGES MANAGEMENT ====================
+adminRouter.get('/messages', async (req, res) => {
+    try {
+        const result = await db.query('select', 'contact_messages', {
+            order: { column: 'created_at', ascending: false }
+        });
+        res.json({ status: 'success', data: result.data });
+    } catch (error) {
+        logger.error('Admin messages error:', error);
+        if (error.message && error.message.includes('relation') && error.message.includes('does not exist')) {
+            return res.json({ status: 'success', data: [] });
+        }
+        res.status(500).json({ status: 'error', message: 'Failed to fetch messages' });
+    }
+});
+
+adminRouter.get('/messages/:id', async (req, res) => {
+    try {
+        const result = await db.query('select', 'contact_messages', { 
+            where: { id: req.params.id } 
+        });
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Message not found' });
+        }
+        res.json({ status: 'success', data: result.data[0] });
+    } catch (error) {
+        logger.error('Admin message fetch error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to fetch message' });
+    }
+});
+
+adminRouter.put('/messages/:id/read', async (req, res) => {
+    try {
+        await db.query('update', 'contact_messages', {
+            data: { is_read: true, read_at: new Date() },
+            where: { id: req.params.id }
+        });
+        res.json({ status: 'success', message: 'Message marked as read' });
+    } catch (error) {
+        logger.error('Admin mark message read error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to update message' });
+    }
+});
+
+adminRouter.delete('/messages/:id', async (req, res) => {
+    try {
+        await db.query('delete', 'contact_messages', { where: { id: req.params.id } });
+        res.json({ status: 'success', message: 'Message deleted successfully' });
+    } catch (error) {
+        logger.error('Admin delete message error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to delete message' });
+    }
+});
+
+adminRouter.post('/messages/mark-all-read', async (req, res) => {
+    try {
+        await db.query('update', 'contact_messages', {
+            data: { is_read: true, read_at: new Date() },
+            where: { is_read: false }
+        });
+        res.json({ status: 'success', message: 'All messages marked as read' });
+    } catch (error) {
+        logger.error('Admin mark all read error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to mark messages as read' });
+    }
+});
+
+// ==================== ARTICLES MANAGEMENT ====================
+adminRouter.post('/articles', verifyToken, requireRole('admin', 'editor'), upload.single('featured_image'), async (req, res) => {
+    try {
+        const articleData = JSON.parse(req.body.data);
+        
+        const { 
+            title, 
+            content, 
+            excerpt, 
+            author, 
+            category, 
+            tags, 
+            status, 
+            is_published, 
+            published_at,
+            meta_title,
+            meta_description,
+            meta_keywords
+        } = articleData;
+
+        let articleSlug = title.toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/--+/g, '-')
+            .trim();
+
+        const existing = await db.query('select', 'articles', { 
+            where: { slug: articleSlug } 
+        });
+        
+        if (existing.data.length > 0) {
+            articleSlug = `${articleSlug}-${Date.now()}`;
+        }
+
+        let featuredImage = null;
+        if (req.file) {
+            featuredImage = `/uploads/${req.file.filename}`;
+        } else if (articleData.featured_image) {
+            featuredImage = articleData.featured_image;
+        }
+
+        const newArticle = {
+            uuid: uuid.v4(),
+            title: title.trim(),
+            slug: articleSlug,
+            content,
+            excerpt: excerpt || null,
+            author: author || req.user.fullName || 'NUESA BIU',
+            category: category || null,
+            tags: tags || [],
+            status: status || 'draft',
+            is_published: is_published || false,
+            published_at: published_at || (is_published ? new Date().toISOString() : null),
+            featured_image: featuredImage,
+            meta_title: meta_title || null,
+            meta_description: meta_description || null,
+            meta_keywords: meta_keywords || null,
+            view_count: 0,
+            created_by: req.user.id,
+            updated_by: req.user.id,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        const result = await db.query('insert', 'articles', { data: newArticle });
+        
+        if (cacheManager) {
+            await cacheManager.invalidateByTags(['articles']);
+        }
+
+        logger.info('Admin created article', { 
+            requestId: req.id, 
+            articleId: result.data[0].uuid,
+            createdBy: req.user.id 
+        });
+
+        res.status(201).json({ 
+            status: 'success', 
+            data: result.data[0], 
+            message: 'Article created successfully' 
+        });
+    } catch (error) {
+        logger.error('Admin create article error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to create article',
+            debug: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+adminRouter.put('/articles/:uuid', verifyToken, requireRole('admin', 'editor'), upload.single('featured_image'), async (req, res) => {
+    try {
+        const articleData = JSON.parse(req.body.data);
+        
+        const allowedFields = [
+            'title', 'content', 'excerpt', 'author', 
+            'category', 'tags', 'status', 'is_published', 
+            'published_at', 'meta_title',
+            'meta_description', 'meta_keywords'
+        ];
+
+        const updateData = {};
+
+        allowedFields.forEach(field => {
+            if (articleData[field] !== undefined && articleData[field] !== null) {
+                if (field === 'tags') {
+                    updateData[field] = Array.isArray(articleData[field]) 
+                        ? articleData[field] 
+                        : typeof articleData[field] === 'string'
+                            ? articleData[field].split(',').map(t => t.trim())
+                            : [];
+                } else if (field === 'is_published') {
+                    updateData[field] = Boolean(articleData[field]);
+                    if (updateData[field] && !articleData.published_at) {
+                        updateData.published_at = new Date().toISOString();
+                    }
+                } else if (typeof articleData[field] === 'string') {
+                    updateData[field] = articleData[field].trim();
+                } else {
+                    updateData[field] = articleData[field];
+                }
+            }
+        });
+
+        if (articleData.title) {
+            let newSlug = articleData.title.toLowerCase()
+                .replace(/[^\w\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/--+/g, '-')
+                .trim();
+            
+            const existing = await db.query('select', 'articles', {
+                where: { 
+                    slug: newSlug,
+                    uuid: { operator: 'neq', value: req.params.uuid }
+                }
+            });
+            
+            if (existing.data.length > 0) {
+                newSlug = `${newSlug}-${Date.now()}`;
+            }
+            
+            updateData.slug = newSlug;
+        }
+
+        if (req.file) {
+            updateData.featured_image = `/uploads/${req.file.filename}`;
+        }
+
+        updateData.updated_at = new Date().toISOString();
+        updateData.updated_by = req.user.id;
+
+        if (Object.keys(updateData).length === 2) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'No fields to update' 
+            });
+        }
+
+        const result = await db.query('update', 'articles', {
+            data: updateData,
+            where: { uuid: req.params.uuid }
+        });
+
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Article not found' });
+        }
+
+        if (cacheManager) {
+            await cacheManager.invalidateByTags(['articles']);
+        }
+
+        logger.info('Article updated', { 
+            requestId: req.id, 
+            articleId: req.params.uuid,
+            updatedBy: req.user.id,
+            updatedFields: Object.keys(updateData)
+        });
+
+        res.json({ 
+            status: 'success', 
+            data: result.data[0], 
+            message: 'Article updated successfully' 
+        });
+    } catch (error) {
+        logger.error('Admin update article error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to update article',
+            debug: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+adminRouter.post('/articles', verifyToken, requireRole('admin', 'editor'), validate(schemas.article), async (req, res) => {
+    try {
+        const { 
+            title, 
+            slug, 
+            content, 
+            excerpt, 
+            author, 
+            category, 
+            tags, 
+            status, 
+            is_published, 
+            published_at,
+            featured_image,
+            meta_title,
+            meta_description,
+            meta_keywords
+        } = req.body;
+
+        let articleSlug = slug;
+        if (!articleSlug) {
+            articleSlug = title.toLowerCase()
+                .replace(/[^\w\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/--+/g, '-')
+                .trim();
+        }
+
+        const existing = await db.query('select', 'articles', { 
+            where: { slug: articleSlug } 
+        });
+        
+        if (existing.data.length > 0) {
+            articleSlug = `${articleSlug}-${Date.now()}`;
+        }
+
+        const articleData = {
+            uuid: uuid.v4(),
+            title: title.trim(),
+            slug: articleSlug,
+            content,
+            excerpt: excerpt || null,
+            author: author || req.user.fullName || 'NUESA BIU',
+            category: category || null,
+            tags: tags || [],
+            status: status || 'draft',
+            is_published: is_published || false,
+            published_at: published_at || (is_published ? new Date().toISOString() : null),
+            featured_image: featured_image || null,
+            meta_title: meta_title || null,
+            meta_description: meta_description || null,
+            meta_keywords: meta_keywords || null,
+            view_count: 0,
+            created_by: req.user.id,
+            updated_by: req.user.id,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        const result = await db.query('insert', 'articles', { data: articleData });
+        await cacheManager.invalidateByTags(['articles']);
+
+        logger.info('Admin created article', { 
+            requestId: req.id, 
+            articleId: result.data[0].uuid,
+            createdBy: req.user.id 
+        });
+
+        res.status(201).json({ 
+            status: 'success', 
+            data: result.data[0], 
+            message: 'Article created successfully' 
+        });
+    } catch (error) {
+        logger.error('Admin create article error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to create article',
+            debug: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+adminRouter.put('/articles/:uuid', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
+    try {
+        const allowedFields = [
+            'title', 'slug', 'content', 'excerpt', 'author', 
+            'category', 'tags', 'status', 'is_published', 
+            'published_at', 'featured_image', 'meta_title',
+            'meta_description', 'meta_keywords'
+        ];
+
+        const updateData = {};
+
+        allowedFields.forEach(field => {
+            if (req.body[field] !== undefined && req.body[field] !== null) {
+                if (field === 'slug') {
+                    updateData[field] = req.body[field]
+                        .toLowerCase()
+                        .replace(/[^\w\s-]/g, '')
+                        .replace(/\s+/g, '-')
+                        .replace(/--+/g, '-')
+                        .trim();
+                } else if (field === 'tags') {
+                    updateData[field] = Array.isArray(req.body[field]) 
+                        ? req.body[field] 
+                        : typeof req.body[field] === 'string'
+                            ? req.body[field].split(',').map(t => t.trim())
+                            : [];
+                } else if (field === 'is_published') {
+                    updateData[field] = Boolean(req.body[field]);
+                    if (updateData[field] && !req.body.published_at) {
+                        updateData.published_at = new Date().toISOString();
+                    }
+                } else if (typeof req.body[field] === 'string') {
+                    updateData[field] = req.body[field].trim();
+                } else {
+                    updateData[field] = req.body[field];
+                }
+            }
+        });
+
+        updateData.updated_at = new Date().toISOString();
+        updateData.updated_by = req.user.id;
+
+        if (Object.keys(updateData).length === 2) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'No fields to update' 
+            });
+        }
+
+        if (updateData.slug) {
+            const existing = await db.query('select', 'articles', {
+                where: { 
+                    slug: updateData.slug,
+                    uuid: { operator: 'neq', value: req.params.uuid }
+                }
+            });
+            
+            if (existing.data.length > 0) {
+                updateData.slug = `${updateData.slug}-${Date.now()}`;
+            }
+        }
+
+        const result = await db.query('update', 'articles', {
+            data: updateData,
+            where: { uuid: req.params.uuid }
+        });
+
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Article not found' });
+        }
+
+        await cacheManager.invalidateByTags(['articles']);
+
+        logger.info('Article updated', { 
+            requestId: req.id, 
+            articleId: req.params.uuid,
+            updatedBy: req.user.id,
+            updatedFields: Object.keys(updateData)
+        });
+
+        res.json({ 
+            status: 'success', 
+            data: result.data[0], 
+            message: 'Article updated successfully' 
+        });
+    } catch (error) {
+        logger.error('Admin update article error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to update article',
+            debug: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+adminRouter.delete('/articles/:uuid', verifyToken, requireRole('admin'), async (req, res) => {
+    try {
+        const checkResult = await db.query('select', 'articles', { 
+            where: { uuid: req.params.uuid },
+            select: 'uuid, title, featured_image'
+        });
+        
+        if (checkResult.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Article not found' });
+        }
+
+        const result = await db.query('delete', 'articles', { 
+            where: { uuid: req.params.uuid } 
+        });
+
+        const featuredImage = checkResult.data[0].featured_image;
+        if (featuredImage && featuredImage.startsWith('/uploads/')) {
+            const filename = featuredImage.split('/').pop();
+            const filePath = path.join(__dirname, 'uploads', filename);
+            try {
+                await fs.unlink(filePath);
+                logger.info('Featured image deleted', { 
+                    requestId: req.id, 
+                    filename,
+                    articleId: req.params.uuid 
+                });
+            } catch (fileError) {
+                logger.warn('Could not delete featured image file', { 
+                    requestId: req.id, 
+                    error: fileError.message 
+                });
+            }
+        }
+
+        await cacheManager.invalidateByTags(['articles']);
+
+        logger.info('Article deleted', { 
+            requestId: req.id, 
+            articleId: req.params.uuid,
+            title: checkResult.data[0].title,
+            deletedBy: req.user.id 
+        });
+
+        res.json({ 
+            status: 'success', 
+            message: 'Article deleted successfully',
+            data: { uuid: req.params.uuid }
+        });
+    } catch (error) {
+        logger.error('Admin delete article error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to delete article' });
+    }
+});
+
+adminRouter.patch('/articles/:uuid/publish', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
+    try {
+        const { publish } = req.body;
+        
+        if (publish === undefined) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'publish field is required (true/false)' 
+            });
+        }
+
+        const updateData = {
+            is_published: Boolean(publish),
+            status: Boolean(publish) ? 'published' : 'draft',
+            updated_at: new Date().toISOString(),
+            updated_by: req.user.id
+        };
+
+        if (publish) {
+            const article = await db.query('select', 'articles', {
+                where: { uuid: req.params.uuid },
+                select: 'published_at'
+            });
+            
+            if (article.data.length > 0 && !article.data[0].published_at) {
+                updateData.published_at = new Date().toISOString();
+            }
+        }
+
+        const result = await db.query('update', 'articles', {
+            data: updateData,
+            where: { uuid: req.params.uuid }
+        });
+
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Article not found' });
+        }
+
+        await cacheManager.invalidateByTags(['articles']);
+
+        logger.info('Article publish status changed', { 
+            requestId: req.id, 
+            articleId: req.params.uuid,
+            is_published: Boolean(publish),
+            updatedBy: req.user.id 
+        });
+
+        res.json({ 
+            status: 'success', 
+            data: result.data[0],
+            message: `Article ${publish ? 'published' : 'unpublished'} successfully` 
+        });
+    } catch (error) {
+        logger.error('Admin article publish error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to update article status' });
+    }
+});
+
+adminRouter.post('/articles/:uuid/photo', upload.single('photo'), async (req, res) => {
+    try {
+        if (!req.file) throw new Error('No file uploaded');
+        
+        const result = await db.query('update', 'articles', {
+            data: { 
+                featured_image: `/uploads/${req.file.filename}`,
+                updated_at: new Date()
+            },
+            where: { uuid: req.params.uuid }
+        });
+        
+        res.json({ status: 'success', data: result.data[0] });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+adminRouter.delete('/articles/bulk/delete', verifyToken, requireRole('admin'), async (req, res) => {
+    try {
+        const { articleUuids } = req.body;
+
+        if (!articleUuids || !Array.isArray(articleUuids) || articleUuids.length === 0) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'Article UUIDs array is required' 
+            });
+        }
+
+        const imagesResult = await db.query('select', 'articles', {
+            where: { 
+                uuid: { operator: 'in', value: articleUuids }
+            },
+            select: 'featured_image'
+        });
+
+        const result = await db.query('delete', 'articles', {
+            where: { 
+                uuid: { operator: 'in', value: articleUuids }
+            }
+        });
+
+        for (const article of imagesResult.data) {
+            if (article.featured_image && article.featured_image.startsWith('/uploads/')) {
+                const filename = article.featured_image.split('/').pop();
+                const filePath = path.join(__dirname, 'uploads', filename);
+                try {
+                    await fs.unlink(filePath);
+                } catch (fileError) {
+                    logger.warn('Could not delete featured image file', { 
+                        requestId: req.id, 
+                        filename,
+                        error: fileError.message 
+                    });
+                }
+            }
+        }
+
+        await cacheManager.invalidateByTags(['articles']);
+
+        logger.info('Bulk delete articles', { 
+            requestId: req.id, 
+            articleCount: articleUuids.length,
+            deletedBy: req.user.id 
+        });
+
+        res.json({ 
+            status: 'success', 
+            message: `Deleted ${result.data.length} articles successfully`,
+            data: { deleted: result.data.length }
+        });
+    } catch (error) {
+        logger.error('Bulk delete articles error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to delete articles' 
+        });
+    }
+});
+
+adminRouter.patch('/articles/bulk/status', verifyToken, requireRole('admin', 'editor'), async (req, res) => {
+    try {
+        const { articleUuids, status } = req.body;
+
+        if (!articleUuids || !Array.isArray(articleUuids) || articleUuids.length === 0) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'Article UUIDs array is required' 
+            });
+        }
+
+        if (!status || !['draft', 'published', 'archived'].includes(status)) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'Valid status is required (draft, published, or archived)' 
+            });
+        }
+
+        const updateData = {
+            status,
+            is_published: status === 'published',
+            updated_at: new Date().toISOString(),
+            updated_by: req.user.id
+        };
+
+        if (status === 'published') {
+            updateData.published_at = new Date().toISOString();
+        }
+
+        const result = await db.query('update', 'articles', {
+            data: updateData,
+            where: { 
+                uuid: { operator: 'in', value: articleUuids }
+            }
+        });
+
+        await cacheManager.invalidateByTags(['articles']);
+
+        logger.info('Bulk status update articles', { 
+            requestId: req.id, 
+            articleCount: articleUuids.length,
+            status,
+            updatedBy: req.user.id 
+        });
+
+        res.json({ 
+            status: 'success', 
+            message: `Updated ${result.data.length} articles successfully`,
+            data: result.data
+        });
+    } catch (error) {
+        logger.error('Bulk status update articles error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to update articles' 
+        });
+    }
+});
+
+adminRouter.get('/articles/stats', async (req, res) => {
+    try {
+        const [total, published, drafts, archived, categories, authors] = await Promise.all([
+            db.query('select', 'articles', { count: true }),
+            db.query('select', 'articles', { where: { status: 'published' }, count: true }),
+            db.query('select', 'articles', { where: { status: 'draft' }, count: true }),
+            db.query('select', 'articles', { where: { status: 'archived' }, count: true }),
+            db.query('select', 'articles', {
+                select: 'category, COUNT(*) as count',
+                where: { category: { operator: 'isNull', value: false } },
+                groupBy: 'category'
+            }),
+            db.query('select', 'articles', {
+                select: 'author, COUNT(*) as count',
+                groupBy: 'author'
+            })
+        ]);
+
+        const recentActivity = await db.query('select', 'articles', {
+            select: 'uuid, title, status, updated_at, updated_by',
+            order: { column: 'updated_at', ascending: false },
+            limit: 10
+        });
+
+        res.json({
+            status: 'success',
+            data: {
+                counts: {
+                    total: total.count || 0,
+                    published: published.count || 0,
+                    drafts: drafts.count || 0,
+                    archived: archived.count || 0
+                },
+                byCategory: categories.data || [],
+                byAuthor: authors.data || [],
+                recentActivity: recentActivity.data || []
+            }
+        });
+    } catch (error) {
+        logger.error('Admin articles stats error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch article statistics' });
+    }
+});
+
+// ==================== USER MANAGEMENT ====================
+const userRouter = express.Router();
+userRouter.use(verifyToken);
+userRouter.use(requireRole('admin'));
+
+userRouter.get('/', async (req, res) => {
+    try {
+        const { page = 1, limit = 20, role, department, search, sort = 'created_at', order = 'desc' } = req.query;
+        const offset = (page - 1) * limit;
+        let where = {};
+
+        if (role && role !== 'all') where.role = role;
+        if (department && department !== 'all') where.department = department;
+        if (search) where.full_name = { operator: 'ilike', value: `%${search}%` };
+
+        const [usersResult, totalResult] = await Promise.all([
+            db.query('select', 'users', {
+                where,
+                select: 'id, email, full_name, role, department, is_active, created_at, updated_at, last_login',
+                order: { column: sort, ascending: order === 'asc' },
+                limit: parseInt(limit),
+                offset: parseInt(offset)
+            }),
+            db.query('select', 'users', { where, count: true })
+        ]);
+
+        res.setHeader('X-Total-Count', totalResult.count || 0);
+        res.setHeader('X-Page-Count', Math.ceil((totalResult.count || 0) / limit));
+
+        res.json({
+            status: 'success',
+            data: usersResult.data,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total: totalResult.count || 0,
+                pages: Math.ceil((totalResult.count || 0) / limit),
+                hasMore: (parseInt(page) * parseInt(limit)) < (totalResult.count || 0)
+            }
+        });
+    } catch (error) {
+        logger.error('Error fetching users:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch users' });
+    }
+});
+
+userRouter.post('/', validate(schemas.createUser), async (req, res) => {
+    try {
+        const { email, password, full_name, department, role = 'member', is_active = true } = req.body;
+
+        const existing = await db.query('select', 'users', {
+            where: { email: email.toLowerCase() },
+            select: 'id'
+        });
+
+        if (existing.data.length > 0) throw new ValidationError('User with this email already exists');
+
+        const hashedPassword = await bcrypt.hash(password, 12);
+        const username = email.split('@')[0].toLowerCase();
+
+        const userData = {
+            email: email.toLowerCase(),
+            password_hash: hashedPassword,
+            full_name: full_name.trim(),
+            username,
+            department: department || null,
+            role,
+            is_active,
+            created_at: new Date(),
+            updated_at: new Date()
+        };
+
+        const result = await db.query('insert', 'users', { data: userData });
+        const user = authService.createUserResponse(result.data[0]);
+
+        logger.info('User created', { requestId: req.id, userId: user.id, createdBy: req.user.id });
+
+        res.status(201).json({ status: 'success', data: user, message: 'User created successfully' });
+    } catch (error) {
+        logger.error('Error creating user:', { requestId: req.id, error: error.message });
+        if (error instanceof ValidationError) {
+            return res.status(400).json({ status: 'error', code: 'VALIDATION_ERROR', message: error.message });
+        }
+        res.status(500).json({ status: 'error', message: 'Failed to create user' });
+    }
+});
+
+userRouter.get('/:id', async (req, res) => {
+    try {
+        if (req.user.role !== 'admin' && req.user.id !== req.params.id) {
+            throw new ForbiddenError('Access denied');
+        }
+
+        const result = await db.query('select', 'users', {
+            where: { id: req.params.id },
+            select: 'id, email, full_name, role, department, is_active, created_at, updated_at, last_login, profile_picture'
+        });
+
+        if (result.data.length === 0) throw new NotFoundError('User');
+
+        res.json({ status: 'success', data: authService.createUserResponse(result.data[0]) });
+    } catch (error) {
+        logger.error('Error fetching user:', { requestId: req.id, error: error.message });
+        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
+        if (error instanceof ForbiddenError) return res.status(403).json({ status: 'error', message: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch user' });
+    }
+});
+
+userRouter.put('/:id', validate(schemas.updateUser), async (req, res) => {
+    try {
+        if (req.user.role !== 'admin' && req.user.id !== req.params.id) {
+            throw new ForbiddenError('Access denied');
+        }
+
+        const { full_name, department, role, is_active, password } = req.body;
+        const updateData = { updated_at: new Date() };
+
+        if (full_name) updateData.full_name = full_name.trim();
+        if (department !== undefined) updateData.department = department;
+
+        if (req.user.role === 'admin') {
+            if (role !== undefined) updateData.role = role;
+            if (is_active !== undefined) updateData.is_active = is_active;
+        }
+
+        if (password) updateData.password_hash = await bcrypt.hash(password, 12);
+
+        const cleanUpdateData = Object.fromEntries(
+            Object.entries(updateData).filter(([_, v]) => v !== undefined)
+        );
+
+        const result = await db.query('update', 'users', {
+            data: cleanUpdateData,
+            where: { id: req.params.id }
+        });
+
+        if (result.data.length === 0) throw new NotFoundError('User');
+
+        await cacheManager.delete(`user:${req.params.id}`);
+        await cacheManager.invalidate('data:*');
+
+        if (req.user.id === req.params.id) req.user = authService.createUserResponse(result.data[0]);
+
+        logger.info('User updated', { requestId: req.id, userId: req.params.id, updatedBy: req.user.id });
+
+        res.json({
+            status: 'success',
+            data: authService.createUserResponse(result.data[0]),
+            message: 'User updated successfully'
+        });
+    } catch (error) {
+        logger.error('Error updating user:', { requestId: req.id, error: error.message });
+        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
+        if (error instanceof ForbiddenError) return res.status(403).json({ status: 'error', message: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to update user' });
+    }
+});
+
+userRouter.delete('/:id', async (req, res) => {
+    try {
+        if (req.params.id === req.user.id) throw new ValidationError('Cannot delete your own account');
+
+        const result = await db.query('delete', 'users', { where: { id: req.params.id } });
+        if (result.data.length === 0) throw new NotFoundError('User');
+
+        await cacheManager.delete(`user:${req.params.id}`);
+        await cacheManager.invalidate('data:*');
+
+        logger.info('User deleted', { requestId: req.id, userId: req.params.id, deletedBy: req.user.id });
+
+        res.json({ status: 'success', message: 'User deleted successfully' });
+    } catch (error) {
+        logger.error('Error deleting user:', { requestId: req.id, error: error.message });
+        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
+        if (error instanceof ValidationError) return res.status(400).json({ status: 'error', message: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to delete user' });
+    }
+});
+
+// ==================== COURSE REPS MANAGEMENT ====================
+adminRouter.get('/course-reps', async (req, res) => {
+    try {
+        const { session, level } = req.query;
+        
+        console.log(`📡 [CR] Fetching course reps for session: ${session || 'all'}, level: ${level || 'all'}`);
+        
+        let query = supabase
+            .from('course_representatives')
+            .select('*');
+        
+        if (session) {
+            query = query.eq('session', session);
+        }
+        
+        if (level && level !== 'all') {
+            query = query.eq('level', level);
+        }
+        
+        const { data, error } = await query.order('level');
+        
+        if (error) {
+            console.error('Supabase error:', error);
+            throw error;
+        }
+        
+        const enrichedData = await Promise.all(data.map(async (rep) => {
+            const { data: deptReps, error: deptError } = await supabase
+                .from('department_reps')
+                .select('*')
+                .eq('course_rep_id', rep.id)
+                .eq('session', rep.session);
+            
+            if (deptError) {
+                console.error('Error fetching department reps:', deptError);
+                return { ...rep, departments: [] };
+            }
+            
+            const departments = deptReps.map(dept => ({
+                name: dept.department_name,
+                rep: dept.representative_name || 'Pending'
+            }));
+            
+            return { ...rep, departments };
+        }));
+        
+        console.log(`✅ Found ${enrichedData.length} course reps`);
+        
+        res.json({ 
+            status: 'success', 
+            data: enrichedData,
+            pagination: {
+                total: enrichedData.length,
+                filtered: enrichedData.length
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching course reps:', error);
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to fetch course representatives',
+            error: error.message
+        });
+    }
+});
+
+adminRouter.get('/course-reps/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        console.log(`📡 [CR] Fetching course rep with id: ${id}`);
+        
+        const { data: courseRep, error } = await supabase
+            .from('course_representatives')
+            .select('*')
+            .eq('id', id)
+            .single();
+        
+        if (error) {
+            console.error('Supabase error:', error);
+            throw error;
+        }
+        
+        if (!courseRep) {
+            return res.status(404).json({ 
+                status: 'error', 
+                message: 'Course representative not found' 
+            });
+        }
+        
+        const { data: deptReps, error: deptError } = await supabase
+            .from('department_reps')
+            .select('*')
+            .eq('course_rep_id', id)
+            .eq('session', courseRep.session);
+        
+        if (deptError) {
+            console.error('Error fetching department reps:', deptError);
+            throw deptError;
+        }
+        
+        const departments = deptReps.map(dept => ({
+            name: dept.department_name,
+            rep: dept.representative_name || 'Pending'
+        }));
+        
+        res.json({ 
+            status: 'success', 
+            data: {
+                ...courseRep,
+                departments
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching course rep:', error);
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to fetch course representative',
+            error: error.message
+        });
+    }
+});
+
+adminRouter.post('/course-reps', async (req, res) => {
+    try {
+        const { session, level, gen_rep, asst_gen_rep, departments } = req.body;
+        
+        console.log('📡 [CR] Creating course reps:', { session, level });
+        
+        if (!session || !level) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'Session and level are required' 
+            });
+        }
+        
+        const { data: existing, error: checkError } = await supabase
+            .from('course_representatives')
+            .select('id')
+            .eq('session', session)
+            .eq('level', level);
+        
+        if (checkError) throw checkError;
+        
+        if (existing && existing.length > 0) {
+            return res.status(409).json({ 
+                status: 'error', 
+                message: 'Course representatives for this session and level already exist' 
+            });
+        }
+        
+        const courseRepData = {
+            session,
+            level,
+            gen_rep: gen_rep || 'Not Assigned',
+            asst_gen_rep: asst_gen_rep || 'Not Assigned',
+            created_by: req.user.id,
+            updated_by: req.user.id,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        
+        const { data: courseRep, error: insertError } = await supabase
+            .from('course_representatives')
+            .insert([courseRepData])
+            .select()
+            .single();
+        
+        if (insertError) {
+            console.error('Insert error:', insertError);
+            throw insertError;
+        }
+        
+        if (departments && departments.length > 0) {
+            const deptRepsData = departments.map(dept => ({
+                course_rep_id: courseRep.id,
+                department_name: dept.name,
+                session: session,
+                level: level,
+                representative_name: dept.rep || 'Pending',
+                status: 'active',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            }));
+            
+            const { error: deptError } = await supabase
+                .from('department_reps')
+                .insert(deptRepsData);
+            
+            if (deptError) {
+                console.error('Department insert error:', deptError);
+                throw deptError;
+            }
+        }
+        
+        const { data: deptReps } = await supabase
+            .from('department_reps')
+            .select('*')
+            .eq('course_rep_id', courseRep.id);
+        
+        const departmentsWithReps = deptReps?.map(dept => ({
+            name: dept.department_name,
+            rep: dept.representative_name
+        })) || [];
+        
+        console.log('✅ Course reps created successfully');
+        
+        res.status(201).json({ 
+            status: 'success', 
+            data: {
+                ...courseRep,
+                departments: departmentsWithReps
+            }, 
+            message: 'Course representatives created successfully' 
+        });
+    } catch (error) {
+        console.error('Error creating course reps:', error);
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to create course representatives',
+            error: error.message
+        });
+    }
+});
+
+adminRouter.put('/course-reps/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { session, level, gen_rep, asst_gen_rep, departments } = req.body;
+        
+        console.log('📡 [CR] Updating course rep with id:', id);
+        
+        const { data: existing, error: checkError } = await supabase
+            .from('course_representatives')
+            .select('id, session, level')
+            .eq('id', id)
+            .single();
+        
+        if (checkError || !existing) {
+            return res.status(404).json({ 
+                status: 'error', 
+                message: 'Course representative not found' 
+            });
+        }
+        
+        const updateData = {};
+        if (session !== undefined) updateData.session = session;
+        if (level !== undefined) updateData.level = level;
+        if (gen_rep !== undefined) updateData.gen_rep = gen_rep;
+        if (asst_gen_rep !== undefined) updateData.asst_gen_rep = asst_gen_rep;
+        
+        updateData.updated_by = req.user.id;
+        updateData.updated_at = new Date().toISOString();
+        
+        if (Object.keys(updateData).length > 0) {
+            const { error: updateError } = await supabase
+                .from('course_representatives')
+                .update(updateData)
+                .eq('id', id);
+            
+            if (updateError) throw updateError;
+        }
+        
+        if (departments !== undefined) {
+            const { error: deleteError } = await supabase
+                .from('department_reps')
+                .delete()
+                .eq('course_rep_id', id);
+            
+            if (deleteError) throw deleteError;
+            
+            if (departments.length > 0) {
+                const deptRepsData = departments.map(dept => ({
+                    course_rep_id: id,
+                    department_name: dept.name,
+                    session: session || existing.session,
+                    level: level || existing.level,
+                    representative_name: dept.rep || 'Pending',
+                    status: 'active',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }));
+                
+                const { error: insertError } = await supabase
+                    .from('department_reps')
+                    .insert(deptRepsData);
+                
+                if (insertError) throw insertError;
+            }
+        }
+        
+        const { data: updatedCourseRep } = await supabase
+            .from('course_representatives')
+            .select('*')
+            .eq('id', id)
+            .single();
+        
+        const { data: updatedDeptReps } = await supabase
+            .from('department_reps')
+            .select('*')
+            .eq('course_rep_id', id);
+        
+        const departmentsWithReps = updatedDeptReps?.map(dept => ({
+            name: dept.department_name,
+            rep: dept.representative_name
+        })) || [];
+        
+        console.log('✅ Course reps updated successfully');
+        
+        res.json({ 
+            status: 'success', 
+            data: {
+                ...updatedCourseRep,
+                departments: departmentsWithReps
+            }, 
+            message: 'Course representatives updated successfully' 
+        });
+    } catch (error) {
+        console.error('Error updating course reps:', error);
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to update course representatives',
+            error: error.message
+        });
+    }
+});
+
+adminRouter.delete('/course-reps/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        console.log('📡 [CR] Deleting course rep with id:', id);
+        
+        const { data: existing, error: checkError } = await supabase
+            .from('course_representatives')
+            .select('id')
+            .eq('id', id)
+            .single();
+        
+        if (checkError || !existing) {
+            return res.status(404).json({ 
+                status: 'error', 
+                message: 'Course representative not found' 
+            });
+        }
+        
+        const { error: deptError } = await supabase
+            .from('department_reps')
+            .delete()
+            .eq('course_rep_id', id);
+        
+        if (deptError) throw deptError;
+        
+        const { error } = await supabase
+            .from('course_representatives')
+            .delete()
+            .eq('id', id);
+        
+        if (error) throw error;
+        
+        console.log('✅ Course reps deleted successfully');
+        
+        res.json({ 
+            status: 'success', 
+            message: 'Course representatives deleted successfully' 
+        });
+    } catch (error) {
+        console.error('Error deleting course reps:', error);
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to delete course representatives',
+            error: error.message
+        });
+    }
+});
+
+adminRouter.get('/course-reps/meta/sessions', async (req, res) => {
+    try {
+        console.log('📡 [CR] Fetching unique sessions');
+        
+        const { data, error } = await supabase
+            .from('course_representatives')
+            .select('session')
+            .order('session', { ascending: false });
+        
+        if (error) throw error;
+        
+        const sessions = [...new Set(data.map(item => item.session))];
+        
+        res.json({ 
+            status: 'success', 
+            data: sessions 
+        });
+    } catch (error) {
+        console.error('Error fetching sessions:', error);
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to fetch sessions' 
+        });
+    }
+});
+
+adminRouter.get('/course-reps/meta/levels', async (req, res) => {
+    try {
+        console.log('📡 [CR] Fetching unique levels');
+        
+        const { data, error } = await supabase
+            .from('course_representatives')
+            .select('level')
+            .order('level');
+        
+        if (error) throw error;
+        
+        const levels = [...new Set(data.map(item => item.level))].sort((a, b) => parseInt(a) - parseInt(b));
+        
+        res.json({ 
+            status: 'success', 
+            data: levels 
+        });
+    } catch (error) {
+        console.error('Error fetching levels:', error);
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to fetch levels' 
+        });
+    }
+});
+
+// ==================== FILE UPLOAD (GENERIC) ====================
+adminRouter.post('/upload', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ status: 'error', message: 'No file uploaded' });
+        }
+
+        const fileInfo = {
+            filename: req.file.filename,
+            originalname: req.file.originalname,
+            mimetype: req.file.mimetype,
+            size: req.file.size,
+            url: `/uploads/${req.file.filename}`,
+            uploaded_at: new Date()
+        };
+
+        res.json({ status: 'success', data: fileInfo, message: 'File uploaded successfully' });
+    } catch (error) {
+        logger.error('Admin upload error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to upload file' });
+    }
+});
+
+// ==================== MOUNT ADMIN ROUTERS ====================
+app.use('/api/admin', adminRouter);
+app.use('/api/users', userRouter);
+
+console.log('✅ Admin routes registered at /api/admin/*');
+console.log('✅ User management routes registered at /api/users/*');
+
+// ============================================================
+// ================== SECTION 5: FILE MANAGEMENT ==============
+// ============================================================
+
 app.post('/api/upload', verifyToken, requireRole('admin', 'editor'), upload.single('file'), async (req, res) => {
     try {
         if (!req.file) throw new ValidationError('No file uploaded');
@@ -5864,13 +4531,6 @@ app.post('/api/upload', verifyToken, requireRole('admin', 'editor'), upload.sing
     }
 });
 
-/**
- * @swagger
- * /api/upload/{filename}:
- *   delete:
- *     summary: Delete a file (admin only)
- *     tags: [Files]
- */
 app.delete('/api/upload/:filename', verifyToken, requireRole('admin'), async (req, res) => {
     try {
         const filePath = path.join(__dirname, 'uploads', req.params.filename);
@@ -5888,57 +4548,9 @@ app.delete('/api/upload/:filename', verifyToken, requireRole('admin'), async (re
 });
 
 // ============================================================
-// UPDATE YOUR CONTACT FORM SUBMISSION TO SAVE TO DATABASE
+// ================== SECTION 6: STATIC FILES =================
 // ============================================================
 
-app.post('/api/contact/submit', createRateLimiter(10), validate(schemas.contactForm), async (req, res) => {
-    try {
-        const { name, email, message, subject } = req.body;
-        
-        // Save to database
-        const contactData = {
-            name: name.trim(),
-            email: email.toLowerCase().trim(),
-            subject: subject || 'No Subject',
-            message: message.trim(),
-            is_read: false,
-            created_at: new Date()
-        };
-        
-        // Try to insert into contact_messages table
-        try {
-            await db.query('insert', 'contact_messages', { data: contactData });
-        } catch (dbError) {
-            // If table doesn't exist, log warning but don't fail
-            if (dbError.message && dbError.message.includes('relation') && dbError.message.includes('does not exist')) {
-                logger.warn('contact_messages table does not exist, skipping database save');
-            } else {
-                throw dbError;
-            }
-        }
-        
-        logger.info('Contact form submitted', { 
-            requestId: req.id, name, email, subject: subject || 'No subject' 
-        });
-        
-        res.json({
-            status: 'success',
-            message: 'Thank you for your message! We will get back to you soon.'
-        });
-    } catch (error) {
-        logger.error('Contact form error:', { requestId: req.id, error: error.message });
-        res.status(500).json({
-            status: 'error', 
-            message: 'Failed to submit form. Please try again later.'
-        });
-    }
-});
-
-// ============================================================
-// SECTION 17: STATIC FILES & PAGES
-// ============================================================
-
-// Serve uploaded files
 app.use('/uploads', compression(), express.static(path.join(__dirname, 'uploads'), {
     maxAge: IS_PRODUCTION ? '30d' : '0',
     setHeaders: (res, filePath) => {
@@ -5958,7 +4570,6 @@ app.use('/uploads', compression(), express.static(path.join(__dirname, 'uploads'
     }
 }));
 
-// Public pages
 const publicDir = path.join(__dirname, 'public');
 const publicExists = fsSync.existsSync(publicDir);
 
@@ -5999,7 +4610,6 @@ if (publicExists) {
     console.log('⚠️ Public folder not found at:', publicDir);
 }
 
-// Admin panel
 const adminDir = path.join(__dirname, 'admin');
 if (fsSync.existsSync(adminDir)) {
     app.use('/admin', express.static(adminDir, {
@@ -6027,36 +4637,7 @@ if (fsSync.existsSync(adminDir)) {
 }
 
 // ============================================================
-// SECTION 18: API DOCUMENTATION
-// ============================================================
-
-const swaggerOptions = {
-    definition: {
-        openapi: '3.0.0',
-        info: {
-            title: 'NUESA BIU API',
-            version: '1.0.0',
-            description: 'API documentation for NUESA BIU application',
-            contact: { name: 'NUESA BIU', email: process.env.ADMIN_EMAIL }
-        },
-        servers: [{
-            url: IS_PRODUCTION ? 'https://nuesa-biu-pjp0.onrender.com' : `http://localhost:${PORT}`,
-            description: IS_PRODUCTION ? 'Production server' : 'Development server'
-        }],
-        components: {
-            securitySchemes: {
-                bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }
-            }
-        }
-    },
-    apis: ['./server.js'],
-};
-
-const swaggerSpecs = swaggerJsdoc(swaggerOptions);
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
-
-// ============================================================
-// SECTION 19: SYSTEM ENDPOINTS
+// ================== SECTION 7: SYSTEM ENDPOINTS ============
 // ============================================================
 
 function formatBytes(bytes) {
@@ -6131,56 +4712,6 @@ async function getStatusStats() { return {}; }
 async function getAvgResponseTime() { return '0ms'; }
 async function getP95ResponseTime() { return '0ms'; }
 
-/**
- * @swagger
- * /api/health:
- *   get:
- *     summary: Health check endpoint
- *     tags: [System]
- */
-app.get('/api/health', async (req, res) => {
-    try {
-        const dbStatus = await checkDatabase();
-        res.status(200).json({
-            status: 'healthy',
-            database: dbStatus,
-            uptime: process.uptime(),
-            timestamp: new Date().toISOString(),
-            version: '1.0.0'
-        });
-    } catch (error) {
-        res.status(200).json({
-            status: 'degraded',
-            message: 'Partial service disruption',
-            timestamp: new Date().toISOString()
-        });
-    }
-});
-
-/**
- * @swagger
- * /api/ping:
- *   get:
- *     summary: Simple ping endpoint
- *     tags: [System]
- */
-app.get('/api/ping', (req, res) => {
-    res.json({
-        status: 'success',
-        message: 'pong',
-        timestamp: new Date().toISOString(),
-        version: '1.0.0',
-        requestId: req.id
-    });
-});
-
-/**
- * @swagger
- * /api/metrics:
- *   get:
- *     summary: Get system metrics (admin only)
- *     tags: [System]
- */
 app.get('/api/metrics', verifyToken, requireRole('admin'), async (req, res) => {
     try {
         const metrics = {
@@ -6214,13 +4745,6 @@ app.get('/api/metrics', verifyToken, requireRole('admin'), async (req, res) => {
     }
 });
 
-/**
- * @swagger
- * /api/stats:
- *   get:
- *     summary: Get basic statistics (admin only)
- *     tags: [System]
- */
 app.get('/api/stats', verifyToken, requireRole('admin'), async (req, res) => {
     try {
         const [users, members, cacheStats] = await Promise.all([
@@ -6246,38 +4770,8 @@ app.get('/api/stats', verifyToken, requireRole('admin'), async (req, res) => {
     }
 });
 
-/**
- * Root API endpoint
- */
-app.get('/api', (req, res) => {
-    res.json({
-        message: 'NUESA BIU API Server',
-        version: '1.0.0',
-        environment: NODE_ENV,
-        status: 'operational',
-        timestamp: new Date().toISOString(),
-        documentation: `${req.protocol}://${req.get('host')}/api/docs`,
-        endpoints: {
-            auth: '/api/auth',
-            adminAuth: '/api/admin/login',
-            users: '/api/users',
-            members: '/api/members',
-            events: '/api/events',
-            resources: '/api/resources',
-            articles: '/api/articles',
-            profile: '/api/profile',
-            health: '/api/health',
-            stats: '/api/stats',
-            metrics: '/api/metrics',
-            contact: '/api/contact/submit',
-            docs: '/api/docs'
-        },
-        requestId: req.id
-    });
-});
-
 // ============================================================
-// SECTION 20: DEBUG ENDPOINTS (Development Only)
+// ================== SECTION 8: DEBUG ENDPOINTS =============
 // ============================================================
 
 if (!IS_PRODUCTION) {
@@ -6346,7 +4840,7 @@ if (!IS_PRODUCTION) {
 }
 
 // ============================================================
-// SECTION 21: ERROR HANDLING
+// ================== SECTION 9: ERROR HANDLING ==============
 // ============================================================
 
 app.use((req, res) => {
@@ -6456,7 +4950,7 @@ app.use((err, req, res, next) => {
 });
 
 // ============================================================
-// SECTION 22: PROCESS HANDLERS
+// ================== SECTION 10: PROCESS HANDLERS ===========
 // ============================================================
 
 process.on('unhandledRejection', (reason, promise) => {
@@ -6486,7 +4980,7 @@ process.on('SIGINT', () => {
 });
 
 // ============================================================
-// SECTION 23: SERVER STARTUP
+// ================== SECTION 11: SERVER STARTUP =============
 // ============================================================
 
 async function startServer() {
@@ -6508,6 +5002,31 @@ async function startServer() {
 ║ 👑 Admin: ${process.env.ADMIN_EMAIL || 'Not configured'}        ║
 ║ 📚 API Docs: ${BASE_URL}/api/docs                 ║
 ║ 🔐 Admin Login: ${BASE_URL}/admin/adlog.html       ║
+╚═══════════════════════════════════════════════════════════════════╝
+╔═══════════════════════════════════════════════════════════════════╗
+║  📌 ROUTE ORGANIZATION:                                           ║
+║  ┌─────────────────────────────────────────────────────────────┐ ║
+║  │ PUBLIC ROUTES (No auth required)                             │ ║
+║  │   • GET    /api/health                                       │ ║
+║  │   • POST   /api/auth/login                                   │ ║
+║  │   • GET    /api/members                                      │ ║
+║  │   • GET    /api/events                                       │ ║
+║  │   • GET    /api/resources                                    │ ║
+║  │   • GET    /api/articles                                     │ ║
+║  │   • GET    /api/course-reps                                  │ ║
+║  │   • POST   /api/contact/submit                               │ ║
+║  └─────────────────────────────────────────────────────────────┘ ║
+║  ┌─────────────────────────────────────────────────────────────┐ ║
+║  │ ADMIN ROUTES (require auth + admin role)                     │ ║
+║  │   • POST   /api/admin/login                                  │ ║
+║  │   • GET    /api/admin/stats                                  │ ║
+║  │   • CRUD   /api/admin/members                                │ ║
+║  │   • CRUD   /api/admin/events                                 │ ║
+║  │   • CRUD   /api/admin/resources                              │ ║
+║  │   • CRUD   /api/admin/articles                               │ ║
+║  │   • CRUD   /api/admin/course-reps                            │ ║
+║  │   • GET    /api/users                                        │ ║
+║  └─────────────────────────────────────────────────────────────┘ ║
 ╚═══════════════════════════════════════════════════════════════════╝
             `);
 
