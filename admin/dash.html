@@ -1955,6 +1955,51 @@ function getCookie(name) {
     return null;
 }
 
+// ============================================
+// MODAL DEBUG AND FIX FUNCTIONS
+// ============================================
+
+function debugModal(modalId) {
+    const modal = document.getElementById(modalId);
+    console.log(`🔍 Debugging ${modalId}:`, {
+        exists: !!modal,
+        currentClasses: modal?.className,
+        hasActiveClass: modal?.classList.contains('active'),
+        display: modal?.style.display,
+        visibility: modal?.style.visibility,
+        opacity: modal?.style.opacity,
+        zIndex: modal?.style.zIndex,
+        computedStyle: modal ? window.getComputedStyle(modal) : null
+    });
+    return modal;
+}
+
+function forceShowModal(modalId) {
+    console.log(`🔧 Force showing modal: ${modalId}`);
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        // Remove any inline styles that might be blocking
+        modal.style.removeProperty('display');
+        modal.style.removeProperty('visibility');
+        modal.style.removeProperty('opacity');
+        
+        // Add the active class
+        modal.classList.add('active');
+        
+        // Ensure body overflow is hidden
+        document.body.style.overflow = 'hidden';
+        
+        console.log(`✅ Force showed modal: ${modalId}`);
+        debugModal(modalId);
+    } else {
+        console.error(`❌ Modal not found: ${modalId}`);
+    }
+}
+
+// Make it globally available
+window.debugModal = debugModal;
+window.forceShowModal = forceShowModal;
+
 function formatDate(dateString) {
     if (!dateString) return '';
     try {
@@ -2087,18 +2132,34 @@ function hideLoading() {
 }
 
 function showModal(modalId) {
+    console.log(`🔧 showModal called for: ${modalId}`);
     const modal = document.getElementById(modalId);
     if (modal) {
+        // Remove any inline styles that might conflict with CSS classes
+        modal.style.removeProperty('display');
+        modal.style.removeProperty('visibility');
+        modal.style.removeProperty('opacity');
+        
+        // Add the active class
         modal.classList.add('active');
+        
+        // Lock body scroll
         document.body.style.overflow = 'hidden';
+        
+        console.log(`✅ Modal ${modalId} shown, active class:`, modal.classList.contains('active'));
+        debugModal(modalId);
+    } else {
+        console.error(`❌ Modal element not found: ${modalId}`);
     }
 }
 
 function hideModal(modalId) {
+    console.log(`🔧 hideModal called for: ${modalId}`);
     const modal = document.getElementById(modalId);
     if (modal) {
         modal.classList.remove('active');
         document.body.style.overflow = 'auto';
+        console.log(`✅ Modal ${modalId} hidden`);
     }
 }
 
@@ -4975,37 +5036,69 @@ async function viewDepartmentDetails(repId) {
     }
 }
 
+// FIXED: Complete openCourseRepModal function with proper structure
 function openCourseRepModal() {
     console.log('📡 Opening course rep modal');
     currentCourseRepId = null;
     
-    document.getElementById('courseRepModalTitle').textContent = 'Add Course Representatives';
-    document.getElementById('courseRepForm').reset();
-    document.getElementById('courseRepId').value = '';
+    // Check if modal exists
+    const modal = document.getElementById('courseRepModal');
+    if (!modal) {
+        console.error('❌ Course rep modal not found in DOM');
+        return;
+    }
     
+    // Update title
+    const titleEl = document.getElementById('courseRepModalTitle');
+    if (titleEl) {
+        titleEl.textContent = 'Add Course Representatives';
+    }
+    
+    // Reset form
+    const form = document.getElementById('courseRepForm');
+    if (form) form.reset();
+    
+    const idField = document.getElementById('courseRepId');
+    if (idField) idField.value = '';
+    
+    // Set default session
     const currentYear = new Date().getFullYear();
     const defaultSession = `${currentYear}/${currentYear + 1}`;
-    document.getElementById('repSession').value = defaultSession;
+    const sessionSelect = document.getElementById('repSession');
+    if (sessionSelect) sessionSelect.value = defaultSession;
     
+    // Populate department fields
     const deptContainer = document.getElementById('departmentFields');
-    deptContainer.innerHTML = departments.map(dept => {
-        const deptId = dept.replace(/[^a-zA-Z0-9]/g, '');
-        return `
-            <div class="dept-item">
-                <div class="dept-item-header">
-                    <span class="dept-item-title">${dept}</span>
+    if (deptContainer) {
+        deptContainer.innerHTML = departments.map(dept => {
+            const deptId = dept.replace(/[^a-zA-Z0-9]/g, '');
+            return `
+                <div class="dept-item">
+                    <div class="dept-item-header">
+                        <span class="dept-item-title">${dept}</span>
+                    </div>
+                    <div class="dept-rep-field">
+                        <label class="dept-rep-label">Representative</label>
+                        <input type="text" class="form-input" id="dept_${deptId}" placeholder="Full name of department rep">
+                    </div>
                 </div>
-                <div class="dept-rep-field">
-                    <label class="dept-rep-label">Representative</label>
-                    <input type="text" class="form-input" id="dept_${deptId}" placeholder="Full name of department rep">
-                </div>
-            </div>
-        `;
-    }).join('');
+            `;
+        }).join('');
+    }
     
+    // Show the modal
+    console.log('📡 About to show modal...');
     showModal('courseRepModal');
+    
+    // Verify modal is shown
+    setTimeout(() => {
+        if (typeof debugModal === 'function') {
+            debugModal('courseRepModal');
+        }
+    }, 100);
 }
 
+// FIXED: Complete editCourseRep function with proper structure
 async function editCourseRep(repId) {
     try {
         showLoading();
@@ -5020,13 +5113,37 @@ async function editCourseRep(repId) {
         
         currentCourseRepId = repId;
         
-        document.getElementById('courseRepModalTitle').textContent = 'Edit Course Representatives';
-        document.getElementById('repSession').value = rep.session || '';
-        document.getElementById('repLevel').value = rep.level || '';
-        document.getElementById('genRep').value = rep.gen_rep || '';
-        document.getElementById('asstGenRep').value = rep.asst_gen_rep || '';
-        document.getElementById('courseRepId').value = rep.id;
+        // Check if modal exists
+        const modal = document.getElementById('courseRepModal');
+        if (!modal) {
+            console.error('❌ Course rep modal not found in DOM');
+            hideLoading();
+            return;
+        }
         
+        // Update title
+        const titleEl = document.getElementById('courseRepModalTitle');
+        if (titleEl) {
+            titleEl.textContent = 'Edit Course Representatives';
+        }
+        
+        // Set form values
+        const sessionField = document.getElementById('repSession');
+        if (sessionField) sessionField.value = rep.session || '';
+        
+        const levelField = document.getElementById('repLevel');
+        if (levelField) levelField.value = rep.level || '';
+        
+        const genRepField = document.getElementById('genRep');
+        if (genRepField) genRepField.value = rep.gen_rep || '';
+        
+        const asstGenRepField = document.getElementById('asstGenRep');
+        if (asstGenRepField) asstGenRepField.value = rep.asst_gen_rep || '';
+        
+        const idField = document.getElementById('courseRepId');
+        if (idField) idField.value = rep.id;
+        
+        // Process departments data
         let departmentsData = rep.departments;
         if (typeof departmentsData === 'string') {
             try {
@@ -5037,27 +5154,35 @@ async function editCourseRep(repId) {
         }
         
         const deptMap = {};
-        departmentsData.forEach(dept => {
-            deptMap[dept.name] = dept.rep || '';
-        });
+        if (Array.isArray(departmentsData)) {
+            departmentsData.forEach(dept => {
+                deptMap[dept.name] = dept.rep || '';
+            });
+        }
         
+        // Populate department fields
         const deptContainer = document.getElementById('departmentFields');
-        deptContainer.innerHTML = departments.map(dept => {
-            const deptId = dept.replace(/[^a-zA-Z0-9]/g, '');
-            return `
-                <div class="dept-item">
-                    <div class="dept-item-header">
-                        <span class="dept-item-title">${dept}</span>
+        if (deptContainer) {
+            deptContainer.innerHTML = departments.map(dept => {
+                const deptId = dept.replace(/[^a-zA-Z0-9]/g, '');
+                return `
+                    <div class="dept-item">
+                        <div class="dept-item-header">
+                            <span class="dept-item-title">${dept}</span>
+                        </div>
+                        <div class="dept-rep-field">
+                            <label class="dept-rep-label">Representative</label>
+                            <input type="text" class="form-input" id="dept_${deptId}" value="${deptMap[dept] || ''}" placeholder="Full name of department rep">
+                        </div>
                     </div>
-                    <div class="dept-rep-field">
-                        <label class="dept-rep-label">Representative</label>
-                        <input type="text" class="form-input" id="dept_${deptId}" value="${deptMap[dept] || ''}" placeholder="Full name of department rep">
-                    </div>
-                </div>
-            `;
-        }).join('');
+                `;
+            }).join('');
+        }
         
+        // Show the modal
+        console.log('📡 About to show edit modal...');
         showModal('courseRepModal');
+        
     } catch (error) {
         console.error('Error editing course rep:', error);
         showToast('Failed to load course rep details: ' + error.message, 'error');
@@ -5199,11 +5324,14 @@ function initializeCourseRepsPage() {
     
     const addCourseRepBtn = document.getElementById('addCourseRepBtn');
     if (addCourseRepBtn) {
+        // Remove any existing listeners to prevent duplicates
+        addCourseRepBtn.removeEventListener('click', openCourseRepModal);
         addCourseRepBtn.addEventListener('click', openCourseRepModal);
     }
     
     const emptyAddRepBtn = document.getElementById('emptyAddRepBtn');
     if (emptyAddRepBtn) {
+        emptyAddRepBtn.removeEventListener('click', openCourseRepModal);
         emptyAddRepBtn.addEventListener('click', openCourseRepModal);
     }
     
