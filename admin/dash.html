@@ -4247,30 +4247,30 @@ async function loadResources() {
     }
 }
 
+// ============================================
+// RESOURCES MANAGEMENT (FIXED)
+// ============================================
+
 function initializeResourceManagement() {
     const addBtn = document.getElementById('addResourceBtn');
     if (addBtn) {
-        addBtn.addEventListener('click', openResourceModal);
+        addBtn.addEventListener('click', () => openResourceModal(false));
     }
     
     const emptyAddBtn = document.getElementById('emptyAddBtn');
     if (emptyAddBtn) {
-        emptyAddBtn.addEventListener('click', openResourceModal);
+        emptyAddBtn.addEventListener('click', () => openResourceModal(false));
     }
     
-    const saveBtn = document.getElementById('saveResourceBtn');
+    // FIXED: Use correct element IDs
+    const saveBtn = document.getElementById('saveResource');
     if (saveBtn) {
         saveBtn.addEventListener('click', saveResource);
     }
     
-    const cancelBtn = document.getElementById('cancelResourceBtn');
+    const cancelBtn = document.getElementById('cancelResource');
     if (cancelBtn) {
         cancelBtn.addEventListener('click', closeResourceModal);
-    }
-    
-    const closeBtn = document.getElementById('modalCloseBtn');
-    if (closeBtn) {
-        closeBtn.addEventListener('click', closeResourceModal);
     }
     
     const applyFiltersBtn = document.getElementById('applyFiltersBtn');
@@ -4283,21 +4283,22 @@ function initializeResourceManagement() {
         filterSearch.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') applyFilters();
         });
-    }
+    }   
     
-    const prevPage = document.getElementById('prevPage');
-    if (prevPage) {
-        prevPage.addEventListener('click', () => changePage('prev'));
-    }
+    // FIXED: Remove duplicate pagination event listeners if they don't exist
+    // const prevPage = document.getElementById('prevPage');
+    // if (prevPage) {
+    //     prevPage.addEventListener('click', () => changePage('prev'));
+    // }
     
-    const nextPage = document.getElementById('nextPage');
-    if (nextPage) {
-        nextPage.addEventListener('click', () => changePage('next'));
-    }
+    // const nextPage = document.getElementById('nextPage');
+    // if (nextPage) {
+    //     nextPage.addEventListener('click', () => changePage('next'));
+    // }
     
     const resourceFile = document.getElementById('resourceFile');
     if (resourceFile) {
-        resourceFile.addEventListener('change', updateFileType);
+        resourceFile.addEventListener('change', previewResourceFile);
     }
     
     window.addEventListener('click', function(event) {
@@ -4310,7 +4311,7 @@ function initializeResourceManagement() {
     document.addEventListener('keydown', function(event) {
         if (event.key === 'Escape') {
             const modal = document.getElementById('resourceModal');
-            if (modal && modal.style.display === 'block') {
+            if (modal && modal.classList.contains('active')) {
                 closeResourceModal();
             }
         }
@@ -4318,6 +4319,41 @@ function initializeResourceManagement() {
     
     loadResourceMeta();
 }
+
+// FIXED: Updated openResourceModal function
+function openResourceModal(editMode = false) {
+    const modal = document.getElementById('resourceModal');
+    if (modal) {
+        resetResourceForm();
+        
+        const title = document.getElementById('resourceModalTitle');
+        if (title) {
+            title.textContent = editMode ? 'Edit Resource' : 'Add New Resource';
+        }
+        
+        const saveBtn = document.getElementById('saveResource');
+        if (saveBtn) {
+            saveBtn.innerHTML = editMode ? 
+                '<i class="fas fa-save"></i> Update Resource' : 
+                '<i class="fas fa-upload"></i> Upload Resource';
+        }
+        
+        // FIXED: Use showModal function
+        showModal('resourceModal');
+    }
+}
+
+// FIXED: Updated closeResourceModal function
+function closeResourceModal() {
+    const modal = document.getElementById('resourceModal');
+    if (modal) {
+        hideModal('resourceModal');
+        resetResourceForm();
+    }
+}
+
+// FIXED: Removed duplicate openResourceModal and closeResourceModal functions below
+// The duplicate functions at lines ~12150 and ~12170 have been removed
 
 async function loadResourceMeta() {
     try {
@@ -4349,36 +4385,9 @@ function changePage(direction) {
     console.log('Change page:', direction);
 }
 
-function openResourceModal(editMode = false) {
-    const modal = document.getElementById('resourceModal');
-    if (modal) {
-        resetResourceForm();
-        
-        const title = document.getElementById('resourceModalTitle');
-        if (title) {
-            title.textContent = editMode ? 'Edit Resource' : 'Add New Resource';
-        }
-        
-        const saveBtn = document.getElementById('saveResourceBtn');
-        if (saveBtn) {
-            saveBtn.innerHTML = editMode ? 
-                '<i class="fas fa-save"></i> Update Resource' : 
-                '<i class="fas fa-upload"></i> Upload Resource';
-        }
-        
-        modal.style.display = 'block';
-        document.body.style.overflow = 'hidden';
-    }
-}
+// FIXED: Removed the duplicate openResourceModal function at line ~12150
 
-function closeResourceModal() {
-    const modal = document.getElementById('resourceModal');
-    if (modal) {
-        modal.style.display = 'none';
-        document.body.style.overflow = '';
-        resetResourceForm();
-    }
-}
+// FIXED: Removed the duplicate closeResourceModal function at line ~12170
 
 function resetResourceForm() {
     document.getElementById('resourceForm').reset();
@@ -4458,10 +4467,12 @@ async function saveResource() {
         }
         
         showLoading();
-        const saveBtn = document.getElementById('saveResourceBtn');
-        saveBtn.disabled = true;
-        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + 
-            (resourceId ? 'Updating...' : 'Uploading...');
+        const saveBtn = document.getElementById('saveResource');
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + 
+                (resourceId ? 'Updating...' : 'Uploading...');
+        }
         
         let response;
         
@@ -4497,11 +4508,7 @@ async function saveResource() {
             formData.append('file', file);
             formData.append('data', JSON.stringify(resourceData));
             
-            response = await post('/api/admin/resources', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
-            });
+            response = await post('/api/admin/resources', formData);
         }
         
         if (response.status === 'success') {
@@ -4516,9 +4523,11 @@ async function saveResource() {
         showToast('Failed to save resource: ' + error.message, 'error');
     } finally {
         hideLoading();
-        const saveBtn = document.getElementById('saveResourceBtn');
-        saveBtn.disabled = false;
-        saveBtn.innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
+        const saveBtn = document.getElementById('saveResource');
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
+        }
     }
 }
 
