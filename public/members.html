@@ -1172,15 +1172,18 @@
                         membersData = [];
                     }
 
-                    console.log(`✅ Loaded ${membersData.length} members for session ${session}`);
+                    console.log('✅ Loaded ${membersData.length} members for session ${session}');
+             
+                    const uniquePositions = [...new Set(membersData.map(m => m.position))];
+                    console.log('Unique positions found:', uniquePositions);
 
                     // Log all members for debugging
                     console.log('===== MEMBERS FROM BACKEND =====');
                     membersData.forEach((member, index) => {
                         console.log(`${index + 1}. ${member.full_name || member.name || 'Unnamed'}:`);
-                        console.log(`   Position: "${member.position || 'No position'}"`);
+                        console.log(`   Raw position: "${member.position}"`);
+                        console.log(`   Formatted position: "${formatPositionTitle(member.position)}"`);
                         console.log(`   Department: ${member.department || 'N/A'}`);
-                        console.log(`   Session: ${member.session || 'N/A'}`);
                     });
 
                     // Filter and render
@@ -1275,23 +1278,56 @@
             function formatPositionTitle(position) {
                 if (!position) return 'Member';
                 
-                const lowerPos = position.toLowerCase();
+                const lowerPos = position.toLowerCase().trim();
                 
-                // Common position mappings
-                if (lowerPos.includes('president') && !lowerPos.includes('vice')) return 'President';
-                if (lowerPos.includes('vice president')) return 'Vice President';
-                if (lowerPos.includes('secretary general')) return 'Secretary General';
-                if (lowerPos.includes('financial secretary')) return 'Financial Secretary';
-                if (lowerPos.includes('treasurer')) return 'Treasurer';
-                if (lowerPos.includes('director of sport')) return 'Director of Sport';
-                if (lowerPos.includes('director of welfare')) return 'Director of Welfare';
-                if (lowerPos.includes('director of social')) return 'Director of Social';
-                if (lowerPos.includes('academic officer')) return 'Academic Officer';
-                if (lowerPos.includes('public relations')) return 'Public Relations Officer';
+                // Log the raw position for debugging
+                console.log('Formatting position:', position);
                 
-                // Default: capitalize each word
+                // Common position mappings - check for exact matches first
+                const positionMap = {
+                    'president': 'President',
+                    'vice president': 'Vice President',
+                    'secretary general': 'Secretary General',
+                    'financial secretary': 'Financial Secretary',
+                    'treasurer': 'Treasurer',
+                    'director of sport': 'Director of Sport',
+                    'director of welfare': 'Director of Welfare',
+                    'director of social': 'Director of Social',
+                    'academic officer': 'Academic Officer',
+                    'public relations officer': 'Public Relations Officer',
+                    'public relations': 'Public Relations Officer',
+                    'pro': 'Public Relations Officer'
+                };
+                
+                // Check for partial matches
+                for (const [key, value] of Object.entries(positionMap)) {
+                    if (lowerPos.includes(key)) {
+                        return value;
+                    }
+                }
+                
+                // If no match found, try to intelligently format
+                // Handle special cases like "DIRECTOR OF SPORTS" (with S)
+                if (lowerPos.includes('director') && lowerPos.includes('sport')) {
+                    return 'Director of Sport';
+                }
+                if (lowerPos.includes('director') && lowerPos.includes('welfare')) {
+                    return 'Director of Welfare';
+                }
+                if (lowerPos.includes('director') && lowerPos.includes('social')) {
+                    return 'Director of Social';
+                }
+                
+                // Default: capitalize each word, but handle acronyms
                 return position.split(' ')
-                    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                    .map(word => {
+                        // If word is all uppercase, keep it as is (for acronyms like PRO)
+                        if (word === word.toUpperCase() && word.length <= 4) {
+                            return word;
+                        }
+                        // Otherwise capitalize first letter, rest lowercase
+                        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+                    })
                     .join(' ');
             }
 
