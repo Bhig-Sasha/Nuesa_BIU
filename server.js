@@ -2566,6 +2566,19 @@ adminRouter.post('/members/:id/photo', upload.single('photo'), async (req, res) 
             });
         }
 
+        // Your dashboard should use it for separate photo uploads:
+        async function uploadMemberPhoto(memberId, file) {
+            const formData = new FormData();
+            formData.append('photo', file);  // Note: 'photo' not 'profile_image'
+            
+            const response = await fetch(`${API_BASE_URL}/api/admin/members/${memberId}/photo`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${getAuthToken()}` },
+                body: formData
+            });
+            return response.json();
+        }
+
         const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
         if (!allowedTypes.includes(req.file.mimetype)) {
             await fs.unlink(req.file.path);
