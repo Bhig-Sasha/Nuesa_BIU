@@ -372,6 +372,9 @@
         console.log('🔐 Admin login page initialized');
         console.log('🌐 API URL:', API_BASE_URL);
         
+        // Check if already logged in
+        checkExistingSession();
+        
         // Load remembered email
         const savedEmail = localStorage.getItem('nuesa_admin_email');
         const savedRemember = localStorage.getItem('nuesa_remember_me') === 'true';
@@ -397,9 +400,6 @@
         // Setup event listeners
         setupEventListeners();
         
-        // Check if already logged in (but don't block login page)
-        checkExistingSession();
-        
         // Auto-focus email
         setTimeout(() => emailInput.focus(), 100);
     }
@@ -409,7 +409,6 @@
     // ============================================
     async function checkExistingSession() {
         try {
-            console.log('🔍 Checking existing session...');
             const response = await fetch(`${API_BASE_URL}/api/admin/session`, {
                 method: 'GET',
                 credentials: 'include',
@@ -418,30 +417,26 @@
                 }
             });
             
-            console.log('📡 Session check status:', response.status);
-            
             if (response.status === 200) {
                 const data = await response.json();
-                console.log('✅ Session data:', data);
                 if (data.status === 'success' && data.data) {
                     console.log('✅ Existing session found, redirecting to dashboard');
-                    window.location.href = '/admin/dashboard.html';
+                    window.location.href = '/admin/dash';
                     return;
                 }
             }
             
             if (response.status === 401) {
-                console.log('ℹ️ No active session found - please login (this is normal)');
+                console.log('ℹ️ No active session found - please login');
             }
             
         } catch (error) {
             console.log('⚠️ Could not check session status:', error.message);
-            // Don't show error to user - this is just a background check
         }
     }
     
     // ============================================
-    // HANDLE LOGIN - WITH BETTER DEBUGGING
+    // HANDLE LOGIN - FIXED ENDPOINT
     // ============================================
     async function handleSubmit(e) {
         e.preventDefault();
@@ -478,9 +473,8 @@
         spinnerIcon.classList.remove('hidden');
         hideAlert();
         
-        try {
-            console.log('📤 Sending login request to:', `${API_BASE_URL}/api/admin/login`);
-            
+        try {            
+            // FIXED: Using CORRECT endpoint /api/admin/login (with slash)
             const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
                 method: 'POST',
                 credentials: 'include',
@@ -490,33 +484,22 @@
                 },
                 body: JSON.stringify({ 
                     email, 
-                    password 
+                    password,
+                    rememberMe: rememberMe 
                 })
             });
             
             console.log('📡 Response status:', response.status);
-            console.log('📡 Response headers:', {
-                'content-type': response.headers.get('content-type'),
-                'set-cookie': response.headers.get('set-cookie')
-            });
-            
-            // Try to get response as text first
-            const responseText = await response.text();
-            console.log('📡 Raw response:', responseText);
             
             let data;
+            const responseText = await response.text();
+            
             try {
                 data = JSON.parse(responseText);
-                console.log('📡 Parsed response:', data);
+                console.log('📡 Response data:', data);
             } catch (e) {
-                console.error('❌ Failed to parse JSON response:', responseText);
-                
-                // Check if it's HTML (maybe a 404 page)
-                if (responseText.trim().startsWith('<!DOCTYPE')) {
-                    throw new Error('Server returned HTML instead of JSON. The API endpoint might be incorrect.');
-                } else {
-                    throw new Error(`Invalid server response: ${responseText.substring(0, 100)}`);
-                }
+                console.error('❌ Failed to parse response:', responseText.substring(0, 200));
+                throw new Error('Invalid server response');
             }
             
             if (!response.ok) {
@@ -527,8 +510,7 @@
                 } else if (response.status === 403) {
                     errorMessage = 'Access denied. You do not have admin privileges.';
                 } else if (response.status === 404) {
-                    errorMessage = 'Login service not available (404). Please check if the API is running.';
-                    console.error('❌ API endpoint not found. Expected:', `${API_BASE_URL}/api/admin/login`);
+                    errorMessage = 'Login service not available';
                 } else if (response.status === 429) {
                     errorMessage = 'Too many login attempts. Please try again later.';
                 } else if (response.status === 500) {
@@ -538,11 +520,10 @@
                 throw new Error(errorMessage);
             }
             
-            // Success - check different response formats
-            if (data.status === 'success' || data.success || data.token || data.data) {
+            // Success
+            if (data.status === 'success' || (data.data && (data.data.user || data.data.token))) {
                 console.log('✅ Login successful!');
                 
-                // Handle remember me
                 if (rememberMe) {
                     localStorage.setItem('nuesa_admin_email', email);
                     localStorage.setItem('nuesa_remember_me', 'true');
@@ -551,22 +532,18 @@
                     localStorage.removeItem('nuesa_remember_me');
                 }
                 
-                // Store token if provided
-                const token = data.token || (data.data && data.data.token);
-                if (token) {
-                    localStorage.setItem('adminToken', token);
+                if (data.data && data.data.token) {
+                    localStorage.setItem('adminToken', data.data.token);
                 }
                 
-                // Store user data if provided
-                const user = data.user || (data.data && data.data.user);
-                if (user) {
-                    localStorage.setItem('adminUser', JSON.stringify(user));
+                if (data.data && data.data.user) {
+                    localStorage.setItem('adminUser', JSON.stringify(data.data.user));
                 }
                 
                 showAlert('Login successful! Redirecting...', 'success');
                 
                 setTimeout(() => {
-                    window.location.href = '/admin/dashboard.html';
+                    window.location.href = '/admin/dash.html';
                 }, 1500);
             } else {
                 console.error('❌ Invalid response format:', data);
@@ -579,10 +556,7 @@
             let errorMessage = error.message;
             
             if (error.message.includes('Failed to fetch')) {
-                errorMessage = 'Cannot connect to server. Please check:\n' +
-                              '1. Your internet connection\n' +
-                              '2. The API server is running\n' +
-                              `3. The URL ${API_BASE_URL} is accessible`;
+                errorMessage = 'Cannot connect to server. Please check your internet connection.';
             } else if (error.message.includes('NetworkError')) {
                 errorMessage = 'Network error. Please check your connection.';
             }
