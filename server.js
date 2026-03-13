@@ -897,8 +897,9 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
     .map(origin => origin.trim())
     .filter(origin => origin.length > 0);
 
-if (process.env.FRONTEND_URL && !ALLOWED_ORIGINS.includes(process.env.FRONTEND_URL)) {
-    ALLOWED_ORIGINS.push(process.env.FRONTEND_URL);
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5500'; 
+if (!ALLOWED_ORIGINS.includes(FRONTEND_URL)) {
+    ALLOWED_ORIGINS.push(FRONTEND_URL);
 }
 
 ALLOWED_ORIGINS.push('https://nuesa-biu-pjp0.onrender.com');
