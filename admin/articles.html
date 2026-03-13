@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Articles - NUESA BIU Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Copy all base styles from events.html here */
+        /* ... (same base styles) ... */
+        
+        /* Articles Specific Styles */
+        .editor-toolbar {
+            border: 1px solid var(--slate-300);
+            border-bottom: none;
+            padding: 0.5rem;
+            background: var(--slate-50);
+            border-radius: var(--radius) var(--radius) 0 0;
+            display: flex; flex-wrap: wrap; gap: 0.25rem;
+        }
+        .editor-content {
+            border: 1px solid var(--slate-300);
+            border-radius: 0 0 var(--radius) var(--radius);
+            min-height: 200px;
+            padding: 0.75rem;
+            outline: none;
+        }
+        .editor-content:focus { border-color: var(--primary); }
+        
+        .tag-input-container {
+            border: 1px solid var(--slate-300);
+            border-radius: var(--radius);
+            padding: 0.5rem;
+            min-height: 44px;
+            display: flex; flex-wrap: wrap; gap: 0.5rem;
+            align-items: center; cursor: text;
+        }
+        .tag-input-container:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+        .tag {
+            background: var(--primary-light);
+            color: var(--primary-dark);
+            padding: 0.25rem 0.5rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            display: inline-flex; align-items: center; gap: 0.25rem;
+        }
+        .tag-remove {
+            background: none; border: none; color: inherit;
+            cursor: pointer; padding: 0.125rem;
+        }
+        .tag-input {
+            border: none; outline: none; flex: 1;
+            min-width: 60px; background: transparent;
+        }
+        
+        .status-toggle {
+            display: inline-flex;
+            background: var(--slate-200);
+            border-radius: 20px;
+            padding: 0.125rem;
+        }
+        .status-toggle-btn {
+            padding: 0.375rem 1rem;
+            border: none; background: transparent;
+            border-radius: 16px;
+            font-size: 0.875rem; font-weight: 500;
+            cursor: pointer; transition: all 0.3s;
+        }
+        .status-toggle-btn.active {
+            background: white;
+            color: var(--primary-dark);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .bulk-actions {
+            display: none; padding: 1rem;
+            background: var(--slate-50);
+            border-radius: var(--radius);
+            margin: 1rem 0;
+            align-items: center; justify-content: space-between;
+        }
+        .bulk-actions.active { display: flex; }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Loading...</div>
+        </div>
+    </div>
+
+    <!-- Dashboard Container -->
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">N</div>
+                <div class="sidebar-title">NUESA <span>ADMIN</span></div>
+            </div>
+            <nav class="nav">
+                <a href="dashboard.html" class="nav-item" data-page="dashboard">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="members.html" class="nav-item" data-page="members">
+                    <i class="fas fa-users"></i>
+                    <span>Members</span>
+                </a>
+                <a href="course-reps.html" class="nav-item" data-page="courseReps">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                    <span>Course Reps</span>
+                </a>
+                <a href="events.html" class="nav-item" data-page="events">
+                    <i class="far fa-calendar-alt"></i>
+                    <span>Events</span>
+                </a>
+                <a href="articles.html" class="nav-item active" data-page="articles">
+                    <i class="far fa-newspaper"></i>
+                    <span>News/Articles</span>
+                </a>
+                <a href="resources.html" class="nav-item" data-page="resources">
+                    <i class="fas fa-download"></i>
+                    <span>Resources</span>
+                </a>
+                <a href="messages.html" class="nav-item" data-page="messages">
+                    <i class="far fa-comment-alt"></i>
+                    <span>Messages</span>
+                </a>
+                <a href="analytics.html" class="nav-item" data-page="analytics">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Analytics</span>
+                </a>
+                <a href="settings.html" class="nav-item" data-page="settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-quick-info">
+                    <div class="user-name" id="sidebarUserName">Admin</div>
+                    <div class="user-role" id="sidebarUserRole">Administrator</div>
+                </div>
+                <button class="logout-btn" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Mobile Overlay -->
+        <div class="mobile-overlay" id="mobileOverlay"></div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <button class="mobile-menu-btn" id="mobileMenuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="header-actions">
+                    <button class="notification-btn" id="notificationBtn">
+                        <i class="far fa-bell"></i>
+                        <span class="notification-badge" id="notificationBadge">0</span>
+                    </button>
+                    <div class="user-info">
+                        <div class="user-avatar" id="userAvatar">A</div>
+                        <div class="user-details">
+                            <div class="user-name" id="userName">Loading...</div>
+                            <div class="user-role" id="userRole">Administrator</div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Area -->
+            <main class="main-area" id="contentArea">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Articles Management</h1>
+                        <p class="page-subtitle">Create and manage news articles</p>
+                    </div>
+                    <button class="btn btn-primary" id="addArticleBtn">
+                        <i class="fas fa-plus"></i> Add Article
+                    </button>
+                </div>
+
+                <!-- Search & Filters -->
+                <div class="search-filter">
+                    <input type="text" class="search-input" id="articleSearch" placeholder="Search articles...">
+                    <select class="filter-select" id="categoryFilter">
+                        <option value="">All Categories</option>
+                        <option value="News">News</option>
+                        <option value="Events">Events</option>
+                        <option value="Academic">Academic</option>
+                        <option value="Technical">Technical</option>
+                        <option value="Announcement">Announcement</option>
+                        <option value="General">General</option>
+                    </select>
+                    <select class="filter-select" id="statusFilter">
+                        <option value="">All Status</option>
+                        <option value="published">Published</option>
+                        <option value="draft">Draft</option>
+                        <option value="archived">Archived</option>
+                    </select>
+                </div>
+
+                <!-- Bulk Actions -->
+                <div class="bulk-actions" id="bulkActions">
+                    <span id="selectedCount">0</span> articles selected
+                    <div style="display: flex; gap: 0.5rem;">
+                        <select class="filter-select" id="bulkStatus" style="width: auto;">
+                            <option value="">Change Status</option>
+                            <option value="published">Published</option>
+                            <option value="draft">Draft</option>
+                            <option value="archived">Archived</option>
+                        </select>
+                        <button class="btn btn-primary btn-sm" id="applyBulkStatus">Apply</button>
+                        <button class="btn btn-danger btn-sm" id="bulkDelete">Delete</button>
+                        <button class="btn btn-secondary btn-sm" id="clearSelection">Clear</button>
+                    </div>
+                </div>
+
+                <!-- Articles Table -->
+                <div class="content-card">
+                    <div class="table-container">
+                        <table class="data-table" id="articlesTable">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;">
+                                        <input type="checkbox" id="selectAll">
+                                    </th>
+                                    <th>Image</th>
+                                    <th>Title</th>
+                                    <th>Category</th>
+                                    <th>Author</th>
+                                    <th>Status</th>
+                                    <th>Published</th>
+                                    <th>Views</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="articlesTableBody">
+                                <tr>
+                                    <td colspan="9" class="text-center">Loading articles...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Article Modal -->
+    <div class="modal" id="articleModal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="articleModalTitle">Add New Article</h3>
+                <button class="modal-close" onclick="hideModal('articleModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="articleForm">
+                    <div style="text-align: center; margin-bottom: 1.5rem;">
+                        <div class="image-preview" id="articleImagePreview">
+                            <i class="far fa-newspaper" style="font-size: 48px; color: var(--slate-400);"></i>
+                        </div>
+                        <input type="file" id="articleImage" accept="image/*" style="display: none;">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('articleImage').click()">
+                            <i class="fas fa-upload"></i> Upload Image
+                        </button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Title *</label>
+                        <input type="text" class="form-input" id="articleTitle" required>
+                    </div>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Category *</label>
+                            <select class="form-select" id="articleCategory" required>
+                                <option value="">Select Category</option>
+                                <option value="News">News</option>
+                                <option value="Events">Events</option>
+                                <option value="Academic">Academic</option>
+                                <option value="Technical">Technical</option>
+                                <option value="Announcement">Announcement</option>
+                                <option value="General">General</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Author</label>
+                            <input type="text" class="form-input" id="articleAuthor" value="NUESA BIU">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Excerpt *</label>
+                        <textarea class="form-textarea" id="articleExcerpt" rows="3" required placeholder="Brief summary..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Content *</label>
+                        <div class="editor-toolbar">
+                            <button type="button" class="icon-btn" onclick="formatText('bold')" title="Bold">
+                                <i class="fas fa-bold"></i>
+                            </button>
+                            <button type="button" class="icon-btn" onclick="formatText('italic')" title="Italic">
+                                <i class="fas fa-italic"></i>
+                            </button>
+                            <button type="button" class="icon-btn" onclick="formatText('underline')" title="Underline">
+                                <i class="fas fa-underline"></i>
+                            </button>
+                            <button type="button" class="icon-btn" onclick="insertLink()" title="Insert Link">
+                                <i class="fas fa-link"></i>
+                            </button>
+                            <button type="button" class="icon-btn" onclick="insertList('unordered')" title="Bullet List">
+                                <i class="fas fa-list-ul"></i>
+                            </button>
+                            <button type="button" class="icon-btn" onclick="insertList('ordered')" title="Numbered List">
+                                <i class="fas fa-list-ol"></i>
+                            </button>
+                        </div>
+                        <div class="editor-content" id="articleContent" contenteditable="true"></div>
+                    </div>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Tags</label>
+                            <div class="tag-input-container" id="tagsContainer">
+                                <input type="text" class="tag-input" id="tagInput" placeholder="Type and press Enter...">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Status</label>
+                            <div class="status-toggle" id="statusToggle">
+                                <button type="button" class="status-toggle-btn" data-status="draft">Draft</button>
+                                <button type="button" class="status-toggle-btn active" data-status="published">Published</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Publish Date</label>
+                        <input type="datetime-local" class="form-input" id="publishDate">
+                    </div>
+                    
+                    <input type="hidden" id="articleUuid">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('articleModal')">Cancel</button>
+                <button class="btn btn-primary" id="saveArticleBtn">Save Article</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirm Delete</h3>
+                <button class="modal-close" onclick="hideModal('deleteModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this article? This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('deleteModal')">Cancel</button>
+                <button class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Delete Confirmation Modal -->
+    <div class="modal" id="bulkDeleteModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirm Bulk Delete</h3>
+                <button class="modal-close" onclick="hideModal('bulkDeleteModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <span id="bulkDeleteCount">0</span> articles? This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('bulkDeleteModal')">Cancel</button>
+                <button class="btn btn-danger" id="confirmBulkDeleteBtn">Delete All</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logout Modal -->
+    <div class="modal" id="logoutModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirm Logout</h3>
+                <button class="modal-close" onclick="hideModal('logoutModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to logout?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('logoutModal')">Cancel</button>
+                <button class="btn btn-primary" id="confirmLogout">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .modal {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999; padding: 1rem;
+            opacity: 0; visibility: hidden;
+            transition: all var(--transition-normal);
+        }
+        .modal.active { opacity: 1; visibility: visible; }
+        .modal-content {
+            background: white; border-radius: var(--radius-xl);
+            width: 100%; max-width: 500px;
+            transform: translateY(-20px);
+            transition: transform var(--transition-normal) var(--transition-bounce);
+        }
+        .modal.active .modal-content { transform: translateY(0); }
+        .modal-header {
+            padding: 1.5rem; border-bottom: 1px solid var(--slate-200);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .modal-title { font-size: 1.25rem; font-weight: 700; color: var(--slate-800); }
+        .modal-close {
+            background: none; border: none; font-size: 1.5rem;
+            cursor: pointer; color: var(--slate-400);
+            transition: color var(--transition-fast);
+        }
+        .modal-close:hover { color: var(--slate-600); }
+        .modal-body { padding: 1.5rem; max-height: 60vh; overflow-y: auto; }
+        .modal-footer {
+            padding: 1.5rem; border-top: 1px solid var(--slate-200);
+            display: flex; gap: 0.75rem; justify-content: flex-end;
+        }
+        .text-center { text-align: center; }
+    </style>
+
+    <script>
+        // Configuration
+        const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
+        let currentUser = null;
+        let currentArticleUuid = null;
+        let articleToDelete = null;
+        let articleTags = [];
+        let selectedArticles = new Set();
+        let inactivityTimeout;
+
+        // ===== UTILITY FUNCTIONS =====
+        function getAuthToken() {
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                const [name, value] = cookie.trim().split('=');
+                if (name === 'auth_token') return value;
+            }
+            return localStorage.getItem('adminToken');
+        }
+
+        function showLoading() {
+            document.getElementById('loadingOverlay').classList.add('active');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.remove('active');
+        }
+
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function hideModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        function showToast(message, type = 'info', duration = 5000) {
+            document.querySelectorAll('.toast').forEach(t => t.remove());
+            
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            
+            let icon = type === 'success' ? 'check-circle' : 
+                      type === 'error' ? 'exclamation-circle' :
+                      type === 'warning' ? 'exclamation-triangle' : 'info-circle';
+            
+            toast.innerHTML = `
+                <div class="toast-icon"><i class="fas fa-${icon}"></i></div>
+                <div class="toast-content">${message}</div>
+                <button class="toast-close">&times;</button>
+            `;
+            
+            document.body.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            toast.querySelector('.toast-close').addEventListener('click', () => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            });
+            
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, duration);
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            try {
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) return '';
+                return date.toLocaleDateString('en-US', {
+                    year: 'numeric', month: 'short', day: 'numeric'
+                });
+            } catch { return dateString; }
+        }
+
+        // ===== SESSION MANAGEMENT =====
+        function resetInactivityTimer() {
+            clearTimeout(inactivityTimeout);
+            inactivityTimeout = setTimeout(() => {
+                showToast('Your session will expire in 1 minute', 'warning');
+                setTimeout(() => {
+                    showToast('Session expired', 'error');
+                    logout();
+                }, 60000);
+            }, 29 * 60 * 1000);
+        }
+
+        function setupActivityListeners() {
+            ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(event => {
+                document.addEventListener(event, resetInactivityTimer);
+            });
+            resetInactivityTimer();
+        }
+
+        // ===== AUTHENTICATION =====
+        async function checkAuth() {
+            const token = getAuthToken();
+            if (!token) {
+                showToast('Please login to continue', 'info');
+                setTimeout(() => window.location.href = 'adlog.html', 1500);
+                return false;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    currentUser = data.data || data.user || { fullName: 'Admin', role: 'admin' };
+                    updateUserInfo();
+                    return true;
+                }
+
+                localStorage.removeItem('adminToken');
+                document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                showToast('Authentication failed', 'error');
+                setTimeout(() => window.location.href = 'adlog.html', 1500);
+                return false;
+            } catch (error) {
+                console.error('Auth error:', error);
+                showToast('Connection error', 'error');
+                return false;
+            }
+        }
+
+        function updateUserInfo() {
+            if (!currentUser) return;
+            const name = currentUser.fullName || currentUser.full_name || 'Admin';
+            const role = currentUser.role || 'admin';
+            const initial = name.charAt(0).toUpperCase();
+            
+            document.getElementById('userName').textContent = name;
+            document.getElementById('userRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
+            document.getElementById('userAvatar').textContent = initial;
+            document.getElementById('sidebarUserName').textContent = name;
+            document.getElementById('sidebarUserRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
+        }
+
+        function logout() {
+            showModal('logoutModal');
+        }
+
+        function confirmLogout() {
+            localStorage.removeItem('adminToken');
+            document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            hideModal('logoutModal');
+            showToast('Logged out successfully', 'success');
+            setTimeout(() => window.location.href = 'adlog.html', 1000);
+        }
+
+        // ===== API FUNCTIONS =====
+        async function apiRequest(endpoint, options = {}) {
+            const token = getAuthToken();
+            if (!token) throw new Error('Not authenticated');
+
+            const url = `${API_BASE_URL}${endpoint}`;
+            const config = {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    ...options.headers
+                }
+            };
+
+            try {
+                const response = await fetch(url, config);
+
+                if (response.status === 401) {
+                    localStorage.removeItem('adminToken');
+                    document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                    showToast('Session expired', 'error');
+                    setTimeout(() => window.location.href = 'adlog.html', 1500);
+                    throw new Error('Unauthorized');
+                }
+
+                if (!response.ok) {
+                    let errorMsg = `HTTP ${response.status}`;
+                    try {
+                        const data = await response.json();
+                        errorMsg = data.message || data.error || errorMsg;
+                    } catch (e) {}
+                    throw new Error(errorMsg);
+                }
+
+                return await response.json();
+            } catch (error) {
+                if (error.message.includes('Network')) {
+                    throw new Error('Network error. Please check your connection.');
+                }
+                throw error;
+            }
+        }
+
+        async function get(endpoint) {
+            return apiRequest(endpoint, { method: 'GET' });
+        }
+
+        async function post(endpoint, data) {
+            return apiRequest(endpoint, {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+        }
+
+        async function put(endpoint, data) {
+            return apiRequest(endpoint, {
+                method: 'PUT',
+                body: JSON.stringify(data)
+            });
+        }
+
+        async function del(endpoint) {
+            return apiRequest(endpoint, { method: 'DELETE' });
+        }
+
+        async function uploadFile(endpoint, formData) {
+            const token = getAuthToken();
+            if (!token) throw new Error('Not authenticated');
+
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+
+            if (response.status === 401) {
+                localStorage.removeItem('adminToken');
+                document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                showToast('Session expired', 'error');
+                setTimeout(() => window.location.href = 'adlog.html', 1500);
+                throw new Error('Unauthorized');
+            }
+
+            if (!response.ok) {
+                let errMsg = `Upload failed: ${response.status}`;
+                try {
+                    const data = await response.json();
+                    if (data && data.message) errMsg = data.message;
+                } catch (e) {}
+                throw new Error(errMsg);
+            }
+
+            return await response.json();
+        }
+
+        // ===== ARTICLES FUNCTIONS =====
+        async function loadArticles() {
+            try {
+                showLoading();
+                const response = await get('/api/admin/articles');
+                const articles = response.data || [];
+                displayArticles(articles);
+                updateNotificationBadge();
+            } catch (error) {
+                console.error('Error loading articles:', error);
+                showToast('Failed to load articles: ' + error.message, 'error');
+                document.getElementById('articlesTableBody').innerHTML = `
+                    <tr><td colspan="9" class="text-center">Error loading articles</td></tr>
+                `;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function displayArticles(articles) {
+            const tbody = document.getElementById('articlesTableBody');
+            
+            if (!articles || articles.length === 0) {
+                tbody.innerHTML = `
+                    <tr><td colspan="9" class="text-center">No articles found</td></tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = articles.map(article => {
+                const hasImage = article.featured_image || article.image_url;
+                const imageUrl = hasImage ? (hasImage.startsWith('http') ? hasImage : `${API_BASE_URL}${hasImage}`) : null;
+                const publishedDate = article.published_at ? formatDate(article.published_at) : 'Not published';
+                const statusClass = article.status === 'published' ? 'badge-success' :
+                                   article.status === 'draft' ? 'badge-warning' : 'badge-danger';
+                
+                return `
+                    <tr data-uuid="${article.uuid}">
+                        <td>
+                            <input type="checkbox" class="article-checkbox" value="${article.uuid}" onchange="updateSelection(this)">
+                        </td>
+                        <td>
+                            <div class="table-user">
+                                <div class="table-avatar" style="${imageUrl ? `background-image: url('${imageUrl}'); background-size: cover;` : ''}">
+                                    ${!imageUrl ? '<i class="far fa-newspaper"></i>' : ''}
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div style="font-weight: 600;">${article.title || 'Untitled'}</div>
+                            <div style="font-size: 12px; color: var(--slate-500);">${article.excerpt?.substring(0, 50)}${article.excerpt?.length > 50 ? '...' : ''}</div>
+                        </td>
+                        <td>${article.category || 'Uncategorized'}</td>
+                        <td>${article.author || 'NUESA BIU'}</td>
+                        <td>
+                            <span class="status-badge ${statusClass}">
+                                ${article.status || 'draft'}
+                            </span>
+                        </td>
+                        <td>${publishedDate}</td>
+                        <td>${article.view_count || 0}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="icon-btn icon-btn-primary" onclick="editArticle('${article.uuid}')" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="icon-btn icon-btn-danger" onclick="deleteArticle('${article.uuid}')" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterArticles() {
+            const search = document.getElementById('articleSearch').value.toLowerCase();
+            const category = document.getElementById('categoryFilter').value;
+            const status = document.getElementById('statusFilter').value;
+            
+            const rows = document.querySelectorAll('#articlesTable tbody tr');
+            rows.forEach(row => {
+                const title = row.cells[2]?.textContent.toLowerCase() || '';
+                const rowCategory = row.cells[3]?.textContent || '';
+                const rowStatus = row.cells[5]?.textContent.trim().toLowerCase() || '';
+                
+                const matchesSearch = title.includes(search);
+                const matchesCategory = !category || rowCategory === category;
+                const matchesStatus = !status || rowStatus === status;
+                
+                row.style.display = matchesSearch && matchesCategory && matchesStatus ? '' : 'none';
+            });
+        }
+
+        // ===== BULK ACTIONS =====
+        function updateSelection(checkbox) {
+            if (checkbox.checked) {
+                selectedArticles.add(checkbox.value);
+            } else {
+                selectedArticles.delete(checkbox.value);
+            }
+            updateBulkActions();
+        }
+
+        function updateBulkActions() {
+            const count = selectedArticles.size;
+            const bulkActions = document.getElementById('bulkActions');
+            const selectAll = document.getElementById('selectAll');
+            
+            if (count > 0) {
+                bulkActions.classList.add('active');
+                document.getElementById('selectedCount').textContent = count;
+            } else {
+                bulkActions.classList.remove('active');
+            }
+            
+            if (selectAll) {
+                const totalCheckboxes = document.querySelectorAll('.article-checkbox').length;
+                selectAll.checked = count === totalCheckboxes && totalCheckboxes > 0;
+                selectAll.indeterminate = count > 0 && count < totalCheckboxes;
+            }
+        }
+
+        function selectAll() {
+            const selectAll = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('.article-checkbox');
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAll.checked;
+                if (selectAll.checked) {
+                    selectedArticles.add(checkbox.value);
+                } else {
+                    selectedArticles.delete(checkbox.value);
+                }
+            });
+            
+            updateBulkActions();
+        }
+
+        function clearSelection() {
+            const checkboxes = document.querySelectorAll('.article-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            selectedArticles.clear();
+            updateBulkActions();
+        }
+
+        async function applyBulkStatus() {
+            const status = document.getElementById('bulkStatus').value;
+            if (!status) {
+                showToast('Please select a status', 'warning');
+                return;
+            }
+            
+            if (selectedArticles.size === 0) {
+                showToast('No articles selected', 'warning');
+                return;
+            }
+
+            try {
+                showLoading();
+                
+                const response = await fetch(`${API_BASE_URL}/api/admin/articles/bulk/status`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${getAuthToken()}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        articleUuids: Array.from(selectedArticles),
+                        status: status
+                    })
+                });
+
+                if (!response.ok) throw new Error('Failed to update articles');
+
+                showToast(`Updated ${selectedArticles.size} articles successfully`, 'success');
+                clearSelection();
+                await loadArticles();
+                
+            } catch (error) {
+                console.error('Bulk status error:', error);
+                showToast('Error: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function confirmBulkDelete() {
+            if (selectedArticles.size === 0) {
+                showToast('No articles selected', 'warning');
+                return;
+            }
+            document.getElementById('bulkDeleteCount').textContent = selectedArticles.size;
+            showModal('bulkDeleteModal');
+        }
+
+        async function bulkDelete() {
+            try {
+                showLoading();
+                hideModal('bulkDeleteModal');
+                
+                const response = await fetch(`${API_BASE_URL}/api/admin/articles/bulk/delete`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${getAuthToken()}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        articleUuids: Array.from(selectedArticles)
+                    })
+                });
+
+                if (!response.ok) throw new Error('Failed to delete articles');
+
+                showToast(`Deleted ${selectedArticles.size} articles successfully`, 'success');
+                clearSelection();
+                await loadArticles();
+                
+            } catch (error) {
+                console.error('Bulk delete error:', error);
+                showToast('Error: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // ===== TAG MANAGEMENT =====
+        function initTags() {
+            const tagInput = document.getElementById('tagInput');
+            const container = document.getElementById('tagsContainer');
+            
+            renderTags();
+            
+            tagInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ',') {
+                    e.preventDefault();
+                    const tag = tagInput.value.trim();
+                    if (tag && !articleTags.includes(tag)) {
+                        articleTags.push(tag);
+                        renderTags();
+                        tagInput.value = '';
+                    }
+                }
+            });
+        }
+
+        function renderTags() {
+            const container = document.getElementById('tagsContainer');
+            const tagInput = document.getElementById('tagInput');
+            
+            container.innerHTML = '';
+            
+            articleTags.forEach(tag => {
+                const tagEl = document.createElement('span');
+                tagEl.className = 'tag';
+                tagEl.innerHTML = `
+                    ${tag}
+                    <i class="fas fa-times tag-remove" onclick="removeTag('${tag}')"></i>
+                `;
+                container.appendChild(tagEl);
+            });
+            
+            container.appendChild(tagInput);
+        }
+
+        function removeTag(tag) {
+            articleTags = articleTags.filter(t => t !== tag);
+            renderTags();
+        }
+
+        // ===== EDITOR FUNCTIONS =====
+        function formatText(command) {
+            document.execCommand(command, false, null);
+        }
+
+        function insertLink() {
+            const url = prompt('Enter URL:');
+            if (url) {
+                document.execCommand('createLink', false, url);
+            }
+        }
+
+        function insertList(type) {
+            document.execCommand('insert' + (type === 'ordered' ? 'Ordered' : 'Unordered') + 'List', false, null);
+        }
+
+        function getArticleContent() {
+            return document.getElementById('articleContent').innerHTML;
+        }
+
+        function setArticleContent(html) {
+            document.getElementById('articleContent').innerHTML = html || '';
+        }
+
+        // ===== ARTICLE CRUD =====
+        function previewArticleImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('articleImagePreview').innerHTML = 
+                        `<img src="${e.target.result}" style="width: 100%; height: 100%; object-fit: cover;">`;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function resetArticleForm() {
+            document.getElementById('articleForm').reset();
+            document.getElementById('articleModalTitle').textContent = 'Add New Article';
+            document.getElementById('articleUuid').value = '';
+            currentArticleUuid = null;
+            articleTags = [];
+            renderTags();
+            setArticleContent('');
+            
+            document.querySelectorAll('.status-toggle-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector('.status-toggle-btn[data-status="draft"]').classList.add('active');
+            
+            document.getElementById('articleImagePreview').innerHTML = 
+                '<i class="far fa-newspaper" style="font-size: 48px; color: var(--slate-400);"></i>';
+        }
+
+        async function saveArticle() {
+            try {
+                const activeStatus = document.querySelector('.status-toggle-btn.active');
+                const status = activeStatus ? activeStatus.dataset.status : 'draft';
+                const isPublished = status === 'published';
+
+                const title = document.getElementById('articleTitle').value;
+                const category = document.getElementById('articleCategory').value;
+                const excerpt = document.getElementById('articleExcerpt').value;
+                const content = getArticleContent();
+                
+                if (!title || !category || !excerpt || !content || content === '<br>') {
+                    showToast('Title, category, excerpt, and content are required', 'error');
+                    return;
+                }
+
+                const formData = new FormData();
+                
+                const articleData = {
+                    title: title.trim(),
+                    category: category,
+                    author: document.getElementById('articleAuthor').value || 'NUESA BIU',
+                    excerpt: excerpt.trim(),
+                    content: content,
+                    tags: articleTags,
+                    status: status,
+                    is_published: isPublished
+                };
+
+                const publishDate = document.getElementById('publishDate').value;
+                if (publishDate) {
+                    articleData.published_at = new Date(publishDate).toISOString();
+                } else if (isPublished) {
+                    articleData.published_at = new Date().toISOString();
+                }
+
+                formData.append('data', JSON.stringify(articleData));
+                
+                const imageFile = document.getElementById('articleImage').files[0];
+                if (imageFile) {
+                    formData.append('featured_image', imageFile);
+                }
+
+                showLoading();
+
+                const isEditing = !!currentArticleUuid;
+                const url = isEditing 
+                    ? `${API_BASE_URL}/api/admin/articles/${currentArticleUuid}`
+                    : `${API_BASE_URL}/api/admin/articles`;
+                
+                const method = isEditing ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Authorization': `Bearer ${getAuthToken()}` },
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.message || `Server error: ${response.status}`);
+                }
+
+                showToast(`Article ${isEditing ? 'updated' : 'created'} successfully!`, 'success');
+                hideModal('articleModal');
+                await loadArticles();
+                
+            } catch (error) {
+                console.error('Error saving article:', error);
+                showToast('Error: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function editArticle(uuid) {
+            try {
+                showLoading();
+                const response = await get(`/api/admin/articles/${uuid}`);
+                const article = response.data;
+                
+                if (!article) throw new Error('Article not found');
+                
+                currentArticleUuid = uuid;
+                document.getElementById('articleModalTitle').textContent = 'Edit Article';
+                
+                document.getElementById('articleTitle').value = article.title || '';
+                document.getElementById('articleCategory').value = article.category || '';
+                document.getElementById('articleAuthor').value = article.author || '';
+                document.getElementById('articleExcerpt').value = article.excerpt || '';
+                setArticleContent(article.content || '');
+                
+                articleTags = article.tags || [];
+                renderTags();
+                
+                const statusToggleBtns = document.querySelectorAll('.status-toggle-btn');
+                const status = article.status || 'draft';
+                statusToggleBtns.forEach(btn => {
+                    if (btn.dataset.status === status) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+                
+                if (article.published_at) {
+                    const publishDate = new Date(article.published_at);
+                    const year = publishDate.getFullYear();
+                    const month = String(publishDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(publishDate.getDate()).padStart(2, '0');
+                    const hours = String(publishDate.getHours()).padStart(2, '0');
+                    const minutes = String(publishDate.getMinutes()).padStart(2, '0');
+                    document.getElementById('publishDate').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+                } else {
+                    document.getElementById('publishDate').value = '';
+                }
+                
+                const imagePreview = document.getElementById('articleImagePreview');
+                if (article.featured_image) {
+                    const imageUrl = article.featured_image.startsWith('http') 
+                        ? article.featured_image 
+                        : `${API_BASE_URL}${article.featured_image}`;
+                    imagePreview.innerHTML = `<img src="${imageUrl}" style="width: 100%; height: 100%; object-fit: cover;">`;
+                } else {
+                    imagePreview.innerHTML = '<i class="far fa-newspaper" style="font-size: 48px; color: var(--slate-400);"></i>';
+                }
+                
+                document.getElementById('articleImage').value = '';
+                document.getElementById('articleUuid').value = article.uuid;
+                
+                showModal('articleModal');
+            } catch (error) {
+                console.error('Edit article error:', error);
+                showToast('Failed to load article details: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function deleteArticle(uuid) {
+            articleToDelete = uuid;
+            showModal('deleteModal');
+        }
+
+        async function confirmDelete() {
+            if (!articleToDelete) return;
+            
+            try {
+                showLoading();
+                hideModal('deleteModal');
+                
+                await del(`/api/admin/articles/${articleToDelete}`);
+                showToast('Article deleted successfully', 'success');
+                await loadArticles();
+            } catch (error) {
+                console.error('Delete article error:', error);
+                showToast('Failed to delete article: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+                articleToDelete = null;
+            }
+        }
+
+        async function updateNotificationBadge() {
+            try {
+                const response = await get('/api/admin/messages');
+                const messages = response.data || [];
+                const unreadCount = messages.filter(m => !m.is_read).length;
+                document.getElementById('notificationBadge').textContent = unreadCount;
+                document.getElementById('notificationBadge').style.display = unreadCount > 0 ? 'block' : 'none';
+            } catch (error) {
+                console.log('Could not load messages');
+            }
+        }
+
+        // ===== SIDEBAR =====
+        function setupSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mobileOverlay = document.getElementById('mobileOverlay');
+            
+            document.getElementById('mobileMenuToggle').addEventListener('click', () => {
+                sidebar.classList.toggle('open');
+                mobileOverlay.classList.toggle('active');
+            });
+            
+            mobileOverlay.addEventListener('click', () => {
+                sidebar.classList.remove('open');
+                mobileOverlay.classList.remove('active');
+            });
+        }
+
+        // ===== INITIALIZATION =====
+        async function init() {
+            console.log('Initializing articles page...');
+            showLoading();
+
+            const isAuthenticated = await checkAuth();
+            if (!isAuthenticated) {
+                hideLoading();
+                return;
+            }
+
+            setupSidebar();
+            setupActivityListeners();
+            initTags();
+            await loadArticles();
+
+            // Event Listeners
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+            document.getElementById('confirmLogout').addEventListener('click', confirmLogout);
+            document.getElementById('confirmDeleteBtn').addEventListener('click', confirmDelete);
+            document.getElementById('confirmBulkDeleteBtn').addEventListener('click', bulkDelete);
+            
+            document.getElementById('addArticleBtn').addEventListener('click', () => {
+                resetArticleForm();
+                showModal('articleModal');
+            });
+            
+            document.getElementById('saveArticleBtn').addEventListener('click', saveArticle);
+            
+            document.getElementById('articleImage').addEventListener('change', function() {
+                previewArticleImage(this);
+            });
+            
+            document.getElementById('articleSearch').addEventListener('keyup', filterArticles);
+            document.getElementById('categoryFilter').addEventListener('change', filterArticles);
+            document.getElementById('statusFilter').addEventListener('change', filterArticles);
+            
+            document.getElementById('selectAll').addEventListener('change', selectAll);
+            document.getElementById('clearSelection').addEventListener('click', clearSelection);
+            document.getElementById('applyBulkStatus').addEventListener('click', applyBulkStatus);
+            document.getElementById('bulkDelete').addEventListener('click', confirmBulkDelete);
+            
+            document.querySelectorAll('.status-toggle-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.status-toggle-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+
+            hideLoading();
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+
+        // Expose functions globally
+        window.showModal = showModal;
+        window.hideModal = hideModal;
+        window.showToast = showToast;
+        window.editArticle = editArticle;
+        window.deleteArticle = deleteArticle;
+        window.removeTag = removeTag;
+        window.formatText = formatText;
+        window.insertLink = insertLink;
+        window.insertList = insertList;
+        window.updateSelection = updateSelection;
+    </script>
+</body>
+</html>

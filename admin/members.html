@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Members - NUESA BIU Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Copy all styles from dashboard.html here */
+        /* ... (same styles as dashboard.html) ... */
+        
+        /* Additional Members Page Specific Styles */
+        .position-badge {
+            background: var(--primary-light);
+            color: var(--primary-dark);
+            padding: 0.25rem 0.75rem;
+            border-radius: 2rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+        
+        .table-avatar {
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-light), #a7f3d0);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; color: var(--primary-dark);
+            background-size: cover; background-position: center;
+        }
+        
+        .image-preview {
+            width: 120px; height: 120px;
+            border-radius: 50%;
+            background: var(--slate-100);
+            border: 2px dashed var(--slate-300);
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden; margin: 0 auto 1rem;
+        }
+        .image-preview img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .form-grid {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 1rem; margin-bottom: 1rem;
+        }
+        @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
+        
+        .form-group { margin-bottom: 1rem; }
+        .form-label {
+            display: block; margin-bottom: 0.5rem;
+            font-weight: 600; color: var(--slate-700);
+            font-size: 0.875rem;
+        }
+        .form-input, .form-select, .form-textarea {
+            width: 100%; padding: 0.625rem 0.75rem;
+            border: 1px solid var(--slate-300);
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+            transition: all var(--transition-fast);
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none; border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+        .form-textarea { resize: vertical; min-height: 100px; }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Loading...</div>
+        </div>
+    </div>
+
+    <!-- Dashboard Container -->
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">N</div>
+                <div class="sidebar-title">NUESA <span>ADMIN</span></div>
+            </div>
+            <nav class="nav">
+                <a href="dashboard.html" class="nav-item" data-page="dashboard">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="members.html" class="nav-item active" data-page="members">
+                    <i class="fas fa-users"></i>
+                    <span>Members</span>
+                </a>
+                <a href="course-reps.html" class="nav-item" data-page="courseReps">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                    <span>Course Reps</span>
+                </a>
+                <a href="events.html" class="nav-item" data-page="events">
+                    <i class="far fa-calendar-alt"></i>
+                    <span>Events</span>
+                </a>
+                <a href="articles.html" class="nav-item" data-page="articles">
+                    <i class="far fa-newspaper"></i>
+                    <span>News/Articles</span>
+                </a>
+                <a href="resources.html" class="nav-item" data-page="resources">
+                    <i class="fas fa-download"></i>
+                    <span>Resources</span>
+                </a>
+                <a href="messages.html" class="nav-item" data-page="messages">
+                    <i class="far fa-comment-alt"></i>
+                    <span>Messages</span>
+                </a>
+                <a href="analytics.html" class="nav-item" data-page="analytics">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Analytics</span>
+                </a>
+                <a href="settings.html" class="nav-item" data-page="settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-quick-info">
+                    <div class="user-name" id="sidebarUserName">Admin</div>
+                    <div class="user-role" id="sidebarUserRole">Administrator</div>
+                </div>
+                <button class="logout-btn" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Mobile Overlay -->
+        <div class="mobile-overlay" id="mobileOverlay"></div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <button class="mobile-menu-btn" id="mobileMenuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="header-actions">
+                    <button class="notification-btn" id="notificationBtn">
+                        <i class="far fa-bell"></i>
+                        <span class="notification-badge" id="notificationBadge">0</span>
+                    </button>
+                    <div class="user-info">
+                        <div class="user-avatar" id="userAvatar">A</div>
+                        <div class="user-details">
+                            <div class="user-name" id="userName">Loading...</div>
+                            <div class="user-role" id="userRole">Administrator</div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Area -->
+            <main class="main-area" id="contentArea">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Executive Members</h1>
+                        <p class="page-subtitle">Manage your executive team</p>
+                    </div>
+                    <button class="btn btn-primary" id="addMemberBtn">
+                        <i class="fas fa-plus"></i> Add Member
+                    </button>
+                </div>
+
+                <!-- Search & Filters -->
+                <div class="search-filter">
+                    <input type="text" class="search-input" id="memberSearch" placeholder="Search members...">
+                    <select class="filter-select" id="positionFilter">
+                        <option value="">All Positions</option>
+                        <option value="President">President</option>
+                        <option value="Vice President">Vice President</option>
+                        <option value="Secretary General">Secretary General</option>
+                        <option value="Financial Secretary">Financial Secretary</option>
+                        <option value="Treasurer">Treasurer</option>
+                        <option value="Director of Sport">Director of Sport</option>
+                        <option value="Director of Welfare">Director of Welfare</option>
+                        <option value="Director of Social">Director of Social</option>
+                        <option value="Academic Officer">Academic Officer</option>
+                        <option value="Public Relations Officer">Public Relations Officer</option>
+                    </select>
+                    <select class="filter-select" id="statusFilter">
+                        <option value="">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="alumni">Alumni</option>
+                    </select>
+                </div>
+
+                <!-- Members Table -->
+                <div class="content-card">
+                    <div class="table-container">
+                        <table class="data-table" id="membersTable">
+                            <thead>
+                                <tr>
+                                    <th>Photo</th>
+                                    <th>Name</th>
+                                    <th>Position</th>
+                                    <th>Department</th>
+                                    <th>Level</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="membersTableBody">
+                                <tr>
+                                    <td colspan="7" class="text-center">Loading members...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Member Modal -->
+    <div class="modal" id="memberModal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="memberModalTitle">Add New Member</h3>
+                <button class="modal-close" onclick="hideModal('memberModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="memberForm" enctype="multipart/form-data">
+                    <div style="text-align: center; margin-bottom: 1.5rem;">
+                        <div class="image-preview" id="memberImagePreview">
+                            <i class="fas fa-user-plus" style="font-size: 48px; color: var(--slate-400);"></i>
+                        </div>
+                        <input type="file" id="memberPhoto" accept="image/*" style="display: none;">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('memberPhoto').click()">
+                            <i class="fas fa-upload"></i> Upload Photo
+                        </button>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Full Name *</label>
+                            <input type="text" class="form-input" id="memberName" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Position *</label>
+                            <select class="form-select" id="memberPosition" required>
+                                <option value="">Select Position</option>
+                                <option value="President">President</option>
+                                <option value="Vice President">Vice President</option>
+                                <option value="Secretary General">Secretary General</option>
+                                <option value="Financial Secretary">Financial Secretary</option>
+                                <option value="Treasurer">Treasurer</option>
+                                <option value="Director of Sport">Director of Sport</option>
+                                <option value="Director of Welfare">Director of Welfare</option>
+                                <option value="Director of Social">Director of Social</option>
+                                <option value="Academic Officer">Academic Officer</option>
+                                <option value="Public Relations Officer">Public Relations Officer</option>
+                                <option value="Member">Member</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-input" id="memberEmail">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Phone</label>
+                            <input type="tel" class="form-input" id="memberPhone">
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Department</label>
+                            <select class="form-select" id="memberDepartment">
+                                <option value="">Select Department</option>
+                                <option value="Electrical/Electronics Engineering">Electrical/Electronics</option>
+                                <option value="Mechanical Engineering">Mechanical Engineering</option>
+                                <option value="Civil Engineering">Civil Engineering</option>
+                                <option value="Computer Engineering">Computer Engineering</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Level</label>
+                            <select class="form-select" id="memberLevel">
+                                <option value="">Select Level</option>
+                                <option value="100">100 Level</option>
+                                <option value="200">200 Level</option>
+                                <option value="300">300 Level</option>
+                                <option value="400">400 Level</option>
+                                <option value="500">500 Level</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Bio</label>
+                        <textarea class="form-textarea" id="memberBio" rows="3" placeholder="Brief biography..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="memberStatus">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="alumni">Alumni</option>
+                        </select>
+                    </div>
+
+                    <input type="hidden" id="memberId">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('memberModal')">Cancel</button>
+                <button class="btn btn-primary" id="saveMemberBtn">Save Member</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirm Delete</h3>
+                <button class="modal-close" onclick="hideModal('deleteModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this member? This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('deleteModal')">Cancel</button>
+                <button class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logout Modal -->
+    <div class="modal" id="logoutModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirm Logout</h3>
+                <button class="modal-close" onclick="hideModal('logoutModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to logout?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('logoutModal')">Cancel</button>
+                <button class="btn btn-primary" id="confirmLogout">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
+        let currentUser = null;
+        let currentMemberId = null;
+        let memberToDelete = null;
+        let inactivityTimeout;
+
+        // ===== UTILITY FUNCTIONS =====
+        function getAuthToken() {
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                const [name, value] = cookie.trim().split('=');
+                if (name === 'auth_token') return value;
+            }
+            return localStorage.getItem('adminToken');
+        }
+
+        function showLoading() {
+            document.getElementById('loadingOverlay').classList.add('active');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.remove('active');
+        }
+
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function hideModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        function showToast(message, type = 'info', duration = 5000) {
+            document.querySelectorAll('.toast').forEach(t => t.remove());
+            
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            
+            let icon = type === 'success' ? 'check-circle' : 
+                      type === 'error' ? 'exclamation-circle' :
+                      type === 'warning' ? 'exclamation-triangle' : 'info-circle';
+            
+            toast.innerHTML = `
+                <div class="toast-icon"><i class="fas fa-${icon}"></i></div>
+                <div class="toast-content">${message}</div>
+                <button class="toast-close">&times;</button>
+            `;
+            
+            document.body.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            toast.querySelector('.toast-close').addEventListener('click', () => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            });
+            
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, duration);
+        }
+
+        function formatPositionTitle(position) {
+            if (!position) return 'Member';
+            const lowerPos = position.toLowerCase().trim();
+            if (lowerPos.includes('president')) return 'President';
+            if (lowerPos.includes('vice president')) return 'Vice President';
+            if (lowerPos.includes('secretary general')) return 'Secretary General';
+            if (lowerPos.includes('financial secretary')) return 'Financial Secretary';
+            if (lowerPos.includes('treasurer')) return 'Treasurer';
+            if (lowerPos.includes('director of sport')) return 'Director of Sport';
+            if (lowerPos.includes('director of welfare')) return 'Director of Welfare';
+            if (lowerPos.includes('director of social')) return 'Director of Social';
+            if (lowerPos.includes('academic officer')) return 'Academic Officer';
+            if (lowerPos.includes('public relations')) return 'Public Relations Officer';
+            if (lowerPos.includes('pro')) return 'Public Relations Officer';
+            return position.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+        }
+
+        // ===== SESSION MANAGEMENT =====
+        function resetInactivityTimer() {
+            clearTimeout(inactivityTimeout);
+            inactivityTimeout = setTimeout(() => {
+                showToast('Your session will expire in 1 minute', 'warning');
+                setTimeout(() => {
+                    showToast('Session expired', 'error');
+                    logout();
+                }, 60000);
+            }, 29 * 60 * 1000);
+        }
+
+        function setupActivityListeners() {
+            ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(event => {
+                document.addEventListener(event, resetInactivityTimer);
+            });
+            resetInactivityTimer();
+        }
+
+        // ===== AUTHENTICATION =====
+        async function checkAuth() {
+            const token = getAuthToken();
+            if (!token) {
+                showToast('Please login to continue', 'info');
+                setTimeout(() => window.location.href = 'adlog.html', 1500);
+                return false;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    currentUser = data.data || data.user || { fullName: 'Admin', role: 'admin' };
+                    updateUserInfo();
+                    return true;
+                }
+
+                localStorage.removeItem('adminToken');
+                document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                showToast('Authentication failed', 'error');
+                setTimeout(() => window.location.href = 'adlog.html', 1500);
+                return false;
+            } catch (error) {
+                console.error('Auth error:', error);
+                showToast('Connection error', 'error');
+                return false;
+            }
+        }
+
+        function updateUserInfo() {
+            if (!currentUser) return;
+            const name = currentUser.fullName || currentUser.full_name || 'Admin';
+            const role = currentUser.role || 'admin';
+            const initial = name.charAt(0).toUpperCase();
+            
+            document.getElementById('userName').textContent = name;
+            document.getElementById('userRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
+            document.getElementById('userAvatar').textContent = initial;
+            document.getElementById('sidebarUserName').textContent = name;
+            document.getElementById('sidebarUserRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
+        }
+
+        function logout() {
+            showModal('logoutModal');
+        }
+
+        function confirmLogout() {
+            localStorage.removeItem('adminToken');
+            document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            hideModal('logoutModal');
+            showToast('Logged out successfully', 'success');
+            setTimeout(() => window.location.href = 'adlog.html', 1000);
+        }
+
+        // ===== API FUNCTIONS =====
+        async function apiRequest(endpoint, options = {}) {
+            const token = getAuthToken();
+            if (!token) throw new Error('Not authenticated');
+
+            const url = `${API_BASE_URL}${endpoint}`;
+            const config = {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    ...options.headers
+                }
+            };
+
+            try {
+                const response = await fetch(url, config);
+
+                if (response.status === 401) {
+                    localStorage.removeItem('adminToken');
+                    document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                    showToast('Session expired', 'error');
+                    setTimeout(() => window.location.href = 'adlog.html', 1500);
+                    throw new Error('Unauthorized');
+                }
+
+                if (!response.ok) {
+                    let errorMsg = `HTTP ${response.status}`;
+                    try {
+                        const data = await response.json();
+                        errorMsg = data.message || data.error || errorMsg;
+                    } catch (e) {}
+                    throw new Error(errorMsg);
+                }
+
+                return await response.json();
+            } catch (error) {
+                if (error.message.includes('Network')) {
+                    throw new Error('Network error. Please check your connection.');
+                }
+                throw error;
+            }
+        }
+
+        async function get(endpoint) {
+            return apiRequest(endpoint, { method: 'GET' });
+        }
+
+        async function post(endpoint, data) {
+            return apiRequest(endpoint, {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+        }
+
+        async function put(endpoint, data) {
+            return apiRequest(endpoint, {
+                method: 'PUT',
+                body: JSON.stringify(data)
+            });
+        }
+
+        async function del(endpoint) {
+            return apiRequest(endpoint, { method: 'DELETE' });
+        }
+
+        async function uploadFile(endpoint, formData) {
+            const token = getAuthToken();
+            if (!token) throw new Error('Not authenticated');
+
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+
+            if (response.status === 401) {
+                localStorage.removeItem('adminToken');
+                document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                showToast('Session expired', 'error');
+                setTimeout(() => window.location.href = 'adlog.html', 1500);
+                throw new Error('Unauthorized');
+            }
+
+            if (!response.ok) {
+                let errMsg = `Upload failed: ${response.status}`;
+                try {
+                    const data = await response.json();
+                    if (data && data.message) errMsg = data.message;
+                } catch (e) {}
+                throw new Error(errMsg);
+            }
+
+            return await response.json();
+        }
+
+        // ===== MEMBERS FUNCTIONS =====
+        async function loadMembers() {
+            try {
+                showLoading();
+                const response = await get('/api/admin/members');
+                const members = response.data || [];
+                displayMembers(members);
+                updateNotificationBadge();
+            } catch (error) {
+                console.error('Error loading members:', error);
+                showToast('Failed to load members: ' + error.message, 'error');
+                document.getElementById('membersTableBody').innerHTML = `
+                    <tr><td colspan="7" class="text-center">Error loading members</td></tr>
+                `;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function displayMembers(members) {
+            const tbody = document.getElementById('membersTableBody');
+            
+            if (!members || members.length === 0) {
+                tbody.innerHTML = `
+                    <tr><td colspan="7" class="text-center">No members found</td></tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = members.map(member => {
+                const photoUrl = member.profile_image || member.photo_url;
+                const initial = member.full_name?.charAt(0)?.toUpperCase() || '?';
+                const formattedPosition = formatPositionTitle(member.position);
+                
+                return `
+                    <tr data-id="${member.id}">
+                        <td>
+                            <div class="table-user">
+                                <div class="table-avatar" style="${photoUrl ? `background-image: url('${photoUrl.startsWith('http') ? photoUrl : API_BASE_URL + photoUrl}'); background-size: cover;` : ''}">
+                                    ${!photoUrl ? initial : ''}
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div style="font-weight: 600;">${member.full_name || 'N/A'}</div>
+                            <div style="font-size: 12px; color: var(--slate-500);">${member.email || ''}</div>
+                        </td>
+                        <td><span class="position-badge">${formattedPosition}</span></td>
+                        <td>${member.department || 'N/A'}</td>
+                        <td>${member.level || 'N/A'}</td>
+                        <td>
+                            <span class="status-badge ${member.status === 'active' ? 'badge-success' : member.status === 'inactive' ? 'badge-warning' : 'badge-secondary'}">
+                                ${member.status || 'inactive'}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="icon-btn icon-btn-primary" onclick="editMember('${member.id}')" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="icon-btn icon-btn-danger" onclick="deleteMember('${member.id}')" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterMembers() {
+            const search = document.getElementById('memberSearch').value.toLowerCase();
+            const position = document.getElementById('positionFilter').value;
+            const status = document.getElementById('statusFilter').value;
+            
+            const rows = document.querySelectorAll('#membersTable tbody tr');
+            rows.forEach(row => {
+                const name = row.cells[1]?.querySelector('div div:first-child')?.textContent.toLowerCase() || '';
+                const email = row.cells[1]?.querySelector('div div:last-child')?.textContent.toLowerCase() || '';
+                const rowPosition = row.cells[2]?.textContent.trim() || '';
+                const rowStatus = row.cells[5]?.textContent.trim().toLowerCase() || '';
+                
+                const matchesSearch = name.includes(search) || email.includes(search);
+                const matchesPosition = !position || rowPosition.includes(position);
+                const matchesStatus = !status || rowStatus === status;
+                
+                row.style.display = matchesSearch && matchesPosition && matchesStatus ? '' : 'none';
+            });
+        }
+
+        function previewMemberImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('memberImagePreview');
+                    preview.innerHTML = `<img src="${e.target.result}" style="width: 100%; height: 100%; object-fit: cover;">`;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function resetMemberForm() {
+            document.getElementById('memberForm').reset();
+            document.getElementById('memberModalTitle').textContent = 'Add New Member';
+            document.getElementById('memberId').value = '';
+            currentMemberId = null;
+            document.getElementById('memberImagePreview').innerHTML = '<i class="fas fa-user-plus" style="font-size: 48px; color: var(--slate-400);"></i>';
+        }
+
+        async function saveMember() {
+            try {
+                const name = document.getElementById('memberName').value;
+                const position = document.getElementById('memberPosition').value;
+                
+                if (!name || !position) {
+                    showToast('Name and position are required', 'error');
+                    return;
+                }
+
+                const formData = new FormData();
+                
+                const memberData = {
+                    full_name: name.trim(),
+                    position: position.trim(),
+                    department: document.getElementById('memberDepartment').value || null,
+                    level: document.getElementById('memberLevel').value || null,
+                    email: document.getElementById('memberEmail').value || null,
+                    phone: document.getElementById('memberPhone').value || null,
+                    bio: document.getElementById('memberBio').value || null,
+                    status: document.getElementById('memberStatus').value || 'active'
+                };
+
+                formData.append('data', JSON.stringify(memberData));
+                
+                const photoFile = document.getElementById('memberPhoto').files[0];
+                if (photoFile) {
+                    formData.append('photo', photoFile);
+                }
+
+                const token = getAuthToken();
+                if (!token) throw new Error('No authentication token found');
+
+                const isEditing = currentMemberId ? true : false;
+                const url = isEditing 
+                    ? `${API_BASE_URL}/api/admin/members/${currentMemberId}`
+                    : `${API_BASE_URL}/api/admin/members`;
+                
+                const method = isEditing ? 'PUT' : 'POST';
+
+                showLoading();
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+
+                const responseText = await response.text();
+                let result;
+                try {
+                    result = JSON.parse(responseText);
+                } catch (e) {
+                    throw new Error('Invalid server response');
+                }
+
+                if (!response.ok) {
+                    throw new Error(result.message || `Server error: ${response.status}`);
+                }
+
+                showToast(`Member ${isEditing ? 'updated' : 'created'} successfully!`, 'success');
+                hideModal('memberModal');
+                await loadMembers();
+                
+            } catch (error) {
+                console.error('Error saving member:', error);
+                showToast('Error: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function editMember(memberId) {
+            try {
+                showLoading();
+                const response = await get(`/api/admin/members/${memberId}`);
+                const member = response.data;
+                
+                if (!member) throw new Error('Member not found');
+                
+                currentMemberId = memberId;
+                document.getElementById('memberModalTitle').textContent = 'Edit Member';
+                
+                document.getElementById('memberName').value = member.full_name || '';
+                document.getElementById('memberPosition').value = member.position || '';
+                document.getElementById('memberEmail').value = member.email || '';
+                document.getElementById('memberPhone').value = member.phone || '';
+                document.getElementById('memberDepartment').value = member.department || '';
+                document.getElementById('memberLevel').value = member.level || '';
+                document.getElementById('memberBio').value = member.bio || '';
+                document.getElementById('memberStatus').value = member.status || 'active';
+                document.getElementById('memberId').value = member.id;
+                
+                const photoPreview = document.getElementById('memberImagePreview');
+                if (member.profile_image) {
+                    const imageUrl = member.profile_image.startsWith('http') 
+                        ? member.profile_image 
+                        : API_BASE_URL + member.profile_image;
+                    photoPreview.innerHTML = `<img src="${imageUrl}" alt="Preview">`;
+                } else {
+                    photoPreview.innerHTML = '<i class="fas fa-user-plus" style="font-size: 48px; color: var(--slate-400);"></i>';
+                }
+                
+                document.getElementById('memberPhoto').value = '';
+                showModal('memberModal');
+            } catch (error) {
+                console.error('Edit member error:', error);
+                showToast('Failed to load member details: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function deleteMember(memberId) {
+            memberToDelete = memberId;
+            showModal('deleteModal');
+        }
+
+        async function confirmDelete() {
+            if (!memberToDelete) return;
+            
+            try {
+                showLoading();
+                hideModal('deleteModal');
+                
+                await del(`/api/admin/members/${memberToDelete}`);
+                showToast('Member deleted successfully', 'success');
+                await loadMembers();
+            } catch (error) {
+                console.error('Delete member error:', error);
+                showToast('Failed to delete member: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+                memberToDelete = null;
+            }
+        }
+
+        async function updateNotificationBadge() {
+            try {
+                const response = await get('/api/admin/messages');
+                const messages = response.data || [];
+                const unreadCount = messages.filter(m => !m.is_read).length;
+                document.getElementById('notificationBadge').textContent = unreadCount;
+                document.getElementById('notificationBadge').style.display = unreadCount > 0 ? 'block' : 'none';
+            } catch (error) {
+                console.log('Could not load messages');
+            }
+        }
+
+        // ===== SIDEBAR =====
+        function setupSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mobileOverlay = document.getElementById('mobileOverlay');
+            
+            document.getElementById('mobileMenuToggle').addEventListener('click', () => {
+                sidebar.classList.toggle('open');
+                mobileOverlay.classList.toggle('active');
+            });
+            
+            mobileOverlay.addEventListener('click', () => {
+                sidebar.classList.remove('open');
+                mobileOverlay.classList.remove('active');
+            });
+        }
+
+        // ===== INITIALIZATION =====
+        async function init() {
+            console.log('Initializing members page...');
+            showLoading();
+
+            const isAuthenticated = await checkAuth();
+            if (!isAuthenticated) {
+                hideLoading();
+                return;
+            }
+
+            setupSidebar();
+            setupActivityListeners();
+            await loadMembers();
+
+            // Event Listeners
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+            document.getElementById('confirmLogout').addEventListener('click', confirmLogout);
+            document.getElementById('confirmDeleteBtn').addEventListener('click', confirmDelete);
+            
+            document.getElementById('addMemberBtn').addEventListener('click', () => {
+                resetMemberForm();
+                showModal('memberModal');
+            });
+            
+            document.getElementById('saveMemberBtn').addEventListener('click', saveMember);
+            
+            document.getElementById('memberPhoto').addEventListener('change', function() {
+                previewMemberImage(this);
+            });
+            
+            document.getElementById('memberSearch').addEventListener('keyup', filterMembers);
+            document.getElementById('positionFilter').addEventListener('change', filterMembers);
+            document.getElementById('statusFilter').addEventListener('change', filterMembers);
+
+            hideLoading();
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+
+        // Expose functions globally
+        window.showModal = showModal;
+        window.hideModal = hideModal;
+        window.showToast = showToast;
+        window.editMember = editMember;
+        window.deleteMember = deleteMember;
+    </script>
+</body>
+</html>

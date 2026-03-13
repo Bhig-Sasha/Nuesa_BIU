@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Reps - NUESA BIU Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Copy all styles from dashboard.html here */
+        /* ... (same styles as dashboard.html) ... */
+        
+        /* Course Reps Specific Styles */
+        .dept-list {
+            margin-top: 1rem;
+            border: 1px solid var(--slate-200);
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+            background: var(--slate-50);
+        }
+        .dept-item {
+            background: white;
+            border: 1px solid var(--slate-200);
+            border-radius: var(--radius);
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            transition: all var(--transition-fast);
+        }
+        .dept-item:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-sm);
+        }
+        .dept-item:last-child { margin-bottom: 0; }
+        .dept-item-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 0.5rem; font-weight: 600; color: var(--slate-700);
+        }
+        .dept-rep-field { margin-top: 0.5rem; }
+        .dept-rep-label {
+            font-size: 0.75rem; color: var(--slate-500);
+            margin-bottom: 0.25rem; display: block;
+        }
+        
+        .form-grid {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 1rem; margin-bottom: 1rem;
+        }
+        @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
+        
+        .form-group { margin-bottom: 1rem; }
+        .form-label {
+            display: block; margin-bottom: 0.5rem;
+            font-weight: 600; color: var(--slate-700);
+            font-size: 0.875rem;
+        }
+        .form-input, .form-select {
+            width: 100%; padding: 0.625rem 0.75rem;
+            border: 1px solid var(--slate-300);
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+        }
+        .form-input:focus, .form-select:focus {
+            outline: none; border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Loading...</div>
+        </div>
+    </div>
+
+    <!-- Dashboard Container -->
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">N</div>
+                <div class="sidebar-title">NUESA <span>ADMIN</span></div>
+            </div>
+            <nav class="nav">
+                <a href="dashboard.html" class="nav-item" data-page="dashboard">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="members.html" class="nav-item" data-page="members">
+                    <i class="fas fa-users"></i>
+                    <span>Members</span>
+                </a>
+                <a href="course-reps.html" class="nav-item active" data-page="courseReps">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                    <span>Course Reps</span>
+                </a>
+                <a href="events.html" class="nav-item" data-page="events">
+                    <i class="far fa-calendar-alt"></i>
+                    <span>Events</span>
+                </a>
+                <a href="articles.html" class="nav-item" data-page="articles">
+                    <i class="far fa-newspaper"></i>
+                    <span>News/Articles</span>
+                </a>
+                <a href="resources.html" class="nav-item" data-page="resources">
+                    <i class="fas fa-download"></i>
+                    <span>Resources</span>
+                </a>
+                <a href="messages.html" class="nav-item" data-page="messages">
+                    <i class="far fa-comment-alt"></i>
+                    <span>Messages</span>
+                </a>
+                <a href="analytics.html" class="nav-item" data-page="analytics">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Analytics</span>
+                </a>
+                <a href="settings.html" class="nav-item" data-page="settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-quick-info">
+                    <div class="user-name" id="sidebarUserName">Admin</div>
+                    <div class="user-role" id="sidebarUserRole">Administrator</div>
+                </div>
+                <button class="logout-btn" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Mobile Overlay -->
+        <div class="mobile-overlay" id="mobileOverlay"></div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <button class="mobile-menu-btn" id="mobileMenuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="header-actions">
+                    <button class="notification-btn" id="notificationBtn">
+                        <i class="far fa-bell"></i>
+                        <span class="notification-badge" id="notificationBadge">0</span>
+                    </button>
+                    <div class="user-info">
+                        <div class="user-avatar" id="userAvatar">A</div>
+                        <div class="user-details">
+                            <div class="user-name" id="userName">Loading...</div>
+                            <div class="user-role" id="userRole">Administrator</div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Area -->
+            <main class="main-area" id="contentArea">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Course Representatives</h1>
+                        <p class="page-subtitle">Manage course reps for each level</p>
+                    </div>
+                    <button class="btn btn-primary" id="addCourseRepBtn">
+                        <i class="fas fa-plus"></i> Add Course Reps
+                    </button>
+                </div>
+
+                <!-- Search & Filters -->
+                <div class="search-filter">
+                    <input type="text" class="search-input" id="repSearch" placeholder="Search by level or session...">
+                    <select class="filter-select" id="sessionFilter">
+                        <option value="">All Sessions</option>
+                        <option value="2025/2026">2025/2026</option>
+                        <option value="2024/2025">2024/2025</option>
+                        <option value="2023/2024">2023/2024</option>
+                        <option value="2022/2023">2022/2023</option>
+                    </select>
+                    <select class="filter-select" id="levelFilter">
+                        <option value="">All Levels</option>
+                        <option value="100">100 Level</option>
+                        <option value="200">200 Level</option>
+                        <option value="300">300 Level</option>
+                        <option value="400">400 Level</option>
+                        <option value="500">500 Level</option>
+                    </select>
+                </div>
+
+                <!-- Course Reps Table -->
+                <div class="content-card">
+                    <div class="table-container">
+                        <table class="data-table" id="courseRepsTable">
+                            <thead>
+                                <tr>
+                                    <th>Level</th>
+                                    <th>Session</th>
+                                    <th>General Rep</th>
+                                    <th>Assistant</th>
+                                    <th>Departments</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="courseRepsTableBody">
+                                <tr>
+                                    <td colspan="6" class="text-center">Loading course reps...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Course Rep Modal -->
+    <div class="modal" id="courseRepModal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="courseRepModalTitle">Add Course Representatives</h3>
+                <button class="modal-close" onclick="hideModal('courseRepModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="courseRepForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Academic Session *</label>
+                            <select class="form-select" id="repSession" required>
+                                <option value="">Select Session</option>
+                                <option value="2025/2026">2025/2026</option>
+                                <option value="2024/2025">2024/2025</option>
+                                <option value="2023/2024">2023/2024</option>
+                                <option value="2022/2023">2022/2023</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Level *</label>
+                            <select class="form-select" id="repLevel" required>
+                                <option value="">Select Level</option>
+                                <option value="100">100 Level</option>
+                                <option value="200">200 Level</option>
+                                <option value="300">300 Level</option>
+                                <option value="400">400 Level</option>
+                                <option value="500">500 Level</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">General Representative</label>
+                        <input type="text" class="form-input" id="genRep" placeholder="Full name of general rep">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Assistant General Representative</label>
+                        <input type="text" class="form-input" id="asstGenRep" placeholder="Full name of assistant general rep">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Department Representatives</label>
+                        <div class="dept-list" id="departmentFields"></div>
+                    </div>
+
+                    <input type="hidden" id="courseRepId">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('courseRepModal')">Cancel</button>
+                <button class="btn btn-primary" id="saveCourseRepBtn">Save Representatives</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirm Delete</h3>
+                <button class="modal-close" onclick="hideModal('deleteModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete these course representatives? This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('deleteModal')">Cancel</button>
+                <button class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logout Modal -->
+    <div class="modal" id="logoutModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirm Logout</h3>
+                <button class="modal-close" onclick="hideModal('logoutModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to logout?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('logoutModal')">Cancel</button>
+                <button class="btn btn-primary" id="confirmLogout">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
+        const departments = [
+            'Electrical/Electronics Engineering',
+            'Mechanical Engineering',
+            'Civil Engineering'
+        ];
+        
+        let currentUser = null;
+        let currentCourseRepId = null;
+        let repToDelete = null;
+        let inactivityTimeout;
+
+        // ===== UTILITY FUNCTIONS =====
+        function getAuthToken() {
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                const [name, value] = cookie.trim().split('=');
+                if (name === 'auth_token') return value;
+            }
+            return localStorage.getItem('adminToken');
+        }
+
+        function showLoading() {
+            document.getElementById('loadingOverlay').classList.add('active');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.remove('active');
+        }
+
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function hideModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        function showToast(message, type = 'info', duration = 5000) {
+            document.querySelectorAll('.toast').forEach(t => t.remove());
+            
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            
+            let icon = type === 'success' ? 'check-circle' : 
+                      type === 'error' ? 'exclamation-circle' :
+                      type === 'warning' ? 'exclamation-triangle' : 'info-circle';
+            
+            toast.innerHTML = `
+                <div class="toast-icon"><i class="fas fa-${icon}"></i></div>
+                <div class="toast-content">${message}</div>
+                <button class="toast-close">&times;</button>
+            `;
+            
+            document.body.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            toast.querySelector('.toast-close').addEventListener('click', () => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            });
+            
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, duration);
+        }
+
+        // ===== SESSION MANAGEMENT =====
+        function resetInactivityTimer() {
+            clearTimeout(inactivityTimeout);
+            inactivityTimeout = setTimeout(() => {
+                showToast('Your session will expire in 1 minute', 'warning');
+                setTimeout(() => {
+                    showToast('Session expired', 'error');
+                    logout();
+                }, 60000);
+            }, 29 * 60 * 1000);
+        }
+
+        function setupActivityListeners() {
+            ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(event => {
+                document.addEventListener(event, resetInactivityTimer);
+            });
+            resetInactivityTimer();
+        }
+
+        // ===== AUTHENTICATION =====
+        async function checkAuth() {
+            const token = getAuthToken();
+            if (!token) {
+                showToast('Please login to continue', 'info');
+                setTimeout(() => window.location.href = 'adlog.html', 1500);
+                return false;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    currentUser = data.data || data.user || { fullName: 'Admin', role: 'admin' };
+                    updateUserInfo();
+                    return true;
+                }
+
+                localStorage.removeItem('adminToken');
+                document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                showToast('Authentication failed', 'error');
+                setTimeout(() => window.location.href = 'adlog.html', 1500);
+                return false;
+            } catch (error) {
+                console.error('Auth error:', error);
+                showToast('Connection error', 'error');
+                return false;
+            }
+        }
+
+        function updateUserInfo() {
+            if (!currentUser) return;
+            const name = currentUser.fullName || currentUser.full_name || 'Admin';
+            const role = currentUser.role || 'admin';
+            const initial = name.charAt(0).toUpperCase();
+            
+            document.getElementById('userName').textContent = name;
+            document.getElementById('userRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
+            document.getElementById('userAvatar').textContent = initial;
+            document.getElementById('sidebarUserName').textContent = name;
+            document.getElementById('sidebarUserRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
+        }
+
+        function logout() {
+            showModal('logoutModal');
+        }
+
+        function confirmLogout() {
+            localStorage.removeItem('adminToken');
+            document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            hideModal('logoutModal');
+            showToast('Logged out successfully', 'success');
+            setTimeout(() => window.location.href = 'adlog.html', 1000);
+        }
+
+        // ===== API FUNCTIONS =====
+        async function apiRequest(endpoint, options = {}) {
+            const token = getAuthToken();
+            if (!token) throw new Error('Not authenticated');
+
+            const url = `${API_BASE_URL}${endpoint}`;
+            const config = {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    ...options.headers
+                }
+            };
+
+            try {
+                const response = await fetch(url, config);
+
+                if (response.status === 401) {
+                    localStorage.removeItem('adminToken');
+                    document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                    showToast('Session expired', 'error');
+                    setTimeout(() => window.location.href = 'adlog.html', 1500);
+                    throw new Error('Unauthorized');
+                }
+
+                if (!response.ok) {
+                    let errorMsg = `HTTP ${response.status}`;
+                    try {
+                        const data = await response.json();
+                        errorMsg = data.message || data.error || errorMsg;
+                    } catch (e) {}
+                    throw new Error(errorMsg);
+                }
+
+                return await response.json();
+            } catch (error) {
+                if (error.message.includes('Network')) {
+                    throw new Error('Network error. Please check your connection.');
+                }
+                throw error;
+            }
+        }
+
+        async function get(endpoint) {
+            return apiRequest(endpoint, { method: 'GET' });
+        }
+
+        async function post(endpoint, data) {
+            return apiRequest(endpoint, {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+        }
+
+        async function put(endpoint, data) {
+            return apiRequest(endpoint, {
+                method: 'PUT',
+                body: JSON.stringify(data)
+            });
+        }
+
+        async function del(endpoint) {
+            return apiRequest(endpoint, { method: 'DELETE' });
+        }
+
+        // ===== COURSE REPS FUNCTIONS =====
+        async function loadCourseReps() {
+            try {
+                showLoading();
+                const response = await get('/api/admin/course-reps');
+                const reps = response.data || [];
+                displayCourseReps(reps);
+                updateNotificationBadge();
+            } catch (error) {
+                console.error('Error loading course reps:', error);
+                showToast('Failed to load course reps: ' + error.message, 'error');
+                document.getElementById('courseRepsTableBody').innerHTML = `
+                    <tr><td colspan="6" class="text-center">Error loading course reps</td></tr>
+                `;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function displayCourseReps(reps) {
+            const tbody = document.getElementById('courseRepsTableBody');
+            
+            if (!reps || reps.length === 0) {
+                tbody.innerHTML = `
+                    <tr><td colspan="6" class="text-center">No course representatives found</td></tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = reps.map(rep => {
+                let departments = rep.departments;
+                if (typeof departments === 'string') {
+                    try { departments = JSON.parse(departments); } catch (e) { departments = []; }
+                }
+                const deptCount = departments?.length || 0;
+                
+                return `
+                    <tr data-id="${rep.id}">
+                        <td><strong>${rep.level || 'N/A'}</strong></td>
+                        <td>${rep.session || 'N/A'}</td>
+                        <td>${rep.gen_rep || '<span class="text-muted">Not Assigned</span>'}</td>
+                        <td>${rep.asst_gen_rep || '<span class="text-muted">Not Assigned</span>'}</td>
+                        <td>
+                            <span class="status-badge badge-info">${deptCount} departments</span>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="icon-btn icon-btn-primary" onclick="editCourseRep('${rep.id}')" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="icon-btn icon-btn-danger" onclick="deleteCourseRep('${rep.id}')" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterCourseReps() {
+            const search = document.getElementById('repSearch').value.toLowerCase();
+            const session = document.getElementById('sessionFilter').value;
+            const level = document.getElementById('levelFilter').value;
+            
+            const rows = document.querySelectorAll('#courseRepsTable tbody tr');
+            rows.forEach(row => {
+                const levelText = row.cells[0]?.textContent.toLowerCase() || '';
+                const sessionText = row.cells[1]?.textContent || '';
+                
+                const matchesSearch = levelText.includes(search) || sessionText.toLowerCase().includes(search);
+                const matchesSession = !session || sessionText === session;
+                const matchesLevel = !level || levelText === level;
+                
+                row.style.display = matchesSearch && matchesSession && matchesLevel ? '' : 'none';
+            });
+        }
+
+        function populateDepartmentFields(departmentsData = {}) {
+            const deptContainer = document.getElementById('departmentFields');
+            deptContainer.innerHTML = departments.map(dept => {
+                const deptId = dept.replace(/[^a-zA-Z0-9]/g, '');
+                return `
+                    <div class="dept-item">
+                        <div class="dept-item-header">
+                            <span class="dept-item-title">${dept}</span>
+                        </div>
+                        <div class="dept-rep-field">
+                            <label class="dept-rep-label">Representative</label>
+                            <input type="text" class="form-input" id="dept_${deptId}" value="${departmentsData[dept] || ''}" placeholder="Full name of department rep">
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function resetCourseRepForm() {
+            document.getElementById('courseRepForm').reset();
+            document.getElementById('courseRepModalTitle').textContent = 'Add Course Representatives';
+            document.getElementById('courseRepId').value = '';
+            currentCourseRepId = null;
+            
+            const currentYear = new Date().getFullYear();
+            const defaultSession = `${currentYear}/${currentYear + 1}`;
+            document.getElementById('repSession').value = defaultSession;
+            
+            populateDepartmentFields({});
+        }
+
+        async function saveCourseRep() {
+            try {
+                const session = document.getElementById('repSession').value;
+                const level = document.getElementById('repLevel').value;
+                const genRep = document.getElementById('genRep').value.trim();
+                const asstGenRep = document.getElementById('asstGenRep').value.trim();
+                
+                if (!session || !level) {
+                    showToast('Session and level are required', 'error');
+                    return;
+                }
+
+                const departmentsList = [];
+                departments.forEach(dept => {
+                    const deptId = dept.replace(/[^a-zA-Z0-9]/g, '');
+                    const rep = document.getElementById(`dept_${deptId}`)?.value.trim() || '';
+                    departmentsList.push({
+                        name: dept,
+                        rep: rep || 'Pending'
+                    });
+                });
+
+                const repData = {
+                    session: session,
+                    level: level,
+                    gen_rep: genRep || 'Not Assigned',
+                    asst_gen_rep: asstGenRep || 'Not Assigned',
+                    departments: departmentsList
+                };
+
+                showLoading();
+
+                let response;
+                if (currentCourseRepId) {
+                    response = await put(`/api/admin/course-reps/${currentCourseRepId}`, repData);
+                } else {
+                    response = await post('/api/admin/course-reps', repData);
+                }
+
+                showToast(`Course representatives ${currentCourseRepId ? 'updated' : 'created'} successfully!`, 'success');
+                hideModal('courseRepModal');
+                await loadCourseReps();
+                
+            } catch (error) {
+                console.error('Error saving course rep:', error);
+                showToast('Error: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function editCourseRep(repId) {
+            try {
+                showLoading();
+                const response = await get(`/api/admin/course-reps/${repId}`);
+                const rep = response.data;
+                
+                if (!rep) throw new Error('Course rep not found');
+                
+                currentCourseRepId = repId;
+                document.getElementById('courseRepModalTitle').textContent = 'Edit Course Representatives';
+                
+                document.getElementById('repSession').value = rep.session || '';
+                document.getElementById('repLevel').value = rep.level || '';
+                document.getElementById('genRep').value = rep.gen_rep || '';
+                document.getElementById('asstGenRep').value = rep.asst_gen_rep || '';
+                document.getElementById('courseRepId').value = rep.id;
+                
+                let departmentsData = rep.departments;
+                if (typeof departmentsData === 'string') {
+                    try { departmentsData = JSON.parse(departmentsData); } catch (e) { departmentsData = []; }
+                }
+                
+                const deptMap = {};
+                if (Array.isArray(departmentsData)) {
+                    departmentsData.forEach(dept => {
+                        deptMap[dept.name] = dept.rep || '';
+                    });
+                }
+                
+                populateDepartmentFields(deptMap);
+                
+                showModal('courseRepModal');
+            } catch (error) {
+                console.error('Edit course rep error:', error);
+                showToast('Failed to load course rep details: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function deleteCourseRep(repId) {
+            repToDelete = repId;
+            showModal('deleteModal');
+        }
+
+        async function confirmDelete() {
+            if (!repToDelete) return;
+            
+            try {
+                showLoading();
+                hideModal('deleteModal');
+                
+                await del(`/api/admin/course-reps/${repToDelete}`);
+                showToast('Course representatives deleted successfully', 'success');
+                await loadCourseReps();
+            } catch (error) {
+                console.error('Delete course rep error:', error);
+                showToast('Failed to delete: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+                repToDelete = null;
+            }
+        }
+
+        async function updateNotificationBadge() {
+            try {
+                const response = await get('/api/admin/messages');
+                const messages = response.data || [];
+                const unreadCount = messages.filter(m => !m.is_read).length;
+                document.getElementById('notificationBadge').textContent = unreadCount;
+                document.getElementById('notificationBadge').style.display = unreadCount > 0 ? 'block' : 'none';
+            } catch (error) {
+                console.log('Could not load messages');
+            }
+        }
+
+        // ===== SIDEBAR =====
+        function setupSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mobileOverlay = document.getElementById('mobileOverlay');
+            
+            document.getElementById('mobileMenuToggle').addEventListener('click', () => {
+                sidebar.classList.toggle('open');
+                mobileOverlay.classList.toggle('active');
+            });
+            
+            mobileOverlay.addEventListener('click', () => {
+                sidebar.classList.remove('open');
+                mobileOverlay.classList.remove('active');
+            });
+        }
+
+        // ===== INITIALIZATION =====
+        async function init() {
+            console.log('Initializing course reps page...');
+            showLoading();
+
+            const isAuthenticated = await checkAuth();
+            if (!isAuthenticated) {
+                hideLoading();
+                return;
+            }
+
+            setupSidebar();
+            setupActivityListeners();
+            await loadCourseReps();
+
+            // Event Listeners
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+            document.getElementById('confirmLogout').addEventListener('click', confirmLogout);
+            document.getElementById('confirmDeleteBtn').addEventListener('click', confirmDelete);
+            
+            document.getElementById('addCourseRepBtn').addEventListener('click', () => {
+                resetCourseRepForm();
+                showModal('courseRepModal');
+            });
+            
+            document.getElementById('saveCourseRepBtn').addEventListener('click', saveCourseRep);
+            
+            document.getElementById('repSearch').addEventListener('keyup', filterCourseReps);
+            document.getElementById('sessionFilter').addEventListener('change', filterCourseReps);
+            document.getElementById('levelFilter').addEventListener('change', filterCourseReps);
+
+            hideLoading();
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+
+        // Expose functions globally
+        window.showModal = showModal;
+        window.hideModal = hideModal;
+        window.showToast = showToast;
+        window.editCourseRep = editCourseRep;
+        window.deleteCourseRep = deleteCourseRep;
+    </script>
+</body>
+</html>
