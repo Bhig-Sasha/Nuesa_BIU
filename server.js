@@ -1217,18 +1217,24 @@ authRouter.post('/login', validate(schemas.login), async (req, res) => {
 
         await cacheManager.set(`user:${user.id}`, user, rememberMe ? 604800000 : 300000);
 
+        // IMPORTANT: Set cookie with proper settings
         res.cookie('auth_token', token, {
             httpOnly: true,
-            secure: IS_PRODUCTION,
-            sameSite: 'strict',
+            secure: IS_PRODUCTION, // true in production (HTTPS)
+            sameSite: 'lax', // Changed from 'strict' to 'lax'
             maxAge: rememberMe ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000,
             path: '/',
-            domain: IS_PRODUCTION ? new URL(process.env.FRONTEND_URL || '').hostname : undefined
+            // Don't set domain unless absolutely necessary
         });
 
+        // ALSO send token in response body for clients that prefer it
         res.json({
             status: 'success',
-            data: { user, token, expiresIn: JWT_EXPIRE },
+            data: { 
+                user, 
+                token, // Send token in body as backup
+                expiresIn: JWT_EXPIRE 
+            },
             message: 'Login successful'
         });
     } catch (error) {
@@ -1252,7 +1258,16 @@ authRouter.post('/logout', verifyToken, async (req, res) => {
 });
 
 authRouter.get('/verify', verifyToken, async (req, res) => {
-    res.json({ status: 'success', data: req.user, message: 'Token is valid' });
+    // Also check for token in Authorization header as backup
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+    
+    res.json({ 
+        status: 'success', 
+        data: req.user, 
+        message: 'Token is valid',
+        token: token // Return token for client to store if needed
+    });
 });
 
 authRouter.post('/refresh', verifyToken, async (req, res) => {
