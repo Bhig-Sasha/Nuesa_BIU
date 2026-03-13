@@ -10,6 +10,9 @@
  * @version 1.0.0
  * @license MIT
  * @DevSignature ST-BIU-2026
+ */
+
+/**
  * ============================================================
  * NUESA BIU API SERVER - FULLY ORGANIZED VERSION
  * ============================================================
@@ -21,6 +24,10 @@
  * - Admin Routes (lines 3000-5000)
  * - Error Handling & Server (lines 5000-5500)
  * 
+ * @author Sasha Troger
+ * @version 1.0.0
+ * @license MIT
+ * @DevSignature ST-BIU-2026
  */
 
 // ============================================================
@@ -894,22 +901,13 @@ if (process.env.FRONTEND_URL && !ALLOWED_ORIGINS.includes(process.env.FRONTEND_U
     ALLOWED_ORIGINS.push(process.env.FRONTEND_URL);
 }
 
-// Add your local and production origins
 ALLOWED_ORIGINS.push('https://nuesa-biu-pjp0.onrender.com');
-ALLOWED_ORIGINS.push('http://localhost:5000');
-ALLOWED_ORIGINS.push('http://127.0.0.1:5000');
-ALLOWED_ORIGINS.push('http://localhost:5500'); // If using Live Server
-ALLOWED_ORIGINS.push('http://127.0.0.1:5500');
+ALLOWED_ORIGINS.push('https://www.nuesa-biu-pjp0.onrender.com');
 
 const corsOptions = {
     origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps or curl)
         if (!origin) return callback(null, true);
-        
-        // In development, allow all origins
         if (!IS_PRODUCTION) return callback(null, true);
-        
-        // In production, check against allowed origins
         if (ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin)) {
             callback(null, true);
         } else {
@@ -917,7 +915,7 @@ const corsOptions = {
             callback(new Error('Not allowed by CORS'));
         }
     },
-    credentials: true, // THIS IS CRITICAL
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
     allowedHeaders: [
         'Content-Type', 'Authorization', 'Accept', 'Origin', 
@@ -1217,24 +1215,18 @@ authRouter.post('/login', validate(schemas.login), async (req, res) => {
 
         await cacheManager.set(`user:${user.id}`, user, rememberMe ? 604800000 : 300000);
 
-        // IMPORTANT: Set cookie with proper settings
         res.cookie('auth_token', token, {
             httpOnly: true,
-            secure: IS_PRODUCTION, // true in production (HTTPS)
-            sameSite: 'lax', // Changed from 'strict' to 'lax'
+            secure: IS_PRODUCTION,
+            sameSite: 'strict',
             maxAge: rememberMe ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000,
             path: '/',
-            // Don't set domain unless absolutely necessary
+            domain: IS_PRODUCTION ? new URL(process.env.FRONTEND_URL || '').hostname : undefined
         });
 
-        // ALSO send token in response body for clients that prefer it
         res.json({
             status: 'success',
-            data: { 
-                user, 
-                token, // Send token in body as backup
-                expiresIn: JWT_EXPIRE 
-            },
+            data: { user, token, expiresIn: JWT_EXPIRE },
             message: 'Login successful'
         });
     } catch (error) {
@@ -1258,16 +1250,7 @@ authRouter.post('/logout', verifyToken, async (req, res) => {
 });
 
 authRouter.get('/verify', verifyToken, async (req, res) => {
-    // Also check for token in Authorization header as backup
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
-    
-    res.json({ 
-        status: 'success', 
-        data: req.user, 
-        message: 'Token is valid',
-        token: token // Return token for client to store if needed
-    });
+    res.json({ status: 'success', data: req.user, message: 'Token is valid' });
 });
 
 authRouter.post('/refresh', verifyToken, async (req, res) => {
