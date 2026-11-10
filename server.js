@@ -4999,54 +4999,23 @@ process.on('SIGINT', () => {
 
 async function startServer() {
     try {
+        console.log(`⏳ [1/3] Starting server on PORT=${PORT}...`);
+        
+        console.log(`⏳ [2/3] Initializing database...`);
         await initializeDatabase();
-
-        app.listen(PORT, '0.0.0.0', () => {
-            console.log(`
-╔═══════════════════════════════════════════════════════════════════╗
-║     🚀 NUESA BIU API Server Started Successfully!                 ║
-╠═══════════════════════════════════════════════════════════════════╣
-║ 📡 Port: ${PORT}                                                ║
-║ 🌍 Environment: ${NODE_ENV}                                     ║
-║ 🗄️  Database: Supabase                                          ║
-║ 💾 Cache: ${redis ? 'Redis' : 'In-Memory'}                      ║
-║ 🔗 API URL: ${BASE_URL}                            ║
-║ 🌐 Frontend: ${process.env.FRONTEND_URL || 'Not set'}           ║
-║ 🔒 JWT: ${JWT_SECRET ? 'Set ✓' : 'Missing ✗'}                  ║
-║ 👑 Admin: ${process.env.ADMIN_EMAIL || 'Not configured'}        ║
-║ 📚 API Docs: ${BASE_URL}/api/docs                 ║
-║ 🔐 Admin Login: ${BASE_URL}/admin/adlog.html       ║
-╚═══════════════════════════════════════════════════════════════════╝
-╔═══════════════════════════════════════════════════════════════════╗
-║  📌 ROUTE ORGANIZATION:                                           ║
-║  ┌─────────────────────────────────────────────────────────────┐ ║
-║  │ PUBLIC ROUTES (No auth required)                             │ ║
-║  │   • GET    /api/health                                       │ ║
-║  │   • POST   /api/auth/login                                   │ ║
-║  │   • GET    /api/members                                      │ ║
-║  │   • GET    /api/events                                       │ ║
-║  │   • GET    /api/resources                                    │ ║
-║  │   • GET    /api/articles                                     │ ║
-║  │   • GET    /api/course-reps                                  │ ║
-║  │   • POST   /api/contact/submit                               │ ║
-║  └─────────────────────────────────────────────────────────────┘ ║
-║  ┌─────────────────────────────────────────────────────────────┐ ║
-║  │ ADMIN ROUTES (require auth + admin role)                     │ ║
-║  │   • POST   /api/admin/login                                  │ ║
-║  │   • GET    /api/admin/stats                                  │ ║
-║  │   • CRUD   /api/admin/members                                │ ║
-║  │   • CRUD   /api/admin/events                                 │ ║
-║  │   • CRUD   /api/admin/resources                              │ ║
-║  │   • CRUD   /api/admin/articles                               │ ║
-║  │   • CRUD   /api/admin/course-reps                            │ ║
-║  │   • GET    /api/users                                        │ ║
-║  └─────────────────────────────────────────────────────────────┘ ║
-╚═══════════════════════════════════════════════════════════════════╝
-            `);
-
-            logger.info(`Server started on port ${PORT} in ${NODE_ENV} mode`);
+        console.log(`✅ [2/3] Database initialized`);
+        
+        const server = app.listen(PORT, '0.0.0.0', () => {
+            console.log(`✅ [3/3] LISTENING on 0.0.0.0:${PORT}`);
+            console.log(`🌍 Environment: ${NODE_ENV}`);
+        });
+        
+        server.on('error', (err) => {
+            console.error('❌ Server listen error:', err);
+            process.exit(1);
         });
     } catch (error) {
+        console.error('❌ Failed to start server:', error);
         logger.error('Failed to start server:', error);
         process.exit(1);
     }
