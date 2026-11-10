@@ -784,18 +784,18 @@ async function resetLoginAttempts(identifier) {
 
 // -------------------- 1.12 DATABASE INIT -------------------
 async function initializeDatabase() {
-    try {
-        const { error } = await supabase.from('users').select('count').limit(1);
-        if (error) throw new Error(`Database connection failed: ${error.message}`);
-
-        logger.info('Database connected successfully');
-        await createDefaultAdmin();
-        await createDefaultTables();
-        logger.info('Database initialization complete');
-    } catch (error) {
-        logger.error('Database initialization failed:', error);
-        throw error;
+    const { error } = await supabase.from('users').select('count').limit(1);
+    if (error) {
+        // Log but don't throw — the server should still start
+        logger.error(`Database check failed: ${error.message}`);
+        throw new Error(`Database connection failed: ${error.message}`);
+        // ^ We still throw so the .catch() in startServer() logs it,
+        //   but startServer() no longer exits the process.
     }
+    logger.info('Database connected successfully');
+    await createDefaultAdmin();
+    await createDefaultTables();
+    logger.info('Database initialization complete');
 }
 
 async function createDefaultAdmin() {
@@ -4998,27 +4998,25 @@ process.on('SIGINT', () => {
 // ============================================================
 
 async function startServer() {
-    try {
-        console.log(`⏳ [1/3] Starting server on PORT=${PORT}...`);
-        
-        console.log(`⏳ [2/3] Initializing database...`);
-        await initializeDatabase();
-        console.log(`✅ [2/3] Database initialized`);
-        
-        const server = app.listen(PORT, '0.0.0.0', () => {
-            console.log(`✅ [3/3] LISTENING on 0.0.0.0:${PORT}`);
-            console.log(`🌍 Environment: ${NODE_ENV}`);
-        });
-        
-        server.on('error', (err) => {
-            console.error('❌ Server listen error:', err);
-            process.exit(1);
-        });
-    } catch (error) {
-        console.error('❌ Failed to start server:', error);
-        logger.error('Failed to start server:', error);
+    // STEP 1: Bind the port FIRST — Render's health check needs this
+    const server = app.listen(PORT, '0.0.0.0', () => {
+        console.log(`✅ [1/2] Server LISTENING on 0.0.0.0:${PORT} (${NODE_ENV})`);
+    });
+
+    server.on('error', (err) => {
+        console.error('❌ [1/2] Server listen error:', err);
         process.exit(1);
-    }
+    });
+
+    // STEP 2: Initialize DB in background — DON'T kill the server on failure
+    console.log(`⏳ [2/2] Initializing database...`);
+    initializeDatabase()
+        .then(() => console.log(`✅ [2/2] Database initialized`))
+        .catch((err) => {
+            console.error(`⚠️ [2/2] Database init failed (server still running):`, err.message);
+            // Do NOT call process.exit() here — the server stays alive
+            // so you can debug the API via /api/health
+        });
 }
 
 startServer();
