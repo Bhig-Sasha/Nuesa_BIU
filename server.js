@@ -2605,22 +2605,6 @@ if (publicExists) {
     console.log('⚠️ Public folder not found at:', publicDir);
 }
 
-const adminDir = path.join(__dirname, 'admin');
-if (fsSync.existsSync(adminDir)) {
-    app.use('/admin', express.static(adminDir, {
-        maxAge: IS_PRODUCTION ? '1h' : '0',
-        setHeaders: (res) => { res.setHeader('X-Content-Type-Options', 'nosniff'); }
-    }));
-
-    app.get('/admin/adlog.html', (req, res) => res.sendFile(path.join(adminDir, 'adlog.html')));
-    app.get('/admin', (req, res) => res.redirect('/admin/dash.html'));
-    app.get('/admin/dashboard', (req, res) => res.sendFile(path.join(adminDir, 'dash.html')));
-
-    console.log('✅ Admin panel routes registered at /admin/*');
-} else {
-    console.log('⚠️ Admin directory not found at:', adminDir);
-}
-
 // ============================================================
 // ================== SECTION 7: SYSTEM ENDPOINTS ============
 // ============================================================
