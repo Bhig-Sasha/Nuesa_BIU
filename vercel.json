@@ -1,12 +1,50 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "trailingSlash": false,
   "rewrites": [
+    { "source": "/", "destination": "/index.html" },
+    { "source": "/home", "destination": "/index.html" },
+    { "source": "/index", "destination": "/index.html" },
+
+    { "source": "/about", "destination": "/about.html" },
+    { "source": "/members", "destination": "/members.html" },
+    { "source": "/executives", "destination": "/members.html" },
+    { "source": "/events", "destination": "/events.html" },
+    { "source": "/resources", "destination": "/resources.html" },
+    { "source": "/past-questions", "destination": "/resources.html" },
+    { "source": "/admission", "destination": "/admission.html" },
+    { "source": "/course-reps", "destination": "/courseReps.html" },
+    { "source": "/coursereps", "destination": "/courseReps.html" },
+    { "source": "/news", "destination": "/news.html" },
+    { "source": "/articles", "destination": "/news.html" },
+    { "source": "/contact", "destination": "/contacts.html" },
+    { "source": "/contacts", "destination": "/contacts.html" },
+
+    { "source": "/admin", "destination": "/admin/adlog.html" },
+    { "source": "/admin/login", "destination": "/admin/adlog.html" },
+    { "source": "/admin/adlog", "destination": "/admin/adlog.html" },
+    { "source": "/admin/dash", "destination": "/admin/dash.html" },
+    { "source": "/admin/dashboard", "destination": "/admin/dash.html" },
+
+    { "source": "/api/:path*", "destination": "https://nuesa-biu-pjp0.onrender.com/api/:path*" },
+    { "source": "/uploads/:path*", "destination": "https://nuesa-biu-pjp0.onrender.com/uploads/:path*" }
+  ],
+  "headers": [
     {
-      "source": "/api/:path*",
-      "destination": "https://nuesa-biu-pjp0.onrender.com/api/:path*"
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+      ]
     },
     {
-      "source": "/uploads/:path*",
-      "destination": "https://nuesa-biu-pjp0.onrender.com/uploads/:path*"
+      "source": "/admin/(.*)",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     }
   ]
 }
