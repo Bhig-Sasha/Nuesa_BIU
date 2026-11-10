@@ -299,7 +299,7 @@
                             type="email"
                             id="email"
                             class="form-input"
-                            value="sachatroger6@gmail.com"
+                            value=""
                             required
                             autocomplete="username"
                             placeholder="Enter admin email">
@@ -343,9 +343,9 @@
     // ============================================================
     // CONFIGURATION
     // ============================================================
-    // Empty string = same-origin. On Vercel, /api/* is proxied
-    // to Render by vercel.json. On Render itself, /api/* hits
-    // the same server directly. Either way, cookies stay same-origin.
+    // Empty string = same-origin. On Vercel, /api/* is proxied to
+    // Render by vercel.json. On Render itself, /api/* hits the same
+    // server directly. Either way, cookies stay same-origin and work.
     // ============================================================
     const API_BASE_URL = '';
 
@@ -376,7 +376,8 @@
     // INIT
     // ============================================================
     function init() {
-        // Attach form listeners FIRST — before any async work
+        // Attach form listeners FIRST — before any async work.
+        // If session check errors below, the form is still usable.
         setupEventListeners();
 
         // Restore remembered email
@@ -398,7 +399,6 @@
             sessionNotice.style.display = 'block';
         }
 
-        // Auto-focus email
         setTimeout(() => emailInput.focus(), 100);
 
         // Silent session check — if user is already logged in, redirect
@@ -410,6 +410,7 @@
     // ============================================================
     async function checkExistingSession() {
         try {
+            // NOTE: fetch is called with parentheses around the URL arg
             const res = await fetch(`${API_BASE_URL}/api/admin/session`, {
                 method: 'GET',
                 credentials: 'include',
@@ -451,6 +452,7 @@
         hideAlert();
 
         try {
+            // NOTE: fetch is called with parentheses around the URL arg
             const res = await fetch(`${API_BASE_URL}/api/admin/login`, {
                 method: 'POST',
                 credentials: 'include',
