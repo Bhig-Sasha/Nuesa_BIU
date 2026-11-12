@@ -224,7 +224,7 @@
             margin-top: 3px;
         }
 
-        /* ---- Navigation — SINGLE LINE ITEMS ---- */
+        /* Single-line nav items */
         .nav {
             padding: 16px 12px; flex: 1;
             display: flex; flex-direction: column; gap: 3px;
@@ -255,10 +255,7 @@
             position: relative;
         }
 
-        .nav-item > span {
-            display: inline-block;
-            line-height: 1.2;
-        }
+        .nav-item > span { display: inline-block; line-height: 1.2; }
 
         .nav-item i {
             width: 18px;
@@ -270,10 +267,7 @@
             text-align: center;
         }
 
-        .nav-item:hover {
-            background: rgba(255,255,255,0.06);
-            color: var(--text-invert);
-        }
+        .nav-item:hover { background: rgba(255,255,255,0.06); color: var(--text-invert); }
         .nav-item:hover i { color: var(--accent); }
 
         .nav-item.active {
@@ -353,11 +347,12 @@
             margin-left: var(--sidebar-w);
             min-height: 100vh;
             transition: margin var(--dur) var(--ease);
+            min-width: 0;
         }
         @media (max-width: 900px) { .main-content { margin-left: 0; } }
 
         /* ============================================================
-           HEADER
+           HEADER — no breadcrumb, profile on right
            ============================================================ */
         .header {
             height: var(--header-h);
@@ -368,6 +363,7 @@
             padding: 0 28px;
             display: flex; align-items: center; justify-content: space-between;
             position: sticky; top: 0; z-index: 30;
+            gap: 12px;
         }
 
         .mobile-menu-btn {
@@ -377,15 +373,19 @@
             cursor: pointer; padding: 8px 10px;
             border-radius: var(--r);
             transition: all var(--dur-fast) var(--ease);
-            position: relative;
-            z-index: 50;
+            flex-shrink: 0;
         }
         .mobile-menu-btn:hover { background: var(--primary-tint); color: var(--primary); }
         @media (max-width: 900px) {
             .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+            .header { padding: 0 16px; }
         }
 
-        .header-actions { display: flex; align-items: center; gap: 8px; }
+        .header-actions {
+            display: flex; align-items: center; gap: 8px;
+            margin-left: auto;
+            min-width: 0;
+        }
 
         .notification-btn {
             position: relative;
@@ -396,11 +396,9 @@
             display: flex; align-items: center; justify-content: center;
             font-size: 1rem;
             transition: all var(--dur-fast) var(--ease);
+            flex-shrink: 0;
         }
-        .notification-btn:hover {
-            background: var(--primary-tint);
-            color: var(--primary);
-        }
+        .notification-btn:hover { background: var(--primary-tint); color: var(--primary); }
 
         .notification-badge {
             position: absolute; top: 8px; right: 8px;
@@ -420,6 +418,7 @@
             transition: background var(--dur-fast) var(--ease);
             cursor: pointer;
             margin-left: 8px;
+            min-width: 0;
         }
         .user-info:hover { background: var(--surface-muted); }
 
@@ -434,10 +433,11 @@
             border: 2px solid var(--accent);
         }
 
-        .user-details { line-height: 1.25; }
+        .user-details { line-height: 1.25; min-width: 0; }
         .user-details .user-name {
             font-weight: 700; color: var(--text);
             font-size: 0.8125rem;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .user-details .user-role {
             font-family: var(--font-mono);
@@ -445,6 +445,7 @@
             color: var(--text-dim);
             text-transform: uppercase; letter-spacing: 0.08em;
         }
+        @media (max-width: 640px) { .user-details { display: none; } }
 
         /* ============================================================
            MAIN AREA
@@ -453,7 +454,9 @@
             padding: 28px;
             max-width: 1600px;
             margin: 0 auto;
+            min-width: 0;
         }
+        @media (max-width: 900px) { .main-area { padding: 20px; } }
         @media (max-width: 640px) { .main-area { padding: 20px 16px; } }
 
         .page-header {
@@ -829,17 +832,16 @@
 
             <nav class="nav">
                 <div class="nav-section-label">Main</div>
-                <a href="../admin/dashboard.html" class="nav-item active"><i class="fas fa-th-large"></i><span>Dashboard</span></a>
-                <a href="../admin/members.html" class="nav-item"><i class="fas fa-users"></i><span>Members</span></a>
-                <a href="../admin/courseReps.html" class="nav-item"><i class="fas fa-chalkboard-teacher"></i><span>Course Reps</span></a>
-                <a href="../admin/events.html" class="nav-item"><i class="far fa-calendar-alt"></i><span>Events</span></a>
-                <a href="../admin/articles.html" class="nav-item"><i class="far fa-newspaper"></i><span>News &amp; Articles</span></a>
-                <a href="../admin/resources.html" class="nav-item"><i class="fas fa-book"></i><span>Resources</span></a>
-                <a href="../admin/messages.html" class="nav-item"><i class="far fa-comment-alt"></i><span>Messages</span></a>
+                <a href="dashboard.html" class="nav-item active"><i class="fas fa-th-large"></i><span>Dashboard</span></a>
+                <a href="members.html" class="nav-item"><i class="fas fa-users"></i><span>Members</span></a>
+                <a href="courseReps.html" class="nav-item"><i class="fas fa-chalkboard-teacher"></i><span>Course Reps</span></a>
+                <a href="events.html" class="nav-item"><i class="far fa-calendar-alt"></i><span>Events</span></a>
+                <a href="articles.html" class="nav-item"><i class="far fa-newspaper"></i><span>News &amp; Articles</span></a>
+                <a href="resources.html" class="nav-item"><i class="fas fa-book"></i><span>Resources</span></a>
+                <a href="messages.html" class="nav-item"><i class="far fa-comment-alt"></i><span>Messages</span></a>
 
                 <div class="nav-section-label">System</div>
-                <a href="../admin/analytics.html" class="nav-item"><i class="fas fa-chart-line"></i><span>Analytics</span></a>
-                <a href="../admin/settings.html" class="nav-item"><i class="fas fa-cog"></i><span>Settings</span></a>
+                <a href="settings.html" class="nav-item"><i class="fas fa-cog"></i><span>Settings</span></a>
             </nav>
 
             <div class="sidebar-footer">
@@ -859,7 +861,7 @@
 
         <!-- Main Content -->
         <div class="main-content">
-            <!-- Header -->
+            <!-- Header (no breadcrumb) -->
             <header class="header">
                 <button class="mobile-menu-btn" id="mobileMenuToggle" type="button" aria-label="Toggle menu">
                     <i class="fas fa-bars"></i>
@@ -1239,7 +1241,7 @@
             });
         });
 
-        const path = window.location.pathname.split('/').pop() || 'dash.html';
+        const path = window.location.pathname.split('/').pop() || 'dashboard.html';
         document.querySelectorAll('.nav-item').forEach(item => {
             const href = item.getAttribute('href');
             if (href === path) item.classList.add('active');
