@@ -224,6 +224,7 @@
             margin-top: 3px;
         }
 
+        /* ---- Navigation — SINGLE LINE ITEMS ---- */
         .nav {
             padding: 16px 12px; flex: 1;
             display: flex; flex-direction: column; gap: 3px;
@@ -238,21 +239,35 @@
         }
 
         .nav-item {
-            display: flex; align-items: center; gap: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
             padding: 10px 12px;
             border-radius: var(--r);
             color: rgba(255,255,255,0.72);
             cursor: pointer;
-            font-size: 0.875rem; font-weight: 500;
+            font-size: 0.875rem;
+            font-weight: 500;
+            line-height: 1;
+            white-space: nowrap;
+            overflow: hidden;
             transition: all var(--dur-fast) var(--ease);
             position: relative;
         }
 
+        .nav-item > span {
+            display: inline-block;
+            line-height: 1.2;
+        }
+
         .nav-item i {
-            width: 18px; font-size: 0.9375rem;
+            width: 18px;
+            font-size: 0.9375rem;
             color: rgba(255,255,255,0.55);
             transition: color var(--dur-fast) var(--ease);
             flex-shrink: 0;
+            line-height: 1;
+            text-align: center;
         }
 
         .nav-item:hover {
@@ -815,42 +830,30 @@
             <nav class="nav">
                 <div class="nav-section-label">Main</div>
                 <a href="dash.html" class="nav-item active" data-page="dashboard">
-                    <i class="fas fa-th-large"></i>
-                    <span>Dashboard</span>
+                    <i class="fas fa-th-large"></i><span>Dashboard</span>
                 </a>
                 <a href="members.html" class="nav-item" data-page="members">
-                    <i class="fas fa-users"></i>
-                    <span>Members</span>
+                    <i class="fas fa-users"></i><span>Members</span>
                 </a>
                 <a href="courseReps.html" class="nav-item" data-page="courseReps">
-                    <i class="fas fa-chalkboard-teacher"></i>
-                    <span>Course Reps</span>
+                    <i class="fas fa-chalkboard-teacher"></i><span>Course Reps</span>
                 </a>
                 <a href="events.html" class="nav-item" data-page="events">
-                    <i class="far fa-calendar-alt"></i>
-                    <span>Events</span>
+                    <i class="far fa-calendar-alt"></i><span>Events</span>
                 </a>
                 <a href="articles.html" class="nav-item" data-page="articles">
-                    <i class="far fa-newspaper"></i>
-                    <span>News &amp; Articles</span>
+                    <i class="far fa-newspaper"></i><span>News &amp; Articles</span>
                 </a>
                 <a href="resources.html" class="nav-item" data-page="resources">
-                    <i class="fas fa-book"></i>
-                    <span>Resources</span>
+                    <i class="fas fa-book"></i><span>Resources</span>
                 </a>
                 <a href="messages.html" class="nav-item" data-page="messages">
-                    <i class="far fa-comment-alt"></i>
-                    <span>Messages</span>
+                    <i class="far fa-comment-alt"></i><span>Messages</span>
                 </a>
 
                 <div class="nav-section-label">System</div>
-                <a href="analytics.html" class="nav-item" data-page="analytics">
-                    <i class="fas fa-chart-line"></i>
-                    <span>Analytics</span>
-                </a>
                 <a href="settings.html" class="nav-item" data-page="settings">
-                    <i class="fas fa-cog"></i>
-                    <span>Settings</span>
+                    <i class="fas fa-cog"></i><span>Settings</span>
                 </a>
             </nav>
 
@@ -1232,8 +1235,6 @@
             document.body.style.overflow = '';
         };
 
-        // Use capture: true so we get the event before other handlers.
-        // Also stopPropagation so nothing else swallows it.
         mobileToggle.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -1243,19 +1244,16 @@
 
         mobileOverlay.addEventListener('click', closeSidebar);
 
-        // Escape key closes it
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && sidebar.classList.contains('open')) closeSidebar();
         });
 
-        // Close sidebar when clicking a nav link (mobile UX)
         document.querySelectorAll('.nav-item').forEach(link => {
             link.addEventListener('click', () => {
                 if (window.innerWidth <= 900) closeSidebar();
             });
         });
 
-        // Highlight active nav item by current path
         const path = window.location.pathname.split('/').pop() || 'dash.html';
         document.querySelectorAll('.nav-item').forEach(item => {
             const href = item.getAttribute('href');
@@ -1282,10 +1280,8 @@
     // INIT
     // ============================================================
     async function init() {
-        // Setup sidebar FIRST — before auth, so it works even if auth fails
         setupSidebar();
 
-        // Wire up static buttons
         const logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) logoutBtn.addEventListener('click', () => showModal('logoutModal'));
 
@@ -1295,7 +1291,6 @@
         const notifBtn = document.getElementById('notificationBtn');
         if (notifBtn) notifBtn.addEventListener('click', () => { window.location.href = 'messages.html'; });
 
-        // Now do auth
         const ok = await checkAuth();
         if (!ok) return;
 
@@ -1306,7 +1301,6 @@
 
     document.addEventListener('DOMContentLoaded', init);
 
-    // Expose for inline onclick attributes in the HTML
     window.showModal     = showModal;
     window.hideModal     = hideModal;
     window.confirmLogout = confirmLogout;
