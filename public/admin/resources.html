@@ -4,1001 +4,2784 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resources - NUESA BIU Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Copy all base styles from events.html here */
-        /* ... (same base styles) ... */
-        
-        /* Resources Specific Styles */
-        .file-upload-container {
-            border: 2px dashed var(--slate-300);
-            border-radius: var(--radius);
-            padding: 2rem;
-            text-align: center;
-            background: var(--slate-50);
-            transition: all 0.3s;
+        /* ============================================================
+           NUESA BIU ADMIN — ENGINEERING GREEN + GOLD THEME
+           ============================================================ */
+        :root {
+            --primary:        #102B27;
+            --primary-soft:   #1A3A34;
+            --primary-tint:   #E6EEEB;
+            --accent:         #D5A83B;
+            --accent-soft:    #E8C46A;
+            --accent-tint:    #FBF3DE;
+
+            --bg:             #F4F6F3;
+            --surface:        #FFFFFF;
+            --surface-muted:  #FAFAF8;
+            --border:         #E5E9E4;
+            --border-strong:  #D0D7D2;
+
+            --text:           #102B27;
+            --text-muted:     #5A6B67;
+            --text-dim:       #8A9894;
+            --text-invert:    #FFFFFF;
+            --text-gold:      #8B6E22;
+
+            --success:        #1E8E5A;
+            --success-tint:   #E4F3EB;
+            --warning:        #B8761E;
+            --warning-tint:   #FBF0DC;
+            --danger:         #B7402F;
+            --danger-tint:    #FBE6E2;
+            --info:           #2C6FA8;
+            --info-tint:      #E3EEF7;
+            --purple:         #6B3FA0;
+            --purple-tint:    #F0E9F8;
+
+            --r-sm: 6px;
+            --r:    10px;
+            --r-lg: 14px;
+            --r-xl: 18px;
+
+            --shadow-sm: 0 1px 2px rgba(16, 43, 39, 0.05);
+            --shadow:    0 2px 6px rgba(16, 43, 39, 0.06), 0 1px 2px rgba(16, 43, 39, 0.04);
+            --shadow-md: 0 6px 16px rgba(16, 43, 39, 0.08), 0 2px 4px rgba(16, 43, 39, 0.04);
+            --shadow-lg: 0 12px 28px rgba(16, 43, 39, 0.10), 0 4px 8px rgba(16, 43, 39, 0.05);
+            --shadow-xl: 0 24px 48px rgba(16, 43, 39, 0.14), 0 8px 16px rgba(16, 43, 39, 0.06);
+
+            --ease: cubic-bezier(0.22, 1, 0.36, 1);
+            --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+            --dur-fast: 160ms;
+            --dur:      240ms;
+            --dur-slow: 420ms;
+
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --font-mono: 'Roboto Mono', 'SF Mono', Monaco, monospace;
+
+            --sidebar-w: 272px;
+            --header-h:  76px;
+        }
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 15px;
+            line-height: 1.55;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        a { color: inherit; text-decoration: none; }
+        button { font-family: inherit; }
+
+        /* ============================================================
+           ANIMATIONS
+           ============================================================ */
+        @keyframes fadeIn     { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideInUp  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes scaleIn    { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+        @keyframes spin       { to { transform: rotate(360deg); } }
+
+        /* ============================================================
+           LOADING
+           ============================================================ */
+        .loading-overlay {
+            position: fixed; inset: 0;
+            background: rgba(244, 246, 243, 0.92);
+            backdrop-filter: blur(6px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999;
+            opacity: 0; visibility: hidden;
+            transition: opacity var(--dur) var(--ease), visibility var(--dur);
+        }
+        .loading-overlay.active { opacity: 1; visibility: visible; }
+        .loading-content { text-align: center; animation: scaleIn var(--dur) var(--ease); }
+        .loading-spinner {
+            width: 52px; height: 52px;
+            border: 3px solid var(--primary-tint);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 800ms linear infinite;
+            margin: 0 auto 16px;
+        }
+        .loading-text {
+            font-family: var(--font-mono);
+            font-size: 11px; font-weight: 600;
+            letter-spacing: 0.15em; text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        /* ============================================================
+           TOASTS
+           ============================================================ */
+        .toast {
+            position: fixed; top: 24px; right: 24px;
+            background: var(--surface);
+            padding: 14px 18px;
+            border-radius: var(--r-lg);
+            box-shadow: var(--shadow-xl);
+            display: flex; align-items: center; gap: 12px;
+            max-width: 380px; z-index: 9998;
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--info);
+            transform: translateX(calc(100% + 40px));
+            transition: transform var(--dur-slow) var(--ease-out);
+        }
+        .toast.show { transform: translateX(0); }
+        .toast-success { border-left-color: var(--success); }
+        .toast-error   { border-left-color: var(--danger); }
+        .toast-warning { border-left-color: var(--warning); }
+        .toast-info    { border-left-color: var(--info); }
+        .toast-icon { font-size: 1.1rem; flex-shrink: 0; }
+        .toast-success .toast-icon { color: var(--success); }
+        .toast-error   .toast-icon { color: var(--danger); }
+        .toast-warning .toast-icon { color: var(--warning); }
+        .toast-info    .toast-icon { color: var(--info); }
+        .toast-content { flex: 1; font-size: 0.875rem; font-weight: 500; }
+        .toast-close {
+            background: none; border: none;
+            color: var(--text-dim); cursor: pointer;
+            padding: 4px; font-size: 1.1rem; line-height: 1;
+            border-radius: var(--r-sm);
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .toast-close:hover { color: var(--text); background: var(--surface-muted); }
+
+        /* ============================================================
+           SHELL
+           ============================================================ */
+        .dashboard-container { display: flex; min-height: 100vh; }
+
+        /* ============================================================
+           SIDEBAR
+           ============================================================ */
+        .sidebar {
+            width: var(--sidebar-w);
+            background: var(--primary);
+            display: flex; flex-direction: column;
+            position: fixed; top: 0; left: 0; bottom: 0;
+            z-index: 40;
+            transition: transform var(--dur) var(--ease);
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .sidebar::-webkit-scrollbar { width: 4px; }
+        .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+        @media (max-width: 900px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); box-shadow: var(--shadow-xl); }
+        }
+
+        .sidebar-header {
+            padding: 24px 20px 20px;
+            display: flex; align-items: center; gap: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .sidebar-logo {
+            width: 44px; height: 44px;
+            background: var(--accent);
+            border-radius: var(--r);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--primary);
+            font-weight: 900; font-size: 1.25rem;
+            box-shadow: 0 4px 12px rgba(213, 168, 59, 0.35);
+            flex-shrink: 0;
+        }
+        .sidebar-title {
+            font-size: 0.9375rem; font-weight: 800;
+            color: var(--text-invert);
+            line-height: 1.2;
+        }
+        .sidebar-title span {
+            display: block;
+            font-family: var(--font-mono);
+            font-size: 0.6875rem; font-weight: 600;
+            color: var(--accent);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-top: 3px;
+        }
+
+        .nav {
+            padding: 16px 12px; flex: 1;
+            display: flex; flex-direction: column; gap: 3px;
+        }
+        .nav-section-label {
+            font-family: var(--font-mono);
+            font-size: 0.625rem; font-weight: 700;
+            color: rgba(255,255,255,0.35);
+            letter-spacing: 0.15em; text-transform: uppercase;
+            padding: 16px 12px 6px;
+        }
+        .nav-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 12px;
+            border-radius: var(--r);
+            color: rgba(255,255,255,0.72);
             cursor: pointer;
-            margin-bottom: 1rem;
+            font-size: 0.875rem; font-weight: 500;
+            transition: all var(--dur-fast) var(--ease);
+            position: relative;
         }
-        .file-upload-container:hover {
-            border-color: var(--primary);
-            background: var(--primary-light);
+        .nav-item i {
+            width: 18px; font-size: 0.9375rem;
+            color: rgba(255,255,255,0.55);
+            transition: color var(--dur-fast) var(--ease);
+            flex-shrink: 0;
         }
-        .file-upload-container.drag-over {
-            border-color: var(--primary);
-            background: var(--primary-light);
-            transform: scale(1.02);
+        .nav-item:hover { background: rgba(255,255,255,0.06); color: var(--text-invert); }
+        .nav-item:hover i { color: var(--accent); }
+        .nav-item.active { background: var(--primary-soft); color: var(--text-invert); font-weight: 600; }
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: -12px; top: 50%;
+            transform: translateY(-50%);
+            width: 3px; height: 20px;
+            background: var(--accent);
+            border-radius: 0 3px 3px 0;
+        }
+        .nav-item.active i { color: var(--accent); }
+
+        .sidebar-footer {
+            padding: 16px 12px 20px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+        }
+        .user-quick-info {
+            padding: 12px;
+            background: rgba(255,255,255,0.04);
+            border-radius: var(--r);
+            margin-bottom: 10px;
+        }
+        .user-quick-info .user-name {
+            font-weight: 700; color: var(--text-invert);
+            font-size: 0.875rem; margin-bottom: 2px;
+        }
+        .user-quick-info .user-role {
+            font-family: var(--font-mono);
+            font-size: 0.6875rem; font-weight: 600;
+            color: var(--accent);
+            letter-spacing: 0.05em; text-transform: uppercase;
+        }
+        .logout-btn {
+            width: 100%;
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 12px;
+            background: transparent;
+            color: rgba(255,255,255,0.7);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: var(--r);
+            cursor: pointer;
+            font-weight: 500; font-size: 0.875rem;
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .logout-btn:hover {
+            background: var(--danger);
+            color: var(--text-invert);
+            border-color: var(--danger);
+        }
+
+        /* ============================================================
+           MOBILE OVERLAY
+           ============================================================ */
+        .mobile-overlay {
+            position: fixed; inset: 0;
+            background: rgba(16, 43, 39, 0.45);
+            backdrop-filter: blur(3px);
+            z-index: 35;
+            opacity: 0; visibility: hidden;
+            transition: opacity var(--dur) var(--ease), visibility var(--dur);
+        }
+        .mobile-overlay.active { opacity: 1; visibility: visible; }
+
+        /* ============================================================
+           MAIN CONTENT
+           ============================================================ */
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-w);
+            min-height: 100vh;
+            transition: margin var(--dur) var(--ease);
+        }
+        @media (max-width: 900px) { .main-content { margin-left: 0; } }
+
+        /* ============================================================
+           HEADER
+           ============================================================ */
+        .header {
+            height: var(--header-h);
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 28px;
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; z-index: 30;
+        }
+        .mobile-menu-btn {
+            display: none;
+            background: none; border: none;
+            font-size: 1.25rem; color: var(--text-muted);
+            cursor: pointer; padding: 8px 10px;
+            border-radius: var(--r);
+            transition: all var(--dur-fast) var(--ease);
+            position: relative; z-index: 50;
+        }
+        .mobile-menu-btn:hover { background: var(--primary-tint); color: var(--primary); }
+        @media (max-width: 900px) {
+            .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+        }
+
+        .header-breadcrumb {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        .header-breadcrumb i { font-size: 0.6875rem; color: var(--text-dim); }
+        .header-breadcrumb .current { color: var(--text); font-weight: 600; }
+
+        .header-actions { display: flex; align-items: center; gap: 8px; }
+
+        .notification-btn {
+            position: relative;
+            background: none; border: none;
+            color: var(--text-muted); cursor: pointer;
+            width: 40px; height: 40px;
+            border-radius: var(--r);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem;
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .notification-btn:hover { background: var(--primary-tint); color: var(--primary); }
+
+        .notification-badge {
+            position: absolute; top: 8px; right: 8px;
+            background: var(--accent);
+            color: var(--primary);
+            font-size: 0.625rem; font-weight: 800;
+            padding: 1px 5px;
+            border-radius: 999px;
+            min-width: 16px; text-align: center;
+            line-height: 14px;
+        }
+
+        .user-info {
+            display: flex; align-items: center; gap: 10px;
+            padding: 6px 10px 6px 6px;
+            border-radius: var(--r);
+            transition: background var(--dur-fast) var(--ease);
+            cursor: pointer;
+            margin-left: 8px;
+        }
+        .user-info:hover { background: var(--surface-muted); }
+        .user-avatar {
+            width: 36px; height: 36px;
+            background: var(--primary);
+            color: var(--accent);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 0.875rem;
+            flex-shrink: 0;
+            border: 2px solid var(--accent);
+        }
+        .user-details { line-height: 1.25; }
+        .user-details .user-name { font-weight: 700; color: var(--text); font-size: 0.8125rem; }
+        .user-details .user-role {
+            font-family: var(--font-mono);
+            font-size: 0.625rem; font-weight: 600;
+            color: var(--text-dim);
+            text-transform: uppercase; letter-spacing: 0.08em;
+        }
+
+        /* ============================================================
+           MAIN AREA
+           ============================================================ */
+        .main-area {
+            padding: 28px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        @media (max-width: 640px) { .main-area { padding: 20px 16px; } }
+
+        .page-header {
+            margin-bottom: 24px;
+            display: flex; justify-content: space-between;
+            align-items: flex-end; flex-wrap: wrap; gap: 16px;
+        }
+        .page-title {
+            font-size: 1.75rem; font-weight: 800;
+            color: var(--text);
+            letter-spacing: -0.02em; line-height: 1.2;
+            margin-bottom: 6px;
+        }
+        .page-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        .page-header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        /* ============================================================
+           BUTTONS
+           ============================================================ */
+        .btn {
+            padding: 9px 16px;
+            border-radius: var(--r);
+            border: none; cursor: pointer;
+            font-weight: 600; font-size: 0.8125rem;
+            display: inline-flex; align-items: center; gap: 8px;
+            transition: all var(--dur-fast) var(--ease);
+            line-height: 1.4;
+            white-space: nowrap;
+        }
+        .btn i { font-size: 0.75rem; }
+        .btn-primary { background: var(--primary); color: var(--text-invert); }
+        .btn-primary:hover { background: var(--primary-soft); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border-strong);
+        }
+        .btn-secondary:hover { background: var(--surface-muted); }
+        .btn-gold { background: var(--accent); color: var(--primary); }
+        .btn-gold:hover { background: var(--accent-soft); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(213,168,59,0.3); }
+        .btn-danger { background: var(--danger); color: var(--text-invert); }
+        .btn-danger:hover { filter: brightness(0.92); }
+        .btn-sm { padding: 6px 12px; font-size: 0.75rem; }
+
+        .icon-btn {
+            width: 32px; height: 32px;
+            border-radius: var(--r-sm);
+            border: 1px solid transparent;
+            background: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 0.8125rem;
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .icon-btn:hover { background: var(--primary-tint); color: var(--primary); border-color: var(--border); }
+        .icon-btn.danger:hover { background: var(--danger-tint); color: var(--danger); border-color: var(--danger); }
+
+        /* ============================================================
+           STATS GRID
+           ============================================================ */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: var(--surface);
+            padding: 18px;
+            border-radius: var(--r-lg);
+            border: 1px solid var(--border);
+            animation: slideInUp var(--dur) var(--ease) both;
+        }
+        .stat-card:nth-child(1) { animation-delay: 40ms; }
+        .stat-card:nth-child(2) { animation-delay: 80ms; }
+        .stat-card:nth-child(3) { animation-delay: 120ms; }
+        .stat-card:nth-child(4) { animation-delay: 160ms; }
+        .stat-card:nth-child(5) { animation-delay: 200ms; }
+        .stat-icon {
+            width: 38px; height: 38px;
+            border-radius: var(--r);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.9375rem;
+            margin-bottom: 12px;
+        }
+        .stat-icon.icon-green  { background: var(--primary-tint); color: var(--primary); }
+        .stat-icon.icon-gold   { background: var(--accent-tint);  color: var(--text-gold); }
+        .stat-icon.icon-blue   { background: var(--info-tint);    color: var(--info); }
+        .stat-icon.icon-red    { background: var(--danger-tint);  color: var(--danger); }
+        .stat-icon.icon-purple { background: var(--purple-tint);  color: var(--purple); }
+        .stat-value {
+            font-size: 1.625rem; font-weight: 800;
+            color: var(--text);
+            letter-spacing: -0.03em; line-height: 1;
+            margin-bottom: 4px;
+        }
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.8125rem; font-weight: 600;
+        }
+
+        /* ============================================================
+           CATEGORY SHORTCUTS
+           ============================================================ */
+        .category-shortcuts {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .category-shortcut {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            padding: 18px 16px;
+            cursor: pointer;
+            transition: all var(--dur) var(--ease);
+            display: flex; align-items: center; gap: 12px;
+            animation: slideInUp var(--dur) var(--ease) both;
+        }
+        .category-shortcut:nth-child(1) { animation-delay: 40ms; }
+        .category-shortcut:nth-child(2) { animation-delay: 80ms; }
+        .category-shortcut:nth-child(3) { animation-delay: 120ms; }
+        .category-shortcut:nth-child(4) { animation-delay: 160ms; }
+        .category-shortcut:nth-child(5) { animation-delay: 200ms; }
+        .category-shortcut:nth-child(6) { animation-delay: 240ms; }
+
+        .category-shortcut:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        .category-shortcut.active {
+            border-color: var(--accent);
+            background: var(--accent-tint);
+        }
+        .category-icon {
+            width: 40px; height: 40px;
+            border-radius: var(--r);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+        .category-info { flex: 1; min-width: 0; }
+        .category-name {
+            font-weight: 700;
+            font-size: 0.8125rem;
+            color: var(--text);
+            margin-bottom: 2px;
+        }
+        .category-count {
+            font-family: var(--font-mono);
+            font-size: 0.6875rem;
+            color: var(--text-dim);
+        }
+
+        /* ============================================================
+           CARD
+           ============================================================ */
+        .content-card {
+            background: var(--surface);
+            border-radius: var(--r-lg);
+            border: 1px solid var(--border);
+            padding: 22px;
+            margin-bottom: 20px;
+            animation: slideInUp var(--dur) var(--ease) both;
+        }
+        .card-header {
+            display: flex; justify-content: space-between;
+            align-items: center; margin-bottom: 18px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap; gap: 12px;
+        }
+        .card-title {
+            font-size: 1rem; font-weight: 700;
+            color: var(--text);
+            letter-spacing: -0.01em;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .card-title i { color: var(--accent); }
+        .card-meta {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            font-family: var(--font-mono);
+        }
+
+        .view-toggle {
+            display: inline-flex;
+            gap: 4px;
+            padding: 4px;
+            background: var(--surface-muted);
+            border-radius: var(--r);
+            border: 1px solid var(--border);
+        }
+        .view-toggle-btn {
+            padding: 6px 10px;
+            background: transparent;
+            border: none;
+            border-radius: var(--r-sm);
+            color: var(--text-muted);
+            font-size: 0.8125rem;
+            cursor: pointer;
+            transition: all var(--dur-fast) var(--ease);
+            display: flex; align-items: center; gap: 6px;
+        }
+        .view-toggle-btn:hover { color: var(--text); }
+        .view-toggle-btn.active {
+            background: var(--surface);
+            color: var(--primary);
+            box-shadow: var(--shadow-sm);
+        }
+        .view-toggle-btn span { font-size: 0.75rem; font-weight: 600; }
+        @media (max-width: 500px) { .view-toggle-btn span { display: none; } }
+
+        /* ============================================================
+           FILTERS
+           ============================================================ */
+        .filters {
+            display: grid;
+            grid-template-columns: 2fr repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+        @media (max-width: 1100px) { .filters { grid-template-columns: 1fr 1fr 1fr; } }
+        @media (max-width: 640px) { .filters { grid-template-columns: 1fr; } }
+
+        .search-wrapper { position: relative; }
+        .search-wrapper i {
+            position: absolute;
+            left: 12px; top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-dim);
+            font-size: 0.8125rem;
+            pointer-events: none;
+        }
+        .search-input {
+            width: 100%;
+            padding: 10px 12px 10px 34px;
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            font-size: 0.875rem;
+            font-family: inherit;
+            background: var(--surface);
+            color: var(--text);
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .search-input::placeholder { color: var(--text-dim); }
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(213, 168, 59, 0.12);
+        }
+
+        .filter-select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            font-size: 0.8125rem;
+            font-family: inherit;
+            background: var(--surface);
+            color: var(--text);
+            cursor: pointer;
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .filter-select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(213, 168, 59, 0.12);
+        }
+
+        .filter-row {
+            display: flex; align-items: center; gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+        .filter-clear {
+            background: none; border: none;
+            color: var(--text-muted);
+            font-size: 0.75rem; font-weight: 600;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: var(--r-sm);
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .filter-clear:hover { background: var(--surface-muted); color: var(--text); }
+        .filter-count {
+            font-family: var(--font-mono);
+            font-size: 0.6875rem;
+            color: var(--text-dim);
+            font-weight: 600;
+        }
+
+        /* ============================================================
+           RESOURCES — GRID VIEW
+           ============================================================ */
+        .resources-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .resource-card {
+            background: var(--surface);
+            border-radius: var(--r-lg);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            cursor: pointer;
+            transition: all var(--dur) var(--ease);
+            display: flex; flex-direction: column;
+            animation: slideInUp var(--dur) var(--ease) both;
+        }
+        .resource-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--accent);
+        }
+        .resource-icon-area {
+            position: relative;
+            height: 110px;
+            background: linear-gradient(135deg, var(--primary-tint) 0%, var(--accent-tint) 100%);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .resource-file-icon {
+            width: 60px; height: 60px;
+            background: var(--surface);
+            border-radius: var(--r-lg);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.75rem;
+            box-shadow: var(--shadow-md);
+            color: var(--primary);
+        }
+        .resource-file-icon.pdf { color: #B7402F; }
+        .resource-file-icon.doc { color: #2C6FA8; }
+        .resource-file-icon.ppt { color: #B8761E; }
+        .resource-file-icon.xls { color: #1E8E5A; }
+        .resource-file-icon.img { color: var(--purple); }
+        .resource-status {
+            position: absolute;
+            top: 10px; right: 10px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.625rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            backdrop-filter: blur(6px);
+            box-shadow: var(--shadow-sm);
+        }
+        .resource-body {
+            padding: 14px 16px;
+            flex: 1;
+            display: flex; flex-direction: column;
+        }
+        .resource-type-tag {
+            font-size: 0.625rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-gold);
+            background: var(--accent-tint);
+            padding: 2px 8px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-self: flex-start;
+            margin-bottom: 8px;
+        }
+        .resource-title {
+            font-weight: 700;
+            font-size: 0.9375rem;
+            color: var(--text);
+            line-height: 1.3;
+            margin-bottom: 6px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .resource-course {
+            font-family: var(--font-mono);
+            font-size: 0.6875rem;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+        .resource-meta {
+            display: flex; gap: 8px; flex-wrap: wrap;
+            font-size: 0.6875rem;
+            color: var(--text-dim);
+            margin-bottom: 10px;
+        }
+        .resource-meta span {
+            display: flex; align-items: center; gap: 4px;
+        }
+        .resource-footer {
+            display: flex; justify-content: space-between;
+            align-items: center;
+            padding-top: 10px;
+            border-top: 1px solid var(--border);
+            font-family: var(--font-mono);
+            font-size: 0.6875rem;
+            color: var(--text-dim);
+        }
+        .resource-footer-actions { display: flex; gap: 4px; }
+
+        /* ============================================================
+           RESOURCES — LIST VIEW (table)
+           ============================================================ */
+        .table-container {
+            overflow-x: auto;
+            border-radius: var(--r);
+            border: 1px solid var(--border);
+            background: var(--surface);
+        }
+        .data-table {
+            width: 100%; border-collapse: collapse;
+            min-width: 1000px;
+        }
+        .data-table th {
+            background: var(--surface-muted);
+            padding: 11px 14px;
+            text-align: left;
+            font-family: var(--font-mono);
+            font-weight: 700;
+            font-size: 0.625rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+        .data-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.8125rem;
+            color: var(--text);
+            vertical-align: middle;
+        }
+        .data-table tbody tr {
+            transition: background var(--dur-fast) var(--ease);
+            cursor: pointer;
+        }
+        .data-table tbody tr:hover { background: var(--surface-muted); }
+        .data-table tbody tr:last-child td { border-bottom: none; }
+
+        .resource-cell { display: flex; align-items: center; gap: 10px; }
+        .resource-thumb {
+            width: 40px; height: 40px;
+            border-radius: var(--r-sm);
+            background: var(--primary-tint);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.875rem;
+            color: var(--primary);
+            flex-shrink: 0;
+        }
+        .resource-thumb.pdf { background: #FBE6E2; color: #B7402F; }
+        .resource-thumb.doc { background: #E3EEF7; color: #2C6FA8; }
+        .resource-thumb.ppt { background: #FBF0DC; color: #B8761E; }
+        .resource-thumb.xls { background: #E4F3EB; color: #1E8E5A; }
+        .resource-cell-info { min-width: 0; }
+        .resource-cell-title { font-weight: 600; color: var(--text); font-size: 0.8125rem; margin-bottom: 2px; }
+        .resource-cell-sub { font-size: 0.6875rem; color: var(--text-dim); font-family: var(--font-mono); }
+
+        .cell-mono { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); }
+
+        .status-badge {
+            padding: 3px 9px;
+            border-radius: 999px;
+            font-size: 0.625rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            display: inline-flex; align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+        .badge-success  { background: var(--success-tint); color: var(--success); }
+        .badge-warning  { background: var(--warning-tint); color: var(--warning); }
+        .badge-danger   { background: var(--danger-tint);  color: var(--danger); }
+        .badge-info     { background: var(--info-tint);    color: var(--info); }
+        .badge-gold     { background: var(--accent-tint);  color: var(--text-gold); }
+        .badge-purple   { background: var(--purple-tint);  color: var(--purple); }
+        .badge-muted    { background: var(--surface-muted); color: var(--text-muted); }
+
+        .row-actions {
+            display: flex; gap: 4px;
+            justify-content: flex-end;
+        }
+
+        /* ============================================================
+           EMPTY STATE
+           ============================================================ */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+            grid-column: 1 / -1;
+        }
+        .empty-state-icon {
+            width: 64px; height: 64px;
+            background: var(--primary-tint);
+            color: var(--primary);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem;
+            margin: 0 auto 16px;
+        }
+        .empty-state h3 { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+        .empty-state p { font-size: 0.875rem; }
+
+        /* ============================================================
+           PAGINATION
+           ============================================================ */
+        .pagination {
+            display: flex; justify-content: space-between;
+            align-items: center;
+            padding-top: 16px;
+            flex-wrap: wrap; gap: 12px;
+        }
+        .pagination-info {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+        .pagination-controls { display: flex; gap: 6px; }
+        .page-btn {
+            min-width: 32px; height: 32px;
+            padding: 0 10px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-muted);
+            border-radius: var(--r-sm);
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--text); }
+        .page-btn.active { background: var(--primary); color: var(--text-invert); border-color: var(--primary); }
+        .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* ============================================================
+           MODAL
+           ============================================================ */
+        .modal {
+            position: fixed; inset: 0;
+            background: rgba(16, 43, 39, 0.5);
+            backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999;
+            padding: 16px;
+            opacity: 0; visibility: hidden;
+            transition: opacity var(--dur) var(--ease), visibility var(--dur);
+        }
+        .modal.active { opacity: 1; visibility: visible; }
+
+        .modal-content {
+            background: var(--surface);
+            border-radius: var(--r-lg);
+            width: 100%; max-width: 560px;
+            max-height: 92vh; overflow-y: auto;
+            transform: translateY(-12px) scale(0.98);
+            transition: transform var(--dur) var(--ease-out);
+            box-shadow: var(--shadow-xl);
+        }
+        .modal.active .modal-content { transform: translateY(0) scale(1); }
+        .modal-content.modal-lg { max-width: 760px; }
+
+        .modal-header {
+            padding: 18px 22px;
+            border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+            position: sticky; top: 0;
+            background: var(--surface);
+            z-index: 1;
+        }
+        .modal-title {
+            font-size: 1rem; font-weight: 700;
+            color: var(--text);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .modal-title i { color: var(--accent); }
+        .modal-close {
+            background: none; border: none;
+            font-size: 1.5rem; line-height: 1;
+            color: var(--text-dim); cursor: pointer;
+            padding: 4px 8px; border-radius: var(--r-sm);
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .modal-close:hover { color: var(--text); background: var(--surface-muted); }
+        .modal-body { padding: 22px; }
+        .modal-footer {
+            padding: 14px 22px;
+            border-top: 1px solid var(--border);
+            display: flex; gap: 10px; justify-content: flex-end;
+            position: sticky; bottom: 0;
+            background: var(--surface);
+            flex-wrap: wrap;
+        }
+
+        /* ============================================================
+           FORM
+           ============================================================ */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+        @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group.full { grid-column: 1 / -1; }
+        .form-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-family: var(--font-mono);
+            margin-bottom: 6px;
+        }
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            font-size: 0.875rem;
+            font-family: inherit;
+            background: var(--surface);
+            color: var(--text);
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .form-textarea { resize: vertical; min-height: 70px; }
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(213, 168, 59, 0.12);
+        }
+        .form-select { cursor: pointer; }
+        .form-hint {
+            font-size: 0.6875rem;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+
+        .form-section-title {
+            font-family: var(--font-mono);
+            font-size: 0.6875rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            padding-top: 16px;
+            margin-top: 12px;
+            border-top: 1px solid var(--border);
+            margin-bottom: 12px;
+        }
+        .form-section-title:first-child {
+            padding-top: 0;
+            margin-top: 0;
+            border-top: none;
+        }
+
+        .file-upload {
+            position: relative;
+            padding: 24px;
+            border: 2px dashed var(--border-strong);
+            border-radius: var(--r);
+            background: var(--surface-muted);
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .file-upload:hover {
+            border-color: var(--accent);
+            background: var(--accent-tint);
         }
         .file-upload-icon {
-            font-size: 3rem; color: var(--slate-400);
-            margin-bottom: 1rem;
+            font-size: 2rem;
+            color: var(--primary);
+            opacity: 0.5;
+            margin-bottom: 8px;
         }
-        .file-preview {
-            display: flex; align-items: center; gap: 1rem;
-            padding: 1rem; background: white;
-            border: 1px solid var(--slate-200);
-            border-radius: var(--radius);
-            margin-top: 1rem;
+        .file-upload-text { font-size: 0.875rem; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+        .file-upload-hint { font-size: 0.6875rem; color: var(--text-dim); font-family: var(--font-mono); }
+        .file-upload.selected {
+            border-color: var(--success);
+            background: var(--success-tint);
         }
-        .file-preview-name {
-            font-weight: 600; margin-bottom: 0.25rem;
+        .file-selected-name {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--success);
+            margin-top: 8px;
+            word-break: break-all;
         }
-        .file-preview-size {
-            font-size: 0.75rem; color: var(--slate-500);
+
+        /* ============================================================
+           RESOURCE DETAIL DRAWER
+           ============================================================ */
+        .drawer-overlay {
+            position: fixed; inset: 0;
+            background: rgba(16, 43, 39, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            opacity: 0; visibility: hidden;
+            transition: opacity var(--dur) var(--ease), visibility var(--dur);
+        }
+        .drawer-overlay.active { opacity: 1; visibility: visible; }
+
+        .drawer {
+            position: fixed;
+            top: 0; right: 0; bottom: 0;
+            width: 100%; max-width: 480px;
+            background: var(--surface);
+            box-shadow: var(--shadow-xl);
+            z-index: 10000;
+            transform: translateX(100%);
+            transition: transform var(--dur-slow) var(--ease-out);
+            display: flex; flex-direction: column;
+            overflow-y: auto;
+        }
+        .drawer.active { transform: translateX(0); }
+
+        .drawer-hero {
+            position: relative;
+            padding: 28px 22px 22px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-soft) 100%);
+            color: var(--text-invert);
+            display: flex; align-items: flex-start; gap: 16px;
+        }
+        .drawer-file-icon {
+            width: 64px; height: 64px;
+            border-radius: var(--r-lg);
+            background: var(--accent);
+            color: var(--primary);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.75rem;
+            flex-shrink: 0;
+            box-shadow: 0 6px 16px rgba(213,168,59,0.35);
+        }
+        .drawer-hero-text { flex: 1; min-width: 0; }
+        .drawer-type {
+            font-family: var(--font-mono);
+            font-size: 0.625rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--accent);
+            margin-bottom: 4px;
+        }
+        .drawer-title {
+            font-size: 1.125rem;
+            font-weight: 800;
+            color: var(--text-invert);
+            line-height: 1.3;
+            margin-bottom: 4px;
+            letter-spacing: -0.01em;
+        }
+        .drawer-course {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.7);
+        }
+        .drawer-close {
+            position: absolute;
+            top: 16px; right: 16px;
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: var(--text-invert);
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background var(--dur-fast) var(--ease);
+            backdrop-filter: blur(6px);
+            z-index: 2;
+        }
+        .drawer-close:hover { background: rgba(255,255,255,0.3); }
+
+        .drawer-body { padding: 22px; flex: 1; }
+        .drawer-description {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .drawer-section-title {
+            font-family: var(--font-mono);
+            font-size: 0.6875rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            margin: 20px 0 10px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+        .drawer-section-title:first-of-type {
+            margin-top: 0;
+            padding-top: 0;
+            border-top: none;
+        }
+
+        .detail-row {
+            display: flex; justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.8125rem;
+        }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { color: var(--text-muted); font-weight: 500; }
+        .detail-value { color: var(--text); font-weight: 600; text-align: right; }
+        .detail-value.mono { font-family: var(--font-mono); font-size: 0.75rem; }
+
+        .drawer-footer {
+            padding: 16px 22px;
+            border-top: 1px solid var(--border);
+            display: flex; gap: 8px; flex-wrap: wrap;
+        }
+        .drawer-footer .btn { flex: 1; min-width: 100px; justify-content: center; }
+
+        /* ============================================================
+           ACADEMIC TOOLS MODAL
+           ============================================================ */
+        .grading-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+            font-size: 0.8125rem;
+        }
+        .grading-table th {
+            text-align: left;
+            padding: 8px 10px;
+            background: var(--surface-muted);
+            font-family: var(--font-mono);
+            font-size: 0.625rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+        }
+        .grading-table td {
+            padding: 6px 10px;
+            border-bottom: 1px solid var(--border);
+        }
+        .grading-table input {
+            width: 100%;
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            border-radius: var(--r-sm);
+            font-size: 0.8125rem;
+            font-family: inherit;
+            background: var(--surface);
+            color: var(--text);
+        }
+        .grading-table input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(213, 168, 59, 0.12);
+        }
+
+        .checkbox-row {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 8px 0;
+            font-size: 0.8125rem;
+        }
+        .checkbox-row input {
+            margin-top: 3px;
+            width: 16px; height: 16px;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+        .checkbox-row label { cursor: pointer; flex: 1; }
+        .checkbox-row .cb-label { font-weight: 600; color: var(--text); display: block; }
+        .checkbox-row .cb-hint { font-size: 0.6875rem; color: var(--text-dim); }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 640px) {
+            .page-title { font-size: 1.5rem; }
+            .stat-value { font-size: 1.375rem; }
+            .user-details { display: none; }
+            .header { padding: 0 16px; }
+            .header-breadcrumb { display: none; }
+            .page-header-actions { width: 100%; }
+            .page-header-actions .btn { flex: 1; justify-content: center; }
         }
     </style>
 </head>
 <body>
-    <!-- Loading Overlay -->
+    <!-- Loading -->
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-content">
             <div class="loading-spinner"></div>
-            <div class="loading-text">Loading...</div>
+            <div class="loading-text">Loading</div>
         </div>
     </div>
 
-    <!-- Dashboard Container -->
     <div class="dashboard-container">
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <div class="sidebar-logo">N</div>
-                <div class="sidebar-title">NUESA <span>ADMIN</span></div>
+                <div class="sidebar-title">
+                    NUESA BIU
+                    <span>Admin Panel</span>
+                </div>
             </div>
+
             <nav class="nav">
-                <a href="dashboard.html" class="nav-item" data-page="dashboard">
-                    <i class="fas fa-tachometer-alt"></i>
-                    <span>Dashboard</span>
-                </a>
-                <a href="members.html" class="nav-item" data-page="members">
-                    <i class="fas fa-users"></i>
-                    <span>Members</span>
-                </a>
-                <a href="course-reps.html" class="nav-item" data-page="courseReps">
-                    <i class="fas fa-chalkboard-teacher"></i>
-                    <span>Course Reps</span>
-                </a>
-                <a href="events.html" class="nav-item" data-page="events">
-                    <i class="far fa-calendar-alt"></i>
-                    <span>Events</span>
-                </a>
-                <a href="articles.html" class="nav-item" data-page="articles">
-                    <i class="far fa-newspaper"></i>
-                    <span>News/Articles</span>
-                </a>
-                <a href="resources.html" class="nav-item active" data-page="resources">
-                    <i class="fas fa-download"></i>
-                    <span>Resources</span>
-                </a>
-                <a href="messages.html" class="nav-item" data-page="messages">
-                    <i class="far fa-comment-alt"></i>
-                    <span>Messages</span>
-                </a>
-                <a href="analytics.html" class="nav-item" data-page="analytics">
-                    <i class="fas fa-chart-bar"></i>
-                    <span>Analytics</span>
-                </a>
-                <a href="settings.html" class="nav-item" data-page="settings">
-                    <i class="fas fa-cog"></i>
-                    <span>Settings</span>
-                </a>
+                <div class="nav-section-label">Main</div>
+                <a href="dash.html" class="nav-item" data-page="dashboard"><i class="fas fa-th-large"></i><span>Dashboard</span></a>
+                <a href="members.html" class="nav-item" data-page="members"><i class="fas fa-users"></i><span>Members</span></a>
+                <a href="courseReps.html" class="nav-item" data-page="courseReps"><i class="fas fa-chalkboard-teacher"></i><span>Course Reps</span></a>
+                <a href="events.html" class="nav-item" data-page="events"><i class="far fa-calendar-alt"></i><span>Events</span></a>
+                <a href="articles.html" class="nav-item" data-page="articles"><i class="far fa-newspaper"></i><span>News &amp; Articles</span></a>
+                <a href="resources.html" class="nav-item active" data-page="resources"><i class="fas fa-book"></i><span>Resources</span></a>
+                <a href="messages.html" class="nav-item" data-page="messages"><i class="far fa-comment-alt"></i><span>Messages</span></a>
+
+                <div class="nav-section-label">System</div>
+                <a href="analytics.html" class="nav-item" data-page="analytics"><i class="fas fa-chart-line"></i><span>Analytics</span></a>
+                <a href="settings.html" class="nav-item" data-page="settings"><i class="fas fa-cog"></i><span>Settings</span></a>
             </nav>
+
             <div class="sidebar-footer">
                 <div class="user-quick-info">
-                    <div class="user-name" id="sidebarUserName">Admin</div>
-                    <div class="user-role" id="sidebarUserRole">Administrator</div>
+                    <div class="user-name" id="sidebarUserName">Administrator</div>
+                    <div class="user-role" id="sidebarUserRole">Admin</div>
                 </div>
-                <button class="logout-btn" id="logoutBtn">
+                <button class="logout-btn" id="logoutBtn" type="button">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
                 </button>
             </div>
         </aside>
 
-        <!-- Mobile Overlay -->
         <div class="mobile-overlay" id="mobileOverlay"></div>
 
-        <!-- Main Content -->
         <div class="main-content">
-            <!-- Header -->
             <header class="header">
-                <button class="mobile-menu-btn" id="mobileMenuToggle">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <div class="header-actions">
-                    <button class="notification-btn" id="notificationBtn">
-                        <i class="far fa-bell"></i>
-                        <span class="notification-badge" id="notificationBadge">0</span>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button class="mobile-menu-btn" id="mobileMenuToggle" type="button" aria-label="Toggle menu">
+                        <i class="fas fa-bars"></i>
                     </button>
-                    <div class="user-info">
+                    <div class="header-breadcrumb">
+                        <span>Admin</span>
+                        <i class="fas fa-chevron-right"></i>
+                        <span class="current">Resources</span>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="notification-btn" id="notificationBtn" type="button" aria-label="Notifications">
+                        <i class="far fa-bell"></i>
+                        <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                    </button>
+                    <div class="user-info" id="headerProfile" role="button" tabindex="0">
                         <div class="user-avatar" id="userAvatar">A</div>
                         <div class="user-details">
-                            <div class="user-name" id="userName">Loading...</div>
+                            <div class="user-name" id="userName">Loading</div>
                             <div class="user-role" id="userRole">Administrator</div>
                         </div>
                     </div>
                 </div>
             </header>
 
-            <!-- Main Area -->
-            <main class="main-area" id="contentArea">
+            <main class="main-area">
+                <!-- Page header -->
                 <div class="page-header">
                     <div>
-                        <h1 class="page-title">Resources Management</h1>
-                        <p class="page-subtitle">Upload and manage study materials</p>
+                        <h1 class="page-title">Resources</h1>
+                        <p class="page-subtitle">Manage academic materials and learning resources for NUESA engineering students.</p>
                     </div>
-                    <button class="btn btn-primary" id="addResourceBtn">
-                        <i class="fas fa-plus"></i> Add Resource
-                    </button>
+                    <div class="page-header-actions">
+                        <button class="btn btn-secondary" id="academicToolsBtn">
+                            <i class="fas fa-calculator"></i> Academic Tools
+                        </button>
+                        <button class="btn btn-secondary" id="exportBtn">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                        <button class="btn btn-gold" id="uploadBtn">
+                            <i class="fas fa-upload"></i> Upload Resource
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Filters -->
-                <div class="search-filter">
-                    <input type="text" class="search-input" id="resourceSearch" placeholder="Search resources...">
-                    <select class="filter-select" id="categoryFilter">
-                        <option value="">All Categories</option>
-                        <option value="Past Questions">Past Questions</option>
-                        <option value="Lecture Notes">Lecture Notes</option>
-                        <option value="Textbooks">Textbooks</option>
-                        <option value="Projects">Projects</option>
-                        <option value="Tutorials">Tutorials</option>
-                        <option value="Forms">Forms</option>
-                        <option value="Others">Others</option>
-                    </select>
-                    <select class="filter-select" id="departmentFilter">
-                        <option value="">All Departments</option>
-                        <option value="Electrical/Electronics">Electrical/Electronics</option>
-                        <option value="Mechanical">Mechanical</option>
-                        <option value="Civil">Civil</option>
-                        <option value="Computer">Computer</option>
-                    </select>
+                <!-- Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon icon-green"><i class="fas fa-book"></i></div>
+                        <div class="stat-value" id="statTotal">0</div>
+                        <div class="stat-label">Total Resources</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-gold"><i class="fas fa-file-alt"></i></div>
+                        <div class="stat-value" id="statPast">0</div>
+                        <div class="stat-label">Past Questions</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-blue"><i class="fas fa-sticky-note"></i></div>
+                        <div class="stat-value" id="statNotes">0</div>
+                        <div class="stat-label">Lecture Notes</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-purple"><i class="fas fa-book-open"></i></div>
+                        <div class="stat-value" id="statTextbooks">0</div>
+                        <div class="stat-label">Textbooks</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-red"><i class="fas fa-folder"></i></div>
+                        <div class="stat-value" id="statOther">0</div>
+                        <div class="stat-label">Other Materials</div>
+                    </div>
                 </div>
 
-                <!-- Resources Table -->
+                <!-- Category shortcuts -->
+                <h2 style="font-size: 1.0625rem; font-weight: 700; margin-bottom: 12px; color: var(--text);">Browse by Category</h2>
+                <div class="category-shortcuts" id="categoryShortcuts"></div>
+
+                <!-- Directory -->
                 <div class="content-card">
-                    <div class="table-container">
-                        <table class="data-table" id="resourcesTable">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-list-check"></i> Resource Library</h2>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span class="card-meta" id="resultCount">0 resources</span>
+                            <div class="view-toggle" role="tablist">
+                                <button class="view-toggle-btn active" id="gridViewBtn" type="button">
+                                    <i class="fas fa-th"></i><span>Grid</span>
+                                </button>
+                                <button class="view-toggle-btn" id="listViewBtn" type="button">
+                                    <i class="fas fa-list"></i><span>List</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="filters">
+                        <div class="search-wrapper">
+                            <i class="fas fa-search"></i>
+                            <input type="text" class="search-input" id="searchInput" placeholder="Search title or course code…">
+                        </div>
+                        <select class="filter-select" id="filterType">
+                            <option value="">All Types</option>
+                            <option value="past-questions">Past Questions</option>
+                            <option value="lecture-notes">Lecture Notes</option>
+                            <option value="textbooks">Textbooks</option>
+                            <option value="project-materials">Project Materials</option>
+                            <option value="academic-tools">Academic Tools</option>
+                            <option value="useful-links">Useful Links</option>
+                        </select>
+                        <select class="filter-select" id="filterDepartment">
+                            <option value="">All Departments</option>
+                            <option value="Electrical/Electronics Engineering">Electrical/Electronics</option>
+                            <option value="Mechanical Engineering">Mechanical</option>
+                            <option value="Civil Engineering">Civil</option>
+                        </select>
+                        <select class="filter-select" id="filterLevel">
+                            <option value="">All Levels</option>
+                            <option value="100L">100L</option>
+                            <option value="200L">200L</option>
+                            <option value="300L">300L</option>
+                            <option value="400L">400L</option>
+                            <option value="500L">500L</option>
+                        </select>
+                        <select class="filter-select" id="filterSemester">
+                            <option value="">All Semesters</option>
+                            <option value="first">First Semester</option>
+                            <option value="second">Second Semester</option>
+                        </select>
+                        <select class="filter-select" id="filterStatus">
+                            <option value="">All Statuses</option>
+                            <option value="published">Published</option>
+                            <option value="draft">Draft</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-row">
+                        <button class="filter-clear" id="clearFilters"><i class="fas fa-times"></i> Clear all</button>
+                        <span class="filter-count" id="filterCount"></span>
+                    </div>
+
+                    <!-- Grid view -->
+                    <div class="resources-grid" id="resourcesGrid"></div>
+
+                    <!-- List view -->
+                    <div class="table-container" id="resourcesList" style="display: none;">
+                        <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th>Title</th>
-                                    <th>Category</th>
+                                    <th>Resource</th>
+                                    <th>Course</th>
+                                    <th>Type</th>
                                     <th>Department</th>
-                                    <th>Course Code</th>
                                     <th>Level</th>
+                                    <th>Session</th>
                                     <th>Downloads</th>
-                                    <th>Actions</th>
+                                    <th>Status</th>
+                                    <th style="text-align: right;">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody id="resourcesTableBody">
-                                <tr>
-                                    <td colspan="7" class="text-center">Loading resources...</td>
-                                </tr>
-                            </tbody>
+                            <tbody id="resourcesTbody"></tbody>
                         </table>
+                    </div>
+
+                    <div class="pagination">
+                        <span class="pagination-info" id="paginationInfo">—</span>
+                        <div class="pagination-controls" id="paginationControls"></div>
                     </div>
                 </div>
             </main>
         </div>
     </div>
 
-    <!-- Resource Modal -->
+    <!-- ============ UPLOAD / EDIT RESOURCE MODAL ============ -->
     <div class="modal" id="resourceModal">
-        <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-content modal-lg">
             <div class="modal-header">
-                <h3 class="modal-title" id="resourceModalTitle">Add New Resource</h3>
-                <button class="modal-close" onclick="hideModal('resourceModal')">&times;</button>
+                <h3 class="modal-title" id="resourceModalTitle"><i class="fas fa-upload"></i> Upload New Resource</h3>
+                <button class="modal-close" onclick="hideModal('resourceModal')" aria-label="Close">&times;</button>
+            </div>
+            <form id="resourceForm">
+                <div class="modal-body">
+                    <div class="form-section-title">Resource Details</div>
+                    <div class="form-grid">
+                        <div class="form-group full">
+                            <label class="form-label" for="rTitle">Resource Title *</label>
+                            <input type="text" class="form-input" id="rTitle" required placeholder="e.g. EEE 321 – Analogue Electronics">
+                        </div>
+                        <div class="form-group full">
+                            <label class="form-label" for="rDescription">Short Description</label>
+                            <textarea class="form-textarea" id="rDescription" placeholder="What does this resource contain?"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="rCategory">Resource Category *</label>
+                            <select class="form-select" id="rCategory" required>
+                                <option value="">Choose category</option>
+                                <option value="past-questions">Past Questions</option>
+                                <option value="lecture-notes">Lecture Notes</option>
+                                <option value="textbooks">Textbooks</option>
+                                <option value="project-materials">Project Materials</option>
+                                <option value="academic-tools">Academic Tools</option>
+                                <option value="useful-links">Useful Links</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="rStatus">Publication Status</label>
+                            <select class="form-select" id="rStatus">
+                                <option value="draft">Save as Draft</option>
+                                <option value="published">Publish</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-section-title">Course Information</div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label" for="rCourseCode">Course Code</label>
+                            <input type="text" class="form-input" id="rCourseCode" placeholder="e.g. EEE 321">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="rCourseTitle">Course Title</label>
+                            <input type="text" class="form-input" id="rCourseTitle" placeholder="e.g. Analogue Electronics">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="rDepartment">Department *</label>
+                            <select class="form-select" id="rDepartment" required>
+                                <option value="">Select department</option>
+                                <option value="Electrical/Electronics Engineering">Electrical/Electronics Engineering</option>
+                                <option value="Mechanical Engineering">Mechanical Engineering</option>
+                                <option value="Civil Engineering">Civil Engineering</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="rLevel">Academic Level *</label>
+                            <select class="form-select" id="rLevel" required>
+                                <option value="">Select level</option>
+                                <option value="100L">100L</option>
+                                <option value="200L">200L</option>
+                                <option value="300L">300L</option>
+                                <option value="400L">400L</option>
+                                <option value="500L">500L</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="rSemester">Semester</label>
+                            <select class="form-select" id="rSemester">
+                                <option value="first">First Semester</option>
+                                <option value="second">Second Semester</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="rSession">Academic Session</label>
+                            <select class="form-select" id="rSession">
+                                <option value="2025/2026">2025/2026</option>
+                                <option value="2024/2025">2024/2025</option>
+                                <option value="2023/2024">2023/2024</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-section-title">File Upload</div>
+                    <div class="file-upload" id="fileUploadArea">
+                        <i class="fas fa-cloud-upload-alt file-upload-icon"></i>
+                        <div class="file-upload-text">Choose resource file</div>
+                        <div class="file-upload-hint">PDF, DOCX, PPTX or other permitted formats</div>
+                        <div id="fileSelectedName" class="file-selected-name"></div>
+                    </div>
+                    <input type="file" id="resourceFileInput" hidden>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="hideModal('resourceModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="resourceSubmitBtn">
+                        <i class="fas fa-check"></i> Save Resource
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============ RESOURCE DETAIL DRAWER ============ -->
+    <div class="drawer-overlay" id="drawerOverlay"></div>
+    <aside class="drawer" id="resourceDrawer" aria-hidden="true">
+        <div class="drawer-hero">
+            <button class="drawer-close" onclick="closeDrawer()" aria-label="Close">&times;</button>
+            <div class="drawer-file-icon" id="drawerFileIcon"><i class="fas fa-file-pdf"></i></div>
+            <div class="drawer-hero-text">
+                <div class="drawer-type" id="drawerType">—</div>
+                <h2 class="drawer-title" id="drawerTitle">—</h2>
+                <div class="drawer-course" id="drawerCourse">—</div>
+            </div>
+        </div>
+        <div class="drawer-body">
+            <p class="drawer-description" id="drawerDescription">—</p>
+
+            <div class="drawer-section-title">Course Information</div>
+            <div class="detail-row"><span class="detail-label">Department</span><span class="detail-value" id="drawerDept">—</span></div>
+            <div class="detail-row"><span class="detail-label">Level</span><span class="detail-value" id="drawerLevel">—</span></div>
+            <div class="detail-row"><span class="detail-label">Semester</span><span class="detail-value" id="drawerSemester">—</span></div>
+            <div class="detail-row"><span class="detail-label">Session</span><span class="detail-value mono" id="drawerSession">—</span></div>
+
+            <div class="drawer-section-title">File Information</div>
+            <div class="detail-row"><span class="detail-label">Format</span><span class="detail-value mono" id="drawerFormat">—</span></div>
+            <div class="detail-row"><span class="detail-label">Size</span><span class="detail-value mono" id="drawerSize">—</span></div>
+            <div class="detail-row"><span class="detail-label">Downloads</span><span class="detail-value" id="drawerDownloads">0</span></div>
+            <div class="detail-row"><span class="detail-label">Uploaded</span><span class="detail-value mono" id="drawerUploaded">—</span></div>
+            <div class="detail-row"><span class="detail-label">Uploaded by</span><span class="detail-value" id="drawerUploader">—</span></div>
+            <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value" id="drawerStatusText">—</span></div>
+        </div>
+        <div class="drawer-footer">
+            <button class="btn btn-secondary btn-sm" id="drawerEditBtn"><i class="fas fa-pen"></i> Edit</button>
+            <button class="btn btn-secondary btn-sm" id="drawerPublishBtn"><i class="fas fa-globe"></i> <span id="drawerPublishText">Publish</span></button>
+            <button class="btn btn-secondary btn-sm" id="drawerDownloadBtn"><i class="fas fa-download"></i> Download</button>
+            <button class="btn btn-danger btn-sm" id="drawerDeleteBtn"><i class="fas fa-trash"></i> Delete</button>
+        </div>
+    </aside>
+
+    <!-- ============ ACADEMIC TOOLS MODAL ============ -->
+    <div class="modal" id="academicToolsModal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fas fa-calculator"></i> Academic Tools — CGPA Calculator</h3>
+                <button class="modal-close" onclick="hideModal('academicToolsModal')" aria-label="Close">&times;</button>
             </div>
             <div class="modal-body">
-                <form id="resourceForm">
-                    <div class="file-upload-container" id="uploadContainer" onclick="document.getElementById('resourceFile').click()">
-                        <div class="file-upload-icon">
-                            <i class="fas fa-cloud-upload-alt"></i>
-                        </div>
-                        <div class="file-upload-text">Click to upload file</div>
-                        <div class="file-upload-subtext">Max file size: 50MB</div>
-                        <input type="file" id="resourceFile" style="display: none;">
-                    </div>
-                    
-                    <div id="resourcePreview" style="display: none;">
-                        <div class="file-preview">
-                            <div class="file-preview-icon">
-                                <i class="fas fa-file-alt"></i>
-                            </div>
-                            <div class="file-preview-info">
-                                <div class="file-preview-name" id="resourceFileName"></div>
-                                <div class="file-preview-size" id="resourceFileSize"></div>
-                            </div>
-                            <button type="button" class="icon-btn icon-btn-danger" onclick="clearResourceFile()">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                    </div>
-                    
+                <div class="form-section-title">Grading Scale</div>
+                <table class="grading-table">
+                    <thead>
+                        <tr>
+                            <th>Grade</th>
+                            <th>Min %</th>
+                            <th>Max %</th>
+                            <th>Grade Point</th>
+                        </tr>
+                    </thead>
+                    <tbody id="gradingTableBody"></tbody>
+                </table>
+
+                <div class="form-section-title">Settings</div>
+                <div class="form-grid">
                     <div class="form-group">
-                        <label class="form-label">Resource Title *</label>
-                        <input type="text" class="form-input" id="resourceTitle" required>
+                        <label class="form-label" for="cgpaMaxCredits">Maximum Credit Load</label>
+                        <input type="number" class="form-input" id="cgpaMaxCredits" min="0" placeholder="e.g. 24">
                     </div>
-                    
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label class="form-label">Category *</label>
-                            <select class="form-select" id="resourceCategory" required>
-                                <option value="">Select Category</option>
-                                <option value="Past Questions">Past Questions</option>
-                                <option value="Lecture Notes">Lecture Notes</option>
-                                <option value="Textbooks">Textbooks</option>
-                                <option value="Projects">Projects</option>
-                                <option value="Tutorials">Tutorials</option>
-                                <option value="Forms">Forms</option>
-                                <option value="Others">Others</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Department</label>
-                            <select class="form-select" id="resourceDepartment">
-                                <option value="">All Departments</option>
-                                <option value="Electrical/Electronics">Electrical/Electronics</option>
-                                <option value="Mechanical">Mechanical</option>
-                                <option value="Civil">Civil</option>
-                                <option value="Computer">Computer</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label class="form-label">Course Code</label>
-                            <input type="text" class="form-input" id="resourceCourseCode" placeholder="e.g., CPE 301">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Academic Year</label>
-                            <input type="text" class="form-input" id="resourceYear" placeholder="e.g., 2023/2024">
-                        </div>
-                    </div>
-                    
                     <div class="form-group">
-                        <label class="form-label">Description</label>
-                        <textarea class="form-textarea" id="resourceDescription" rows="3" placeholder="Brief description..."></textarea>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Academic Level</label>
-                        <select class="form-select" id="resourceLevel">
-                            <option value="">All Levels</option>
-                            <option value="100">100 Level</option>
-                            <option value="200">200 Level</option>
-                            <option value="300">300 Level</option>
-                            <option value="400">400 Level</option>
-                            <option value="500">500 Level</option>
+                        <label class="form-label" for="cgpaSession">Academic Session</label>
+                        <select class="form-select" id="cgpaSession">
+                            <option value="2025/2026">2025/2026</option>
+                            <option value="2024/2025">2024/2025</option>
+                            <option value="2023/2024">2023/2024</option>
                         </select>
                     </div>
-                    
-                    <input type="hidden" id="resourceId">
-                </form>
+                    <div class="form-group full">
+                        <label class="form-label" for="cgpaInstructions">Instructions</label>
+                        <textarea class="form-textarea" id="cgpaInstructions" rows="3" placeholder="Instructions that appear above the calculator on the public site…"></textarea>
+                    </div>
+                    <div class="form-group full">
+                        <label class="form-label" for="cgpaPolicy">Academic Policy</label>
+                        <textarea class="form-textarea" id="cgpaPolicy" rows="3" placeholder="e.g. Minimum CGPA for graduation, probation thresholds…"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-section-title">Visibility</div>
+                <div class="checkbox-row">
+                    <input type="checkbox" id="cgpaVisible" checked>
+                    <label for="cgpaVisible">
+                        <span class="cb-label">Show calculator on public site</span>
+                        <span class="cb-hint">Uncheck to hide without deleting settings</span>
+                    </label>
+                </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="hideModal('resourceModal')">Cancel</button>
-                <button class="btn btn-primary" id="saveResourceBtn">Upload Resource</button>
+                <button class="btn btn-secondary" onclick="hideModal('academicToolsModal')" type="button">Cancel</button>
+                <button class="btn btn-primary" id="saveAcademicToolsBtn" type="button">
+                    <i class="fas fa-check"></i> Save Settings
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- Delete Confirmation Modal -->
-    <div class="modal" id="deleteModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">Confirm Delete</h3>
-                <button class="modal-close" onclick="hideModal('deleteModal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete this resource? This action cannot be undone.</p>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="hideModal('deleteModal')">Cancel</button>
-                <button class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Logout Modal -->
+    <!-- ============ LOGOUT MODAL ============ -->
     <div class="modal" id="logoutModal">
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title">Confirm Logout</h3>
-                <button class="modal-close" onclick="hideModal('logoutModal')">&times;</button>
+                <button class="modal-close" onclick="hideModal('logoutModal')" aria-label="Close">&times;</button>
             </div>
-            <div class="modal-body">
-                <p>Are you sure you want to logout?</p>
-            </div>
+            <div class="modal-body"><p>Are you sure you want to end your admin session?</p></div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="hideModal('logoutModal')">Cancel</button>
-                <button class="btn btn-primary" id="confirmLogout">Logout</button>
+                <button class="btn btn-secondary" onclick="hideModal('logoutModal')" type="button">Cancel</button>
+                <button class="btn btn-primary" id="confirmLogout" type="button">Logout</button>
             </div>
         </div>
     </div>
 
-    <style>
-        .modal {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px);
-            display: flex; align-items: center; justify-content: center;
-            z-index: 9999; padding: 1rem;
-            opacity: 0; visibility: hidden;
-            transition: all var(--transition-normal);
-        }
-        .modal.active { opacity: 1; visibility: visible; }
-        .modal-content {
-            background: white; border-radius: var(--radius-xl);
-            width: 100%; max-width: 500px;
-            transform: translateY(-20px);
-            transition: transform var(--transition-normal) var(--transition-bounce);
-        }
-        .modal.active .modal-content { transform: translateY(0); }
-        .modal-header {
-            padding: 1.5rem; border-bottom: 1px solid var(--slate-200);
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .modal-title { font-size: 1.25rem; font-weight: 700; color: var(--slate-800); }
-        .modal-close {
-            background: none; border: none; font-size: 1.5rem;
-            cursor: pointer; color: var(--slate-400);
-            transition: color var(--transition-fast);
-        }
-        .modal-close:hover { color: var(--slate-600); }
-        .modal-body { padding: 1.5rem; max-height: 60vh; overflow-y: auto; }
-        .modal-footer {
-            padding: 1.5rem; border-top: 1px solid var(--slate-200);
-            display: flex; gap: 0.75rem; justify-content: flex-end;
-        }
-        .text-center { text-align: center; }
-    </style>
+    <!-- ============ DELETE MODAL ============ -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i> Delete Resource</h3>
+                <button class="modal-close" onclick="hideModal('deleteModal')" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>This will permanently delete <strong id="deleteResourceName">this resource</strong>. This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('deleteModal')" type="button">Cancel</button>
+                <button class="btn btn-danger" id="confirmDeleteBtn" type="button">Delete</button>
+            </div>
+        </div>
+    </div>
 
     <script>
-        // Configuration
-        const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
-        let currentUser = null;
-        let currentResourceId = null;
-        let resourceToDelete = null;
-        let currentResourceFile = null;
-        let inactivityTimeout;
+    // ============================================================
+    // CONFIG
+    // ============================================================
+    const API_BASE_URL = '';
+    const PAGE_SIZE = 8;
 
-        // ===== UTILITY FUNCTIONS =====
-        function getAuthToken() {
-            const cookies = document.cookie.split(';');
-            for (let cookie of cookies) {
-                const [name, value] = cookie.trim().split('=');
-                if (name === 'auth_token') return value;
-            }
-            return localStorage.getItem('adminToken');
-        }
+    const CATEGORY_META = {
+        'past-questions':    { label: 'Past Questions',    icon: 'fa-file-alt',    color: 'var(--accent)',  bg: 'var(--accent-tint)' },
+        'lecture-notes':     { label: 'Lecture Notes',     icon: 'fa-sticky-note', color: 'var(--info)',    bg: 'var(--info-tint)' },
+        'textbooks':         { label: 'Textbooks',         icon: 'fa-book-open',   color: 'var(--purple)',  bg: 'var(--purple-tint)' },
+        'project-materials': { label: 'Project Materials', icon: 'fa-folder-open', color: 'var(--success)', bg: 'var(--success-tint)' },
+        'academic-tools':    { label: 'Academic Tools',    icon: 'fa-calculator',  color: 'var(--warning)', bg: 'var(--warning-tint)' },
+        'useful-links':      { label: 'Useful Links',      icon: 'fa-link',        color: 'var(--primary)', bg: 'var(--primary-tint)' }
+    };
 
-        function showLoading() {
-            document.getElementById('loadingOverlay').classList.add('active');
-        }
+    let currentUser = null;
+    let inactivityTimeout = null;
+    let allResources = [];
+    let filteredResources = [];
+    let currentPage = 1;
+    let currentView = 'grid';
+    let activeCategory = '';
+    let editingResourceId = null;
+    let deletingResourceId = null;
+    let viewingResource = null;
+    let selectedFile = null;
+    let academicTools = null;
 
-        function hideLoading() {
-            document.getElementById('loadingOverlay').classList.remove('active');
-        }
-
-        function showModal(modalId) {
-            document.getElementById(modalId).classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function hideModal(modalId) {
-            document.getElementById(modalId).classList.remove('active');
-            document.body.style.overflow = 'auto';
-        }
-
-        function showToast(message, type = 'info', duration = 5000) {
-            document.querySelectorAll('.toast').forEach(t => t.remove());
-            
-            const toast = document.createElement('div');
-            toast.className = `toast toast-${type}`;
-            
-            let icon = type === 'success' ? 'check-circle' : 
-                      type === 'error' ? 'exclamation-circle' :
-                      type === 'warning' ? 'exclamation-triangle' : 'info-circle';
-            
-            toast.innerHTML = `
-                <div class="toast-icon"><i class="fas fa-${icon}"></i></div>
-                <div class="toast-content">${message}</div>
-                <button class="toast-close">&times;</button>
-            `;
-            
-            document.body.appendChild(toast);
-            setTimeout(() => toast.classList.add('show'), 10);
-            
-            toast.querySelector('.toast-close').addEventListener('click', () => {
-                toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 300);
+    // ============================================================
+    // AUTH
+    // ============================================================
+    async function checkAuth() {
+        try {
+            showLoading();
+            const res = await fetch(`${API_BASE_URL}/api/admin/session`, {
+                method: 'GET', credentials: 'include',
+                headers: { 'Accept': 'application/json' }
             });
-            
-            setTimeout(() => {
-                if (toast.parentElement) {
-                    toast.classList.remove('show');
-                    setTimeout(() => toast.remove(), 300);
-                }
-            }, duration);
-        }
-
-        function formatFileSize(bytes) {
-            if (!bytes || bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        }
-
-        function escapeHtml(unsafe) {
-            return unsafe
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
-
-        function getFileIcon(mimeType) {
-            if (!mimeType) return 'fa-file';
-            if (mimeType.includes('pdf')) return 'fa-file-pdf';
-            if (mimeType.includes('word') || mimeType.includes('document')) return 'fa-file-word';
-            if (mimeType.includes('excel') || mimeType.includes('sheet')) return 'fa-file-excel';
-            if (mimeType.includes('powerpoint') || mimeType.includes('presentation')) return 'fa-file-powerpoint';
-            if (mimeType.includes('image')) return 'fa-file-image';
-            if (mimeType.includes('text')) return 'fa-file-alt';
-            if (mimeType.includes('zip') || mimeType.includes('rar')) return 'fa-file-archive';
-            return 'fa-file';
-        }
-
-        function getCategoryColor(category) {
-            const colors = {
-                'Past Questions': 'success',
-                'Lecture Notes': 'info',
-                'Textbooks': 'warning',
-                'Projects': 'purple',
-                'Tutorials': 'primary',
-                'Forms': 'secondary',
-                'Others': 'danger'
-            };
-            return colors[category] || 'secondary';
-        }
-
-        // ===== SESSION MANAGEMENT =====
-        function resetInactivityTimer() {
-            clearTimeout(inactivityTimeout);
-            inactivityTimeout = setTimeout(() => {
-                showToast('Your session will expire in 1 minute', 'warning');
-                setTimeout(() => {
-                    showToast('Session expired', 'error');
-                    logout();
-                }, 60000);
-            }, 29 * 60 * 1000);
-        }
-
-        function setupActivityListeners() {
-            ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(event => {
-                document.addEventListener(event, resetInactivityTimer);
-            });
-            resetInactivityTimer();
-        }
-
-        // ===== AUTHENTICATION =====
-        async function checkAuth() {
-            const token = getAuthToken();
-            if (!token) {
-                showToast('Please login to continue', 'info');
-                setTimeout(() => window.location.href = 'adlog.html', 1500);
-                return false;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    currentUser = data.data || data.user || { fullName: 'Admin', role: 'admin' };
+            if (res.status === 200) {
+                const data = await res.json();
+                if (data.status === 'success' && data.data) {
+                    currentUser = data.data;
                     updateUserInfo();
+                    hideLoading();
                     return true;
                 }
-
-                localStorage.removeItem('adminToken');
-                document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-                showToast('Authentication failed', 'error');
-                setTimeout(() => window.location.href = 'adlog.html', 1500);
-                return false;
-            } catch (error) {
-                console.error('Auth error:', error);
-                showToast('Connection error', 'error');
-                return false;
             }
-        }
-
-        function updateUserInfo() {
-            if (!currentUser) return;
-            const name = currentUser.fullName || currentUser.full_name || 'Admin';
-            const role = currentUser.role || 'admin';
-            const initial = name.charAt(0).toUpperCase();
-            
-            document.getElementById('userName').textContent = name;
-            document.getElementById('userRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
-            document.getElementById('userAvatar').textContent = initial;
-            document.getElementById('sidebarUserName').textContent = name;
-            document.getElementById('sidebarUserRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
-        }
-
-        function logout() {
-            showModal('logoutModal');
-        }
-
-        function confirmLogout() {
-            localStorage.removeItem('adminToken');
-            document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-            hideModal('logoutModal');
-            showToast('Logged out successfully', 'success');
-            setTimeout(() => window.location.href = 'adlog.html', 1000);
-        }
-
-        // ===== API FUNCTIONS =====
-        async function apiRequest(endpoint, options = {}) {
-            const token = getAuthToken();
-            if (!token) throw new Error('Not authenticated');
-
-            const url = `${API_BASE_URL}${endpoint}`;
-            const config = {
-                ...options,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                    ...options.headers
-                }
-            };
-
-            try {
-                const response = await fetch(url, config);
-
-                if (response.status === 401) {
-                    localStorage.removeItem('adminToken');
-                    document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-                    showToast('Session expired', 'error');
-                    setTimeout(() => window.location.href = 'adlog.html', 1500);
-                    throw new Error('Unauthorized');
-                }
-
-                if (!response.ok) {
-                    let errorMsg = `HTTP ${response.status}`;
-                    try {
-                        const data = await response.json();
-                        errorMsg = data.message || data.error || errorMsg;
-                    } catch (e) {}
-                    throw new Error(errorMsg);
-                }
-
-                return await response.json();
-            } catch (error) {
-                if (error.message.includes('Network')) {
-                    throw new Error('Network error. Please check your connection.');
-                }
-                throw error;
-            }
-        }
-
-        async function get(endpoint) {
-            return apiRequest(endpoint, { method: 'GET' });
-        }
-
-        async function post(endpoint, data) {
-            return apiRequest(endpoint, {
-                method: 'POST',
-                body: JSON.stringify(data)
-            });
-        }
-
-        async function put(endpoint, data) {
-            return apiRequest(endpoint, {
-                method: 'PUT',
-                body: JSON.stringify(data)
-            });
-        }
-
-        async function del(endpoint) {
-            return apiRequest(endpoint, { method: 'DELETE' });
-        }
-
-        async function uploadFile(endpoint, formData) {
-            const token = getAuthToken();
-            if (!token) throw new Error('Not authenticated');
-
-            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                body: formData
-            });
-
-            if (response.status === 401) {
-                localStorage.removeItem('adminToken');
-                document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-                showToast('Session expired', 'error');
-                setTimeout(() => window.location.href = 'adlog.html', 1500);
-                throw new Error('Unauthorized');
-            }
-
-            if (!response.ok) {
-                let errMsg = `Upload failed: ${response.status}`;
-                try {
-                    const data = await response.json();
-                    if (data && data.message) errMsg = data.message;
-                } catch (e) {}
-                throw new Error(errMsg);
-            }
-
-            return await response.json();
-        }
-
-        // ===== RESOURCES FUNCTIONS =====
-        async function loadResources() {
-            try {
-                showLoading();
-                const response = await get('/api/admin/resources');
-                const resources = response.data || [];
-                displayResources(resources);
-                updateNotificationBadge();
-            } catch (error) {
-                console.error('Error loading resources:', error);
-                showToast('Failed to load resources: ' + error.message, 'error');
-                document.getElementById('resourcesTableBody').innerHTML = `
-                    <tr><td colspan="7" class="text-center">Error loading resources</td></tr>
-                `;
-            } finally {
-                hideLoading();
-            }
-        }
-
-        function displayResources(resources) {
-            const tbody = document.getElementById('resourcesTableBody');
-            
-            if (!resources || resources.length === 0) {
-                tbody.innerHTML = `
-                    <tr><td colspan="7" class="text-center">No resources found</td></tr>
-                `;
-                return;
-            }
-
-            tbody.innerHTML = resources.map(resource => {
-                const categoryColor = getCategoryColor(resource.category);
-                
-                return `
-                    <tr data-id="${resource.id}">
-                        <td>
-                            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                <i class="fas ${getFileIcon(resource.file_type)}" style="color: var(--slate-500);"></i>
-                                <span>${escapeHtml(resource.title || 'N/A')}</span>
-                            </div>
-                        </td>
-                        <td>
-                            <span class="status-badge badge-${categoryColor}">
-                                ${escapeHtml(resource.category || 'N/A')}
-                            </span>
-                        </td>
-                        <td>${escapeHtml(resource.department || 'All')}</td>
-                        <td>${escapeHtml(resource.course_code || 'N/A')}</td>
-                        <td>${resource.level ? 'Level ' + resource.level : 'All'}</td>
-                        <td>${resource.download_count || 0}</td>
-                        <td>
-                            <div class="action-buttons">
-                                <a href="${resource.file_url}" target="_blank" class="icon-btn icon-btn-primary" title="Download">
-                                    <i class="fas fa-download"></i>
-                                </a>
-                                <button class="icon-btn icon-btn-primary" onclick="editResource('${resource.id}')" title="Edit">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="icon-btn icon-btn-danger" onclick="deleteResource('${resource.id}')" title="Delete">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        function filterResources() {
-            const search = document.getElementById('resourceSearch').value.toLowerCase();
-            const category = document.getElementById('categoryFilter').value;
-            const department = document.getElementById('departmentFilter').value;
-            
-            const rows = document.querySelectorAll('#resourcesTable tbody tr');
-            rows.forEach(row => {
-                const title = row.cells[0]?.textContent.toLowerCase() || '';
-                const rowCategory = row.cells[1]?.textContent || '';
-                const rowDepartment = row.cells[2]?.textContent || '';
-                
-                const matchesSearch = title.includes(search);
-                const matchesCategory = !category || rowCategory.includes(category);
-                const matchesDepartment = !department || rowDepartment.includes(department);
-                
-                row.style.display = matchesSearch && matchesCategory && matchesDepartment ? '' : 'none';
-            });
-        }
-
-        // ===== FILE HANDLING =====
-        function previewResourceFile(input) {
-            if (input.files && input.files[0]) {
-                const file = input.files[0];
-                currentResourceFile = file;
-                
-                const maxSize = 50 * 1024 * 1024;
-                if (file.size > maxSize) {
-                    showToast('File size exceeds 50MB limit', 'error');
-                    clearResourceFile();
-                    return;
-                }
-                
-                document.getElementById('resourcePreview').style.display = 'block';
-                document.getElementById('resourceFileName').textContent = file.name;
-                document.getElementById('resourceFileSize').textContent = formatFileSize(file.size);
-            }
-        }
-
-        function clearResourceFile() {
-            document.getElementById('resourceFile').value = '';
-            document.getElementById('resourcePreview').style.display = 'none';
-            currentResourceFile = null;
-        }
-
-        function resetResourceForm() {
-            document.getElementById('resourceForm').reset();
-            document.getElementById('resourceModalTitle').textContent = 'Add New Resource';
-            document.getElementById('resourceId').value = '';
-            currentResourceId = null;
-            clearResourceFile();
-        }
-
-        async function saveResource() {
-            try {
-                const title = document.getElementById('resourceTitle').value.trim();
-                const category = document.getElementById('resourceCategory').value;
-                
-                if (!title || !category) {
-                    showToast('Title and category are required', 'error');
-                    return;
-                }
-
-                const formData = new FormData();
-                
-                const resourceData = {
-                    title: title,
-                    category: category,
-                    department: document.getElementById('resourceDepartment').value || null,
-                    course_code: document.getElementById('resourceCourseCode').value || null,
-                    year: document.getElementById('resourceYear').value || null,
-                    description: document.getElementById('resourceDescription').value || null,
-                    level: document.getElementById('resourceLevel').value || null
-                };
-
-                formData.append('data', JSON.stringify(resourceData));
-                
-                const file = currentResourceFile;
-                if (file) {
-                    formData.append('file', file);
-                }
-
-                showLoading();
-
-                let response;
-                if (currentResourceId) {
-                    response = await put(`/api/admin/resources/${currentResourceId}`, resourceData);
-                } else {
-                    if (!file) {
-                        throw new Error('Please select a file to upload');
-                    }
-                    response = await uploadFile('/api/admin/resources', formData);
-                }
-
-                showToast(`Resource ${currentResourceId ? 'updated' : 'uploaded'} successfully!`, 'success');
-                hideModal('resourceModal');
-                await loadResources();
-                
-            } catch (error) {
-                console.error('Error saving resource:', error);
-                showToast('Error: ' + error.message, 'error');
-            } finally {
-                hideLoading();
-            }
-        }
-
-        async function editResource(resourceId) {
-            try {
-                showLoading();
-                const response = await get(`/api/admin/resources/${resourceId}`);
-                const resource = response.data;
-                
-                if (!resource) throw new Error('Resource not found');
-                
-                currentResourceId = resourceId;
-                document.getElementById('resourceModalTitle').textContent = 'Edit Resource';
-                
-                document.getElementById('resourceTitle').value = resource.title || '';
-                document.getElementById('resourceCategory').value = resource.category || '';
-                document.getElementById('resourceDepartment').value = resource.department || '';
-                document.getElementById('resourceCourseCode').value = resource.course_code || '';
-                document.getElementById('resourceYear').value = resource.year || '';
-                document.getElementById('resourceDescription').value = resource.description || '';
-                document.getElementById('resourceLevel').value = resource.level || '';
-                document.getElementById('resourceId').value = resource.id;
-                
-                if (resource.file_url) {
-                    const fileName = resource.file_url.split('/').pop();
-                    document.getElementById('resourcePreview').style.display = 'block';
-                    document.getElementById('resourceFileName').textContent = fileName;
-                    document.getElementById('resourceFileSize').textContent = formatFileSize(resource.file_size || 0);
-                }
-                
-                showModal('resourceModal');
-            } catch (error) {
-                console.error('Edit resource error:', error);
-                showToast('Failed to load resource details: ' + error.message, 'error');
-            } finally {
-                hideLoading();
-            }
-        }
-
-        function deleteResource(resourceId) {
-            resourceToDelete = resourceId;
-            showModal('deleteModal');
-        }
-
-        async function confirmDelete() {
-            if (!resourceToDelete) return;
-            
-            try {
-                showLoading();
-                hideModal('deleteModal');
-                
-                await del(`/api/admin/resources/${resourceToDelete}`);
-                showToast('Resource deleted successfully', 'success');
-                await loadResources();
-            } catch (error) {
-                console.error('Delete resource error:', error);
-                showToast('Failed to delete resource: ' + error.message, 'error');
-            } finally {
-                hideLoading();
-                resourceToDelete = null;
-            }
-        }
-
-        async function updateNotificationBadge() {
-            try {
-                const response = await get('/api/admin/messages');
-                const messages = response.data || [];
-                const unreadCount = messages.filter(m => !m.is_read).length;
-                document.getElementById('notificationBadge').textContent = unreadCount;
-                document.getElementById('notificationBadge').style.display = unreadCount > 0 ? 'block' : 'none';
-            } catch (error) {
-                console.log('Could not load messages');
-            }
-        }
-
-        // ===== SIDEBAR =====
-        function setupSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const mobileOverlay = document.getElementById('mobileOverlay');
-            
-            document.getElementById('mobileMenuToggle').addEventListener('click', () => {
-                sidebar.classList.toggle('open');
-                mobileOverlay.classList.toggle('active');
-            });
-            
-            mobileOverlay.addEventListener('click', () => {
-                sidebar.classList.remove('open');
-                mobileOverlay.classList.remove('active');
-            });
-        }
-
-        // ===== DRAG & DROP =====
-        function setupDragDrop() {
-            const container = document.getElementById('uploadContainer');
-            
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                container.addEventListener(eventName, preventDefaults, false);
-            });
-            
-            function preventDefaults(e) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-            
-            ['dragenter', 'dragover'].forEach(eventName => {
-                container.addEventListener(eventName, () => {
-                    container.classList.add('drag-over');
-                });
-            });
-            
-            ['dragleave', 'drop'].forEach(eventName => {
-                container.addEventListener(eventName, () => {
-                    container.classList.remove('drag-over');
-                });
-            });
-            
-            container.addEventListener('drop', (e) => {
-                const files = e.dataTransfer.files;
-                if (files.length > 0) {
-                    document.getElementById('resourceFile').files = files;
-                    previewResourceFile(document.getElementById('resourceFile'));
-                }
-            });
-        }
-
-        // ===== INITIALIZATION =====
-        async function init() {
-            console.log('Initializing resources page...');
-            showLoading();
-
-            const isAuthenticated = await checkAuth();
-            if (!isAuthenticated) {
-                hideLoading();
-                return;
-            }
-
-            setupSidebar();
-            setupActivityListeners();
-            setupDragDrop();
-            await loadResources();
-
-            // Event Listeners
-            document.getElementById('logoutBtn').addEventListener('click', logout);
-            document.getElementById('confirmLogout').addEventListener('click', confirmLogout);
-            document.getElementById('confirmDeleteBtn').addEventListener('click', confirmDelete);
-            
-            document.getElementById('addResourceBtn').addEventListener('click', () => {
-                resetResourceForm();
-                showModal('resourceModal');
-            });
-            
-            document.getElementById('saveResourceBtn').addEventListener('click', saveResource);
-            
-            document.getElementById('resourceFile').addEventListener('change', function() {
-                previewResourceFile(this);
-            });
-            
-            document.getElementById('resourceSearch').addEventListener('keyup', filterResources);
-            document.getElementById('categoryFilter').addEventListener('change', filterResources);
-            document.getElementById('departmentFilter').addEventListener('change', filterResources);
-
+            showToast('Please login to continue', 'info');
+            setTimeout(() => window.location.replace('adlog.html'), 1200);
             hideLoading();
+            return false;
+        } catch (err) {
+            console.error('Auth error:', err);
+            showToast('Connection error', 'error');
+            hideLoading();
+            return false;
+        }
+    }
+
+    function updateUserInfo() {
+        if (!currentUser) return;
+        const name = currentUser.fullName || currentUser.full_name || 'Administrator';
+        const role = currentUser.role || 'admin';
+        const initial = name.charAt(0).toUpperCase();
+        const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
+        document.getElementById('userName').textContent = name;
+        document.getElementById('userRole').textContent = roleLabel;
+        document.getElementById('userAvatar').textContent = initial;
+        document.getElementById('sidebarUserName').textContent = name;
+        document.getElementById('sidebarUserRole').textContent = roleLabel;
+    }
+
+    async function confirmLogout() {
+        try {
+            showLoading();
+            await fetch(`${API_BASE_URL}/api/admin/logout`, { method: 'POST', credentials: 'include' });
+        } catch (err) { console.warn('Logout failed:', err); }
+        hideModal('logoutModal');
+        showToast('Logged out', 'success');
+        setTimeout(() => window.location.replace('adlog.html'), 700);
+    }
+
+    // ============================================================
+    // API HELPERS
+    // ============================================================
+    async function apiGet(endpoint) {
+        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'GET', credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+        });
+        if (res.status === 401) { showToast('Session expired', 'warning'); setTimeout(() => window.location.replace('adlog.html'), 1200); throw new Error('Unauthorized'); }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+    }
+    async function apiPost(endpoint, body, isForm = false) {
+        const opts = {
+            method: 'POST', credentials: 'include',
+            headers: isForm ? { 'Accept': 'application/json' } : { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: isForm ? body : JSON.stringify(body)
+        };
+        const res = await fetch(`${API_BASE_URL}${endpoint}`, opts);
+        if (res.status === 401) { showToast('Session expired', 'warning'); setTimeout(() => window.location.replace('adlog.html'), 1200); throw new Error('Unauthorized'); }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+        return data;
+    }
+    async function apiPut(endpoint, body) {
+        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'PUT', credentials: 'include',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        if (res.status === 401) { showToast('Session expired', 'warning'); setTimeout(() => window.location.replace('adlog.html'), 1200); throw new Error('Unauthorized'); }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+        return data;
+    }
+    async function apiDelete(endpoint) {
+        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'DELETE', credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+        });
+        if (res.status === 401) { showToast('Session expired', 'warning'); setTimeout(() => window.location.replace('adlog.html'), 1200); throw new Error('Unauthorized'); }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+        return data;
+    }
+
+    // ============================================================
+    // DATA LOADING
+    // ============================================================
+    async function loadResources() {
+        try {
+            const res = await apiGet('/api/admin/resources');
+            const list = Array.isArray(res.data) ? res.data : (res.data?.resources || []);
+            allResources = list.map(normalizeResource);
+            updateStats();
+            renderCategoryShortcuts();
+            applyFilters();
+        } catch (err) {
+            console.error('Load error:', err);
+            document.getElementById('resourcesGrid').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                    <h3>Couldn't load resources</h3>
+                    <p>${escapeHtml(err.message)}</p>
+                </div>`;
+            document.getElementById('resourcesTbody').innerHTML = `
+                <tr><td colspan="9" style="text-align: center; padding: 40px; color: var(--text-dim);">
+                    Unable to load resources: ${escapeHtml(err.message)}
+                </td></tr>`;
+        }
+    }
+
+    function normalizeResource(r) {
+        const cat = (r.category || 'other').toLowerCase();
+        // Normalize category to our slugs
+        const catMap = {
+            'past-question': 'past-questions', 'past-questions': 'past-questions', 'past_question': 'past-questions',
+            'lecture-note': 'lecture-notes', 'lecture-notes': 'lecture-notes', 'note': 'lecture-notes',
+            'textbook': 'textbooks', 'textbooks': 'textbooks',
+            'project-material': 'project-materials', 'project-materials': 'project-materials',
+            'academic-tool': 'academic-tools', 'academic-tools': 'academic-tools',
+            'useful-link': 'useful-links', 'useful-links': 'useful-links', 'link': 'useful-links',
+            'other': 'project-materials'
+        };
+        return {
+            id: r.id,
+            title: r.title || 'Untitled resource',
+            description: r.description || '',
+            category: catMap[cat] || 'project-materials',
+            course_code: r.course_code || '',
+            course_title: r.course_title || '',
+            department: r.department || '',
+            level: r.level || '',
+            semester: r.semester || 'first',
+            session: r.year || r.session || '2025/2026',
+            file_url: r.file_url || '',
+            file_type: r.file_type || '',
+            file_size: r.file_size || 0,
+            download_count: r.download_count || 0,
+            is_published: !!r.is_published,
+            status: (r.status || (r.is_published ? 'published' : 'draft')).toLowerCase(),
+            uploaded_by: r.uploaded_by || '',
+            uploader_name: r.uploader_name || '',
+            created_at: r.created_at || null,
+            updated_at: r.updated_at || null
+        };
+    }
+
+    // ============================================================
+    // STATS
+    // ============================================================
+    function updateStats() {
+        const total = allResources.length;
+        const past = allResources.filter(r => r.category === 'past-questions').length;
+        const notes = allResources.filter(r => r.category === 'lecture-notes').length;
+        const textbooks = allResources.filter(r => r.category === 'textbooks').length;
+        const other = allResources.filter(r => !['past-questions','lecture-notes','textbooks'].includes(r.category)).length;
+
+        document.getElementById('statTotal').textContent = total;
+        document.getElementById('statPast').textContent = past;
+        document.getElementById('statNotes').textContent = notes;
+        document.getElementById('statTextbooks').textContent = textbooks;
+        document.getElementById('statOther').textContent = other;
+    }
+
+    // ============================================================
+    // CATEGORY SHORTCUTS
+    // ============================================================
+    function renderCategoryShortcuts() {
+        const container = document.getElementById('categoryShortcuts');
+        const cats = ['past-questions', 'lecture-notes', 'textbooks', 'project-materials', 'academic-tools', 'useful-links'];
+        container.innerHTML = cats.map(catKey => {
+            const meta = CATEGORY_META[catKey];
+            const count = allResources.filter(r => r.category === catKey).length;
+            const isActive = activeCategory === catKey ? 'active' : '';
+            return `
+                <div class="category-shortcut ${isActive}" data-category="${catKey}">
+                    <div class="category-icon" style="background: ${meta.bg}; color: ${meta.color};">
+                        <i class="fas ${meta.icon}"></i>
+                    </div>
+                    <div class="category-info">
+                        <div class="category-name">${meta.label}</div>
+                        <div class="category-count">${count} item${count === 1 ? '' : 's'}</div>
+                    </div>
+                </div>`;
+        }).join('');
+
+        container.querySelectorAll('.category-shortcut').forEach(el => {
+            el.addEventListener('click', () => {
+                const cat = el.dataset.category;
+                if (activeCategory === cat) {
+                    activeCategory = '';
+                    document.getElementById('filterType').value = '';
+                } else {
+                    activeCategory = cat;
+                    document.getElementById('filterType').value = cat;
+                }
+                renderCategoryShortcuts();
+                applyFilters();
+            });
+        });
+    }
+
+    // ============================================================
+    // FILTERS
+    // ============================================================
+    function applyFilters() {
+        const q = document.getElementById('searchInput').value.trim().toLowerCase();
+        const type = document.getElementById('filterType').value;
+        const dept = document.getElementById('filterDepartment').value;
+        const lvl = document.getElementById('filterLevel').value;
+        const semester = document.getElementById('filterSemester').value;
+        const status = document.getElementById('filterStatus').value;
+
+        filteredResources = allResources.filter(r => {
+            if (type && r.category !== type) return false;
+            if (dept && r.department !== dept) return false;
+            if (lvl && r.level !== lvl) return false;
+            if (semester && r.semester !== semester) return false;
+            if (status) {
+                if (status === 'published' && !r.is_published) return false;
+                if (status === 'draft' && r.is_published) return false;
+            }
+            if (q) {
+                const hay = `${r.title} ${r.course_code} ${r.course_title} ${r.description}`.toLowerCase();
+                if (!hay.includes(q)) return false;
+            }
+            return true;
+        });
+
+        filteredResources.sort((a, b) => {
+            const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+            return tb - ta;
+        });
+
+        currentPage = 1;
+        updateFilterSummary();
+        renderDirectory();
+    }
+
+    function updateFilterSummary() {
+        const active = [];
+        ['searchInput','filterType','filterDepartment','filterLevel','filterSemester','filterStatus'].forEach(id => {
+            if (document.getElementById(id).value) active.push(id);
+        });
+        document.getElementById('filterCount').textContent = active.length
+            ? `${active.length} filter${active.length > 1 ? 's' : ''} active`
+            : '';
+        document.getElementById('resultCount').textContent =
+            `${filteredResources.length} resource${filteredResources.length === 1 ? '' : 's'}`;
+    }
+
+    function clearFilters() {
+        ['searchInput','filterType','filterDepartment','filterLevel','filterSemester','filterStatus']
+            .forEach(id => document.getElementById(id).value = '');
+        activeCategory = '';
+        renderCategoryShortcuts();
+        applyFilters();
+    }
+
+    // ============================================================
+    // RENDER
+    // ============================================================
+    function renderDirectory() {
+        if (currentView === 'grid') {
+            document.getElementById('resourcesGrid').style.display = '';
+            document.getElementById('resourcesList').style.display = 'none';
+            renderGrid();
+        } else {
+            document.getElementById('resourcesGrid').style.display = 'none';
+            document.getElementById('resourcesList').style.display = '';
+            renderList();
+        }
+        renderPagination();
+    }
+
+    function getFileIcon(fileType) {
+        if (!fileType) return { icon: 'fa-file', cls: '' };
+        const t = fileType.toLowerCase();
+        if (t.includes('pdf')) return { icon: 'fa-file-pdf', cls: 'pdf' };
+        if (t.includes('word') || t.includes('doc')) return { icon: 'fa-file-word', cls: 'doc' };
+        if (t.includes('presentation') || t.includes('ppt')) return { icon: 'fa-file-powerpoint', cls: 'ppt' };
+        if (t.includes('sheet') || t.includes('xls')) return { icon: 'fa-file-excel', cls: 'xls' };
+        if (t.includes('image')) return { icon: 'fa-file-image', cls: 'img' };
+        return { icon: 'fa-file', cls: '' };
+    }
+
+    function renderStatusBadge(isPublished) {
+        return isPublished
+            ? '<span class="status-badge badge-success"><i class="fas fa-globe" style="font-size:0.5625rem;"></i> Published</span>'
+            : '<span class="status-badge badge-muted"><i class="fas fa-file-alt" style="font-size:0.5625rem;"></i> Draft</span>';
+    }
+
+    function renderGrid() {
+        const grid = document.getElementById('resourcesGrid');
+        const start = (currentPage - 1) * PAGE_SIZE;
+        const items = filteredResources.slice(start, start + PAGE_SIZE);
+
+        if (items.length === 0) {
+            grid.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon"><i class="fas fa-book"></i></div>
+                    <h3>No resources found</h3>
+                    <p>Try adjusting your filters or upload a new resource.</p>
+                </div>`;
+            return;
         }
 
-        document.addEventListener('DOMContentLoaded', init);
+        grid.innerHTML = items.map(r => {
+            const meta = CATEGORY_META[r.category] || CATEGORY_META['project-materials'];
+            const fileInfo = getFileIcon(r.file_type);
+            const badge = renderStatusBadge(r.is_published);
+            return `
+                <div class="resource-card" data-id="${escapeHtml(r.id)}">
+                    <div class="resource-icon-area">
+                        <div class="resource-file-icon ${fileInfo.cls}">
+                            <i class="fas ${fileInfo.icon}"></i>
+                        </div>
+                        ${badge.replace('status-badge', 'resource-status')}
+                    </div>
+                    <div class="resource-body">
+                        <span class="resource-type-tag">${meta.label}</span>
+                        <h3 class="resource-title">${escapeHtml(r.title)}</h3>
+                        <div class="resource-course">${escapeHtml(r.course_code || '—')}${r.course_title ? ' · ' + escapeHtml(r.course_title) : ''}</div>
+                        <div class="resource-meta">
+                            <span><i class="fas fa-building"></i> ${escapeHtml(shortDept(r.department))}</span>
+                            <span><i class="fas fa-layer-group"></i> ${escapeHtml(r.level || '—')}</span>
+                        </div>
+                        <div class="resource-footer">
+                            <span><i class="fas fa-download"></i> ${r.download_count}</span>
+                            <div class="resource-footer-actions">
+                                <button class="icon-btn" data-action="edit" data-id="${escapeHtml(r.id)}" title="Edit"><i class="fas fa-pen"></i></button>
+                                <button class="icon-btn danger" data-action="delete" data-id="${escapeHtml(r.id)}" title="Delete"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        }).join('');
 
-        // Expose functions globally
-        window.showModal = showModal;
-        window.hideModal = hideModal;
-        window.showToast = showToast;
-        window.editResource = editResource;
-        window.deleteResource = deleteResource;
-        window.clearResourceFile = clearResourceFile;
+        grid.querySelectorAll('.resource-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                if (e.target.closest('button')) return;
+                openDrawer(card.dataset.id);
+            });
+        });
+        grid.querySelectorAll('button[data-action]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const id = btn.dataset.id;
+                if (btn.dataset.action === 'edit') openResourceModal(id);
+                else if (btn.dataset.action === 'delete') openDeleteModal(id);
+            });
+        });
+    }
+
+    function renderList() {
+        const tbody = document.getElementById('resourcesTbody');
+        const start = (currentPage - 1) * PAGE_SIZE;
+        const items = filteredResources.slice(start, start + PAGE_SIZE);
+
+        if (items.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state">
+                <div class="empty-state-icon"><i class="fas fa-book"></i></div>
+                <h3>No resources found</h3>
+                <p>Try adjusting your filters or upload a new resource.</p>
+            </div></td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = items.map(r => {
+            const meta = CATEGORY_META[r.category] || CATEGORY_META['project-materials'];
+            const fileInfo = getFileIcon(r.file_type);
+            const badge = renderStatusBadge(r.is_published);
+            return `
+                <tr data-id="${escapeHtml(r.id)}">
+                    <td>
+                        <div class="resource-cell">
+                            <div class="resource-thumb ${fileInfo.cls}"><i class="fas ${fileInfo.icon}"></i></div>
+                            <div class="resource-cell-info">
+                                <div class="resource-cell-title">${escapeHtml(r.title)}</div>
+                                <div class="resource-cell-sub">${escapeHtml(r.semester === 'second' ? '2nd Sem' : '1st Sem')}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="cell-mono">${escapeHtml(r.course_code || '—')}</td>
+                    <td>${escapeHtml(meta.label)}</td>
+                    <td>${escapeHtml(shortDept(r.department))}</td>
+                    <td>${escapeHtml(r.level || '—')}</td>
+                    <td class="cell-mono">${escapeHtml(r.session || '—')}</td>
+                    <td>${r.download_count}</td>
+                    <td>${badge}</td>
+                    <td>
+                        <div class="row-actions">
+                            <button class="icon-btn" data-action="view" data-id="${escapeHtml(r.id)}" title="View"><i class="fas fa-eye"></i></button>
+                            <button class="icon-btn" data-action="edit" data-id="${escapeHtml(r.id)}" title="Edit"><i class="fas fa-pen"></i></button>
+                            <button class="icon-btn danger" data-action="delete" data-id="${escapeHtml(r.id)}" title="Delete"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </td>
+                </tr>`;
+        }).join('');
+
+        tbody.querySelectorAll('tr[data-id]').forEach(tr => {
+            tr.addEventListener('click', (e) => {
+                if (e.target.closest('button')) return;
+                openDrawer(tr.dataset.id);
+            });
+        });
+        tbody.querySelectorAll('button[data-action]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const id = btn.dataset.id;
+                if (btn.dataset.action === 'view') openDrawer(id);
+                else if (btn.dataset.action === 'edit') openResourceModal(id);
+                else if (btn.dataset.action === 'delete') openDeleteModal(id);
+            });
+        });
+    }
+
+    function renderPagination() {
+        const info = document.getElementById('paginationInfo');
+        const controls = document.getElementById('paginationControls');
+        const totalPages = Math.max(1, Math.ceil(filteredResources.length / PAGE_SIZE));
+
+        if (filteredResources.length === 0) {
+            info.textContent = 'No resources to display';
+            controls.innerHTML = '';
+            return;
+        }
+
+        const start = (currentPage - 1) * PAGE_SIZE + 1;
+        const end = Math.min(currentPage * PAGE_SIZE, filteredResources.length);
+        info.textContent = `Showing ${start}–${end} of ${filteredResources.length}`;
+
+        const parts = [];
+        parts.push(`<button class="page-btn" data-page="prev" ${currentPage === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i></button>`);
+        for (let i = 1; i <= totalPages; i++) {
+            if (totalPages > 7 && i !== 1 && i !== totalPages && Math.abs(i - currentPage) > 1) {
+                if (i === 2 || i === totalPages - 1) parts.push(`<span class="page-btn" style="border:none;background:none;cursor:default;">…</span>`);
+                continue;
+            }
+            parts.push(`<button class="page-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`);
+        }
+        parts.push(`<button class="page-btn" data-page="next" ${currentPage === totalPages ? 'disabled' : ''}><i class="fas fa-chevron-right"></i></button>`);
+
+        controls.innerHTML = parts.join('');
+        controls.querySelectorAll('button[data-page]').forEach(b => {
+            b.addEventListener('click', () => {
+                const val = b.dataset.page;
+                if (val === 'prev') currentPage = Math.max(1, currentPage - 1);
+                else if (val === 'next') currentPage = Math.min(totalPages, currentPage + 1);
+                else currentPage = parseInt(val);
+                renderDirectory();
+            });
+        });
+    }
+
+    // ============================================================
+    // UPLOAD / EDIT MODAL
+    // ============================================================
+    function openResourceModal(id = null) {
+        editingResourceId = id;
+        selectedFile = null;
+        const title = document.getElementById('resourceModalTitle');
+        const form = document.getElementById('resourceForm');
+        form.reset();
+        document.getElementById('fileSelectedName').textContent = '';
+        document.getElementById('fileUploadArea').classList.remove('selected');
+
+        if (id) {
+            const r = allResources.find(x => String(x.id) === String(id));
+            if (!r) return;
+            title.innerHTML = '<i class="fas fa-pen"></i> Edit Resource';
+            document.getElementById('rTitle').value = r.title;
+            document.getElementById('rDescription').value = r.description;
+            document.getElementById('rCategory').value = r.category;
+            document.getElementById('rStatus').value = r.is_published ? 'published' : 'draft';
+            document.getElementById('rCourseCode').value = r.course_code;
+            document.getElementById('rCourseTitle').value = r.course_title;
+            document.getElementById('rDepartment').value = r.department;
+            document.getElementById('rLevel').value = r.level;
+            document.getElementById('rSemester').value = r.semester;
+            document.getElementById('rSession').value = r.session;
+            if (r.file_url) {
+                document.getElementById('fileSelectedName').textContent = 'Current file: ' + (r.file_type || 'uploaded file');
+                document.getElementById('fileUploadArea').classList.add('selected');
+            }
+        } else {
+            title.innerHTML = '<i class="fas fa-upload"></i> Upload New Resource';
+            document.getElementById('rStatus').value = 'draft';
+        }
+
+        showModal('resourceModal');
+        setTimeout(() => document.getElementById('rTitle').focus(), 150);
+    }
+
+    function setupFileUpload() {
+        document.getElementById('fileUploadArea').addEventListener('click', () => {
+            document.getElementById('resourceFileInput').click();
+        });
+        document.getElementById('resourceFileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            selectedFile = file;
+            document.getElementById('fileSelectedName').textContent = `${file.name} (${formatFileSize(file.size)})`;
+            document.getElementById('fileUploadArea').classList.add('selected');
+        });
+    }
+
+    async function handleResourceSubmit(e) {
+        e.preventDefault();
+        const btn = document.getElementById('resourceSubmitBtn');
+        const original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Saving…';
+
+        const payload = {
+            title: document.getElementById('rTitle').value.trim(),
+            description: document.getElementById('rDescription').value.trim(),
+            category: document.getElementById('rCategory').value,
+            status: document.getElementById('rStatus').value,
+            is_published: document.getElementById('rStatus').value === 'published',
+            course_code: document.getElementById('rCourseCode').value.trim(),
+            course_title: document.getElementById('rCourseTitle').value.trim(),
+            department: document.getElementById('rDepartment').value,
+            level: document.getElementById('rLevel').value,
+            semester: document.getElementById('rSemester').value,
+            session: document.getElementById('rSession').value
+        };
+
+        try {
+            if (editingResourceId) {
+                await apiPut(`/api/admin/resources/${editingResourceId}`, payload);
+                showToast('Resource updated', 'success');
+            } else {
+                // New resource — if a file was selected, send as multipart
+                if (selectedFile) {
+                    const formData = new FormData();
+                    formData.append('file', selectedFile);
+                    formData.append('data', JSON.stringify(payload));
+                    await apiPost('/api/admin/resources', formData, true);
+                } else {
+                    await apiPost('/api/admin/resources', payload);
+                }
+                showToast('Resource uploaded', 'success');
+            }
+            hideModal('resourceModal');
+            await loadResources();
+        } catch (err) {
+            console.error('Save error:', err);
+            showToast(err.message || 'Failed to save resource', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = original;
+        }
+    }
+
+    // ============================================================
+    // DRAWER
+    // ============================================================
+    function openDrawer(id) {
+        const r = allResources.find(x => String(x.id) === String(id));
+        if (!r) return;
+        viewingResource = r;
+
+        const meta = CATEGORY_META[r.category] || CATEGORY_META['project-materials'];
+        const fileInfo = getFileIcon(r.file_type);
+
+        const iconEl = document.getElementById('drawerFileIcon');
+        iconEl.className = 'drawer-file-icon ' + fileInfo.cls;
+        iconEl.innerHTML = `<i class="fas ${fileInfo.icon}"></i>`;
+
+        document.getElementById('drawerType').textContent = meta.label;
+        document.getElementById('drawerTitle').textContent = r.title;
+        document.getElementById('drawerCourse').textContent =
+            [r.course_code, r.course_title].filter(Boolean).join(' · ') || '—';
+        document.getElementById('drawerDescription').textContent = r.description || 'No description provided.';
+        document.getElementById('drawerDept').textContent = r.department || '—';
+        document.getElementById('drawerLevel').textContent = r.level || '—';
+        document.getElementById('drawerSemester').textContent = r.semester === 'second' ? 'Second Semester' : 'First Semester';
+        document.getElementById('drawerSession').textContent = r.session || '—';
+        document.getElementById('drawerFormat').textContent = r.file_type || '—';
+        document.getElementById('drawerSize').textContent = formatFileSize(r.file_size);
+        document.getElementById('drawerDownloads').textContent = r.download_count;
+        document.getElementById('drawerUploaded').textContent = formatDate(r.created_at);
+        document.getElementById('drawerUploader').textContent = r.uploader_name || 'Administrator';
+        document.getElementById('drawerStatusText').textContent = r.is_published ? 'Published' : 'Draft';
+
+        const publishText = document.getElementById('drawerPublishText');
+        publishText.textContent = r.is_published ? 'Unpublish' : 'Publish';
+
+        document.getElementById('drawerOverlay').classList.add('active');
+        document.getElementById('resourceDrawer').classList.add('active');
+        document.getElementById('resourceDrawer').setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeDrawer() {
+        document.getElementById('drawerOverlay').classList.remove('active');
+        document.getElementById('resourceDrawer').classList.remove('active');
+        document.getElementById('resourceDrawer').setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+        viewingResource = null;
+    }
+
+    async function togglePublish() {
+        if (!viewingResource) return;
+        const next = !viewingResource.is_published;
+        try {
+            await apiPut(`/api/admin/resources/${viewingResource.id}`, {
+                is_published: next,
+                status: next ? 'published' : 'draft'
+            });
+            showToast(next ? 'Resource published' : 'Resource unpublished', 'success');
+            closeDrawer();
+            await loadResources();
+        } catch (err) {
+            showToast(err.message || 'Failed to update', 'error');
+        }
+    }
+
+    function downloadResource() {
+        if (!viewingResource) return;
+        if (!viewingResource.file_url) {
+            showToast('No file attached to this resource', 'warning');
+            return;
+        }
+        // Increment count server-side, then open file
+        fetch(`${API_BASE_URL}/api/resources/${viewingResource.id}/download`, {
+            method: 'POST', credentials: 'include'
+        }).catch(() => {});
+        window.open(viewingResource.file_url, '_blank');
+    }
+
+    // ============================================================
+    // DELETE
+    // ============================================================
+    function openDeleteModal(id) {
+        const r = allResources.find(x => String(x.id) === String(id));
+        if (!r) return;
+        deletingResourceId = id;
+        document.getElementById('deleteResourceName').textContent = r.title;
+        showModal('deleteModal');
+    }
+
+    async function handleDelete() {
+        if (!deletingResourceId) return;
+        const btn = document.getElementById('confirmDeleteBtn');
+        const original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Deleting…';
+        try {
+            await apiDelete(`/api/admin/resources/${deletingResourceId}`);
+            showToast('Resource deleted', 'success');
+            hideModal('deleteModal');
+            if (viewingResource && String(viewingResource.id) === String(deletingResourceId)) closeDrawer();
+            deletingResourceId = null;
+            await loadResources();
+        } catch (err) {
+            showToast(err.message || 'Failed to delete', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = original;
+        }
+    }
+
+    // ============================================================
+    // ACADEMIC TOOLS
+    // ============================================================
+    const DEFAULT_GRADES = [
+        { grade: 'A', min: 70, max: 100, points: 5 },
+        { grade: 'B', min: 60, max: 69,  points: 4 },
+        { grade: 'C', min: 50, max: 59,  points: 3 },
+        { grade: 'D', min: 45, max: 49,  points: 2 },
+        { grade: 'E', min: 40, max: 44,  points: 1 },
+        { grade: 'F', min: 0,  max: 39,  points: 0 }
+    ];
+
+    function openAcademicTools() {
+        academicTools = academicTools || {
+            grades: DEFAULT_GRADES,
+            max_credits: 24,
+            session: '2025/2026',
+            instructions: 'Enter your course codes, credit units and grades to calculate your GPA.',
+            policy: 'A minimum CGPA of 2.00 is required for graduation.',
+            visible: true
+        };
+
+        document.getElementById('cgpaMaxCredits').value = academicTools.max_credits || 24;
+        document.getElementById('cgpaSession').value = academicTools.session || '2025/2026';
+        document.getElementById('cgpaInstructions').value = academicTools.instructions || '';
+        document.getElementById('cgpaPolicy').value = academicTools.policy || '';
+        document.getElementById('cgpaVisible').checked = academicTools.visible;
+
+        renderGradingTable();
+        showModal('academicToolsModal');
+    }
+
+    function renderGradingTable() {
+        const tbody = document.getElementById('gradingTableBody');
+        tbody.innerHTML = academicTools.grades.map((g, i) => `
+            <tr>
+                <td><input type="text" data-field="grade" data-index="${i}" value="${escapeHtml(g.grade)}"></td>
+                <td><input type="number" data-field="min" data-index="${i}" value="${g.min}" min="0" max="100"></td>
+                <td><input type="number" data-field="max" data-index="${i}" value="${g.max}" min="0" max="100"></td>
+                <td><input type="number" data-field="points" data-index="${i}" value="${g.points}" min="0" max="10"></td>
+            </tr>
+        `).join('');
+
+        tbody.querySelectorAll('input').forEach(input => {
+            input.addEventListener('input', () => {
+                const idx = parseInt(input.dataset.index);
+                const field = input.dataset.field;
+                const val = field === 'grade' ? input.value : parseFloat(input.value) || 0;
+                academicTools.grades[idx][field] = val;
+            });
+        });
+    }
+
+    async function saveAcademicTools() {
+        const maxCredits = parseInt(document.getElementById('cgpaMaxCredits').value) || 0;
+        const session = document.getElementById('cgpaSession').value;
+        const instructions = document.getElementById('cgpaInstructions').value;
+        const policy = document.getElementById('cgpaPolicy').value;
+        const visible = document.getElementById('cgpaVisible').checked;
+
+        academicTools = { ...academicTools, max_credits: maxCredits, session, instructions, policy, visible };
+
+        const payload = {
+            grades: academicTools.grades,
+            max_credits: maxCredits,
+            session,
+            instructions,
+            policy,
+            visible
+        };
+
+        try {
+            await apiPut('/api/admin/academic-tools', payload).catch(() => {
+                // Endpoint may not exist — persist to localStorage as fallback
+                localStorage.setItem('nuesa_academic_tools', JSON.stringify(payload));
+            });
+            showToast('Academic tools settings saved', 'success');
+            hideModal('academicToolsModal');
+        } catch (err) {
+            localStorage.setItem('nuesa_academic_tools', JSON.stringify(payload));
+            showToast('Settings saved locally (backend endpoint pending)', 'info');
+            hideModal('academicToolsModal');
+        }
+    }
+
+    // ============================================================
+    // HELPERS
+    // ============================================================
+    function showLoading() { document.getElementById('loadingOverlay').classList.add('active'); }
+    function hideLoading() { document.getElementById('loadingOverlay').classList.remove('active'); }
+    function showModal(id) { const el = document.getElementById(id); if (el) { el.classList.add('active'); document.body.style.overflow = 'hidden'; } }
+    function hideModal(id) { const el = document.getElementById(id); if (el) { el.classList.remove('active'); document.body.style.overflow = ''; } }
+
+    function showToast(message, type = 'info', duration = 4000) {
+        document.querySelectorAll('.toast').forEach(t => t.remove());
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        const icons = { success:'check-circle', error:'exclamation-circle', warning:'exclamation-triangle', info:'info-circle' };
+        toast.innerHTML = `
+            <div class="toast-icon"><i class="fas fa-${icons[type] || 'info-circle'}"></i></div>
+            <div class="toast-content">${escapeHtml(message)}</div>
+            <button class="toast-close" aria-label="Close">&times;</button>`;
+        document.body.appendChild(toast);
+        requestAnimationFrame(() => toast.classList.add('show'));
+        toast.querySelector('.toast-close').onclick = () => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); };
+        setTimeout(() => { if (toast.parentElement) { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); } }, duration);
+    }
+
+    function escapeHtml(str) {
+        if (str == null) return '';
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
+    function shortDept(dept) {
+        if (!dept) return '—';
+        if (dept.includes('Electrical')) return 'EEE';
+        if (dept.includes('Mechanical')) return 'MEE';
+        if (dept.includes('Civil')) return 'CVE';
+        return dept.split('/')[0].substring(0, 6);
+    }
+
+    function formatFileSize(bytes) {
+        if (!bytes || bytes === 0) return '—';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    function formatDate(s) {
+        if (!s) return '—';
+        try {
+            const d = new Date(s);
+            if (isNaN(d.getTime())) return String(s);
+            return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        } catch { return String(s); }
+    }
+
+    // ============================================================
+    // SIDEBAR
+    // ============================================================
+    function setupSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const mobileOverlay = document.getElementById('mobileOverlay');
+        const mobileToggle = document.getElementById('mobileMenuToggle');
+        if (!sidebar || !mobileOverlay || !mobileToggle) return;
+        const closeSidebar = () => {
+            sidebar.classList.remove('open');
+            mobileOverlay.classList.remove('active');
+            document.body.style.overflow = '';
+        };
+        mobileToggle.addEventListener('click', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            if (sidebar.classList.contains('open')) closeSidebar();
+            else {
+                sidebar.classList.add('open');
+                mobileOverlay.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        }, true);
+        mobileOverlay.addEventListener('click', closeSidebar);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && sidebar.classList.contains('open')) closeSidebar();
+        });
+        document.querySelectorAll('.nav-item').forEach(link => {
+            link.addEventListener('click', () => { if (window.innerWidth <= 900) closeSidebar(); });
+        });
+    }
+
+    // ============================================================
+    // EXPORT
+    // ============================================================
+    function exportResources() {
+        if (filteredResources.length === 0) {
+            showToast('Nothing to export', 'warning');
+            return;
+        }
+        const headers = ['Title','Category','Course Code','Course Title','Department','Level','Semester','Session','Downloads','Status'];
+        const rows = filteredResources.map(r => [
+            r.title, r.category, r.course_code, r.course_title,
+            r.department, r.level, r.semester, r.session, r.download_count,
+            r.is_published ? 'published' : 'draft'
+        ]);
+        const csv = [headers, ...rows]
+            .map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
+            .join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `nuesa-resources-${new Date().toISOString().slice(0,10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast(`Exported ${rows.length} resources`, 'success');
+    }
+
+    // ============================================================
+    // INACTIVITY
+    // ============================================================
+    function resetInactivityTimer() {
+        clearTimeout(inactivityTimeout);
+        inactivityTimeout = setTimeout(() => {
+            showToast('Session expiring soon', 'warning');
+            setTimeout(() => window.location.replace('adlog.html'), 60000);
+        }, 29 * 60 * 1000);
+    }
+    function setupActivityListeners() {
+        ['mousedown','keypress','scroll','touchstart'].forEach(ev =>
+            document.addEventListener(ev, resetInactivityTimer));
+        resetInactivityTimer();
+    }
+
+    // ============================================================
+    // INIT
+    // ============================================================
+    async function init() {
+        setupSidebar();
+
+        // Static wiring
+        document.getElementById('logoutBtn').addEventListener('click', () => showModal('logoutModal'));
+        document.getElementById('confirmLogout').addEventListener('click', confirmLogout);
+        document.getElementById('notificationBtn').addEventListener('click', () => { window.location.href = 'messages.html'; });
+        document.getElementById('uploadBtn').addEventListener('click', () => openResourceModal());
+        document.getElementById('exportBtn').addEventListener('click', exportResources);
+        document.getElementById('clearFilters').addEventListener('click', clearFilters);
+        document.getElementById('confirmDeleteBtn').addEventListener('click', handleDelete);
+        document.getElementById('academicToolsBtn').addEventListener('click', openAcademicTools);
+        document.getElementById('saveAcademicToolsBtn').addEventListener('click', saveAcademicTools);
+
+        // View toggle
+        document.getElementById('gridViewBtn').addEventListener('click', () => {
+            currentView = 'grid';
+            document.getElementById('gridViewBtn').classList.add('active');
+            document.getElementById('listViewBtn').classList.remove('active');
+            renderDirectory();
+        });
+        document.getElementById('listViewBtn').addEventListener('click', () => {
+            currentView = 'list';
+            document.getElementById('listViewBtn').classList.add('active');
+            document.getElementById('gridViewBtn').classList.remove('active');
+            renderDirectory();
+        });
+
+        // Filters
+        ['searchInput','filterType','filterDepartment','filterLevel','filterSemester','filterStatus']
+            .forEach(id => document.getElementById(id).addEventListener('input', () => {
+                // Sync category shortcut when type filter changes
+                if (id === 'filterType') {
+                    activeCategory = document.getElementById(id).value;
+                    renderCategoryShortcuts();
+                }
+                applyFilters();
+            }));
+
+        // Modal
+        document.getElementById('resourceForm').addEventListener('submit', handleResourceSubmit);
+        setupFileUpload();
+
+        // Drawer
+        document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
+        document.getElementById('drawerEditBtn').addEventListener('click', () => {
+            if (viewingResource) { const id = viewingResource.id; closeDrawer(); openResourceModal(id); }
+        });
+        document.getElementById('drawerPublishBtn').addEventListener('click', togglePublish);
+        document.getElementById('drawerDownloadBtn').addEventListener('click', downloadResource);
+        document.getElementById('drawerDeleteBtn').addEventListener('click', () => {
+            if (viewingResource) { const id = viewingResource.id; closeDrawer(); openDeleteModal(id); }
+        });
+
+        // Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                ['academicToolsModal','resourceModal','deleteModal','logoutModal'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el && el.classList.contains('active')) hideModal(id);
+                });
+                if (document.getElementById('resourceDrawer').classList.contains('active')) closeDrawer();
+            }
+        });
+
+        // Load academic tools from localStorage fallback
+        try {
+            const saved = localStorage.getItem('nuesa_academic_tools');
+            if (saved) academicTools = JSON.parse(saved);
+        } catch (e) {}
+
+        // Auth
+        const ok = await checkAuth();
+        if (!ok) return;
+
+        setupActivityListeners();
+        await loadResources();
+        hideLoading();
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+
+    window.showModal = showModal;
+    window.hideModal = hideModal;
+    window.confirmLogout = confirmLogout;
+    window.closeDrawer = closeDrawer;
     </script>
 </body>
 </html>
