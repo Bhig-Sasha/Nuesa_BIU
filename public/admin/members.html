@@ -276,7 +276,7 @@
             content: '';
             position: absolute;
             left: -12px; top: 50%;
-            transform: translateY(-50%) scaleY(1);
+            transform: translateY(-50%);
             width: 3px; height: 20px;
             background: var(--accent);
             border-radius: 0 3px 3px 0;
@@ -284,29 +284,12 @@
         }
         .nav-item.active i { color: var(--accent); }
 
+        /* Sidebar footer — logout only (user info is in the header) */
         .sidebar-footer {
             padding: 16px 12px 20px;
             border-top: 1px solid rgba(255,255,255,0.08);
             flex-shrink: 0;
             background: var(--primary);
-        }
-        .user-quick-info {
-            padding: 12px;
-            background: rgba(255,255,255,0.04);
-            border-radius: var(--r);
-            margin-bottom: 10px;
-            transition: background var(--dur-fast) var(--ease);
-        }
-        .user-quick-info:hover { background: rgba(255,255,255,0.08); }
-        .user-quick-info .user-name {
-            font-weight: 700; color: var(--text-invert);
-            font-size: 0.875rem; margin-bottom: 2px;
-        }
-        .user-quick-info .user-role {
-            font-family: var(--font-mono);
-            font-size: 0.6875rem; font-weight: 600;
-            color: var(--accent);
-            letter-spacing: 0.05em; text-transform: uppercase;
         }
         .logout-btn {
             width: 100%;
@@ -354,7 +337,7 @@
         @media (max-width: 900px) { .main-content { margin-left: 0; } }
 
         /* ============================================================
-           HEADER
+           HEADER — no breadcrumb, profile on right
            ============================================================ */
         .header {
             height: var(--header-h);
@@ -383,17 +366,7 @@
             .header { padding: 0 16px; }
         }
 
-        .header-breadcrumb {
-            display: flex; align-items: center; gap: 8px;
-            font-size: 0.8125rem;
-            color: var(--text-muted);
-            font-weight: 500;
-        }
-        .header-breadcrumb i { font-size: 0.6875rem; color: var(--text-dim); }
-        .header-breadcrumb .current { color: var(--text); font-weight: 600; }
-        @media (max-width: 640px) { .header-breadcrumb { display: none; } }
-
-        .header-actions { display: flex; align-items: center; gap: 8px; }
+        .header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 
         .notification-btn {
             position: relative;
@@ -672,7 +645,6 @@
             border-color: var(--accent);
             box-shadow: 0 0 0 3px rgba(213, 168, 59, 0.12);
         }
-        .search-input:focus + i,
         .search-wrapper:focus-within i { color: var(--accent); }
 
         .filter-select {
@@ -1130,10 +1102,6 @@
             </nav>
 
             <div class="sidebar-footer">
-                <div class="user-quick-info">
-                    <div class="user-name" id="sidebarUserName">Administrator</div>
-                    <div class="user-role" id="sidebarUserRole">Admin</div>
-                </div>
                 <button class="logout-btn" id="logoutBtn" type="button">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
@@ -1148,16 +1116,9 @@
         <div class="main-content">
             <!-- Header -->
             <header class="header" id="header">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <button class="mobile-menu-btn" id="mobileMenuToggle" type="button" aria-label="Toggle menu">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    <div class="header-breadcrumb">
-                        <span>Admin</span>
-                        <i class="fas fa-chevron-right"></i>
-                        <span class="current">Members</span>
-                    </div>
-                </div>
+                <button class="mobile-menu-btn" id="mobileMenuToggle" type="button" aria-label="Toggle menu">
+                    <i class="fas fa-bars"></i>
+                </button>
                 <div class="header-actions">
                     <button class="notification-btn" id="notificationBtn" type="button" aria-label="Notifications">
                         <i class="far fa-bell"></i>
@@ -1494,8 +1455,6 @@
         document.getElementById('userName').textContent = name;
         document.getElementById('userRole').textContent = roleLabel;
         document.getElementById('userAvatar').textContent = initial;
-        document.getElementById('sidebarUserName').textContent = name;
-        document.getElementById('sidebarUserRole').textContent = roleLabel;
     }
 
     async function confirmLogout() {
@@ -2138,7 +2097,6 @@
         setupHeaderScroll();
         setupButtonRipple();
 
-        // Wire up static actions
         document.getElementById('logoutBtn').addEventListener('click', () => showModal('logoutModal'));
         document.getElementById('confirmLogout').addEventListener('click', confirmLogout);
         document.getElementById('notificationBtn').addEventListener('click', () => {
@@ -2149,17 +2107,12 @@
         document.getElementById('exportBtn').addEventListener('click', exportMembers);
         document.getElementById('clearFilters').addEventListener('click', clearFilters);
 
-        // Live filter listeners
         ['searchInput','filterDepartment','filterLevel','filterSession','filterStatus']
             .forEach(id => document.getElementById(id).addEventListener('input', applyFilters));
 
-        // Member form
         document.getElementById('memberForm').addEventListener('submit', handleMemberSubmit);
-
-        // Delete confirmation
         document.getElementById('confirmDeleteBtn').addEventListener('click', handleDelete);
 
-        // Profile drawer actions
         document.getElementById('profileOverlay').addEventListener('click', closeProfileDrawer);
         document.getElementById('profileEditBtn').addEventListener('click', () => {
             if (viewingMember) {
@@ -2176,7 +2129,6 @@
             }
         });
 
-        // Escape closes open modal/drawer
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 ['memberModal','deleteModal','logoutModal'].forEach(id => {
@@ -2189,7 +2141,6 @@
             }
         });
 
-        // Auth
         const ok = await checkAuth();
         if (!ok) return;
 
