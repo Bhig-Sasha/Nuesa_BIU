@@ -3,64 +3,1085 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Course Reps - NUESA BIU Admin</title>
+    <title>Course Representatives - NUESA BIU Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Copy all styles from dashboard.html here */
-        /* ... (same styles as dashboard.html) ... */
-        
-        /* Course Reps Specific Styles */
-        .dept-list {
-            margin-top: 1rem;
-            border: 1px solid var(--slate-200);
-            border-radius: var(--radius-lg);
-            padding: 1rem;
-            background: var(--slate-50);
+        /* ============================================================
+           NUESA BIU ADMIN — ENGINEERING GREEN + GOLD THEME
+           ============================================================ */
+        :root {
+            --primary:        #102B27;
+            --primary-soft:   #1A3A34;
+            --primary-tint:   #E6EEEB;
+            --accent:         #D5A83B;
+            --accent-soft:    #E8C46A;
+            --accent-tint:    #FBF3DE;
+
+            --bg:             #F4F6F3;
+            --surface:        #FFFFFF;
+            --surface-muted:  #FAFAF8;
+            --border:         #E5E9E4;
+            --border-strong:  #D0D7D2;
+
+            --text:           #102B27;
+            --text-muted:     #5A6B67;
+            --text-dim:       #8A9894;
+            --text-invert:    #FFFFFF;
+            --text-gold:      #8B6E22;
+
+            --success:        #1E8E5A;
+            --success-tint:   #E4F3EB;
+            --warning:        #B8761E;
+            --warning-tint:   #FBF0DC;
+            --danger:         #B7402F;
+            --danger-tint:    #FBE6E2;
+            --info:           #2C6FA8;
+            --info-tint:      #E3EEF7;
+
+            --r-sm: 6px;
+            --r:    10px;
+            --r-lg: 14px;
+            --r-xl: 18px;
+
+            --shadow-sm: 0 1px 2px rgba(16, 43, 39, 0.05);
+            --shadow:    0 2px 6px rgba(16, 43, 39, 0.06), 0 1px 2px rgba(16, 43, 39, 0.04);
+            --shadow-md: 0 6px 16px rgba(16, 43, 39, 0.08), 0 2px 4px rgba(16, 43, 39, 0.04);
+            --shadow-lg: 0 12px 28px rgba(16, 43, 39, 0.10), 0 4px 8px rgba(16, 43, 39, 0.05);
+            --shadow-xl: 0 24px 48px rgba(16, 43, 39, 0.14), 0 8px 16px rgba(16, 43, 39, 0.06);
+
+            --ease: cubic-bezier(0.22, 1, 0.36, 1);
+            --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+            --dur-fast: 160ms;
+            --dur:      240ms;
+            --dur-slow: 420ms;
+
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --font-mono: 'Roboto Mono', 'SF Mono', Monaco, monospace;
+
+            --sidebar-w: 272px;
+            --header-h:  76px;
         }
-        .dept-item {
-            background: white;
-            border: 1px solid var(--slate-200);
-            border-radius: var(--radius);
-            padding: 1rem;
-            margin-bottom: 0.75rem;
-            transition: all var(--transition-fast);
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 15px;
+            line-height: 1.55;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
         }
-        .dept-item:hover {
-            border-color: var(--primary);
-            box-shadow: var(--shadow-sm);
+
+        a { color: inherit; text-decoration: none; }
+        button { font-family: inherit; }
+
+        /* ============================================================
+           ANIMATIONS
+           ============================================================ */
+        @keyframes fadeIn     { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideInUp  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes scaleIn    { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+        @keyframes spin       { to { transform: rotate(360deg); } }
+
+        /* ============================================================
+           LOADING OVERLAY
+           ============================================================ */
+        .loading-overlay {
+            position: fixed; inset: 0;
+            background: rgba(244, 246, 243, 0.92);
+            backdrop-filter: blur(6px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999;
+            opacity: 0; visibility: hidden;
+            transition: opacity var(--dur) var(--ease), visibility var(--dur);
         }
-        .dept-item:last-child { margin-bottom: 0; }
-        .dept-item-header {
+        .loading-overlay.active { opacity: 1; visibility: visible; }
+        .loading-content { text-align: center; animation: scaleIn var(--dur) var(--ease); }
+        .loading-spinner {
+            width: 52px; height: 52px;
+            border: 3px solid var(--primary-tint);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 800ms linear infinite;
+            margin: 0 auto 16px;
+        }
+        .loading-text {
+            font-family: var(--font-mono);
+            font-size: 11px; font-weight: 600;
+            letter-spacing: 0.15em; text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        /* ============================================================
+           TOASTS
+           ============================================================ */
+        .toast {
+            position: fixed; top: 24px; right: 24px;
+            background: var(--surface);
+            padding: 14px 18px;
+            border-radius: var(--r-lg);
+            box-shadow: var(--shadow-xl);
+            display: flex; align-items: center; gap: 12px;
+            max-width: 380px; z-index: 9998;
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--info);
+            transform: translateX(calc(100% + 40px));
+            transition: transform var(--dur-slow) var(--ease-out);
+        }
+        .toast.show { transform: translateX(0); }
+        .toast-success { border-left-color: var(--success); }
+        .toast-error   { border-left-color: var(--danger); }
+        .toast-warning { border-left-color: var(--warning); }
+        .toast-info    { border-left-color: var(--info); }
+        .toast-icon { font-size: 1.1rem; flex-shrink: 0; }
+        .toast-success .toast-icon { color: var(--success); }
+        .toast-error   .toast-icon { color: var(--danger); }
+        .toast-warning .toast-icon { color: var(--warning); }
+        .toast-info    .toast-icon { color: var(--info); }
+        .toast-content { flex: 1; font-size: 0.875rem; font-weight: 500; }
+        .toast-close {
+            background: none; border: none;
+            color: var(--text-dim); cursor: pointer;
+            padding: 4px; font-size: 1.1rem; line-height: 1;
+            border-radius: var(--r-sm);
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .toast-close:hover { color: var(--text); background: var(--surface-muted); }
+
+        /* ============================================================
+           SHELL
+           ============================================================ */
+        .dashboard-container { display: flex; min-height: 100vh; }
+
+        /* ============================================================
+           SIDEBAR
+           ============================================================ */
+        .sidebar {
+            width: var(--sidebar-w);
+            background: var(--primary);
+            display: flex; flex-direction: column;
+            position: fixed; top: 0; left: 0; bottom: 0;
+            z-index: 40;
+            transition: transform var(--dur) var(--ease);
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .sidebar::-webkit-scrollbar { width: 4px; }
+        .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+        @media (max-width: 900px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); box-shadow: var(--shadow-xl); }
+        }
+
+        .sidebar-header {
+            padding: 24px 20px 20px;
+            display: flex; align-items: center; gap: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .sidebar-logo {
+            width: 44px; height: 44px;
+            background: var(--accent);
+            border-radius: var(--r);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--primary);
+            font-weight: 900; font-size: 1.25rem;
+            box-shadow: 0 4px 12px rgba(213, 168, 59, 0.35);
+            flex-shrink: 0;
+        }
+        .sidebar-title {
+            font-size: 0.9375rem; font-weight: 800;
+            color: var(--text-invert);
+            letter-spacing: -0.01em;
+            line-height: 1.2;
+        }
+        .sidebar-title span {
+            display: block;
+            font-family: var(--font-mono);
+            font-size: 0.6875rem; font-weight: 600;
+            color: var(--accent);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-top: 3px;
+        }
+
+        .nav {
+            padding: 16px 12px; flex: 1;
+            display: flex; flex-direction: column; gap: 3px;
+        }
+        .nav-section-label {
+            font-family: var(--font-mono);
+            font-size: 0.625rem; font-weight: 700;
+            color: rgba(255,255,255,0.35);
+            letter-spacing: 0.15em; text-transform: uppercase;
+            padding: 16px 12px 6px;
+        }
+        .nav-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 12px;
+            border-radius: var(--r);
+            color: rgba(255,255,255,0.72);
+            cursor: pointer;
+            font-size: 0.875rem; font-weight: 500;
+            transition: all var(--dur-fast) var(--ease);
+            position: relative;
+        }
+        .nav-item i {
+            width: 18px; font-size: 0.9375rem;
+            color: rgba(255,255,255,0.55);
+            transition: color var(--dur-fast) var(--ease);
+            flex-shrink: 0;
+        }
+        .nav-item:hover { background: rgba(255,255,255,0.06); color: var(--text-invert); }
+        .nav-item:hover i { color: var(--accent); }
+        .nav-item.active { background: var(--primary-soft); color: var(--text-invert); font-weight: 600; }
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: -12px; top: 50%;
+            transform: translateY(-50%);
+            width: 3px; height: 20px;
+            background: var(--accent);
+            border-radius: 0 3px 3px 0;
+        }
+        .nav-item.active i { color: var(--accent); }
+
+        .sidebar-footer {
+            padding: 16px 12px 20px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+        }
+        .user-quick-info {
+            padding: 12px;
+            background: rgba(255,255,255,0.04);
+            border-radius: var(--r);
+            margin-bottom: 10px;
+        }
+        .user-quick-info .user-name {
+            font-weight: 700; color: var(--text-invert);
+            font-size: 0.875rem; margin-bottom: 2px;
+        }
+        .user-quick-info .user-role {
+            font-family: var(--font-mono);
+            font-size: 0.6875rem; font-weight: 600;
+            color: var(--accent);
+            letter-spacing: 0.05em; text-transform: uppercase;
+        }
+        .logout-btn {
+            width: 100%;
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 12px;
+            background: transparent;
+            color: rgba(255,255,255,0.7);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: var(--r);
+            cursor: pointer;
+            font-weight: 500; font-size: 0.875rem;
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .logout-btn:hover {
+            background: var(--danger);
+            color: var(--text-invert);
+            border-color: var(--danger);
+        }
+
+        /* ============================================================
+           MOBILE OVERLAY
+           ============================================================ */
+        .mobile-overlay {
+            position: fixed; inset: 0;
+            background: rgba(16, 43, 39, 0.45);
+            backdrop-filter: blur(3px);
+            z-index: 35;
+            opacity: 0; visibility: hidden;
+            transition: opacity var(--dur) var(--ease), visibility var(--dur);
+        }
+        .mobile-overlay.active { opacity: 1; visibility: visible; }
+
+        /* ============================================================
+           MAIN CONTENT
+           ============================================================ */
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-w);
+            min-height: 100vh;
+            transition: margin var(--dur) var(--ease);
+        }
+        @media (max-width: 900px) { .main-content { margin-left: 0; } }
+
+        /* ============================================================
+           HEADER
+           ============================================================ */
+        .header {
+            height: var(--header-h);
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 28px;
             display: flex; align-items: center; justify-content: space-between;
-            margin-bottom: 0.5rem; font-weight: 600; color: var(--slate-700);
+            position: sticky; top: 0; z-index: 30;
         }
-        .dept-rep-field { margin-top: 0.5rem; }
-        .dept-rep-label {
-            font-size: 0.75rem; color: var(--slate-500);
-            margin-bottom: 0.25rem; display: block;
+        .mobile-menu-btn {
+            display: none;
+            background: none; border: none;
+            font-size: 1.25rem; color: var(--text-muted);
+            cursor: pointer; padding: 8px 10px;
+            border-radius: var(--r);
+            transition: all var(--dur-fast) var(--ease);
+            position: relative; z-index: 50;
         }
-        
+        .mobile-menu-btn:hover { background: var(--primary-tint); color: var(--primary); }
+        @media (max-width: 900px) {
+            .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+        }
+
+        .header-breadcrumb {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        .header-breadcrumb i { font-size: 0.6875rem; color: var(--text-dim); }
+        .header-breadcrumb .current { color: var(--text); font-weight: 600; }
+
+        .header-actions { display: flex; align-items: center; gap: 8px; }
+
+        .notification-btn {
+            position: relative;
+            background: none; border: none;
+            color: var(--text-muted); cursor: pointer;
+            width: 40px; height: 40px;
+            border-radius: var(--r);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem;
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .notification-btn:hover { background: var(--primary-tint); color: var(--primary); }
+
+        .notification-badge {
+            position: absolute; top: 8px; right: 8px;
+            background: var(--accent);
+            color: var(--primary);
+            font-size: 0.625rem; font-weight: 800;
+            padding: 1px 5px;
+            border-radius: 999px;
+            min-width: 16px; text-align: center;
+            line-height: 14px;
+        }
+
+        .user-info {
+            display: flex; align-items: center; gap: 10px;
+            padding: 6px 10px 6px 6px;
+            border-radius: var(--r);
+            transition: background var(--dur-fast) var(--ease);
+            cursor: pointer;
+            margin-left: 8px;
+        }
+        .user-info:hover { background: var(--surface-muted); }
+        .user-avatar {
+            width: 36px; height: 36px;
+            background: var(--primary);
+            color: var(--accent);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 0.875rem;
+            flex-shrink: 0;
+            border: 2px solid var(--accent);
+        }
+        .user-details { line-height: 1.25; }
+        .user-details .user-name { font-weight: 700; color: var(--text); font-size: 0.8125rem; }
+        .user-details .user-role {
+            font-family: var(--font-mono);
+            font-size: 0.625rem; font-weight: 600;
+            color: var(--text-dim);
+            text-transform: uppercase; letter-spacing: 0.08em;
+        }
+
+        /* ============================================================
+           MAIN AREA
+           ============================================================ */
+        .main-area {
+            padding: 28px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        @media (max-width: 640px) { .main-area { padding: 20px 16px; } }
+
+        .page-header {
+            margin-bottom: 24px;
+            display: flex; justify-content: space-between;
+            align-items: flex-end; flex-wrap: wrap; gap: 16px;
+        }
+        .page-title {
+            font-size: 1.75rem; font-weight: 800;
+            color: var(--text);
+            letter-spacing: -0.02em; line-height: 1.2;
+            margin-bottom: 6px;
+        }
+        .page-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        .page-header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        /* ============================================================
+           BUTTONS
+           ============================================================ */
+        .btn {
+            padding: 9px 16px;
+            border-radius: var(--r);
+            border: none; cursor: pointer;
+            font-weight: 600; font-size: 0.8125rem;
+            display: inline-flex; align-items: center; gap: 8px;
+            transition: all var(--dur-fast) var(--ease);
+            line-height: 1.4;
+            white-space: nowrap;
+        }
+        .btn i { font-size: 0.75rem; }
+        .btn-primary { background: var(--primary); color: var(--text-invert); }
+        .btn-primary:hover { background: var(--primary-soft); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border-strong);
+        }
+        .btn-secondary:hover { background: var(--surface-muted); }
+        .btn-gold { background: var(--accent); color: var(--primary); }
+        .btn-gold:hover { background: var(--accent-soft); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(213,168,59,0.3); }
+        .btn-danger { background: var(--danger); color: var(--text-invert); }
+        .btn-danger:hover { filter: brightness(0.92); }
+        .btn-sm { padding: 6px 12px; font-size: 0.75rem; }
+
+        .icon-btn {
+            width: 32px; height: 32px;
+            border-radius: var(--r-sm);
+            border: 1px solid transparent;
+            background: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 0.8125rem;
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .icon-btn:hover {
+            background: var(--primary-tint);
+            color: var(--primary);
+            border-color: var(--border);
+        }
+        .icon-btn.danger:hover {
+            background: var(--danger-tint);
+            color: var(--danger);
+            border-color: var(--danger);
+        }
+
+        /* ============================================================
+           STATS GRID
+           ============================================================ */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: var(--surface);
+            padding: 18px;
+            border-radius: var(--r-lg);
+            border: 1px solid var(--border);
+            animation: slideInUp var(--dur) var(--ease) both;
+        }
+        .stat-card:nth-child(1) { animation-delay: 40ms; }
+        .stat-card:nth-child(2) { animation-delay: 80ms; }
+        .stat-card:nth-child(3) { animation-delay: 120ms; }
+        .stat-card:nth-child(4) { animation-delay: 160ms; }
+        .stat-card:nth-child(5) { animation-delay: 200ms; }
+        .stat-icon {
+            width: 38px; height: 38px;
+            border-radius: var(--r);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.9375rem;
+            margin-bottom: 12px;
+        }
+        .stat-icon.icon-green  { background: var(--primary-tint); color: var(--primary); }
+        .stat-icon.icon-gold   { background: var(--accent-tint);  color: var(--text-gold); }
+        .stat-icon.icon-blue   { background: var(--info-tint);    color: var(--info); }
+        .stat-icon.icon-red    { background: var(--danger-tint);  color: var(--danger); }
+        .stat-icon.icon-warn   { background: var(--warning-tint); color: var(--warning); }
+        .stat-value {
+            font-size: 1.625rem; font-weight: 800;
+            color: var(--text);
+            letter-spacing: -0.03em; line-height: 1;
+            margin-bottom: 4px;
+        }
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.8125rem; font-weight: 600;
+        }
+
+        /* ============================================================
+           CARD
+           ============================================================ */
+        .content-card {
+            background: var(--surface);
+            border-radius: var(--r-lg);
+            border: 1px solid var(--border);
+            padding: 22px;
+            margin-bottom: 20px;
+            animation: slideInUp var(--dur) var(--ease) both;
+        }
+        .card-header {
+            display: flex; justify-content: space-between;
+            align-items: center; margin-bottom: 18px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap; gap: 12px;
+        }
+        .card-title {
+            font-size: 1rem; font-weight: 700;
+            color: var(--text);
+            letter-spacing: -0.01em;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .card-title i { color: var(--accent); }
+        .card-meta {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            font-family: var(--font-mono);
+        }
+
+        /* ============================================================
+           FILTERS
+           ============================================================ */
+        .filters {
+            display: grid;
+            grid-template-columns: 2fr repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+        @media (max-width: 1100px) { .filters { grid-template-columns: 1fr 1fr 1fr; } }
+        @media (max-width: 640px) { .filters { grid-template-columns: 1fr; } }
+
+        .search-wrapper { position: relative; }
+        .search-wrapper i {
+            position: absolute;
+            left: 12px; top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-dim);
+            font-size: 0.8125rem;
+            pointer-events: none;
+        }
+        .search-input {
+            width: 100%;
+            padding: 10px 12px 10px 34px;
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            font-size: 0.875rem;
+            font-family: inherit;
+            background: var(--surface);
+            color: var(--text);
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .search-input::placeholder { color: var(--text-dim); }
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(213, 168, 59, 0.12);
+        }
+
+        .filter-select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            font-size: 0.8125rem;
+            font-family: inherit;
+            background: var(--surface);
+            color: var(--text);
+            cursor: pointer;
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .filter-select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(213, 168, 59, 0.12);
+        }
+
+        .filter-row {
+            display: flex;
+            align-items: center; gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+        .filter-clear {
+            background: none; border: none;
+            color: var(--text-muted);
+            font-size: 0.75rem; font-weight: 600;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: var(--r-sm);
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .filter-clear:hover { background: var(--surface-muted); color: var(--text); }
+        .filter-count {
+            font-family: var(--font-mono);
+            font-size: 0.6875rem;
+            color: var(--text-dim);
+            font-weight: 600;
+        }
+
+        /* ============================================================
+           TABLE
+           ============================================================ */
+        .table-container {
+            overflow-x: auto;
+            border-radius: var(--r);
+            border: 1px solid var(--border);
+            background: var(--surface);
+        }
+        .data-table {
+            width: 100%; border-collapse: collapse;
+            min-width: 920px;
+        }
+        .data-table th {
+            background: var(--surface-muted);
+            padding: 11px 14px;
+            text-align: left;
+            font-family: var(--font-mono);
+            font-weight: 700;
+            font-size: 0.625rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+        .data-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.8125rem;
+            color: var(--text);
+            vertical-align: middle;
+        }
+        .data-table tbody tr {
+            transition: background var(--dur-fast) var(--ease);
+            cursor: pointer;
+        }
+        .data-table tbody tr:hover { background: var(--surface-muted); }
+        .data-table tbody tr:last-child td { border-bottom: none; }
+
+        .rep-cell {
+            display: flex; align-items: center; gap: 10px;
+        }
+        .rep-avatar {
+            width: 34px; height: 34px;
+            border-radius: 50%;
+            background: var(--primary-tint);
+            color: var(--primary);
+            font-weight: 700;
+            font-size: 0.75rem;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .rep-name { font-weight: 600; color: var(--text); }
+        .rep-sub {
+            font-size: 0.6875rem;
+            color: var(--text-dim);
+            margin-top: 1px;
+        }
+        .cell-mono { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); }
+
+        .status-badge {
+            padding: 3px 9px;
+            border-radius: 999px;
+            font-size: 0.625rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            display: inline-flex; align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+        .badge-success { background: var(--success-tint); color: var(--success); }
+        .badge-warning { background: var(--warning-tint); color: var(--warning); }
+        .badge-danger  { background: var(--danger-tint);  color: var(--danger); }
+        .badge-info    { background: var(--info-tint);    color: var(--info); }
+        .badge-gold    { background: var(--accent-tint);  color: var(--text-gold); }
+
+        .row-actions {
+            display: flex; gap: 4px;
+            justify-content: flex-end;
+        }
+
+        /* ============================================================
+           EMPTY STATE
+           ============================================================ */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+        .empty-state-icon {
+            width: 64px; height: 64px;
+            background: var(--primary-tint);
+            color: var(--primary);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem;
+            margin: 0 auto 16px;
+        }
+        .empty-state h3 { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+        .empty-state p { font-size: 0.875rem; }
+
+        /* ============================================================
+           PAGINATION
+           ============================================================ */
+        .pagination {
+            display: flex; justify-content: space-between;
+            align-items: center;
+            padding-top: 16px;
+            flex-wrap: wrap; gap: 12px;
+        }
+        .pagination-info {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+        .pagination-controls { display: flex; gap: 6px; }
+        .page-btn {
+            min-width: 32px; height: 32px;
+            padding: 0 10px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-muted);
+            border-radius: var(--r-sm);
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--text); }
+        .page-btn.active { background: var(--primary); color: var(--text-invert); border-color: var(--primary); }
+        .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* ============================================================
+           MODAL
+           ============================================================ */
+        .modal {
+            position: fixed; inset: 0;
+            background: rgba(16, 43, 39, 0.5);
+            backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999;
+            padding: 16px;
+            opacity: 0; visibility: hidden;
+            transition: opacity var(--dur) var(--ease), visibility var(--dur);
+        }
+        .modal.active { opacity: 1; visibility: visible; }
+
+        .modal-content {
+            background: var(--surface);
+            border-radius: var(--r-lg);
+            width: 100%; max-width: 560px;
+            max-height: 90vh; overflow-y: auto;
+            transform: translateY(-12px) scale(0.98);
+            transition: transform var(--dur) var(--ease-out);
+            box-shadow: var(--shadow-xl);
+        }
+        .modal.active .modal-content { transform: translateY(0) scale(1); }
+        .modal-content.modal-lg { max-width: 720px; }
+
+        .modal-header {
+            padding: 18px 22px;
+            border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+            position: sticky; top: 0;
+            background: var(--surface);
+            z-index: 1;
+        }
+        .modal-title {
+            font-size: 1rem; font-weight: 700;
+            color: var(--text);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .modal-title i { color: var(--accent); }
+        .modal-close {
+            background: none; border: none;
+            font-size: 1.5rem; line-height: 1;
+            color: var(--text-dim); cursor: pointer;
+            padding: 4px 8px; border-radius: var(--r-sm);
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .modal-close:hover { color: var(--text); background: var(--surface-muted); }
+        .modal-body { padding: 22px; }
+        .modal-footer {
+            padding: 14px 22px;
+            border-top: 1px solid var(--border);
+            display: flex; gap: 10px; justify-content: flex-end;
+            position: sticky; bottom: 0;
+            background: var(--surface);
+        }
+
+        /* ============================================================
+           FORM
+           ============================================================ */
         .form-grid {
-            display: grid; grid-template-columns: 1fr 1fr;
-            gap: 1rem; margin-bottom: 1rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
         }
         @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
-        
-        .form-group { margin-bottom: 1rem; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group.full { grid-column: 1 / -1; }
         .form-label {
-            display: block; margin-bottom: 0.5rem;
-            font-weight: 600; color: var(--slate-700);
-            font-size: 0.875rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-family: var(--font-mono);
+            margin-bottom: 6px;
         }
         .form-input, .form-select {
-            width: 100%; padding: 0.625rem 0.75rem;
-            border: 1px solid var(--slate-300);
-            border-radius: var(--radius);
+            width: 100%;
+            padding: 9px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--r);
             font-size: 0.875rem;
+            font-family: inherit;
+            background: var(--surface);
+            color: var(--text);
+            transition: all var(--dur-fast) var(--ease);
         }
         .form-input:focus, .form-select:focus {
-            outline: none; border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(213, 168, 59, 0.12);
+        }
+        .form-select { cursor: pointer; }
+
+        .search-student {
+            position: relative;
+        }
+        .search-student input {
+            padding-left: 34px;
+        }
+        .search-student i {
+            position: absolute;
+            left: 12px; top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-dim);
+            font-size: 0.8125rem;
+        }
+        .student-results {
+            margin-top: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            background: var(--surface);
+            display: none;
+        }
+        .student-results.active { display: block; }
+        .student-result {
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background var(--dur-fast) var(--ease);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .student-result:last-child { border-bottom: none; }
+        .student-result:hover { background: var(--surface-muted); }
+        .student-result.selected { background: var(--primary-tint); }
+        .student-result-info { flex: 1; }
+        .student-result-name { font-weight: 600; font-size: 0.875rem; }
+        .student-result-meta {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            font-family: var(--font-mono);
+        }
+
+        .selected-student {
+            padding: 12px 14px;
+            background: var(--primary-tint);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            display: flex; align-items: center; gap: 12px;
+            margin-bottom: 16px;
+        }
+        .selected-student-avatar {
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: var(--accent);
+            font-weight: 700; font-size: 0.875rem;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .selected-student-info { flex: 1; }
+        .selected-student-name { font-weight: 700; font-size: 0.9375rem; }
+        .selected-student-meta { font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono); }
+        .selected-student-clear {
+            background: none; border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: var(--r-sm);
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .selected-student-clear:hover { background: var(--danger-tint); color: var(--danger); }
+
+        .warning-box {
+            padding: 12px 14px;
+            background: var(--warning-tint);
+            border: 1px solid var(--warning);
+            border-radius: var(--r);
+            color: var(--warning);
+            font-size: 0.8125rem;
+            display: none;
+            margin-top: 12px;
+        }
+        .warning-box.active { display: block; }
+
+        /* ============================================================
+           PROFILE DRAWER
+           ============================================================ */
+        .drawer-overlay {
+            position: fixed; inset: 0;
+            background: rgba(16, 43, 39, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            opacity: 0; visibility: hidden;
+            transition: opacity var(--dur) var(--ease), visibility var(--dur);
+        }
+        .drawer-overlay.active { opacity: 1; visibility: visible; }
+
+        .drawer {
+            position: fixed;
+            top: 0; right: 0; bottom: 0;
+            width: 100%; max-width: 440px;
+            background: var(--surface);
+            box-shadow: var(--shadow-xl);
+            z-index: 10000;
+            transform: translateX(100%);
+            transition: transform var(--dur-slow) var(--ease-out);
+            display: flex; flex-direction: column;
+            overflow-y: auto;
+        }
+        .drawer.active { transform: translateX(0); }
+
+        .drawer-header {
+            padding: 22px;
+            background: var(--primary);
+            color: var(--text-invert);
+            position: relative;
+        }
+        .drawer-close {
+            position: absolute;
+            top: 16px; right: 16px;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: var(--text-invert);
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background var(--dur-fast) var(--ease);
+        }
+        .drawer-close:hover { background: rgba(255,255,255,0.2); }
+        .drawer-avatar {
+            width: 72px; height: 72px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: var(--primary);
+            font-weight: 800; font-size: 1.5rem;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 12px;
+            border: 3px solid var(--accent-soft);
+        }
+        .drawer-name { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
+        .drawer-matric {
+            font-family: var(--font-mono);
+            font-size: 0.8125rem;
+            color: var(--accent);
+            margin-top: 2px;
+        }
+        .drawer-status {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 0.625rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: var(--accent);
+            color: var(--primary);
+        }
+        .drawer-status.inactive {
+            background: var(--danger);
+            color: var(--text-invert);
+        }
+
+        .drawer-body { padding: 22px; flex: 1; }
+        .drawer-section-title {
+            font-family: var(--font-mono);
+            font-size: 0.6875rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            margin: 20px 0 10px;
+        }
+        .drawer-section-title:first-child { margin-top: 0; }
+
+        .detail-row {
+            display: flex; justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.8125rem;
+        }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { color: var(--text-muted); font-weight: 500; }
+        .detail-value { color: var(--text); font-weight: 600; text-align: right; }
+        .detail-value.mono { font-family: var(--font-mono); font-size: 0.75rem; }
+
+        .history-item {
+            padding: 12px 14px;
+            background: var(--surface-muted);
+            border-radius: var(--r);
+            margin-bottom: 8px;
+            border-left: 3px solid var(--accent);
+            font-size: 0.8125rem;
+        }
+        .history-item .history-title { font-weight: 600; color: var(--text); }
+        .history-item .history-meta { font-size: 0.6875rem; color: var(--text-dim); font-family: var(--font-mono); margin-top: 2px; }
+
+        .drawer-footer {
+            padding: 16px 22px;
+            border-top: 1px solid var(--border);
+            display: flex; gap: 8px; flex-wrap: wrap;
+        }
+        .drawer-footer .btn { flex: 1; min-width: 100px; justify-content: center; }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 640px) {
+            .page-title { font-size: 1.5rem; }
+            .stat-value { font-size: 1.375rem; }
+            .user-details { display: none; }
+            .header { padding: 0 16px; }
+            .header-breadcrumb { display: none; }
+            .page-header-actions { width: 100%; }
+            .page-header-actions .btn { flex: 1; justify-content: center; }
         }
     </style>
 </head>
@@ -69,7 +1090,7 @@
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-content">
             <div class="loading-spinner"></div>
-            <div class="loading-text">Loading...</div>
+            <div class="loading-text">Loading</div>
         </div>
     </div>
 
@@ -79,18 +1100,23 @@
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <div class="sidebar-logo">N</div>
-                <div class="sidebar-title">NUESA <span>ADMIN</span></div>
+                <div class="sidebar-title">
+                    NUESA BIU
+                    <span>Admin Panel</span>
+                </div>
             </div>
+
             <nav class="nav">
-                <a href="dashboard.html" class="nav-item" data-page="dashboard">
-                    <i class="fas fa-tachometer-alt"></i>
+                <div class="nav-section-label">Main</div>
+                <a href="dash.html" class="nav-item" data-page="dashboard">
+                    <i class="fas fa-th-large"></i>
                     <span>Dashboard</span>
                 </a>
                 <a href="members.html" class="nav-item" data-page="members">
                     <i class="fas fa-users"></i>
                     <span>Members</span>
                 </a>
-                <a href="course-reps.html" class="nav-item active" data-page="courseReps">
+                <a href="courseReps.html" class="nav-item active" data-page="courseReps">
                     <i class="fas fa-chalkboard-teacher"></i>
                     <span>Course Reps</span>
                 </a>
@@ -100,18 +1126,20 @@
                 </a>
                 <a href="articles.html" class="nav-item" data-page="articles">
                     <i class="far fa-newspaper"></i>
-                    <span>News/Articles</span>
+                    <span>News &amp; Articles</span>
                 </a>
                 <a href="resources.html" class="nav-item" data-page="resources">
-                    <i class="fas fa-download"></i>
+                    <i class="fas fa-book"></i>
                     <span>Resources</span>
                 </a>
                 <a href="messages.html" class="nav-item" data-page="messages">
                     <i class="far fa-comment-alt"></i>
                     <span>Messages</span>
                 </a>
+
+                <div class="nav-section-label">System</div>
                 <a href="analytics.html" class="nav-item" data-page="analytics">
-                    <i class="fas fa-chart-bar"></i>
+                    <i class="fas fa-chart-line"></i>
                     <span>Analytics</span>
                 </a>
                 <a href="settings.html" class="nav-item" data-page="settings">
@@ -119,12 +1147,13 @@
                     <span>Settings</span>
                 </a>
             </nav>
+
             <div class="sidebar-footer">
                 <div class="user-quick-info">
-                    <div class="user-name" id="sidebarUserName">Admin</div>
-                    <div class="user-role" id="sidebarUserRole">Administrator</div>
+                    <div class="user-name" id="sidebarUserName">Administrator</div>
+                    <div class="user-role" id="sidebarUserRole">Admin</div>
                 </div>
-                <button class="logout-btn" id="logoutBtn">
+                <button class="logout-btn" id="logoutBtn" type="button">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
                 </button>
@@ -138,18 +1167,25 @@
         <div class="main-content">
             <!-- Header -->
             <header class="header">
-                <button class="mobile-menu-btn" id="mobileMenuToggle">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <div class="header-actions">
-                    <button class="notification-btn" id="notificationBtn">
-                        <i class="far fa-bell"></i>
-                        <span class="notification-badge" id="notificationBadge">0</span>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button class="mobile-menu-btn" id="mobileMenuToggle" type="button" aria-label="Toggle menu">
+                        <i class="fas fa-bars"></i>
                     </button>
-                    <div class="user-info">
+                    <div class="header-breadcrumb">
+                        <span>Admin</span>
+                        <i class="fas fa-chevron-right"></i>
+                        <span class="current">Course Reps</span>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="notification-btn" id="notificationBtn" type="button" aria-label="Notifications">
+                        <i class="far fa-bell"></i>
+                        <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                    </button>
+                    <div class="user-info" id="headerProfile" role="button" tabindex="0">
                         <div class="user-avatar" id="userAvatar">A</div>
                         <div class="user-details">
-                            <div class="user-name" id="userName">Loading...</div>
+                            <div class="user-name" id="userName">Loading</div>
                             <div class="user-role" id="userRole">Administrator</div>
                         </div>
                     </div>
@@ -157,666 +1193,1232 @@
             </header>
 
             <!-- Main Area -->
-            <main class="main-area" id="contentArea">
+            <main class="main-area">
+                <!-- Page header -->
                 <div class="page-header">
                     <div>
                         <h1 class="page-title">Course Representatives</h1>
-                        <p class="page-subtitle">Manage course reps for each level</p>
+                        <p class="page-subtitle">Manage department and level representatives.</p>
                     </div>
-                    <button class="btn btn-primary" id="addCourseRepBtn">
-                        <i class="fas fa-plus"></i> Add Course Reps
-                    </button>
+                    <div class="page-header-actions">
+                        <button class="btn btn-secondary" id="exportBtn">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                        <button class="btn btn-secondary" id="importBtn">
+                            <i class="fas fa-file-import"></i> Import
+                        </button>
+                        <button class="btn btn-gold" id="addRepBtn">
+                            <i class="fas fa-user-plus"></i> Add Representative
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Search & Filters -->
-                <div class="search-filter">
-                    <input type="text" class="search-input" id="repSearch" placeholder="Search by level or session...">
-                    <select class="filter-select" id="sessionFilter">
-                        <option value="">All Sessions</option>
-                        <option value="2025/2026">2025/2026</option>
-                        <option value="2024/2025">2024/2025</option>
-                        <option value="2023/2024">2023/2024</option>
-                        <option value="2022/2023">2022/2023</option>
-                    </select>
-                    <select class="filter-select" id="levelFilter">
-                        <option value="">All Levels</option>
-                        <option value="100">100 Level</option>
-                        <option value="200">200 Level</option>
-                        <option value="300">300 Level</option>
-                        <option value="400">400 Level</option>
-                        <option value="500">500 Level</option>
-                    </select>
+                <!-- Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon icon-green"><i class="fas fa-user-tie"></i></div>
+                        <div class="stat-value" id="statTotal">0</div>
+                        <div class="stat-label">Total Representatives</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-gold"><i class="fas fa-check-circle"></i></div>
+                        <div class="stat-value" id="statActive">0</div>
+                        <div class="stat-label">Active Reps</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-red"><i class="fas fa-user-slash"></i></div>
+                        <div class="stat-value" id="statInactive">0</div>
+                        <div class="stat-label">Inactive Reps</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-blue"><i class="fas fa-building"></i></div>
+                        <div class="stat-value" id="statDepartments">0</div>
+                        <div class="stat-label">Departments</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-warn"><i class="fas fa-layer-group"></i></div>
+                        <div class="stat-value" id="statLevels">0</div>
+                        <div class="stat-label">Levels Covered</div>
+                    </div>
                 </div>
 
-                <!-- Course Reps Table -->
+                <!-- Directory -->
                 <div class="content-card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-list-check"></i> Representatives Directory</h2>
+                        <span class="card-meta" id="resultCount">0 records</span>
+                    </div>
+
+                    <div class="filters">
+                        <div class="search-wrapper">
+                            <i class="fas fa-search"></i>
+                            <input type="text" class="search-input" id="searchInput" placeholder="Search name or matric number…">
+                        </div>
+                        <select class="filter-select" id="filterDepartment">
+                            <option value="">All Departments</option>
+                            <option value="Electrical/Electronics Engineering">Electrical/Electronics</option>
+                            <option value="Mechanical Engineering">Mechanical</option>
+                            <option value="Civil Engineering">Civil</option>
+                        </select>
+                        <select class="filter-select" id="filterLevel">
+                            <option value="">All Levels</option>
+                            <option value="100L">100L</option>
+                            <option value="200L">200L</option>
+                            <option value="300L">300L</option>
+                            <option value="400L">400L</option>
+                            <option value="500L">500L</option>
+                        </select>
+                        <select class="filter-select" id="filterSession">
+                            <option value="">All Sessions</option>
+                            <option value="2025/2026">2025/2026</option>
+                            <option value="2024/2025">2024/2025</option>
+                            <option value="2023/2024">2023/2024</option>
+                        </select>
+                        <select class="filter-select" id="filterStatus">
+                            <option value="">All Statuses</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-row">
+                        <button class="filter-clear" id="clearFilters"><i class="fas fa-times"></i> Clear all</button>
+                        <span class="filter-count" id="filterCount"></span>
+                    </div>
+
                     <div class="table-container">
-                        <table class="data-table" id="courseRepsTable">
+                        <table class="data-table">
                             <thead>
                                 <tr>
+                                    <th>Representative</th>
+                                    <th>Matric No.</th>
+                                    <th>Department</th>
                                     <th>Level</th>
+                                    <th>Phone</th>
                                     <th>Session</th>
-                                    <th>General Rep</th>
-                                    <th>Assistant</th>
-                                    <th>Departments</th>
-                                    <th>Actions</th>
+                                    <th>Status</th>
+                                    <th style="text-align: right;">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody id="courseRepsTableBody">
+                            <tbody id="repsTbody">
                                 <tr>
-                                    <td colspan="6" class="text-center">Loading course reps...</td>
+                                    <td colspan="8">
+                                        <div class="empty-state">
+                                            <div class="empty-state-icon"><i class="fas fa-circle-notch fa-spin"></i></div>
+                                            <h3>Loading representatives…</h3>
+                                        </div>
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+
+                    <div class="pagination">
+                        <span class="pagination-info" id="paginationInfo">—</span>
+                        <div class="pagination-controls" id="paginationControls"></div>
                     </div>
                 </div>
             </main>
         </div>
     </div>
 
-    <!-- Course Rep Modal -->
-    <div class="modal" id="courseRepModal">
-        <div class="modal-content" style="max-width: 700px;">
+    <!-- ============ ADD / EDIT REP MODAL ============ -->
+    <div class="modal" id="repModal">
+        <div class="modal-content modal-lg">
             <div class="modal-header">
-                <h3 class="modal-title" id="courseRepModalTitle">Add Course Representatives</h3>
-                <button class="modal-close" onclick="hideModal('courseRepModal')">&times;</button>
+                <h3 class="modal-title" id="repModalTitle"><i class="fas fa-user-plus"></i> Add Course Representative</h3>
+                <button class="modal-close" onclick="hideModal('repModal')" aria-label="Close">&times;</button>
             </div>
-            <div class="modal-body">
-                <form id="courseRepForm">
-                    <div class="form-grid">
+            <form id="repForm">
+                <div class="modal-body">
+                    <!-- Student selector -->
+                    <div id="studentSelectorSection">
+                        <div class="form-group full">
+                            <label class="form-label" for="studentSearch">Search Existing Student *</label>
+                            <div class="search-student">
+                                <i class="fas fa-search"></i>
+                                <input type="text" class="form-input" id="studentSearch" placeholder="Search by name or matric number…" autocomplete="off">
+                            </div>
+                            <div class="student-results" id="studentResults"></div>
+                        </div>
+
+                        <div id="selectedStudentContainer" style="display: none;">
+                            <div class="selected-student">
+                                <div class="selected-student-avatar" id="selectedStudentAvatar">A</div>
+                                <div class="selected-student-info">
+                                    <div class="selected-student-name" id="selectedStudentName">—</div>
+                                    <div class="selected-student-meta" id="selectedStudentMeta">—</div>
+                                </div>
+                                <button type="button" class="selected-student-clear" id="clearSelectedStudent" aria-label="Clear">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-grid" style="margin-top: 16px;">
                         <div class="form-group">
-                            <label class="form-label">Academic Session *</label>
-                            <select class="form-select" id="repSession" required>
-                                <option value="">Select Session</option>
+                            <label class="form-label" for="rDepartment">Department *</label>
+                            <select class="form-select" id="rDepartment" required>
+                                <option value="">Select department</option>
+                                <option value="Electrical/Electronics Engineering">Electrical/Electronics Engineering</option>
+                                <option value="Mechanical Engineering">Mechanical Engineering</option>
+                                <option value="Civil Engineering">Civil Engineering</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="rLevel">Academic Level *</label>
+                            <select class="form-select" id="rLevel" required>
+                                <option value="">Select level</option>
+                                <option value="100L">100L</option>
+                                <option value="200L">200L</option>
+                                <option value="300L">300L</option>
+                                <option value="400L">400L</option>
+                                <option value="500L">500L</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="rSession">Academic Session *</label>
+                            <select class="form-select" id="rSession" required>
                                 <option value="2025/2026">2025/2026</option>
                                 <option value="2024/2025">2024/2025</option>
                                 <option value="2023/2024">2023/2024</option>
-                                <option value="2022/2023">2022/2023</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Level *</label>
-                            <select class="form-select" id="repLevel" required>
-                                <option value="">Select Level</option>
-                                <option value="100">100 Level</option>
-                                <option value="200">200 Level</option>
-                                <option value="300">300 Level</option>
-                                <option value="400">400 Level</option>
-                                <option value="500">500 Level</option>
+                            <label class="form-label" for="rStatus">Status</label>
+                            <select class="form-select" id="rStatus">
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
                             </select>
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label class="form-label">General Representative</label>
-                        <input type="text" class="form-input" id="genRep" placeholder="Full name of general rep">
+                    <!-- Duplicate warning -->
+                    <div class="warning-box" id="duplicateWarning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span id="duplicateWarningText"></span>
                     </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Assistant General Representative</label>
-                        <input type="text" class="form-input" id="asstGenRep" placeholder="Full name of assistant general rep">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Department Representatives</label>
-                        <div class="dept-list" id="departmentFields"></div>
-                    </div>
-
-                    <input type="hidden" id="courseRepId">
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="hideModal('courseRepModal')">Cancel</button>
-                <button class="btn btn-primary" id="saveCourseRepBtn">Save Representatives</button>
-            </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="hideModal('repModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="repSubmitBtn" disabled>
+                        <i class="fas fa-check"></i> Assign Representative
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- Delete Confirmation Modal -->
-    <div class="modal" id="deleteModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">Confirm Delete</h3>
-                <button class="modal-close" onclick="hideModal('deleteModal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete these course representatives? This action cannot be undone.</p>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="hideModal('deleteModal')">Cancel</button>
-                <button class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+    <!-- ============ REP PROFILE DRAWER ============ -->
+    <div class="drawer-overlay" id="profileOverlay"></div>
+    <aside class="drawer" id="profileDrawer" aria-hidden="true">
+        <div class="drawer-header">
+            <button class="drawer-close" onclick="closeProfileDrawer()" aria-label="Close">&times;</button>
+            <div class="drawer-avatar" id="profileAvatar">A</div>
+            <div class="drawer-name" id="profileName">Loading…</div>
+            <div class="drawer-matric" id="profileMatric">—</div>
+            <div class="drawer-status" id="profileStatus">Active</div>
+        </div>
+        <div class="drawer-body">
+            <div class="drawer-section-title">Assignment Details</div>
+            <div class="detail-row"><span class="detail-label">Department</span><span class="detail-value" id="profileDept">—</span></div>
+            <div class="detail-row"><span class="detail-label">Academic Level</span><span class="detail-value" id="profileLevel">—</span></div>
+            <div class="detail-row"><span class="detail-label">Session</span><span class="detail-value mono" id="profileSession">—</span></div>
+            <div class="detail-row"><span class="detail-label">Date Appointed</span><span class="detail-value mono" id="profileDate">—</span></div>
+
+            <div class="drawer-section-title">Contact</div>
+            <div class="detail-row"><span class="detail-label">Email</span><span class="detail-value" id="profileEmail">—</span></div>
+            <div class="detail-row"><span class="detail-label">Phone</span><span class="detail-value" id="profilePhone">—</span></div>
+
+            <div class="drawer-section-title">Appointment History</div>
+            <div id="profileHistory">
+                <p style="font-size: 0.8125rem; color: var(--text-dim); font-style: italic;">Loading history…</p>
             </div>
         </div>
-    </div>
+        <div class="drawer-footer">
+            <button class="btn btn-secondary btn-sm" id="profileEditBtn">
+                <i class="fas fa-pen"></i> Edit
+            </button>
+            <button class="btn btn-secondary btn-sm" id="profileToggleBtn">
+                <i class="fas fa-toggle-on"></i> <span id="profileToggleText">Deactivate</span>
+            </button>
+            <button class="btn btn-danger btn-sm" id="profileRemoveBtn">
+                <i class="fas fa-user-times"></i> Remove
+            </button>
+        </div>
+    </aside>
 
-    <!-- Logout Modal -->
+    <!-- ============ LOGOUT MODAL ============ -->
     <div class="modal" id="logoutModal">
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title">Confirm Logout</h3>
-                <button class="modal-close" onclick="hideModal('logoutModal')">&times;</button>
+                <button class="modal-close" onclick="hideModal('logoutModal')" aria-label="Close">&times;</button>
             </div>
             <div class="modal-body">
-                <p>Are you sure you want to logout?</p>
+                <p>Are you sure you want to end your admin session?</p>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="hideModal('logoutModal')">Cancel</button>
-                <button class="btn btn-primary" id="confirmLogout">Logout</button>
+                <button class="btn btn-secondary" onclick="hideModal('logoutModal')" type="button">Cancel</button>
+                <button class="btn btn-primary" id="confirmLogout" type="button">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ REMOVE MODAL ============ -->
+    <div class="modal" id="removeModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i> Remove Representative</h3>
+                <button class="modal-close" onclick="hideModal('removeModal')" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>This will remove the appointment for <strong id="removeRepName">this representative</strong>. This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('removeModal')" type="button">Cancel</button>
+                <button class="btn btn-danger" id="confirmRemoveBtn" type="button">Remove</button>
             </div>
         </div>
     </div>
 
     <script>
-        // Configuration
-        const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
-        const departments = [
-            'Electrical/Electronics Engineering',
-            'Mechanical Engineering',
-            'Civil Engineering'
-        ];
-        
-        let currentUser = null;
-        let currentCourseRepId = null;
-        let repToDelete = null;
-        let inactivityTimeout;
+    // ============================================================
+    // CONFIGURATION
+    // ============================================================
+    const API_BASE_URL = '';
+    const PAGE_SIZE = 8;
 
-        // ===== UTILITY FUNCTIONS =====
-        function getAuthToken() {
-            const cookies = document.cookie.split(';');
-            for (let cookie of cookies) {
-                const [name, value] = cookie.trim().split('=');
-                if (name === 'auth_token') return value;
-            }
-            return localStorage.getItem('adminToken');
-        }
+    let currentUser = null;
+    let inactivityTimeout = null;
+    let allReps = [];
+    let allMembers = [];
+    let filteredReps = [];
+    let currentPage = 1;
+    let editingRepId = null;
+    let removingRepId = null;
+    let viewingRep = null;
+    let selectedStudent = null;
 
-        function showLoading() {
-            document.getElementById('loadingOverlay').classList.add('active');
-        }
-
-        function hideLoading() {
-            document.getElementById('loadingOverlay').classList.remove('active');
-        }
-
-        function showModal(modalId) {
-            document.getElementById(modalId).classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function hideModal(modalId) {
-            document.getElementById(modalId).classList.remove('active');
-            document.body.style.overflow = 'auto';
-        }
-
-        function showToast(message, type = 'info', duration = 5000) {
-            document.querySelectorAll('.toast').forEach(t => t.remove());
-            
-            const toast = document.createElement('div');
-            toast.className = `toast toast-${type}`;
-            
-            let icon = type === 'success' ? 'check-circle' : 
-                      type === 'error' ? 'exclamation-circle' :
-                      type === 'warning' ? 'exclamation-triangle' : 'info-circle';
-            
-            toast.innerHTML = `
-                <div class="toast-icon"><i class="fas fa-${icon}"></i></div>
-                <div class="toast-content">${message}</div>
-                <button class="toast-close">&times;</button>
-            `;
-            
-            document.body.appendChild(toast);
-            setTimeout(() => toast.classList.add('show'), 10);
-            
-            toast.querySelector('.toast-close').addEventListener('click', () => {
-                toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 300);
+    // ============================================================
+    // AUTH
+    // ============================================================
+    async function checkAuth() {
+        try {
+            showLoading();
+            const res = await fetch(`${API_BASE_URL}/api/admin/session`, {
+                method: 'GET',
+                credentials: 'include',
+                headers: { 'Accept': 'application/json' }
             });
-            
-            setTimeout(() => {
-                if (toast.parentElement) {
-                    toast.classList.remove('show');
-                    setTimeout(() => toast.remove(), 300);
-                }
-            }, duration);
-        }
-
-        // ===== SESSION MANAGEMENT =====
-        function resetInactivityTimer() {
-            clearTimeout(inactivityTimeout);
-            inactivityTimeout = setTimeout(() => {
-                showToast('Your session will expire in 1 minute', 'warning');
-                setTimeout(() => {
-                    showToast('Session expired', 'error');
-                    logout();
-                }, 60000);
-            }, 29 * 60 * 1000);
-        }
-
-        function setupActivityListeners() {
-            ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(event => {
-                document.addEventListener(event, resetInactivityTimer);
-            });
-            resetInactivityTimer();
-        }
-
-        // ===== AUTHENTICATION =====
-        async function checkAuth() {
-            const token = getAuthToken();
-            if (!token) {
-                showToast('Please login to continue', 'info');
-                setTimeout(() => window.location.href = 'adlog.html', 1500);
-                return false;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    currentUser = data.data || data.user || { fullName: 'Admin', role: 'admin' };
+            if (res.status === 200) {
+                const data = await res.json();
+                if (data.status === 'success' && data.data) {
+                    currentUser = data.data;
                     updateUserInfo();
+                    hideLoading();
                     return true;
                 }
-
-                localStorage.removeItem('adminToken');
-                document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-                showToast('Authentication failed', 'error');
-                setTimeout(() => window.location.href = 'adlog.html', 1500);
-                return false;
-            } catch (error) {
-                console.error('Auth error:', error);
-                showToast('Connection error', 'error');
-                return false;
             }
-        }
-
-        function updateUserInfo() {
-            if (!currentUser) return;
-            const name = currentUser.fullName || currentUser.full_name || 'Admin';
-            const role = currentUser.role || 'admin';
-            const initial = name.charAt(0).toUpperCase();
-            
-            document.getElementById('userName').textContent = name;
-            document.getElementById('userRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
-            document.getElementById('userAvatar').textContent = initial;
-            document.getElementById('sidebarUserName').textContent = name;
-            document.getElementById('sidebarUserRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
-        }
-
-        function logout() {
-            showModal('logoutModal');
-        }
-
-        function confirmLogout() {
-            localStorage.removeItem('adminToken');
-            document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-            hideModal('logoutModal');
-            showToast('Logged out successfully', 'success');
-            setTimeout(() => window.location.href = 'adlog.html', 1000);
-        }
-
-        // ===== API FUNCTIONS =====
-        async function apiRequest(endpoint, options = {}) {
-            const token = getAuthToken();
-            if (!token) throw new Error('Not authenticated');
-
-            const url = `${API_BASE_URL}${endpoint}`;
-            const config = {
-                ...options,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                    ...options.headers
-                }
-            };
-
-            try {
-                const response = await fetch(url, config);
-
-                if (response.status === 401) {
-                    localStorage.removeItem('adminToken');
-                    document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-                    showToast('Session expired', 'error');
-                    setTimeout(() => window.location.href = 'adlog.html', 1500);
-                    throw new Error('Unauthorized');
-                }
-
-                if (!response.ok) {
-                    let errorMsg = `HTTP ${response.status}`;
-                    try {
-                        const data = await response.json();
-                        errorMsg = data.message || data.error || errorMsg;
-                    } catch (e) {}
-                    throw new Error(errorMsg);
-                }
-
-                return await response.json();
-            } catch (error) {
-                if (error.message.includes('Network')) {
-                    throw new Error('Network error. Please check your connection.');
-                }
-                throw error;
-            }
-        }
-
-        async function get(endpoint) {
-            return apiRequest(endpoint, { method: 'GET' });
-        }
-
-        async function post(endpoint, data) {
-            return apiRequest(endpoint, {
-                method: 'POST',
-                body: JSON.stringify(data)
-            });
-        }
-
-        async function put(endpoint, data) {
-            return apiRequest(endpoint, {
-                method: 'PUT',
-                body: JSON.stringify(data)
-            });
-        }
-
-        async function del(endpoint) {
-            return apiRequest(endpoint, { method: 'DELETE' });
-        }
-
-        // ===== COURSE REPS FUNCTIONS =====
-        async function loadCourseReps() {
-            try {
-                showLoading();
-                const response = await get('/api/admin/course-reps');
-                const reps = response.data || [];
-                displayCourseReps(reps);
-                updateNotificationBadge();
-            } catch (error) {
-                console.error('Error loading course reps:', error);
-                showToast('Failed to load course reps: ' + error.message, 'error');
-                document.getElementById('courseRepsTableBody').innerHTML = `
-                    <tr><td colspan="6" class="text-center">Error loading course reps</td></tr>
-                `;
-            } finally {
-                hideLoading();
-            }
-        }
-
-        function displayCourseReps(reps) {
-            const tbody = document.getElementById('courseRepsTableBody');
-            
-            if (!reps || reps.length === 0) {
-                tbody.innerHTML = `
-                    <tr><td colspan="6" class="text-center">No course representatives found</td></tr>
-                `;
-                return;
-            }
-
-            tbody.innerHTML = reps.map(rep => {
-                let departments = rep.departments;
-                if (typeof departments === 'string') {
-                    try { departments = JSON.parse(departments); } catch (e) { departments = []; }
-                }
-                const deptCount = departments?.length || 0;
-                
-                return `
-                    <tr data-id="${rep.id}">
-                        <td><strong>${rep.level || 'N/A'}</strong></td>
-                        <td>${rep.session || 'N/A'}</td>
-                        <td>${rep.gen_rep || '<span class="text-muted">Not Assigned</span>'}</td>
-                        <td>${rep.asst_gen_rep || '<span class="text-muted">Not Assigned</span>'}</td>
-                        <td>
-                            <span class="status-badge badge-info">${deptCount} departments</span>
-                        </td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="icon-btn icon-btn-primary" onclick="editCourseRep('${rep.id}')" title="Edit">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="icon-btn icon-btn-danger" onclick="deleteCourseRep('${rep.id}')" title="Delete">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        function filterCourseReps() {
-            const search = document.getElementById('repSearch').value.toLowerCase();
-            const session = document.getElementById('sessionFilter').value;
-            const level = document.getElementById('levelFilter').value;
-            
-            const rows = document.querySelectorAll('#courseRepsTable tbody tr');
-            rows.forEach(row => {
-                const levelText = row.cells[0]?.textContent.toLowerCase() || '';
-                const sessionText = row.cells[1]?.textContent || '';
-                
-                const matchesSearch = levelText.includes(search) || sessionText.toLowerCase().includes(search);
-                const matchesSession = !session || sessionText === session;
-                const matchesLevel = !level || levelText === level;
-                
-                row.style.display = matchesSearch && matchesSession && matchesLevel ? '' : 'none';
-            });
-        }
-
-        function populateDepartmentFields(departmentsData = {}) {
-            const deptContainer = document.getElementById('departmentFields');
-            deptContainer.innerHTML = departments.map(dept => {
-                const deptId = dept.replace(/[^a-zA-Z0-9]/g, '');
-                return `
-                    <div class="dept-item">
-                        <div class="dept-item-header">
-                            <span class="dept-item-title">${dept}</span>
-                        </div>
-                        <div class="dept-rep-field">
-                            <label class="dept-rep-label">Representative</label>
-                            <input type="text" class="form-input" id="dept_${deptId}" value="${departmentsData[dept] || ''}" placeholder="Full name of department rep">
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function resetCourseRepForm() {
-            document.getElementById('courseRepForm').reset();
-            document.getElementById('courseRepModalTitle').textContent = 'Add Course Representatives';
-            document.getElementById('courseRepId').value = '';
-            currentCourseRepId = null;
-            
-            const currentYear = new Date().getFullYear();
-            const defaultSession = `${currentYear}/${currentYear + 1}`;
-            document.getElementById('repSession').value = defaultSession;
-            
-            populateDepartmentFields({});
-        }
-
-        async function saveCourseRep() {
-            try {
-                const session = document.getElementById('repSession').value;
-                const level = document.getElementById('repLevel').value;
-                const genRep = document.getElementById('genRep').value.trim();
-                const asstGenRep = document.getElementById('asstGenRep').value.trim();
-                
-                if (!session || !level) {
-                    showToast('Session and level are required', 'error');
-                    return;
-                }
-
-                const departmentsList = [];
-                departments.forEach(dept => {
-                    const deptId = dept.replace(/[^a-zA-Z0-9]/g, '');
-                    const rep = document.getElementById(`dept_${deptId}`)?.value.trim() || '';
-                    departmentsList.push({
-                        name: dept,
-                        rep: rep || 'Pending'
-                    });
-                });
-
-                const repData = {
-                    session: session,
-                    level: level,
-                    gen_rep: genRep || 'Not Assigned',
-                    asst_gen_rep: asstGenRep || 'Not Assigned',
-                    departments: departmentsList
-                };
-
-                showLoading();
-
-                let response;
-                if (currentCourseRepId) {
-                    response = await put(`/api/admin/course-reps/${currentCourseRepId}`, repData);
-                } else {
-                    response = await post('/api/admin/course-reps', repData);
-                }
-
-                showToast(`Course representatives ${currentCourseRepId ? 'updated' : 'created'} successfully!`, 'success');
-                hideModal('courseRepModal');
-                await loadCourseReps();
-                
-            } catch (error) {
-                console.error('Error saving course rep:', error);
-                showToast('Error: ' + error.message, 'error');
-            } finally {
-                hideLoading();
-            }
-        }
-
-        async function editCourseRep(repId) {
-            try {
-                showLoading();
-                const response = await get(`/api/admin/course-reps/${repId}`);
-                const rep = response.data;
-                
-                if (!rep) throw new Error('Course rep not found');
-                
-                currentCourseRepId = repId;
-                document.getElementById('courseRepModalTitle').textContent = 'Edit Course Representatives';
-                
-                document.getElementById('repSession').value = rep.session || '';
-                document.getElementById('repLevel').value = rep.level || '';
-                document.getElementById('genRep').value = rep.gen_rep || '';
-                document.getElementById('asstGenRep').value = rep.asst_gen_rep || '';
-                document.getElementById('courseRepId').value = rep.id;
-                
-                let departmentsData = rep.departments;
-                if (typeof departmentsData === 'string') {
-                    try { departmentsData = JSON.parse(departmentsData); } catch (e) { departmentsData = []; }
-                }
-                
-                const deptMap = {};
-                if (Array.isArray(departmentsData)) {
-                    departmentsData.forEach(dept => {
-                        deptMap[dept.name] = dept.rep || '';
-                    });
-                }
-                
-                populateDepartmentFields(deptMap);
-                
-                showModal('courseRepModal');
-            } catch (error) {
-                console.error('Edit course rep error:', error);
-                showToast('Failed to load course rep details: ' + error.message, 'error');
-            } finally {
-                hideLoading();
-            }
-        }
-
-        function deleteCourseRep(repId) {
-            repToDelete = repId;
-            showModal('deleteModal');
-        }
-
-        async function confirmDelete() {
-            if (!repToDelete) return;
-            
-            try {
-                showLoading();
-                hideModal('deleteModal');
-                
-                await del(`/api/admin/course-reps/${repToDelete}`);
-                showToast('Course representatives deleted successfully', 'success');
-                await loadCourseReps();
-            } catch (error) {
-                console.error('Delete course rep error:', error);
-                showToast('Failed to delete: ' + error.message, 'error');
-            } finally {
-                hideLoading();
-                repToDelete = null;
-            }
-        }
-
-        async function updateNotificationBadge() {
-            try {
-                const response = await get('/api/admin/messages');
-                const messages = response.data || [];
-                const unreadCount = messages.filter(m => !m.is_read).length;
-                document.getElementById('notificationBadge').textContent = unreadCount;
-                document.getElementById('notificationBadge').style.display = unreadCount > 0 ? 'block' : 'none';
-            } catch (error) {
-                console.log('Could not load messages');
-            }
-        }
-
-        // ===== SIDEBAR =====
-        function setupSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const mobileOverlay = document.getElementById('mobileOverlay');
-            
-            document.getElementById('mobileMenuToggle').addEventListener('click', () => {
-                sidebar.classList.toggle('open');
-                mobileOverlay.classList.toggle('active');
-            });
-            
-            mobileOverlay.addEventListener('click', () => {
-                sidebar.classList.remove('open');
-                mobileOverlay.classList.remove('active');
-            });
-        }
-
-        // ===== INITIALIZATION =====
-        async function init() {
-            console.log('Initializing course reps page...');
-            showLoading();
-
-            const isAuthenticated = await checkAuth();
-            if (!isAuthenticated) {
-                hideLoading();
-                return;
-            }
-
-            setupSidebar();
-            setupActivityListeners();
-            await loadCourseReps();
-
-            // Event Listeners
-            document.getElementById('logoutBtn').addEventListener('click', logout);
-            document.getElementById('confirmLogout').addEventListener('click', confirmLogout);
-            document.getElementById('confirmDeleteBtn').addEventListener('click', confirmDelete);
-            
-            document.getElementById('addCourseRepBtn').addEventListener('click', () => {
-                resetCourseRepForm();
-                showModal('courseRepModal');
-            });
-            
-            document.getElementById('saveCourseRepBtn').addEventListener('click', saveCourseRep);
-            
-            document.getElementById('repSearch').addEventListener('keyup', filterCourseReps);
-            document.getElementById('sessionFilter').addEventListener('change', filterCourseReps);
-            document.getElementById('levelFilter').addEventListener('change', filterCourseReps);
-
+            showToast('Please login to continue', 'info');
+            setTimeout(() => window.location.replace('adlog.html'), 1200);
             hideLoading();
+            return false;
+        } catch (err) {
+            console.error('Auth check error:', err);
+            showToast('Connection error', 'error');
+            hideLoading();
+            return false;
+        }
+    }
+
+    function updateUserInfo() {
+        if (!currentUser) return;
+        const name = currentUser.fullName || currentUser.full_name || 'Administrator';
+        const role = currentUser.role || 'admin';
+        const initial = name.charAt(0).toUpperCase();
+        const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
+        document.getElementById('userName').textContent = name;
+        document.getElementById('userRole').textContent = roleLabel;
+        document.getElementById('userAvatar').textContent = initial;
+        document.getElementById('sidebarUserName').textContent = name;
+        document.getElementById('sidebarUserRole').textContent = roleLabel;
+    }
+
+    async function confirmLogout() {
+        try {
+            showLoading();
+            await fetch(`${API_BASE_URL}/api/admin/logout`, { method: 'POST', credentials: 'include' });
+        } catch (err) { console.warn('Logout failed:', err); }
+        hideModal('logoutModal');
+        showToast('Logged out', 'success');
+        setTimeout(() => window.location.replace('adlog.html'), 700);
+    }
+
+    // ============================================================
+    // API HELPERS
+    // ============================================================
+    async function apiGet(endpoint) {
+        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+        });
+        if (res.status === 401) {
+            showToast('Session expired', 'warning');
+            setTimeout(() => window.location.replace('adlog.html'), 1200);
+            throw new Error('Unauthorized');
+        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+    }
+
+    async function apiPost(endpoint, body) {
+        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        if (res.status === 401) { showToast('Session expired', 'warning'); setTimeout(() => window.location.replace('adlog.html'), 1200); throw new Error('Unauthorized'); }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+        return data;
+    }
+
+    async function apiPut(endpoint, body) {
+        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'PUT',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        if (res.status === 401) { showToast('Session expired', 'warning'); setTimeout(() => window.location.replace('adlog.html'), 1200); throw new Error('Unauthorized'); }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+        return data;
+    }
+
+    async function apiDelete(endpoint) {
+        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'DELETE',
+            credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+        });
+        if (res.status === 401) { showToast('Session expired', 'warning'); setTimeout(() => window.location.replace('adlog.html'), 1200); throw new Error('Unauthorized'); }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+        return data;
+    }
+
+    // ============================================================
+    // DATA LOADING
+    // ============================================================
+    async function loadData() {
+        try {
+            // Load members (for student selector)
+            try {
+                const membersRes = await apiGet('/api/admin/members');
+                const list = Array.isArray(membersRes.data) ? membersRes.data : (membersRes.data?.members || []);
+                allMembers = list.map(normalizeMember);
+            } catch (err) {
+                console.warn('Could not load members for selector:', err);
+                allMembers = [];
+            }
+
+            // Load course reps
+            try {
+                const repsRes = await apiGet('/api/admin/course-reps');
+                allReps = Array.isArray(repsRes.data) ? repsRes.data.map(normalizeRep) : [];
+            } catch (err) {
+                console.warn('Could not load course reps:', err);
+                allReps = [];
+            }
+
+            updateStats();
+            applyFilters();
+        } catch (err) {
+            console.error('Load data error:', err);
+            document.getElementById('repsTbody').innerHTML = `
+                <tr><td colspan="8">
+                    <div class="empty-state">
+                        <div class="empty-state-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                        <h3>Couldn't load representatives</h3>
+                        <p>${escapeHtml(err.message)}</p>
+                    </div>
+                </td></tr>
+            `;
+        }
+    }
+
+    function normalizeMember(m) {
+        return {
+            id: m.id,
+            full_name: m.full_name || m.fullName || '',
+            matric_no: m.matric_no || m.matricNumber || m.matric || '',
+            email: m.email || '',
+            phone: m.phone || '',
+            department: m.department || '',
+            level: m.level || '',
+            session: m.session || '2025/2026',
+            status: (m.status || 'active').toLowerCase()
+        };
+    }
+
+    function normalizeRep(r) {
+        return {
+            id: r.id,
+            student_id: r.student_id || r.member_id || null,
+            full_name: r.full_name || r.fullName || r.student_name || '',
+            matric_no: r.matric_no || r.matricNumber || r.matric || '',
+            email: r.email || '',
+            phone: r.phone || '',
+            department: r.department || '',
+            level: r.level || '',
+            session: r.session || '2025/2026',
+            status: (r.status || 'active').toLowerCase(),
+            created_at: r.created_at || null,
+            history: Array.isArray(r.history) ? r.history : []
+        };
+    }
+
+    // ============================================================
+    // STATS
+    // ============================================================
+    function updateStats() {
+        const total = allReps.length;
+        const active = allReps.filter(r => r.status === 'active').length;
+        const inactive = allReps.filter(r => r.status === 'inactive').length;
+        const departments = new Set(allReps.map(r => r.department).filter(Boolean)).size;
+        const levels = new Set(allReps.map(r => r.level).filter(Boolean)).size;
+
+        document.getElementById('statTotal').textContent = total;
+        document.getElementById('statActive').textContent = active;
+        document.getElementById('statInactive').textContent = inactive;
+        document.getElementById('statDepartments').textContent = departments;
+        document.getElementById('statLevels').textContent = levels;
+    }
+
+    // ============================================================
+    // FILTERS
+    // ============================================================
+    function applyFilters() {
+        const q = document.getElementById('searchInput').value.trim().toLowerCase();
+        const dept = document.getElementById('filterDepartment').value;
+        const lvl = document.getElementById('filterLevel').value;
+        const sess = document.getElementById('filterSession').value;
+        const status = document.getElementById('filterStatus').value;
+
+        filteredReps = allReps.filter(r => {
+            if (dept && r.department !== dept) return false;
+            if (lvl && r.level !== lvl) return false;
+            if (sess && r.session !== sess) return false;
+            if (status && r.status !== status) return false;
+            if (q) {
+                const hay = `${r.full_name} ${r.matric_no} ${r.email}`.toLowerCase();
+                if (!hay.includes(q)) return false;
+            }
+            return true;
+        });
+
+        currentPage = 1;
+        updateFilterSummary();
+        renderTable();
+    }
+
+    function updateFilterSummary() {
+        const active = [];
+        if (document.getElementById('searchInput').value) active.push('search');
+        if (document.getElementById('filterDepartment').value) active.push('department');
+        if (document.getElementById('filterLevel').value) active.push('level');
+        if (document.getElementById('filterSession').value) active.push('session');
+        if (document.getElementById('filterStatus').value) active.push('status');
+
+        document.getElementById('filterCount').textContent = active.length
+            ? `${active.length} filter${active.length > 1 ? 's' : ''} active`
+            : '';
+        document.getElementById('resultCount').textContent =
+            `${filteredReps.length} record${filteredReps.length === 1 ? '' : 's'}`;
+    }
+
+    function clearFilters() {
+        ['searchInput','filterDepartment','filterLevel','filterSession','filterStatus']
+            .forEach(id => document.getElementById(id).value = '');
+        applyFilters();
+    }
+
+    // ============================================================
+    // TABLE
+    // ============================================================
+    function renderTable() {
+        const tbody = document.getElementById('repsTbody');
+        const start = (currentPage - 1) * PAGE_SIZE;
+        const pageItems = filteredReps.slice(start, start + PAGE_SIZE);
+
+        if (filteredReps.length === 0) {
+            tbody.innerHTML = `
+                <tr><td colspan="8">
+                    <div class="empty-state">
+                        <div class="empty-state-icon"><i class="fas fa-user-slash"></i></div>
+                        <h3>No representatives found</h3>
+                        <p>Try adjusting your filters or assign a new representative.</p>
+                    </div>
+                </td></tr>
+            `;
+            renderPagination();
+            return;
         }
 
-        document.addEventListener('DOMContentLoaded', init);
+        tbody.innerHTML = pageItems.map(r => {
+            const initials = getInitials(r.full_name);
+            const statusBadge = r.status === 'active'
+                ? '<span class="status-badge badge-success">Active</span>'
+                : '<span class="status-badge badge-danger">Inactive</span>';
+            return `
+                <tr data-id="${escapeHtml(r.id)}">
+                    <td>
+                        <div class="rep-cell">
+                            <div class="rep-avatar">${escapeHtml(initials)}</div>
+                            <div>
+                                <div class="rep-name">${escapeHtml(r.full_name || '—')}</div>
+                                <div class="rep-sub">${escapeHtml(r.email || '')}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="cell-mono">${escapeHtml(r.matric_no || '—')}</td>
+                    <td>${escapeHtml(r.department || '—')}</td>
+                    <td><strong>${escapeHtml(r.level || '—')}</strong></td>
+                    <td>${escapeHtml(r.phone || '—')}</td>
+                    <td class="cell-mono">${escapeHtml(r.session || '—')}</td>
+                    <td>${statusBadge}</td>
+                    <td>
+                        <div class="row-actions">
+                            <button class="icon-btn" data-action="view" data-id="${escapeHtml(r.id)}" title="View"><i class="fas fa-eye"></i></button>
+                            <button class="icon-btn" data-action="edit" data-id="${escapeHtml(r.id)}" title="Edit"><i class="fas fa-pen"></i></button>
+                            <button class="icon-btn danger" data-action="remove" data-id="${escapeHtml(r.id)}" title="Remove"><i class="fas fa-user-times"></i></button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
 
-        // Expose functions globally
-        window.showModal = showModal;
-        window.hideModal = hideModal;
-        window.showToast = showToast;
-        window.editCourseRep = editCourseRep;
-        window.deleteCourseRep = deleteCourseRep;
+        renderPagination();
+
+        tbody.querySelectorAll('tr[data-id]').forEach(tr => {
+            tr.addEventListener('click', (e) => {
+                if (e.target.closest('button')) return;
+                openProfileDrawer(tr.dataset.id);
+            });
+        });
+        tbody.querySelectorAll('button[data-action]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const id = btn.dataset.id;
+                const action = btn.dataset.action;
+                if (action === 'view') openProfileDrawer(id);
+                else if (action === 'edit') openRepModal(id);
+                else if (action === 'remove') openRemoveModal(id);
+            });
+        });
+    }
+
+    function renderPagination() {
+        const totalPages = Math.max(1, Math.ceil(filteredReps.length / PAGE_SIZE));
+        const info = document.getElementById('paginationInfo');
+        const controls = document.getElementById('paginationControls');
+
+        if (filteredReps.length === 0) {
+            info.textContent = 'No records to display';
+            controls.innerHTML = '';
+            return;
+        }
+
+        const start = (currentPage - 1) * PAGE_SIZE + 1;
+        const end = Math.min(currentPage * PAGE_SIZE, filteredReps.length);
+        info.textContent = `Showing ${start}–${end} of ${filteredReps.length}`;
+
+        const parts = [];
+        parts.push(`<button class="page-btn" data-page="prev" ${currentPage === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i></button>`);
+        for (let i = 1; i <= totalPages; i++) {
+            if (totalPages > 7 && i !== 1 && i !== totalPages && Math.abs(i - currentPage) > 1) {
+                if (i === 2 || i === totalPages - 1) parts.push(`<span class="page-btn" style="border:none; background:none; cursor:default;">…</span>`);
+                continue;
+            }
+            parts.push(`<button class="page-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`);
+        }
+        parts.push(`<button class="page-btn" data-page="next" ${currentPage === totalPages ? 'disabled' : ''}><i class="fas fa-chevron-right"></i></button>`);
+
+        controls.innerHTML = parts.join('');
+        controls.querySelectorAll('button[data-page]').forEach(b => {
+            b.addEventListener('click', () => {
+                const val = b.dataset.page;
+                if (val === 'prev') currentPage = Math.max(1, currentPage - 1);
+                else if (val === 'next') currentPage = Math.min(totalPages, currentPage + 1);
+                else currentPage = parseInt(val);
+                renderTable();
+            });
+        });
+    }
+
+    // ============================================================
+    // STUDENT SELECTOR
+    // ============================================================
+    function openStudentResults(query) {
+        const results = document.getElementById('studentResults');
+        const q = query.trim().toLowerCase();
+        const matches = allMembers.filter(m => {
+            if (q) {
+                const hay = `${m.full_name} ${m.matric_no} ${m.email}`.toLowerCase();
+                if (!hay.includes(q)) return false;
+            }
+            return m.status === 'active';
+        }).slice(0, 8);
+
+        if (matches.length === 0) {
+            results.innerHTML = `<div class="student-result" style="cursor:default; justify-content:center; color: var(--text-dim);">
+                <em>No matching students found</em>
+            </div>`;
+            results.classList.add('active');
+            return;
+        }
+
+        results.innerHTML = matches.map(m => `
+            <div class="student-result" data-member-id="${escapeHtml(m.id)}">
+                <div class="rep-avatar">${escapeHtml(getInitials(m.full_name))}</div>
+                <div class="student-result-info">
+                    <div class="student-result-name">${escapeHtml(m.full_name)}</div>
+                    <div class="student-result-meta">${escapeHtml(m.matric_no || '—')} · ${escapeHtml(m.department || '')} · ${escapeHtml(m.level || '')}</div>
+                </div>
+            </div>
+        `).join('');
+        results.classList.add('active');
+
+        results.querySelectorAll('.student-result[data-member-id]').forEach(el => {
+            el.addEventListener('click', () => {
+                const member = allMembers.find(x => String(x.id) === String(el.dataset.memberId));
+                if (member) selectStudent(member);
+            });
+        });
+    }
+
+    function selectStudent(member) {
+        selectedStudent = member;
+        document.getElementById('studentResults').classList.remove('active');
+        document.getElementById('studentSearch').value = '';
+        document.getElementById('selectedStudentContainer').style.display = 'block';
+
+        document.getElementById('selectedStudentAvatar').textContent = getInitials(member.full_name);
+        document.getElementById('selectedStudentName').textContent = member.full_name;
+        document.getElementById('selectedStudentMeta').textContent =
+            `${member.matric_no || '—'} · ${member.department || ''} · ${member.level || ''}`;
+
+        // Pre-fill department and level
+        if (member.department) document.getElementById('rDepartment').value = member.department;
+        if (member.level) document.getElementById('rLevel').value = member.level;
+
+        document.getElementById('repSubmitBtn').disabled = false;
+        checkDuplicateAssignment();
+    }
+
+    function clearStudentSelection() {
+        selectedStudent = null;
+        document.getElementById('selectedStudentContainer').style.display = 'none';
+        document.getElementById('studentSearch').value = '';
+        document.getElementById('studentResults').classList.remove('active');
+        document.getElementById('duplicateWarning').classList.remove('active');
+        document.getElementById('repSubmitBtn').disabled = true;
+    }
+
+    // ============================================================
+    // DUPLICATE CHECK
+    // ============================================================
+    function checkDuplicateAssignment() {
+        const warning = document.getElementById('duplicateWarning');
+        const warningText = document.getElementById('duplicateWarningText');
+        const submitBtn = document.getElementById('repSubmitBtn');
+
+        if (!selectedStudent) {
+            warning.classList.remove('active');
+            submitBtn.disabled = true;
+            return;
+        }
+
+        const dept = document.getElementById('rDepartment').value;
+        const lvl = document.getElementById('rLevel').value;
+        const sess = document.getElementById('rSession').value;
+
+        if (!dept || !lvl || !sess) {
+            warning.classList.remove('active');
+            submitBtn.disabled = false;
+            return;
+        }
+
+        // Check for existing active assignment
+        const existing = allReps.find(r =>
+            String(r.id) !== String(editingRepId || '') &&
+            r.status === 'active' &&
+            String(r.matric_no || '').toLowerCase() === String(selectedStudent.matric_no || '').toLowerCase() &&
+            r.session === sess &&
+            r.department === dept &&
+            r.level === lvl
+        );
+
+        if (existing) {
+            warningText.textContent = `This student is already an active ${lvl} representative for ${dept} in ${sess}. Duplicate active assignments are not allowed.`;
+            warning.classList.add('active');
+            submitBtn.disabled = true;
+        } else {
+            // Check for conflicting active rep for the same dept+level+session
+            const conflicting = allReps.find(r =>
+                String(r.id) !== String(editingRepId || '') &&
+                r.status === 'active' &&
+                r.session === sess &&
+                r.department === dept &&
+                r.level === lvl
+            );
+
+            if (conflicting) {
+                warningText.textContent = `Note: ${dept} ${lvl} for ${sess} already has an active representative (${conflicting.full_name}). This will create a second active assignment for the same level and department.`;
+                warning.classList.add('active');
+            } else {
+                warning.classList.remove('active');
+            }
+            submitBtn.disabled = false;
+        }
+    }
+
+    // ============================================================
+    // ADD / EDIT REP MODAL
+    // ============================================================
+    function openRepModal(id = null) {
+        editingRepId = id;
+        const title = document.getElementById('repModalTitle');
+        const form = document.getElementById('repForm');
+        form.reset();
+        clearStudentSelection();
+
+        if (id) {
+            const r = allReps.find(x => String(x.id) === String(id));
+            if (!r) return;
+            title.innerHTML = '<i class="fas fa-pen"></i> Edit Representative';
+
+            // Try to find the matching member
+            const matchingMember = allMembers.find(m =>
+                String(m.matric_no || '').toLowerCase() === String(r.matric_no || '').toLowerCase() ||
+                String(m.id) === String(r.student_id)
+            );
+
+            if (matchingMember) {
+                selectStudent(matchingMember);
+            } else {
+                // Show existing data as fallback
+                document.getElementById('selectedStudentContainer').style.display = 'block';
+                document.getElementById('selectedStudentAvatar').textContent = getInitials(r.full_name);
+                document.getElementById('selectedStudentName').textContent = r.full_name;
+                document.getElementById('selectedStudentMeta').textContent =
+                    `${r.matric_no || '—'} · ${r.department || ''} · ${r.level || ''}`;
+                document.getElementById('repSubmitBtn').disabled = false;
+            }
+
+            document.getElementById('rDepartment').value = r.department || '';
+            document.getElementById('rLevel').value = r.level || '';
+            document.getElementById('rSession').value = r.session || '2025/2026';
+            document.getElementById('rStatus').value = r.status || 'active';
+            checkDuplicateAssignment();
+        } else {
+            title.innerHTML = '<i class="fas fa-user-plus"></i> Add Course Representative';
+        }
+
+        showModal('repModal');
+        setTimeout(() => document.getElementById('studentSearch').focus(), 150);
+    }
+
+    async function handleRepSubmit(e) {
+        e.preventDefault();
+        if (!selectedStudent) {
+            showToast('Please select a student', 'warning');
+            return;
+        }
+
+        const btn = document.getElementById('repSubmitBtn');
+        const original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Saving…';
+
+        const payload = {
+            student_id: selectedStudent.id,
+            full_name: selectedStudent.full_name,
+            matric_no: selectedStudent.matric_no,
+            email: selectedStudent.email,
+            phone: selectedStudent.phone,
+            department: document.getElementById('rDepartment').value,
+            level: document.getElementById('rLevel').value,
+            session: document.getElementById('rSession').value,
+            status: document.getElementById('rStatus').value
+        };
+
+        try {
+            if (editingRepId) {
+                await apiPut(`/api/admin/course-reps/${editingRepId}`, payload);
+                showToast('Representative updated', 'success');
+            } else {
+                await apiPost('/api/admin/course-reps', payload);
+                showToast('Representative assigned', 'success');
+            }
+            hideModal('repModal');
+            await loadData();
+        } catch (err) {
+            console.error('Save rep error:', err);
+            showToast(err.message || 'Failed to save representative', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = original;
+        }
+    }
+
+    // ============================================================
+    // PROFILE DRAWER
+    // ============================================================
+    function openProfileDrawer(id) {
+        const r = allReps.find(x => String(x.id) === String(id));
+        if (!r) return;
+        viewingRep = r;
+
+        document.getElementById('profileAvatar').textContent = getInitials(r.full_name);
+        document.getElementById('profileName').textContent = r.full_name || '—';
+        document.getElementById('profileMatric').textContent = r.matric_no || '—';
+
+        const statusEl = document.getElementById('profileStatus');
+        statusEl.textContent = (r.status || '').toUpperCase();
+        statusEl.className = 'drawer-status ' + (r.status === 'inactive' ? 'inactive' : '');
+
+        document.getElementById('profileDept').textContent = r.department || '—';
+        document.getElementById('profileLevel').textContent = r.level || '—';
+        document.getElementById('profileSession').textContent = r.session || '—';
+        document.getElementById('profileDate').textContent = formatDate(r.created_at);
+        document.getElementById('profileEmail').textContent = r.email || '—';
+        document.getElementById('profilePhone').textContent = r.phone || '—';
+
+        const toggleText = document.getElementById('profileToggleText');
+        if (r.status === 'active') {
+            toggleText.textContent = 'Deactivate';
+        } else {
+            toggleText.textContent = 'Activate';
+        }
+
+        // History
+        const historyEl = document.getElementById('profileHistory');
+        if (r.history && r.history.length > 0) {
+            historyEl.innerHTML = r.history.map(h => `
+                <div class="history-item">
+                    <div class="history-title">${escapeHtml(h.title || 'Assignment')}</div>
+                    <div class="history-meta">${escapeHtml(h.date || '')} · ${escapeHtml(h.session || '')}</div>
+                </div>
+            `).join('');
+        } else {
+            historyEl.innerHTML = `
+                <div class="history-item">
+                    <div class="history-title">Currently serving</div>
+                    <div class="history-meta">${escapeHtml(r.session || '—')} · ${escapeHtml(r.department || '')} · ${escapeHtml(r.level || '')}</div>
+                </div>
+            `;
+        }
+
+        document.getElementById('profileOverlay').classList.add('active');
+        document.getElementById('profileDrawer').classList.add('active');
+        document.getElementById('profileDrawer').setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeProfileDrawer() {
+        document.getElementById('profileOverlay').classList.remove('active');
+        document.getElementById('profileDrawer').classList.remove('active');
+        document.getElementById('profileDrawer').setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+        viewingRep = null;
+    }
+
+    async function toggleRepStatus() {
+        if (!viewingRep) return;
+        const newStatus = viewingRep.status === 'active' ? 'inactive' : 'active';
+        try {
+            await apiPut(`/api/admin/course-reps/${viewingRep.id}`, { status: newStatus });
+            showToast(`Representative ${newStatus === 'active' ? 'activated' : 'deactivated'}`, 'success');
+            closeProfileDrawer();
+            await loadData();
+        } catch (err) {
+            console.error('Toggle status error:', err);
+            showToast(err.message || 'Failed to update status', 'error');
+        }
+    }
+
+    // ============================================================
+    // REMOVE
+    // ============================================================
+    function openRemoveModal(id) {
+        const r = allReps.find(x => String(x.id) === String(id));
+        if (!r) return;
+        removingRepId = id;
+        document.getElementById('removeRepName').textContent = r.full_name || 'this representative';
+        showModal('removeModal');
+    }
+
+    async function handleRemove() {
+        if (!removingRepId) return;
+        const btn = document.getElementById('confirmRemoveBtn');
+        const original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Removing…';
+
+        try {
+            await apiDelete(`/api/admin/course-reps/${removingRepId}`);
+            showToast('Representative removed', 'success');
+            hideModal('removeModal');
+            if (viewingRep && String(viewingRep.id) === String(removingRepId)) closeProfileDrawer();
+            removingRepId = null;
+            await loadData();
+        } catch (err) {
+            console.error('Remove error:', err);
+            showToast(err.message || 'Failed to remove representative', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = original;
+        }
+    }
+
+    // ============================================================
+    // UI HELPERS
+    // ============================================================
+    function showLoading() { document.getElementById('loadingOverlay').classList.add('active'); }
+    function hideLoading() { document.getElementById('loadingOverlay').classList.remove('active'); }
+
+    function showModal(id) {
+        const el = document.getElementById(id);
+        if (el) { el.classList.add('active'); document.body.style.overflow = 'hidden'; }
+    }
+    function hideModal(id) {
+        const el = document.getElementById(id);
+        if (el) { el.classList.remove('active'); document.body.style.overflow = ''; }
+    }
+
+    function showToast(message, type = 'info', duration = 4000) {
+        document.querySelectorAll('.toast').forEach(t => t.remove());
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        const icons = { success:'check-circle', error:'exclamation-circle', warning:'exclamation-triangle', info:'info-circle' };
+        toast.innerHTML = `
+            <div class="toast-icon"><i class="fas fa-${icons[type] || 'info-circle'}"></i></div>
+            <div class="toast-content">${escapeHtml(message)}</div>
+            <button class="toast-close" aria-label="Close">&times;</button>
+        `;
+        document.body.appendChild(toast);
+        requestAnimationFrame(() => toast.classList.add('show'));
+        toast.querySelector('.toast-close').onclick = () => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        };
+        setTimeout(() => {
+            if (toast.parentElement) {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }
+        }, duration);
+    }
+
+    function escapeHtml(str) {
+        if (str == null) return '';
+        return String(str)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function getInitials(name) {
+        if (!name) return '?';
+        return name.split(/\s+/).filter(Boolean).map(n => n[0]).slice(0, 2).join('').toUpperCase() || '?';
+    }
+
+    function formatDate(s) {
+        if (!s) return '—';
+        try {
+            const d = new Date(s);
+            if (isNaN(d.getTime())) return String(s);
+            return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        } catch { return String(s); }
+    }
+
+    // ============================================================
+    // SIDEBAR
+    // ============================================================
+    function setupSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const mobileOverlay = document.getElementById('mobileOverlay');
+        const mobileToggle = document.getElementById('mobileMenuToggle');
+        if (!sidebar || !mobileOverlay || !mobileToggle) return;
+
+        const closeSidebar = () => {
+            sidebar.classList.remove('open');
+            mobileOverlay.classList.remove('active');
+            document.body.style.overflow = '';
+        };
+        mobileToggle.addEventListener('click', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            if (sidebar.classList.contains('open')) closeSidebar();
+            else {
+                sidebar.classList.add('open');
+                mobileOverlay.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        }, true);
+        mobileOverlay.addEventListener('click', closeSidebar);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && sidebar.classList.contains('open')) closeSidebar();
+        });
+        document.querySelectorAll('.nav-item').forEach(link => {
+            link.addEventListener('click', () => { if (window.innerWidth <= 900) closeSidebar(); });
+        });
+    }
+
+    // ============================================================
+    // EXPORT / IMPORT
+    // ============================================================
+    function exportReps() {
+        if (filteredReps.length === 0) {
+            showToast('Nothing to export', 'warning');
+            return;
+        }
+        const headers = ['Full Name','Matric No.','Email','Phone','Department','Level','Session','Status','Date Appointed'];
+        const rows = filteredReps.map(r => [
+            r.full_name, r.matric_no, r.email, r.phone, r.department, r.level, r.session, r.status, r.created_at || ''
+        ]);
+        const csv = [headers, ...rows]
+            .map(row => row.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
+            .join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `nuesa-course-reps-${new Date().toISOString().slice(0,10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast(`Exported ${rows.length} representatives`, 'success');
+    }
+
+    function importReps() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.csv,.xlsx,.xls';
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            showToast(`Import of "${file.name}" started (placeholder)`, 'info');
+        };
+        input.click();
+    }
+
+    // ============================================================
+    // INACTIVITY
+    // ============================================================
+    function resetInactivityTimer() {
+        clearTimeout(inactivityTimeout);
+        inactivityTimeout = setTimeout(() => {
+            showToast('Session expiring soon', 'warning');
+            setTimeout(() => window.location.replace('adlog.html'), 60000);
+        }, 29 * 60 * 1000);
+    }
+    function setupActivityListeners() {
+        ['mousedown','keypress','scroll','touchstart'].forEach(ev =>
+            document.addEventListener(ev, resetInactivityTimer));
+        resetInactivityTimer();
+    }
+
+    // ============================================================
+    // INIT
+    // ============================================================
+    async function init() {
+        setupSidebar();
+
+        // Static wiring
+        document.getElementById('logoutBtn').addEventListener('click', () => showModal('logoutModal'));
+        document.getElementById('confirmLogout').addEventListener('click', confirmLogout);
+        document.getElementById('notificationBtn').addEventListener('click', () => {
+            window.location.href = 'messages.html';
+        });
+        document.getElementById('addRepBtn').addEventListener('click', () => openRepModal());
+        document.getElementById('exportBtn').addEventListener('click', exportReps);
+        document.getElementById('importBtn').addEventListener('click', importReps);
+        document.getElementById('clearFilters').addEventListener('click', clearFilters);
+        document.getElementById('confirmRemoveBtn').addEventListener('click', handleRemove);
+        document.getElementById('clearSelectedStudent').addEventListener('click', clearStudentSelection);
+
+        // Filters
+        ['searchInput','filterDepartment','filterLevel','filterSession','filterStatus']
+            .forEach(id => document.getElementById(id).addEventListener('input', applyFilters));
+
+        // Student search
+        const studentSearch = document.getElementById('studentSearch');
+        studentSearch.addEventListener('input', () => openStudentResults(studentSearch.value));
+        studentSearch.addEventListener('focus', () => openStudentResults(studentSearch.value));
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#studentSelectorSection')) {
+                document.getElementById('studentResults').classList.remove('active');
+            }
+        });
+
+        // Department/Level change triggers duplicate check
+        ['rDepartment','rLevel','rSession'].forEach(id => {
+            document.getElementById(id).addEventListener('change', checkDuplicateAssignment);
+        });
+
+        // Form submit
+        document.getElementById('repForm').addEventListener('submit', handleRepSubmit);
+
+        // Drawer buttons
+        document.getElementById('profileOverlay').addEventListener('click', closeProfileDrawer);
+        document.getElementById('profileEditBtn').addEventListener('click', () => {
+            if (viewingRep) {
+                const id = viewingRep.id;
+                closeProfileDrawer();
+                openRepModal(id);
+            }
+        });
+        document.getElementById('profileToggleBtn').addEventListener('click', toggleRepStatus);
+        document.getElementById('profileRemoveBtn').addEventListener('click', () => {
+            if (viewingRep) {
+                const id = viewingRep.id;
+                closeProfileDrawer();
+                openRemoveModal(id);
+            }
+        });
+
+        // Escape closes modals
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                ['repModal','removeModal','logoutModal'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el && el.classList.contains('active')) hideModal(id);
+                });
+                if (document.getElementById('profileDrawer').classList.contains('active')) {
+                    closeProfileDrawer();
+                }
+            }
+        });
+
+        // Auth
+        const ok = await checkAuth();
+        if (!ok) return;
+
+        setupActivityListeners();
+        await loadData();
+        hideLoading();
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+
+    window.showModal = showModal;
+    window.hideModal = hideModal;
+    window.confirmLogout = confirmLogout;
+    window.closeProfileDrawer = closeProfileDrawer;
     </script>
 </body>
 </html>
