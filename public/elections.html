@@ -823,14 +823,14 @@
             <div class="hero-content">
                 <div class="inline-block mb-4 px-6 py-2 bg-white/20 backdrop-blur-sm border border-white/30 rounded-full">
                     <span class="font-mono text-sm font-bold uppercase tracking-widest text-white">
-                        NUESA BIU · 2026 ELECTIONS
+                        NUESA BIU · ELECTIONS
                     </span>
                 </div>
                 <h1 class="font-sans text-3xl md:text-6xl font-black text-white mb-4 leading-tight tracking-tight drop-shadow-lg">
                     Vote for <span class="text-amber-300">Tomorrow</span>
                 </h1>
                 <p class="font-sans text-base md:text-xl text-emerald-50 max-w-2xl mx-auto mb-6 leading-relaxed">
-                    Register, explore candidates, cast a demo vote, and view sample results — all in one place.
+                    Register, explore candidates, cast your vote, and view live results — all in one place.
                 </p>
             </div>
         </section>
@@ -861,7 +861,10 @@
             <div id="tabContent">
                 <!-- REGISTER TAB -->
                 <div id="panel-register" class="tab-panel">
-                    <!-- Registration form / success will be injected by JS -->
+                    <div class="loading-container" style="text-align:center;padding:3rem;">
+                        <div class="loading-spinner"></div>
+                        <p style="margin-top:1rem;color:var(--slate-500);">Loading election data…</p>
+                    </div>
                 </div>
                 <!-- CANDIDATES TAB -->
                 <div id="panel-candidates" class="tab-panel" style="display:none;">
@@ -941,6 +944,8 @@
     <!-- ===== JAVASCRIPT ===== -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
+
             // ==================== NAVBAR FUNCTIONALITY ====================
             const navbar = document.getElementById('navbar');
             const hamburger = document.getElementById('hamburger');
@@ -992,8 +997,7 @@
 
             hamburger.addEventListener('click', (e) => {
                 e.preventDefault(); e.stopPropagation();
-                const isOpen = hamburger.classList.contains('active');
-                toggleMobileMenu(!isOpen);
+                toggleMobileMenu(!hamburger.classList.contains('active'));
             });
 
             mobileLinks.forEach(link => link.addEventListener('click', () => toggleMobileMenu(false)));
@@ -1006,75 +1010,118 @@
 
             updateActiveLinks();
 
-            // ==================== ELECTION DATA & STATE ====================
-            const POSITIONS = [
-                { id: 'pres', title: 'President' },
-                { id: 'vp', title: 'Vice President' },
-                { id: 'gensec', title: 'General Secretary' },
-                { id: 'finsec', title: 'Financial Secretary' },
-                { id: 'pro', title: 'Public Relations Officer' }
-            ];
-
-            const CANDIDATES = [
-                { id: 'c1', name: 'Chukwudi Eze', positionId: 'pres', department: 'Electrical/Electronics Engineering', level: '400L', manifesto: 'Innovation through collaboration.' },
-                { id: 'c2', name: 'Aisha Bello', positionId: 'pres', department: 'Civil Engineering', level: '400L', manifesto: 'Building a stronger NUESA together.' },
-                { id: 'c3', name: 'Oluwaseun Adebayo', positionId: 'pres', department: 'Mechanical Engineering', level: '400L', manifesto: 'Engineering solutions for tomorrow.' },
-                { id: 'c4', name: 'Ngozi Okafor', positionId: 'vp', department: 'Civil Engineering', level: '300L', manifesto: 'Empowering every student voice.' },
-                { id: 'c5', name: 'David Ighodaro', positionId: 'vp', department: 'Mechanical Engineering', level: '300L', manifesto: 'Action, not just words.' },
-                { id: 'c6', name: 'Emmanuel Osagie', positionId: 'gensec', department: 'Electrical/Electronics Engineering', level: '300L', manifesto: 'Transparency in administration.' },
-                { id: 'c7', name: 'Grace Adekunle', positionId: 'gensec', department: 'Civil Engineering', level: '300L', manifesto: 'Organized leadership for progress.' },
-                { id: 'c8', name: 'Victor Nnamdi', positionId: 'finsec', department: 'Mechanical Engineering', level: '300L', manifesto: 'Accountability in every naira.' },
-                { id: 'c9', name: 'Sarah Mensah', positionId: 'finsec', department: 'Electrical/Electronics Engineering', level: '300L', manifesto: 'Financial integrity and growth.' },
-                { id: 'c10', name: 'Tunde Bakare', positionId: 'pro', department: 'Civil Engineering', level: '200L', manifesto: 'Connecting NUESA to the world.' },
-                { id: 'c11', name: 'Faith Obaseki', positionId: 'pro', department: 'Mechanical Engineering', level: '200L', manifesto: 'Your voice, amplified.' }
-            ];
-
-            const DEPARTMENTS = [
-                'Electrical/Electronics Engineering',
-                'Civil Engineering',
-                'Mechanical Engineering'
-            ];
-            const LEVELS = ['100L', '200L', '300L', '400L', '500L'];
-
-            const INITIAL_TALLIES = {
-                c1: 145, c2: 132, c3: 89, c4: 210, c5: 156, c6: 188, c7: 178, c8: 195, c9: 171, c10: 205, c11: 161
-            };
-
+            // ==================== ELECTION STATE ====================
+            let POSITIONS = [];
+            let CANDIDATES = [];
+            let DEPARTMENTS = [];
+            let LEVELS = [];
             let registeredVoter = null;
             let hasVoted = false;
             let votes = {};
-            let tallies = { ...INITIAL_TALLIES };
-            let regForm = {
-                fullName: '',
-                matricNumber: '',
-                phone: '',
-                receiptNumber: '',
-                department: DEPARTMENTS[0],
-                level: LEVELS[0]
-            };
-
-            function getInitials(name) {
-                return name.split(' ').map(n => n[0]).join('').toUpperCase();
-            }
-
-            function getMaxVotes(positionId) {
-                const candidates = CANDIDATES.filter(c => c.positionId === positionId);
-                return Math.max(...candidates.map(c => tallies[c.id] || 0), 1);
-            }
-
-            function getTotalVotesForPosition(positionId) {
-                const candidates = CANDIDATES.filter(c => c.positionId === positionId);
-                return candidates.reduce((sum, c) => sum + (tallies[c.id] || 0), 0);
-            }
+            let tallies = {};
+            let electionLoaded = false;
 
             const registerPanel = document.getElementById('panel-register');
-            const candidatesPanel = document.getElementById('panel-candidates');
-            const votePanel = document.getElementById('panel-vote');
-            const resultsPanel = document.getElementById('panel-results');
             const candidatesList = document.getElementById('candidatesList');
             const voteContent = document.getElementById('voteContent');
             const resultsContent = document.getElementById('resultsContent');
 
+            // ==================== HELPERS ====================
+            function getInitials(name) {
+                if (!name) return '?';
+                return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+            }
+
+            function escapeHtml(str) {
+                if (str === null || str === undefined) return '';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            function getMaxVotes(positionId) {
+                const posCandidates = CANDIDATES.filter(c => c.positionId === positionId);
+                return Math.max(...posCandidates.map(c => tallies[c.id] || 0), 1);
+            }
+
+            function getTotalVotesForPosition(positionId) {
+                const posCandidates = CANDIDATES.filter(c => c.positionId === positionId);
+                return posCandidates.reduce((sum, c) => sum + (tallies[c.id] || 0), 0);
+            }
+
+            function showErrorPanel(panelEl, message) {
+                panelEl.innerHTML = `
+                    <div class="bg-white rounded-2xl shadow-sm border border-red-200 p-8 text-center">
+                        <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-exclamation-triangle text-red-500" style="font-size:2rem;"></i>
+                        </div>
+                        <h2 class="text-xl font-bold text-gray-900 mb-2">Unable to Load Election Data</h2>
+                        <p class="text-gray-500 mb-6">${escapeHtml(message)}</p>
+                        <button onclick="location.reload()" class="px-8 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-colors">
+                            <i class="fas fa-sync-alt mr-2"></i> Retry
+                        </button>
+                    </div>
+                `;
+            }
+
+            // ==================== API ====================
+            async function fetchElectionData() {
+                const res = await fetch(`${API_BASE_URL}/api/elections/active`, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!res.ok) {
+                    throw new Error(`Election API returned ${res.status}`);
+                }
+                const data = await res.json();
+                if (!data || !data.status || data.status !== 'success' || !data.data) {
+                    throw new Error('Invalid election response from server');
+                }
+                return data.data;
+            }
+
+            async function fetchElectionTallies() {
+                const res = await fetch(`${API_BASE_URL}/api/elections/tallies`, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!res.ok) {
+                    throw new Error(`Tallies API returned ${res.status}`);
+                }
+                const data = await res.json();
+                if (!data || !data.status || data.status !== 'success') {
+                    throw new Error('Invalid tallies response from server');
+                }
+                return data.data || {};
+            }
+
+            function mapElectionData(raw) {
+                // Expect raw to contain positions, candidates, departments, levels
+                POSITIONS = (raw.positions || []).map(p => ({
+                    id: p.id,
+                    title: p.title
+                }));
+
+                CANDIDATES = (raw.candidates || []).map(c => ({
+                    id: c.id,
+                    name: c.name,
+                    positionId: c.position_id || c.positionId,
+                    department: c.department || '',
+                    level: c.level || '',
+                    manifesto: c.manifesto || ''
+                }));
+
+                DEPARTMENTS = raw.departments && raw.departments.length
+                    ? raw.departments
+                    : [...new Set(CANDIDATES.map(c => c.department).filter(Boolean))];
+
+                LEVELS = raw.levels && raw.levels.length
+                    ? raw.levels
+                    : [...new Set(CANDIDATES.map(c => c.level).filter(Boolean))];
+            }
+
+            // ==================== RENDER: REGISTER ====================
             function renderRegister() {
                 if (registeredVoter) {
                     registerPanel.innerHTML = `
@@ -1087,140 +1134,190 @@
                             <div class="bg-gray-50 rounded-xl p-6 max-w-sm mx-auto text-left space-y-3">
                                 <div>
                                     <p class="text-xs text-gray-400 uppercase font-bold tracking-wider">Voter ID</p>
-                                    <p class="font-mono font-bold text-emerald-600 text-lg">${registeredVoter.voterId}</p>
+                                    <p class="font-mono font-bold text-emerald-600 text-lg">${escapeHtml(registeredVoter.voterId)}</p>
                                 </div>
                                 <div>
                                     <p class="text-xs text-gray-400 uppercase font-bold tracking-wider">Name</p>
-                                    <p class="font-semibold text-gray-900">${registeredVoter.fullName}</p>
+                                    <p class="font-semibold text-gray-900">${escapeHtml(registeredVoter.fullName)}</p>
                                 </div>
                                 <div>
                                     <p class="text-xs text-gray-400 uppercase font-bold tracking-wider">Matric Number</p>
-                                    <p class="font-mono text-gray-700">${registeredVoter.matricNumber}</p>
+                                    <p class="font-mono text-gray-700">${escapeHtml(registeredVoter.matricNumber)}</p>
                                 </div>
                             </div>
                             <button id="proceedToVoteBtn" class="mt-8 px-8 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-colors">Proceed to Vote</button>
                         </div>
                     `;
                     document.getElementById('proceedToVoteBtn').addEventListener('click', () => switchTab('vote'));
-                } else {
-                    registerPanel.innerHTML = `
-                        <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-                            <div class="bg-gray-50 border-b border-gray-100 p-6 flex items-center gap-3">
-                                <div class="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center shrink-0">
-                                    <i class="fas fa-user-plus text-emerald-600"></i>
+                    return;
+                }
+
+                const deptOptions = DEPARTMENTS.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+                const levelOptions = LEVELS.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join('');
+
+                registerPanel.innerHTML = `
+                    <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+                        <div class="bg-gray-50 border-b border-gray-100 p-6 flex items-center gap-3">
+                            <div class="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center shrink-0">
+                                <i class="fas fa-user-plus text-emerald-600"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-bold text-gray-900">Voter Registration</h2>
+                                <p class="text-sm text-gray-500">Verify your details to become eligible to vote</p>
+                            </div>
+                        </div>
+                        <form id="registrationForm" class="p-6 md:p-8 space-y-5" novalidate>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                                    <div class="relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <i class="fas fa-user text-gray-400"></i>
+                                        </div>
+                                        <input required type="text" name="fullName" placeholder="e.g. John Doe" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" style="padding-left:2.5rem;" />
+                                    </div>
                                 </div>
                                 <div>
-                                    <h2 class="text-xl font-bold text-gray-900">Voter Registration</h2>
-                                    <p class="text-sm text-gray-500">Demo registration preview — connect the approved voter database before deployment</p>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Matric Number</label>
+                                    <div class="relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <i class="fas fa-hash text-gray-400"></i>
+                                        </div>
+                                        <input required type="text" name="matricNumber" placeholder="e.g. ENG/2021/001" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent uppercase" style="padding-left:2.5rem;" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                                    <div class="relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <i class="fas fa-phone text-gray-400"></i>
+                                        </div>
+                                        <input required type="tel" name="phone" placeholder="e.g. 08012345678" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" style="padding-left:2.5rem;" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Receipt Number</label>
+                                    <div class="relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <i class="fas fa-receipt text-gray-400"></i>
+                                        </div>
+                                        <input required type="text" name="receiptNumber" placeholder="e.g. NUESA-XXXXXXXX" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent uppercase" style="padding-left:2.5rem;" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                                    <div class="relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <i class="fas fa-building text-gray-400"></i>
+                                        </div>
+                                        <select name="department" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none bg-white" style="padding-left:2.5rem;">
+                                            <option value="">Select Department</option>
+                                            ${deptOptions}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Level</label>
+                                    <div class="relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <i class="fas fa-graduation-cap text-gray-400"></i>
+                                        </div>
+                                        <select name="level" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none bg-white" style="padding-left:2.5rem;">
+                                            <option value="">Select Level</option>
+                                            ${levelOptions}
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
-                            <form id="registrationForm" class="p-6 md:p-8 space-y-5">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                                        <div class="relative">
-                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                <i class="fas fa-user text-gray-400"></i>
-                                            </div>
-                                            <input required type="text" name="fullName" value="${regForm.fullName}" placeholder="e.g. John Doe" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" style="padding-left:2.5rem;" />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Matric Number</label>
-                                        <div class="relative">
-                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                <i class="fas fa-hash text-gray-400"></i>
-                                            </div>
-                                            <input required type="text" name="matricNumber" value="${regForm.matricNumber}" placeholder="e.g. ENG/2021/001" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent uppercase" style="padding-left:2.5rem;" />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                                        <div class="relative">
-                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                <i class="fas fa-phone text-gray-400"></i>
-                                            </div>
-                                            <input required type="tel" name="phone" value="${regForm.phone}" placeholder="e.g. 08012345678" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" style="padding-left:2.5rem;" />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Receipt Number</label>
-                                        <div class="relative">
-                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                <i class="fas fa-receipt text-gray-400"></i>
-                                            </div>
-                                            <input required type="text" name="receiptNumber" value="${regForm.receiptNumber}" placeholder="e.g. NUESA-XXXXXXXX" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent uppercase" style="padding-left:2.5rem;" />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                                        <div class="relative">
-                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                <i class="fas fa-building text-gray-400"></i>
-                                            </div>
-                                            <select name="department" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none bg-white" style="padding-left:2.5rem;">
-                                                ${DEPARTMENTS.map(d => `<option value="${d}" ${regForm.department === d ? 'selected' : ''}>${d}</option>`).join('')}
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Level</label>
-                                        <div class="relative">
-                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                <i class="fas fa-graduation-cap text-gray-400"></i>
-                                            </div>
-                                            <select name="level" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none bg-white" style="padding-left:2.5rem;">
-                                                ${LEVELS.map(l => `<option value="${l}" ${regForm.level === l ? 'selected' : ''}>${l}</option>`).join('')}
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-                                <button type="submit" class="w-full py-4 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-all shadow-lg text-lg">Register as Voter</button>
-                            </form>
-                        </div>
-                    `;
+                            <div id="registerError" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm"></div>
+                            <button type="submit" id="registerSubmitBtn" class="w-full py-4 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-all shadow-lg text-lg">Register as Voter</button>
+                        </form>
+                    </div>
+                `;
 
-                    document.getElementById('registrationForm').addEventListener('submit', function(e) {
-                        e.preventDefault();
-                        const formData = new FormData(e.target);
-                        regForm = {
-                            fullName: formData.get('fullName'),
-                            matricNumber: formData.get('matricNumber').toUpperCase(),
-                            phone: formData.get('phone'),
-                            receiptNumber: formData.get('receiptNumber').toUpperCase(),
-                            department: formData.get('department'),
-                            level: formData.get('level')
-                        };
+                document.getElementById('registrationForm').addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    const formEl = e.target;
+                    const errorBox = document.getElementById('registerError');
+                    const submitBtn = document.getElementById('registerSubmitBtn');
+                    errorBox.classList.add('hidden');
+
+                    const formData = new FormData(formEl);
+                    const payload = {
+                        fullName: (formData.get('fullName') || '').trim(),
+                        matricNumber: (formData.get('matricNumber') || '').trim().toUpperCase(),
+                        phone: (formData.get('phone') || '').trim(),
+                        receiptNumber: (formData.get('receiptNumber') || '').trim().toUpperCase(),
+                        department: formData.get('department') || '',
+                        level: formData.get('level') || ''
+                    };
+
+                    if (!payload.fullName || !payload.matricNumber || !payload.phone || !payload.receiptNumber || !payload.department || !payload.level) {
+                        errorBox.textContent = 'Please fill in all required fields.';
+                        errorBox.classList.remove('hidden');
+                        return;
+                    }
+
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Registering…';
+
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/api/elections/register`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok || !data || data.status !== 'success' || !data.data) {
+                            throw new Error((data && data.message) || `Registration failed (${res.status})`);
+                        }
                         registeredVoter = {
-                            ...regForm,
-                            voterId: `VOTER-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
+                            voterId: data.data.voterId,
+                            fullName: data.data.fullName || payload.fullName,
+                            matricNumber: data.data.matricNumber || payload.matricNumber
                         };
                         renderRegister();
-                    });
-                }
+                    } catch (err) {
+                        errorBox.textContent = err.message || 'Registration failed. Please try again.';
+                        errorBox.classList.remove('hidden');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Register as Voter';
+                    }
+                });
             }
 
+            // ==================== RENDER: CANDIDATES ====================
             function renderCandidates() {
+                if (!CANDIDATES.length) {
+                    candidatesList.innerHTML = `
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+                            <i class="fas fa-users-slash text-4xl text-gray-300 mb-3"></i>
+                            <p class="text-gray-500">No candidates have been published yet.</p>
+                        </div>
+                    `;
+                    return;
+                }
                 let html = '';
                 POSITIONS.forEach(position => {
                     const positionCandidates = CANDIDATES.filter(c => c.positionId === position.id);
+                    if (!positionCandidates.length) return;
                     html += `
                         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
                             <div class="bg-gray-50 border-b border-gray-100 px-6 py-4">
-                                <h3 class="text-lg font-bold text-gray-900">${position.title}</h3>
+                                <h3 class="text-lg font-bold text-gray-900">${escapeHtml(position.title)}</h3>
                                 <p class="text-sm text-gray-500">${positionCandidates.length} candidate${positionCandidates.length !== 1 ? 's' : ''}</p>
                             </div>
                             <div class="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                 ${positionCandidates.map(candidate => `
                                     <div class="border border-gray-100 rounded-xl p-5">
                                         <div class="flex items-center gap-3 mb-3">
-                                            <div class="initials-badge initials-badge-lg">${getInitials(candidate.name)}</div>
+                                            <div class="initials-badge initials-badge-lg">${escapeHtml(getInitials(candidate.name))}</div>
                                             <div>
-                                                <p class="font-bold text-gray-900">${candidate.name}</p>
-                                                <p class="text-xs text-gray-500">${candidate.level} · ${candidate.department.split(' ')[0]}</p>
+                                                <p class="font-bold text-gray-900">${escapeHtml(candidate.name)}</p>
+                                                <p class="text-xs text-gray-500">${escapeHtml(candidate.level || '')}${candidate.department ? ' · ' + escapeHtml(candidate.department.split(' ')[0]) : ''}</p>
                                             </div>
                                         </div>
-                                        <p class="text-sm text-gray-600 italic">"${candidate.manifesto}"</p>
+                                        <p class="text-sm text-gray-600 italic">"${escapeHtml(candidate.manifesto || 'No manifesto provided.')}"</p>
                                     </div>
                                 `).join('')}
                             </div>
@@ -1230,6 +1327,7 @@
                 candidatesList.innerHTML = html;
             }
 
+            // ==================== RENDER: VOTE ====================
             function renderVote() {
                 if (!registeredVoter) {
                     voteContent.innerHTML = `
@@ -1264,29 +1362,32 @@
                 let html = `
                     <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex items-center gap-3 mb-6">
                         <i class="fas fa-vote-yea text-emerald-600 text-xl"></i>
-                        <p class="text-sm text-emerald-800">Demo voting as <strong>${registeredVoter.fullName}</strong> (${registeredVoter.voterId}). Select one candidate per position.</p>
+                        <p class="text-sm text-emerald-800">Voting as <strong>${escapeHtml(registeredVoter.fullName)}</strong> (${escapeHtml(registeredVoter.voterId)}). Select one candidate per position.</p>
                     </div>
                 `;
 
+                let positionsWithCandidates = 0;
                 POSITIONS.forEach(position => {
                     const positionCandidates = CANDIDATES.filter(c => c.positionId === position.id);
+                    if (!positionCandidates.length) return;
+                    positionsWithCandidates++;
                     html += `
                         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
                             <div class="bg-gray-50 border-b border-gray-100 px-6 py-4">
-                                <h3 class="text-lg font-bold text-gray-900">${position.title}</h3>
+                                <h3 class="text-lg font-bold text-gray-900">${escapeHtml(position.title)}</h3>
                             </div>
                             <div class="p-4 space-y-2">
                                 ${positionCandidates.map(candidate => {
                                     const isSelected = votes[position.id] === candidate.id;
                                     return `
-                                        <button class="vote-option ${isSelected ? 'selected' : ''}" data-position="${position.id}" data-candidate="${candidate.id}">
+                                        <button class="vote-option ${isSelected ? 'selected' : ''}" data-position="${escapeHtml(position.id)}" data-candidate="${escapeHtml(candidate.id)}">
                                             <div class="radio-dot ${isSelected ? 'selected' : ''}">
                                                 ${isSelected ? '<div class="radio-dot-inner"></div>' : ''}
                                             </div>
-                                            <div class="initials-badge">${getInitials(candidate.name)}</div>
+                                            <div class="initials-badge">${escapeHtml(getInitials(candidate.name))}</div>
                                             <div class="flex-1">
-                                                <p class="font-bold text-gray-900">${candidate.name}</p>
-                                                <p class="text-xs text-gray-500">${candidate.department} · ${candidate.level}</p>
+                                                <p class="font-bold text-gray-900">${escapeHtml(candidate.name)}</p>
+                                                <p class="text-xs text-gray-500">${escapeHtml(candidate.department || '')}${candidate.level ? ' · ' + escapeHtml(candidate.level) : ''}</p>
                                             </div>
                                         </button>
                                     `;
@@ -1296,9 +1397,20 @@
                     `;
                 });
 
+                if (positionsWithCandidates === 0) {
+                    voteContent.innerHTML = `
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+                            <i class="fas fa-ban text-4xl text-gray-300 mb-3"></i>
+                            <p class="text-gray-500">There are no positions available for voting.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
                 html += `
+                    <div id="voteError" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm mb-4"></div>
                     <button id="castVoteBtn" class="w-full py-4 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-all shadow-lg text-lg flex items-center justify-center gap-2">
-                        <i class="fas fa-vote-yea"></i> Cast Your Vote (${Object.keys(votes).length}/${POSITIONS.length} selected)
+                        <i class="fas fa-vote-yea"></i> Cast Your Vote (${Object.keys(votes).length}/${positionsWithCandidates} selected)
                     </button>
                 `;
 
@@ -1306,48 +1418,88 @@
 
                 document.querySelectorAll('.vote-option').forEach(btn => {
                     btn.addEventListener('click', function() {
-                        const positionId = this.dataset.position;
-                        const candidateId = this.dataset.candidate;
-                        votes[positionId] = candidateId;
+                        votes[this.dataset.position] = this.dataset.candidate;
                         renderVote();
                     });
                 });
 
-                document.getElementById('castVoteBtn').addEventListener('click', function() {
-                    if (Object.keys(votes).length < POSITIONS.length) {
-                        alert('Please select a candidate for all positions before casting your vote.');
+                document.getElementById('castVoteBtn').addEventListener('click', async function() {
+                    const errorBox = document.getElementById('voteError');
+                    errorBox.classList.add('hidden');
+
+                    const requiredPositions = POSITIONS
+                        .filter(p => CANDIDATES.some(c => c.positionId === p.id))
+                        .map(p => p.id);
+
+                    const missing = requiredPositions.filter(pid => !votes[pid]);
+                    if (missing.length) {
+                        errorBox.textContent = 'Please select a candidate for every position before casting your vote.';
+                        errorBox.classList.remove('hidden');
                         return;
                     }
-                    Object.values(votes).forEach(candidateId => {
-                        tallies[candidateId] = (tallies[candidateId] || 0) + 1;
-                    });
-                    hasVoted = true;
-                    renderVote();
+
+                    this.disabled = true;
+                    this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Submitting your vote…';
+
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/api/elections/vote`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                            body: JSON.stringify({
+                                voterId: registeredVoter.voterId,
+                                votes: votes
+                            })
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok || !data || data.status !== 'success') {
+                            throw new Error((data && data.message) || `Vote submission failed (${res.status})`);
+                        }
+                        hasVoted = true;
+                        renderVote();
+                    } catch (err) {
+                        errorBox.textContent = err.message || 'Vote submission failed. Please try again.';
+                        errorBox.classList.remove('hidden');
+                        this.disabled = false;
+                        this.innerHTML = `<i class="fas fa-vote-yea"></i> Cast Your Vote (${Object.keys(votes).length}/${requiredPositions.length} selected)`;
+                    }
                 });
             }
 
+            // ==================== RENDER: RESULTS ====================
             function renderResults() {
+                if (!CANDIDATES.length) {
+                    resultsContent.innerHTML = `
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+                            <i class="fas fa-chart-bar text-4xl text-gray-300 mb-3"></i>
+                            <p class="text-gray-500">No election results are available yet.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
                 const totalVotesAll = Object.values(tallies).reduce((a, b) => a + b, 0);
                 let html = `
                     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-center mb-8">
                         <i class="fas fa-chart-bar text-emerald-600 text-2xl mb-2"></i>
-                        <h2 class="text-xl font-bold text-gray-900">Sample Election Results</h2>
-                        <p class="text-sm text-gray-500 mt-1">Total votes across all positions: ${totalVotesAll}</p>
+                        <h2 class="text-xl font-bold text-gray-900">Live Election Results</h2>
+                        <p class="text-sm text-gray-500 mt-1">Total votes cast across all positions: ${totalVotesAll}</p>
                     </div>
                 `;
 
                 POSITIONS.forEach(position => {
                     const positionCandidates = CANDIDATES.filter(c => c.positionId === position.id);
+                    if (!positionCandidates.length) return;
+
                     const totalVotes = getTotalVotesForPosition(position.id);
                     const maxVotes = getMaxVotes(position.id);
-                    const leaderId = positionCandidates.reduce((a, b) => (tallies[a.id] || 0) >= (tallies[b.id] || 0) ? a : b).id;
-
+                    const leader = positionCandidates.reduce((a, b) => (tallies[a.id] || 0) >= (tallies[b.id] || 0) ? a : b);
+                    const leaderId = leader.id;
                     const sortedCandidates = [...positionCandidates].sort((a, b) => (tallies[b.id] || 0) - (tallies[a.id] || 0));
 
                     html += `
                         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
                             <div class="bg-gray-50 border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-                                <h3 class="text-lg font-bold text-gray-900">${position.title}</h3>
+                                <h3 class="text-lg font-bold text-gray-900">${escapeHtml(position.title)}</h3>
                                 <span class="text-sm text-gray-500">${totalVotes} total votes</span>
                             </div>
                             <div class="p-6 space-y-4">
@@ -1355,7 +1507,7 @@
                                     const voteCount = tallies[candidate.id] || 0;
                                     const percentage = totalVotes > 0 ? ((voteCount / totalVotes) * 100).toFixed(1) : '0';
                                     const barWidth = maxVotes > 0 ? (voteCount / maxVotes) * 100 : 0;
-                                    const isLeader = candidate.id === leaderId;
+                                    const isLeader = candidate.id === leaderId && voteCount > 0;
                                     return `
                                         <div class="space-y-2">
                                             <div class="flex items-center justify-between">
@@ -1363,11 +1515,11 @@
                                                     ${isLeader ? `
                                                         <div class="leader-trophy"><i class="fas fa-trophy"></i></div>
                                                     ` : `
-                                                        <div class="initials-badge">${getInitials(candidate.name)}</div>
+                                                        <div class="initials-badge">${escapeHtml(getInitials(candidate.name))}</div>
                                                     `}
                                                     <div>
-                                                        <p class="font-bold ${isLeader ? 'text-emerald-700' : 'text-gray-900'}">${candidate.name}</p>
-                                                        <p class="text-xs text-gray-500">${candidate.department.split(' ')[0]}</p>
+                                                        <p class="font-bold ${isLeader ? 'text-emerald-700' : 'text-gray-900'}">${escapeHtml(candidate.name)}</p>
+                                                        <p class="text-xs text-gray-500">${escapeHtml((candidate.department || '').split(' ')[0])}</p>
                                                     </div>
                                                 </div>
                                                 <div class="text-right">
@@ -1389,6 +1541,7 @@
                 resultsContent.innerHTML = html;
             }
 
+            // ==================== TAB SWITCHING ====================
             function switchTab(tabId) {
                 document.querySelectorAll('.election-tab').forEach(tab => {
                     const active = tab.dataset.tab === tabId;
@@ -1412,17 +1565,51 @@
                         panel.classList.add('tab-panel');
                     }
                 });
+
                 if (tabId === 'register') renderRegister();
                 else if (tabId === 'candidates') renderCandidates();
                 else if (tabId === 'vote') renderVote();
-                else if (tabId === 'results') renderResults();
+                else if (tabId === 'results') refreshResults();
+            }
+
+            // Results tab needs a fresh tallies fetch
+            async function refreshResults() {
+                try {
+                    tallies = await fetchElectionTallies();
+                } catch (err) {
+                    resultsContent.innerHTML = '';
+                    showErrorPanel(resultsContent, err.message || 'Could not load results from server.');
+                    return;
+                }
+                renderResults();
             }
 
             document.querySelectorAll('.election-tab').forEach(tab => {
                 tab.addEventListener('click', () => switchTab(tab.dataset.tab));
             });
 
-            switchTab('register');
+            // ==================== BOOTSTRAP ====================
+            (async function initElection() {
+                try {
+                    const [rawData, rawTallies] = await Promise.all([
+                        fetchElectionData(),
+                        fetchElectionTallies().catch(() => ({}))
+                    ]);
+                    mapElectionData(rawData);
+                    tallies = rawTallies || {};
+
+                    if (!POSITIONS.length || !CANDIDATES.length) {
+                        showErrorPanel(registerPanel, 'The election has not been configured on the server yet.');
+                        return;
+                    }
+
+                    electionLoaded = true;
+                    switchTab('register');
+                } catch (err) {
+                    console.error('Election init failed:', err);
+                    showErrorPanel(registerPanel, err.message || 'Could not connect to the election server.');
+                }
+            })();
 
             // Progressive reveal for major content blocks
             const revealTargets = document.querySelectorAll('.hero-content, .election-tabs, #tabContent, .footer-section');
@@ -1459,7 +1646,7 @@
                 });
             });
 
-            console.log('Election page initialized.');
+            console.log('Election page initialized (live server data).');
         });
     </script>
 </body>
