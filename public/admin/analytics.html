@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Messages - NUESA BIU Admin</title>
+    <title>Analytics & Reports - NUESA BIU Admin</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -89,9 +89,9 @@
            ============================================================ */
         @keyframes fadeIn     { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideInUp  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes slideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
         @keyframes scaleIn    { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
         @keyframes spin       { to { transform: rotate(360deg); } }
+        @keyframes toastIn    { from { opacity: 0; transform: translateX(calc(100% + 40px)); } to { opacity: 1; transform: translateX(0); } }
 
         /* ============================================================
            LOADING
@@ -135,10 +135,9 @@
             max-width: 380px; z-index: 9998;
             border: 1px solid var(--border);
             border-left: 3px solid var(--info);
-            transform: translateX(calc(100% + 40px));
-            transition: transform var(--dur-slow) var(--ease-out);
+            animation: toastIn var(--dur-slow) var(--ease-out) forwards;
         }
-        .toast.show { transform: translateX(0); }
+        .toast.toast-out { transform: translateX(calc(100% + 40px)); transition: transform var(--dur) var(--ease); }
         .toast-success { border-left-color: var(--success); }
         .toast-error   { border-left-color: var(--danger); }
         .toast-warning { border-left-color: var(--warning); }
@@ -161,7 +160,7 @@
         /* ============================================================
            SHELL
            ============================================================ */
-        .dashboard-container { display: flex; min-height: 100vh; }
+        .dashboard-container { display: flex; min-height: 100vh; animation: fadeIn 400ms var(--ease-out); }
 
         /* ============================================================
            SIDEBAR
@@ -173,11 +172,8 @@
             position: fixed; top: 0; left: 0; bottom: 0;
             z-index: 40;
             transition: transform var(--dur) var(--ease);
-            overflow-y: auto;
-            overflow-x: hidden;
+            overflow: hidden;
         }
-        .sidebar::-webkit-scrollbar { width: 4px; }
-        .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
         @media (max-width: 900px) {
             .sidebar { transform: translateX(-100%); }
             .sidebar.open { transform: translateX(0); box-shadow: var(--shadow-xl); }
@@ -187,6 +183,7 @@
             padding: 24px 20px 20px;
             display: flex; align-items: center; gap: 12px;
             border-bottom: 1px solid rgba(255,255,255,0.08);
+            flex-shrink: 0;
         }
         .sidebar-logo {
             width: 44px; height: 44px;
@@ -197,7 +194,9 @@
             font-weight: 900; font-size: 1.25rem;
             box-shadow: 0 4px 12px rgba(213, 168, 59, 0.35);
             flex-shrink: 0;
+            transition: transform var(--dur-fast) var(--ease);
         }
+        .sidebar-header:hover .sidebar-logo { transform: rotate(-8deg) scale(1.05); }
         .sidebar-title {
             font-size: 0.9375rem; font-weight: 800;
             color: var(--text-invert);
@@ -214,9 +213,17 @@
         }
 
         .nav {
-            padding: 16px 12px; flex: 1;
+            padding: 16px 12px;
+            flex: 1 1 auto;
+            overflow-y: auto;
+            min-height: 0;
             display: flex; flex-direction: column; gap: 3px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.15) transparent;
         }
+        .nav::-webkit-scrollbar { width: 5px; }
+        .nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 5px; }
+
         .nav-section-label {
             font-family: var(--font-mono);
             font-size: 0.625rem; font-weight: 700;
@@ -233,15 +240,16 @@
             font-size: 0.875rem; font-weight: 500;
             transition: all var(--dur-fast) var(--ease);
             position: relative;
+            flex-shrink: 0;
         }
         .nav-item i {
             width: 18px; font-size: 0.9375rem;
             color: rgba(255,255,255,0.55);
-            transition: color var(--dur-fast) var(--ease);
+            transition: color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
             flex-shrink: 0;
         }
-        .nav-item:hover { background: rgba(255,255,255,0.06); color: var(--text-invert); }
-        .nav-item:hover i { color: var(--accent); }
+        .nav-item:hover { background: rgba(255,255,255,0.06); color: var(--text-invert); transform: translateX(2px); }
+        .nav-item:hover i { color: var(--accent); transform: scale(1.08); }
         .nav-item.active { background: var(--primary-soft); color: var(--text-invert); font-weight: 600; }
         .nav-item.active::before {
             content: '';
@@ -254,40 +262,10 @@
         }
         .nav-item.active i { color: var(--accent); }
 
-        /* Unread badge on nav */
-        .nav-badge {
-            margin-left: auto;
-            background: var(--accent);
-            color: var(--primary);
-            font-family: var(--font-mono);
-            font-size: 0.625rem;
-            font-weight: 800;
-            padding: 2px 6px;
-            border-radius: 999px;
-            min-width: 18px;
-            text-align: center;
-            line-height: 14px;
-        }
-
         .sidebar-footer {
             padding: 16px 12px 20px;
             border-top: 1px solid rgba(255,255,255,0.08);
-        }
-        .user-quick-info {
-            padding: 12px;
-            background: rgba(255,255,255,0.04);
-            border-radius: var(--r);
-            margin-bottom: 10px;
-        }
-        .user-quick-info .user-name {
-            font-weight: 700; color: var(--text-invert);
-            font-size: 0.875rem; margin-bottom: 2px;
-        }
-        .user-quick-info .user-role {
-            font-family: var(--font-mono);
-            font-size: 0.6875rem; font-weight: 600;
-            color: var(--accent);
-            letter-spacing: 0.05em; text-transform: uppercase;
+            flex-shrink: 0;
         }
         .logout-btn {
             width: 100%;
@@ -305,6 +283,7 @@
             background: var(--danger);
             color: var(--text-invert);
             border-color: var(--danger);
+            transform: translateY(-1px);
         }
 
         /* ============================================================
@@ -344,7 +323,10 @@
             display: flex; align-items: center; justify-content: space-between;
             position: sticky; top: 0; z-index: 30;
             flex-shrink: 0;
+            transition: box-shadow var(--dur) var(--ease);
         }
+        .header.scrolled { box-shadow: var(--shadow-sm); }
+
         .mobile-menu-btn {
             display: none;
             background: none; border: none;
@@ -357,18 +339,10 @@
         .mobile-menu-btn:hover { background: var(--primary-tint); color: var(--primary); }
         @media (max-width: 900px) {
             .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+            .header { padding: 0 16px; }
         }
 
-        .header-breadcrumb {
-            display: flex; align-items: center; gap: 8px;
-            font-size: 0.8125rem;
-            color: var(--text-muted);
-            font-weight: 500;
-        }
-        .header-breadcrumb i { font-size: 0.6875rem; color: var(--text-dim); }
-        .header-breadcrumb .current { color: var(--text); font-weight: 600; }
-
-        .header-actions { display: flex; align-items: center; gap: 8px; }
+        .header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 
         .notification-btn {
             position: relative;
@@ -420,6 +394,7 @@
             color: var(--text-dim);
             text-transform: uppercase; letter-spacing: 0.08em;
         }
+        @media (max-width: 640px) { .user-details { display: none; } }
 
         /* ============================================================
            MAIN AREA
@@ -475,9 +450,8 @@
         .btn-secondary:hover { background: var(--surface-muted); }
         .btn-gold { background: var(--accent); color: var(--primary); }
         .btn-gold:hover { background: var(--accent-soft); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(213,168,59,0.3); }
-        .btn-danger { background: var(--danger); color: var(--text-invert); }
-        .btn-danger:hover { filter: brightness(0.92); }
         .btn-sm { padding: 6px 12px; font-size: 0.75rem; }
+        .btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
         .icon-btn {
             width: 32px; height: 32px;
@@ -491,14 +465,133 @@
             transition: all var(--dur-fast) var(--ease);
         }
         .icon-btn:hover { background: var(--primary-tint); color: var(--primary); border-color: var(--border); }
-        .icon-btn.danger:hover { background: var(--danger-tint); color: var(--danger); border-color: var(--danger); }
 
         /* ============================================================
-           STATS GRID
+           FILTER BAR
+           ============================================================ */
+        .filter-bar {
+            background: var(--surface);
+            border-radius: var(--r-lg);
+            border: 1px solid var(--border);
+            padding: 14px 16px;
+            margin-bottom: 20px;
+            display: flex; flex-wrap: wrap;
+            gap: 10px; align-items: center;
+            animation: slideInUp var(--dur) var(--ease) both;
+        }
+        .filter-bar-group {
+            display: flex; align-items: center; gap: 6px;
+            flex-wrap: wrap;
+        }
+        .date-chip {
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--dur-fast) var(--ease);
+            white-space: nowrap;
+        }
+        .date-chip:hover { border-color: var(--accent); color: var(--text); }
+        .date-chip.active {
+            background: var(--primary);
+            color: var(--text-invert);
+            border-color: var(--primary);
+        }
+        .filter-bar select {
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            border-radius: var(--r-sm);
+            font-size: 0.75rem;
+            font-family: inherit;
+            font-weight: 600;
+            background: var(--surface);
+            color: var(--text);
+            cursor: pointer;
+        }
+        .filter-bar select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(213, 168, 59, 0.12);
+        }
+        .filter-bar .custom-range {
+            display: none;
+            gap: 6px;
+            align-items: center;
+        }
+        .filter-bar .custom-range.active { display: flex; }
+        .filter-bar input[type="date"] {
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            border-radius: var(--r-sm);
+            font-size: 0.75rem;
+            font-family: inherit;
+            background: var(--surface);
+            color: var(--text);
+        }
+        .filter-bar input[type="date"]:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(213, 168, 59, 0.12);
+        }
+
+        /* ============================================================
+           ANALYTICS NAV TABS
+           ============================================================ */
+        .analytics-tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--surface);
+            padding: 6px;
+            border-radius: var(--r-lg);
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+            overflow-x: auto;
+            animation: slideInUp var(--dur) var(--ease) both;
+            scrollbar-width: thin;
+        }
+        .analytics-tabs::-webkit-scrollbar { height: 4px; }
+        .analytics-tabs::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        .analytics-tab {
+            padding: 8px 14px;
+            background: transparent;
+            border: none;
+            border-radius: var(--r);
+            font-family: inherit;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .analytics-tab i { font-size: 0.75rem; }
+        .analytics-tab:hover { background: var(--surface-muted); color: var(--text); }
+        .analytics-tab.active {
+            background: var(--primary);
+            color: var(--text-invert);
+        }
+        .analytics-tab.active i { color: var(--accent); }
+
+        /* ============================================================
+           PANELS
+           ============================================================ */
+        .analytics-panel { display: none; animation: fadeIn var(--dur) var(--ease); }
+        .analytics-panel.active { display: block; }
+
+        /* ============================================================
+           STATS CARDS
            ============================================================ */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 14px;
             margin-bottom: 24px;
         }
@@ -507,22 +600,21 @@
             padding: 18px;
             border-radius: var(--r-lg);
             border: 1px solid var(--border);
-            cursor: pointer;
-            transition: all var(--dur) var(--ease);
             animation: slideInUp var(--dur) var(--ease) both;
         }
         .stat-card:nth-child(1) { animation-delay: 40ms; }
         .stat-card:nth-child(2) { animation-delay: 80ms; }
         .stat-card:nth-child(3) { animation-delay: 120ms; }
         .stat-card:nth-child(4) { animation-delay: 160ms; }
-        .stat-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow-md); }
-        .stat-card.active { border-color: var(--accent); background: var(--accent-tint); }
+        .stat-card:nth-child(5) { animation-delay: 200ms; }
+        .stat-card:nth-child(6) { animation-delay: 240ms; }
+
         .stat-icon {
-            width: 36px; height: 36px;
+            width: 38px; height: 38px;
             border-radius: var(--r);
             display: flex; align-items: center; justify-content: center;
-            font-size: 0.875rem;
-            margin-bottom: 10px;
+            font-size: 0.9375rem;
+            margin-bottom: 12px;
         }
         .stat-icon.icon-green  { background: var(--primary-tint); color: var(--primary); }
         .stat-icon.icon-gold   { background: var(--accent-tint);  color: var(--text-gold); }
@@ -537,430 +629,194 @@
         }
         .stat-label {
             color: var(--text-muted);
-            font-size: 0.75rem; font-weight: 600;
+            font-size: 0.8125rem; font-weight: 600;
+            margin-bottom: 2px;
+        }
+        .stat-change {
+            font-family: var(--font-mono);
+            font-size: 0.6875rem;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+        .stat-change.positive { color: var(--success); }
+        .stat-change.negative { color: var(--danger); }
+        .stat-change.neutral { color: var(--text-dim); }
+
+        /* ============================================================
+           CARDS
+           ============================================================ */
+        .content-card {
+            background: var(--surface);
+            border-radius: var(--r-lg);
+            border: 1px solid var(--border);
+            padding: 22px;
+            margin-bottom: 20px;
+            animation: slideInUp var(--dur) var(--ease) both;
+        }
+        .card-header {
+            display: flex; justify-content: space-between;
+            align-items: center; margin-bottom: 18px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap; gap: 12px;
+        }
+        .card-title {
+            font-size: 1rem; font-weight: 700;
+            color: var(--text);
+            letter-spacing: -0.01em;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .card-title i { color: var(--accent); }
+        .card-meta {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            font-family: var(--font-mono);
+        }
+        .card-body { }
+
+        /* ============================================================
+           CHART
+           ============================================================ */
+        .chart-container {
+            width: 100%;
+            height: 260px;
+            position: relative;
+        }
+        .chart-svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+        .chart-empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 260px;
+            color: var(--text-dim);
+            font-size: 0.8125rem;
+            font-style: italic;
+            border: 1px dashed var(--border);
+            border-radius: var(--r);
         }
 
         /* ============================================================
-           MESSAGES SHELL — inbox + reader
+           DATA TABLE
            ============================================================ */
-        .messages-shell {
-            display: grid;
-            grid-template-columns: 400px 1fr;
-            gap: 16px;
-            height: calc(100vh - 320px);
-            min-height: 500px;
+        .data-table {
+            width: 100%; border-collapse: collapse;
+            font-size: 0.8125rem;
         }
-        @media (max-width: 1100px) {
-            .messages-shell { grid-template-columns: 1fr; height: auto; }
-        }
-
-        /* Inbox panel */
-        .inbox-panel {
-            background: var(--surface);
-            border-radius: var(--r-lg);
-            border: 1px solid var(--border);
-            display: flex; flex-direction: column;
-            overflow: hidden;
-            min-height: 0;
-        }
-        .inbox-toolbar {
-            padding: 14px;
-            border-bottom: 1px solid var(--border);
+        .data-table thead {
             background: var(--surface-muted);
-            flex-shrink: 0;
         }
-        .inbox-search {
-            position: relative;
-            margin-bottom: 10px;
-        }
-        .inbox-search i {
-            position: absolute;
-            left: 12px; top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-dim);
-            font-size: 0.8125rem;
-            pointer-events: none;
-        }
-        .inbox-search input {
-            width: 100%;
-            padding: 9px 12px 9px 34px;
-            border: 1px solid var(--border);
-            border-radius: var(--r);
-            font-size: 0.8125rem;
-            font-family: inherit;
-            background: var(--surface);
-            color: var(--text);
-            transition: all var(--dur-fast) var(--ease);
-        }
-        .inbox-search input:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(213, 168, 59, 0.12);
-        }
-        .inbox-categories {
-            display: flex; gap: 4px; flex-wrap: wrap;
-        }
-        .category-tab {
-            padding: 5px 10px;
-            background: transparent;
-            border: 1px solid var(--border);
-            border-radius: 999px;
-            font-size: 0.6875rem;
-            font-weight: 600;
-            color: var(--text-muted);
-            cursor: pointer;
-            transition: all var(--dur-fast) var(--ease);
-            display: inline-flex; align-items: center; gap: 4px;
-        }
-        .category-tab:hover { border-color: var(--accent); color: var(--text); }
-        .category-tab.active {
-            background: var(--primary);
-            color: var(--text-invert);
-            border-color: var(--primary);
-        }
-        .category-tab .cat-count {
-            background: rgba(255,255,255,0.15);
-            padding: 0 5px;
-            border-radius: 999px;
-            font-size: 0.625rem;
-            min-width: 16px;
-            text-align: center;
-            line-height: 14px;
-        }
-        .category-tab:not(.active) .cat-count {
-            background: var(--surface-muted);
-            color: var(--text-muted);
-        }
-
-        .inbox-list {
-            flex: 1;
-            overflow-y: auto;
-            min-height: 0;
-        }
-        .inbox-list::-webkit-scrollbar { width: 4px; }
-        .inbox-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-
-        .message-item {
-            padding: 14px 16px;
-            border-bottom: 1px solid var(--border);
-            cursor: pointer;
-            transition: all var(--dur-fast) var(--ease);
-            position: relative;
-            display: flex; flex-direction: column; gap: 4px;
-        }
-        .message-item:hover { background: var(--surface-muted); }
-        .message-item.unread {
-            background: rgba(213, 168, 59, 0.05);
-        }
-        .message-item.unread::before {
-            content: '';
-            position: absolute;
-            left: 0; top: 0; bottom: 0;
-            width: 3px;
-            background: var(--accent);
-        }
-        .message-item.active {
-            background: var(--accent-tint);
-            border-left: 3px solid var(--accent);
-        }
-        .message-item-top {
-            display: flex; justify-content: space-between;
-            align-items: center; gap: 8px;
-        }
-        .message-sender {
-            font-weight: 700;
-            font-size: 0.8125rem;
-            color: var(--text);
-            display: flex; align-items: center; gap: 6px;
-            min-width: 0;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .message-item.unread .message-sender::before {
-            content: '';
-            width: 6px; height: 6px;
-            background: var(--accent);
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-        .message-time {
+        .data-table th {
+            padding: 10px 14px;
+            text-align: left;
             font-family: var(--font-mono);
+            font-weight: 700;
             font-size: 0.625rem;
-            color: var(--text-dim);
-            flex-shrink: 0;
-        }
-        .message-subject {
-            font-size: 0.8125rem;
-            font-weight: 600;
-            color: var(--text);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-bottom: 2px;
-        }
-        .message-item.unread .message-subject { font-weight: 700; }
-        .message-preview {
-            font-size: 0.75rem;
             color: var(--text-muted);
-            line-height: 1.4;
-            display: -webkit-box;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
         }
-        .message-footer {
-            display: flex; justify-content: space-between;
-            align-items: center; margin-top: 4px;
+        .data-table td {
+            padding: 11px 14px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text);
+            vertical-align: middle;
         }
-        .status-badge {
+        .data-table tbody tr:last-child td { border-bottom: none; }
+        .data-table tbody tr:hover { background: var(--surface-muted); }
+        .data-table .cell-mono { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); }
+        .data-table .cell-right { text-align: right; }
+        .data-table .cell-center { text-align: center; }
+        .data-table .empty-row td {
+            text-align: center;
+            padding: 40px 20px !important;
+            color: var(--text-dim);
+            font-style: italic;
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-flex; align-items: center; gap: 4px;
             padding: 2px 8px;
             border-radius: 999px;
-            font-size: 0.5625rem;
-            font-weight: 700;
             font-family: var(--font-mono);
+            font-size: 0.625rem;
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            display: inline-flex; align-items: center; gap: 3px;
         }
-        .badge-success  { background: var(--success-tint); color: var(--success); }
-        .badge-warning  { background: var(--warning-tint); color: var(--warning); }
-        .badge-danger   { background: var(--danger-tint);  color: var(--danger); }
-        .badge-info     { background: var(--info-tint);    color: var(--info); }
-        .badge-gold     { background: var(--accent-tint);  color: var(--text-gold); }
-        .badge-purple   { background: var(--purple-tint);  color: var(--purple); }
-        .badge-muted    { background: var(--surface-muted); color: var(--text-muted); }
+        .badge-success { background: var(--success-tint); color: var(--success); }
+        .badge-warning { background: var(--warning-tint); color: var(--warning); }
+        .badge-danger  { background: var(--danger-tint);  color: var(--danger); }
+        .badge-info    { background: var(--info-tint);    color: var(--info); }
+        .badge-gold    { background: var(--accent-tint);  color: var(--text-gold); }
+        .badge-purple  { background: var(--purple-tint);  color: var(--purple); }
+        .badge-muted   { background: var(--surface-muted); color: var(--text-muted); }
 
-        /* Reader panel */
-        .reader-panel {
-            background: var(--surface);
-            border-radius: var(--r-lg);
-            border: 1px solid var(--border);
-            display: flex; flex-direction: column;
+        /* Progress bar */
+        .progress-bar {
+            height: 6px;
+            background: var(--surface-muted);
+            border-radius: 999px;
             overflow: hidden;
-            min-height: 0;
+            min-width: 100px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 999px;
+            transition: width var(--dur-slow) var(--ease);
         }
 
-        .reader-empty {
-            flex: 1;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            padding: 40px 20px;
+        /* Two-column split */
+        .split-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 900px) { .split-grid { grid-template-columns: 1fr; } }
+
+        /* System status list */
+        .status-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.8125rem;
+        }
+        .status-item:last-child { border-bottom: none; }
+        .status-label { color: var(--text-muted); font-weight: 500; }
+        .status-value { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+        .status-dot.warning { background: var(--warning); }
+        .status-dot.danger { background: var(--danger); }
+        .status-dot.offline { background: var(--text-dim); }
+
+        /* Empty panel */
+        .panel-empty {
             text-align: center;
+            padding: 60px 20px;
             color: var(--text-muted);
         }
-        .reader-empty-icon {
-            width: 80px; height: 80px;
+        .panel-empty-icon {
+            width: 64px; height: 64px;
             background: var(--primary-tint);
             color: var(--primary);
             border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            font-size: 2rem;
-            margin-bottom: 20px;
+            font-size: 1.5rem;
+            margin: 0 auto 16px;
         }
-        .reader-empty h3 {
-            font-size: 1.0625rem;
-            font-weight: 700;
-            color: var(--text);
-            margin-bottom: 6px;
-        }
-        .reader-empty p {
-            font-size: 0.8125rem;
-            max-width: 320px;
-        }
-
-        .reader-header {
-            padding: 20px 24px;
-            border-bottom: 1px solid var(--border);
-            background: var(--surface-muted);
-            flex-shrink: 0;
-        }
-        .reader-subject {
-            font-size: 1.125rem;
-            font-weight: 800;
-            color: var(--text);
-            letter-spacing: -0.01em;
-            margin-bottom: 8px;
-            line-height: 1.3;
-        }
-        .reader-meta {
-            display: flex; gap: 16px; flex-wrap: wrap;
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-        .reader-meta-item {
-            display: flex; align-items: center; gap: 6px;
-        }
-        .reader-meta-item i { color: var(--accent); font-size: 0.6875rem; }
-        .reader-meta-item strong { color: var(--text); font-weight: 600; }
-
-        .reader-body {
-            flex: 1;
-            overflow-y: auto;
-            padding: 24px;
-            min-height: 0;
-        }
-        .reader-body::-webkit-scrollbar { width: 4px; }
-        .reader-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-
-        .message-bubble {
-            padding: 16px 18px;
-            background: var(--surface-muted);
-            border-radius: var(--r-lg);
-            font-size: 0.875rem;
-            line-height: 1.6;
-            color: var(--text);
-            white-space: pre-wrap;
-            margin-bottom: 20px;
-        }
-
-        /* Replies thread */
-        .thread-label {
-            font-family: var(--font-mono);
-            font-size: 0.625rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: var(--text-dim);
-            margin: 24px 0 12px;
-            display: flex; align-items: center; gap: 8px;
-        }
-        .thread-label::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--border);
-        }
-
-        .reply-bubble {
-            padding: 14px 16px;
-            background: var(--primary-tint);
-            border-left: 3px solid var(--primary);
-            border-radius: var(--r);
-            font-size: 0.8125rem;
-            line-height: 1.55;
-            color: var(--text);
-            margin-bottom: 10px;
-        }
-        .reply-meta {
-            font-family: var(--font-mono);
-            font-size: 0.625rem;
-            color: var(--text-dim);
-            margin-bottom: 6px;
-        }
-
-        .note-bubble {
-            padding: 14px 16px;
-            background: var(--accent-tint);
-            border-left: 3px solid var(--accent);
-            border-radius: var(--r);
-            font-size: 0.8125rem;
-            line-height: 1.55;
-            color: var(--text);
-            margin-bottom: 10px;
-        }
-        .note-meta {
-            font-family: var(--font-mono);
-            font-size: 0.625rem;
-            color: var(--text-gold);
-            font-weight: 700;
-            margin-bottom: 6px;
-            display: flex; align-items: center; gap: 4px;
-        }
-
-        /* Reply composer */
-        .reader-composer {
-            border-top: 1px solid var(--border);
-            padding: 16px 24px;
-            background: var(--surface-muted);
-            flex-shrink: 0;
-        }
-        .composer-tabs {
-            display: flex; gap: 4px;
-            margin-bottom: 10px;
-        }
-        .composer-tab {
-            padding: 5px 12px;
-            background: transparent;
-            border: 1px solid var(--border);
-            border-radius: var(--r-sm);
-            font-size: 0.6875rem;
-            font-weight: 600;
-            color: var(--text-muted);
-            cursor: pointer;
-            transition: all var(--dur-fast) var(--ease);
-        }
-        .composer-tab:hover { border-color: var(--accent); color: var(--text); }
-        .composer-tab.active {
-            background: var(--primary);
-            color: var(--text-invert);
-            border-color: var(--primary);
-        }
-        .composer-textarea {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid var(--border);
-            border-radius: var(--r);
-            font-size: 0.875rem;
-            font-family: inherit;
-            background: var(--surface);
-            color: var(--text);
-            resize: vertical;
-            min-height: 60px;
-            max-height: 150px;
-            transition: all var(--dur-fast) var(--ease);
-        }
-        .composer-textarea:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(213, 168, 59, 0.12);
-        }
-        .composer-actions {
-            display: flex; justify-content: space-between;
-            align-items: center;
-            margin-top: 10px;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        .composer-actions .action-buttons { display: flex; gap: 6px; flex-wrap: wrap; }
-
-        /* Reader action bar */
-        .reader-actions {
-            display: flex; gap: 4px; flex-wrap: wrap;
-            padding: 12px 24px;
-            border-bottom: 1px solid var(--border);
-            background: var(--surface);
-            flex-shrink: 0;
-        }
-        .reader-action-btn {
-            padding: 6px 10px;
-            background: transparent;
-            border: 1px solid var(--border);
-            border-radius: var(--r-sm);
-            font-size: 0.6875rem;
-            font-weight: 600;
-            color: var(--text-muted);
-            cursor: pointer;
-            transition: all var(--dur-fast) var(--ease);
-            display: inline-flex; align-items: center; gap: 5px;
-        }
-        .reader-action-btn:hover {
-            background: var(--surface-muted);
-            color: var(--text);
-            border-color: var(--border-strong);
-        }
-        .reader-action-btn.danger:hover {
-            background: var(--danger-tint);
-            color: var(--danger);
-            border-color: var(--danger);
-        }
-
-        /* Empty inbox */
-        .inbox-empty {
-            padding: 40px 20px;
-            text-align: center;
-            color: var(--text-dim);
-            font-size: 0.8125rem;
-        }
+        .panel-empty h3 { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+        .panel-empty p { font-size: 0.8125rem; }
 
         /* ============================================================
            MODAL
@@ -976,29 +832,23 @@
             transition: opacity var(--dur) var(--ease), visibility var(--dur);
         }
         .modal.active { opacity: 1; visibility: visible; }
-
         .modal-content {
             background: var(--surface);
             border-radius: var(--r-lg);
-            width: 100%; max-width: 500px;
+            width: 100%; max-width: 560px;
             max-height: 92vh; overflow-y: auto;
-            transform: translateY(-12px) scale(0.98);
+            transform: translateY(-12px) scale(0.96);
             transition: transform var(--dur) var(--ease-out);
             box-shadow: var(--shadow-xl);
         }
         .modal.active .modal-content { transform: translateY(0) scale(1); }
-
         .modal-header {
             padding: 18px 22px;
             border-bottom: 1px solid var(--border);
             display: flex; justify-content: space-between; align-items: center;
-            position: sticky; top: 0;
-            background: var(--surface);
-            z-index: 1;
         }
         .modal-title {
             font-size: 1rem; font-weight: 700;
-            color: var(--text);
             display: flex; align-items: center; gap: 10px;
         }
         .modal-title i { color: var(--accent); }
@@ -1015,24 +865,51 @@
             padding: 14px 22px;
             border-top: 1px solid var(--border);
             display: flex; gap: 10px; justify-content: flex-end;
-            position: sticky; bottom: 0;
-            background: var(--surface);
         }
+
+        /* Export option cards */
+        .export-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .export-option {
+            padding: 14px;
+            border: 2px solid var(--border);
+            border-radius: var(--r);
+            background: var(--surface);
+            cursor: pointer;
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .export-option:hover { border-color: var(--accent); background: var(--accent-tint); }
+        .export-option.selected { border-color: var(--primary); background: var(--primary-tint); }
+        .export-option-title { font-weight: 700; font-size: 0.8125rem; margin-bottom: 2px; }
+        .export-option-sub { font-size: 0.6875rem; color: var(--text-muted); }
 
         /* ============================================================
            RESPONSIVE
            ============================================================ */
         @media (max-width: 640px) {
             .page-title { font-size: 1.5rem; }
-            .stat-value { font-size: 1.375rem; }
             .user-details { display: none; }
             .header { padding: 0 16px; }
-            .header-breadcrumb { display: none; }
             .page-header-actions { width: 100%; }
             .page-header-actions .btn { flex: 1; justify-content: center; }
-            .messages-shell { height: auto; }
-            .inbox-panel { max-height: 400px; }
-            .reader-panel { min-height: 400px; }
+            .split-grid { grid-template-columns: 1fr; }
+            .export-options { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 480px) {
+            .modal-footer { flex-direction: column; }
+            .modal-footer .btn { width: 100%; justify-content: center; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
         }
     </style>
 </head>
@@ -1073,10 +950,6 @@
             </nav>
 
             <div class="sidebar-footer">
-                <div class="user-quick-info">
-                    <div class="user-name" id="sidebarUserName">Administrator</div>
-                    <div class="user-role" id="sidebarUserRole">Admin</div>
-                </div>
                 <button class="logout-btn" id="logoutBtn" type="button">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
@@ -1087,17 +960,10 @@
         <div class="mobile-overlay" id="mobileOverlay"></div>
 
         <div class="main-content">
-            <header class="header">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <button class="mobile-menu-btn" id="mobileMenuToggle" type="button" aria-label="Toggle menu">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    <div class="header-breadcrumb">
-                        <span>Admin</span>
-                        <i class="fas fa-chevron-right"></i>
-                        <span class="current">Messages</span>
-                    </div>
-                </div>
+            <header class="header" id="mainHeader">
+                <button class="mobile-menu-btn" id="mobileMenuToggle" type="button" aria-label="Toggle menu">
+                    <i class="fas fa-bars"></i>
+                </button>
                 <div class="header-actions">
                     <button class="notification-btn" id="notificationBtn" type="button" aria-label="Notifications">
                         <i class="far fa-bell"></i>
@@ -1117,89 +983,657 @@
                 <!-- Page header -->
                 <div class="page-header">
                     <div>
-                        <h1 class="page-title">Messages</h1>
-                        <p class="page-subtitle">Manage enquiries and website communications.</p>
+                        <h1 class="page-title">Analytics &amp; Reports</h1>
+                        <p class="page-subtitle">Monitor website performance, student engagement and NUESA activities.</p>
                     </div>
                     <div class="page-header-actions">
-                        <button class="btn btn-secondary" id="exportBtn">
-                            <i class="fas fa-download"></i> Export
-                        </button>
-                        <button class="btn btn-secondary" id="refreshBtn">
-                            <i class="fas fa-sync-alt"></i> Refresh
+                        <span class="badge badge-gold" id="rangeBadge" style="padding: 8px 14px; font-size: 0.75rem;">
+                            <i class="fas fa-calendar"></i> <span id="rangeBadgeText">Last 30 Days</span>
+                        </span>
+                        <button class="btn btn-gold" id="exportBtn">
+                            <i class="fas fa-download"></i> Export Report
                         </button>
                     </div>
                 </div>
 
-                <!-- Stats -->
-                <div class="stats-grid">
-                    <div class="stat-card" data-filter="all">
-                        <div class="stat-icon icon-green"><i class="fas fa-inbox"></i></div>
-                        <div class="stat-value" id="statAll">0</div>
-                        <div class="stat-label">All Messages</div>
+                <!-- Filter bar -->
+                <div class="filter-bar">
+                    <div class="filter-bar-group">
+                        <button class="date-chip" data-range="today">Today</button>
+                        <button class="date-chip" data-range="7d">Last 7 Days</button>
+                        <button class="date-chip active" data-range="30d">Last 30 Days</button>
+                        <button class="date-chip" data-range="90d">Last 90 Days</button>
+                        <button class="date-chip" data-range="year">This Year</button>
+                        <button class="date-chip" data-range="custom">Custom</button>
                     </div>
-                    <div class="stat-card" data-filter="unread">
-                        <div class="stat-icon icon-gold"><i class="fas fa-envelope"></i></div>
-                        <div class="stat-value" id="statUnread">0</div>
-                        <div class="stat-label">Unread</div>
+                    <div class="custom-range" id="customRange">
+                        <input type="date" id="customFrom">
+                        <span style="color: var(--text-dim); font-size: 0.75rem;">to</span>
+                        <input type="date" id="customTo">
+                        <button class="btn btn-secondary btn-sm" id="applyCustomRange">Apply</button>
                     </div>
-                    <div class="stat-card" data-filter="replied">
-                        <div class="stat-icon icon-blue"><i class="fas fa-reply"></i></div>
-                        <div class="stat-value" id="statReplied">0</div>
-                        <div class="stat-label">Replied</div>
-                    </div>
-                    <div class="stat-card" data-filter="archived">
-                        <div class="stat-icon icon-purple"><i class="fas fa-archive"></i></div>
-                        <div class="stat-value" id="statArchived">0</div>
-                        <div class="stat-label">Archived</div>
+                    <div class="filter-bar-group" style="margin-left: auto;">
+                        <select id="filterSession">
+                            <option value="">All Sessions</option>
+                        </select>
+                        <select id="filterDepartment">
+                            <option value="">All Departments</option>
+                            <option value="Electrical/Electronics Engineering">Electrical/Electronics</option>
+                            <option value="Mechanical Engineering">Mechanical</option>
+                            <option value="Civil Engineering">Civil</option>
+                        </select>
+                        <select id="filterLevel">
+                            <option value="">All Levels</option>
+                            <option value="100L">100L</option>
+                            <option value="200L">200L</option>
+                            <option value="300L">300L</option>
+                            <option value="400L">400L</option>
+                            <option value="500L">500L</option>
+                        </select>
                     </div>
                 </div>
 
-                <!-- Messages shell -->
-                <div class="messages-shell">
-                    <!-- Inbox panel -->
-                    <div class="inbox-panel">
-                        <div class="inbox-toolbar">
-                            <div class="inbox-search">
-                                <i class="fas fa-search"></i>
-                                <input type="text" id="searchInput" placeholder="Search messages…">
-                            </div>
-                            <div class="inbox-categories" id="categoryTabs">
-                                <button class="category-tab active" data-category="all">
-                                    All <span class="cat-count" id="countAll">0</span>
-                                </button>
-                                <button class="category-tab" data-category="unread">
-                                    Unread <span class="cat-count" id="countUnread">0</span>
-                                </button>
-                                <button class="category-tab" data-category="read">
-                                    Read <span class="cat-count" id="countRead">0</span>
-                                </button>
-                                <button class="category-tab" data-category="replied">
-                                    Replied <span class="cat-count" id="countReplied">0</span>
-                                </button>
-                                <button class="category-tab" data-category="archived">
-                                    Archived <span class="cat-count" id="countArchived">0</span>
-                                </button>
-                                <button class="category-tab" data-category="spam">
-                                    Spam <span class="cat-count" id="countSpam">0</span>
-                                </button>
-                            </div>
+                <!-- Analytics navigation tabs -->
+                <div class="analytics-tabs" id="analyticsTabs">
+                    <button class="analytics-tab active" data-panel="overview"><i class="fas fa-chart-pie"></i> Overview</button>
+                    <button class="analytics-tab" data-panel="website"><i class="fas fa-globe"></i> Website</button>
+                    <button class="analytics-tab" data-panel="members"><i class="fas fa-users"></i> Members</button>
+                    <button class="analytics-tab" data-panel="course-reps"><i class="fas fa-chalkboard-teacher"></i> Course Reps</button>
+                    <button class="analytics-tab" data-panel="events"><i class="far fa-calendar-alt"></i> Events</button>
+                    <button class="analytics-tab" data-panel="resources"><i class="fas fa-book"></i> Resources</button>
+                    <button class="analytics-tab" data-panel="news"><i class="far fa-newspaper"></i> News</button>
+                    <button class="analytics-tab" data-panel="admissions"><i class="fas fa-user-graduate"></i> Admissions</button>
+                    <button class="analytics-tab" data-panel="messages"><i class="far fa-comment-alt"></i> Messages</button>
+                    <button class="analytics-tab" data-panel="media"><i class="far fa-images"></i> Media</button>
+                    <button class="analytics-tab" data-panel="admin"><i class="fas fa-user-shield"></i> Admin Activity</button>
+                    <button class="analytics-tab" data-panel="system"><i class="fas fa-server"></i> System</button>
+                </div>
+
+                <!-- ==================== OVERVIEW PANEL ==================== -->
+                <div class="analytics-panel active" id="panel-overview">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon icon-green"><i class="fas fa-globe"></i></div>
+                            <div class="stat-value" id="ovVisitors">—</div>
+                            <div class="stat-label">Website Visitors</div>
+                            <div class="stat-change" id="ovVisitorsChange"></div>
                         </div>
-                        <div class="inbox-list" id="inboxList">
-                            <div class="inbox-empty">
-                                <i class="fas fa-circle-notch fa-spin" style="font-size: 1.5rem; margin-bottom: 8px;"></i>
-                                <div>Loading messages…</div>
-                            </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-gold"><i class="fas fa-user-tie"></i></div>
+                            <div class="stat-value" id="ovMembers">—</div>
+                            <div class="stat-label">Office Holders</div>
+                            <div class="stat-change" id="ovMembersChange"></div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-blue"><i class="fas fa-book"></i></div>
+                            <div class="stat-value" id="ovResources">—</div>
+                            <div class="stat-label">Published Resources</div>
+                            <div class="stat-change" id="ovResourcesChange"></div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-purple"><i class="fas fa-download"></i></div>
+                            <div class="stat-value" id="ovDownloads">—</div>
+                            <div class="stat-label">Total Downloads</div>
+                            <div class="stat-change" id="ovDownloadsChange"></div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-red"><i class="far fa-calendar-alt"></i></div>
+                            <div class="stat-value" id="ovEvents">—</div>
+                            <div class="stat-label">Published Events</div>
+                            <div class="stat-change" id="ovEventsChange"></div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-gold"><i class="far fa-newspaper"></i></div>
+                            <div class="stat-value" id="ovArticles">—</div>
+                            <div class="stat-label">Published Articles</div>
+                            <div class="stat-change" id="ovArticlesChange"></div>
                         </div>
                     </div>
 
-                    <!-- Reader panel -->
-                    <div class="reader-panel" id="readerPanel">
-                        <div class="reader-empty">
-                            <div class="reader-empty-icon">
-                                <i class="far fa-envelope-open"></i>
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h2 class="card-title"><i class="fas fa-chart-area"></i> Website Traffic</h2>
+                            <span class="card-meta" id="chartMeta">—</span>
+                        </div>
+                        <div class="chart-container">
+                            <div class="chart-empty" id="trafficChartEmpty">No traffic data available</div>
+                            <svg class="chart-svg" id="trafficChart" style="display: none;"></svg>
+                        </div>
+                    </div>
+
+                    <div class="split-grid">
+                        <div class="content-card">
+                            <div class="card-header">
+                                <h2 class="card-title"><i class="fas fa-fire"></i> Most Popular Content</h2>
                             </div>
-                            <h3>No message selected</h3>
-                            <p>Choose a message from the inbox to read it, reply, or add a note.</p>
+                            <div style="overflow-x: auto;">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Content</th>
+                                            <th>Type</th>
+                                            <th class="cell-right">Views / Downloads</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="popularContentBody">
+                                        <tr class="empty-row"><td colspan="3">Loading…</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="content-card">
+                            <div class="card-header">
+                                <h2 class="card-title"><i class="fas fa-heartbeat"></i> Quick Status</h2>
+                            </div>
+                            <div id="quickStatus">
+                                <div class="status-item">
+                                    <span class="status-label">API</span>
+                                    <span class="status-value" id="quickStatusApi">
+                                        <span class="status-dot offline"></span> Checking…
+                                    </span>
+                                </div>
+                                <div class="status-item">
+                                    <span class="status-label">Database</span>
+                                    <span class="status-value" id="quickStatusDb">
+                                        <span class="status-dot offline"></span> Checking…
+                                    </span>
+                                </div>
+                                <div class="status-item">
+                                    <span class="status-label">Storage</span>
+                                    <span class="status-value" id="quickStatusStorage">—</span>
+                                </div>
+                                <div class="status-item">
+                                    <span class="status-label">Unread Messages</span>
+                                    <span class="status-value" id="quickStatusMessages">—</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== WEBSITE PANEL ==================== -->
+                <div class="analytics-panel" id="panel-website">
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h2 class="card-title"><i class="fas fa-globe"></i> Website Traffic Overview</h2>
+                        </div>
+                        <div class="panel-empty" id="websiteEmpty">
+                            <div class="panel-empty-icon"><i class="fas fa-chart-line"></i></div>
+                            <h3>Website analytics not connected</h3>
+                            <p>Traffic tracking requires a third-party analytics service (e.g. Google Analytics) to be configured in Settings.</p>
+                        </div>
+                        <div id="websiteStats" style="display: none;">
+                            <div class="stats-grid" style="margin-bottom: 20px;">
+                                <div class="stat-card"><div class="stat-value" id="wsVisitors">—</div><div class="stat-label">Total Visitors</div></div>
+                                <div class="stat-card"><div class="stat-value" id="wsUnique">—</div><div class="stat-label">Unique Visitors</div></div>
+                                <div class="stat-card"><div class="stat-value" id="wsPageviews">—</div><div class="stat-label">Page Views</div></div>
+                                <div class="stat-card"><div class="stat-value" id="wsSessions">—</div><div class="stat-label">Sessions</div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== MEMBERS PANEL ==================== -->
+                <div class="analytics-panel" id="panel-members">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon icon-gold"><i class="fas fa-user-tie"></i></div>
+                            <div class="stat-value" id="mTotal">—</div>
+                            <div class="stat-label">Total Office Holders</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-green"><i class="fas fa-check-circle"></i></div>
+                            <div class="stat-value" id="mActive">—</div>
+                            <div class="stat-label">Active Appointments</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-red"><i class="fas fa-user-slash"></i></div>
+                            <div class="stat-value" id="mInactive">—</div>
+                            <div class="stat-label">Inactive / Former</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-blue"><i class="fas fa-briefcase"></i></div>
+                            <div class="stat-value" id="mPositions">—</div>
+                            <div class="stat-label">Positions Filled</div>
+                        </div>
+                    </div>
+
+                    <div class="split-grid">
+                        <div class="content-card">
+                            <div class="card-header">
+                                <h2 class="card-title"><i class="fas fa-briefcase"></i> Members by Position</h2>
+                            </div>
+                            <div style="overflow-x: auto;">
+                                <table class="data-table">
+                                    <thead><tr><th>Position</th><th class="cell-right">Count</th></tr></thead>
+                                    <tbody id="mByPositionBody">
+                                        <tr class="empty-row"><td colspan="2">Loading…</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="content-card">
+                            <div class="card-header">
+                                <h2 class="card-title"><i class="fas fa-calendar"></i> Members by Session</h2>
+                            </div>
+                            <div style="overflow-x: auto;">
+                                <table class="data-table">
+                                    <thead><tr><th>Session</th><th class="cell-right">Count</th></tr></thead>
+                                    <tbody id="mBySessionBody">
+                                        <tr class="empty-row"><td colspan="2">Loading…</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== COURSE REPS PANEL ==================== -->
+                <div class="analytics-panel" id="panel-course-reps">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon icon-gold"><i class="fas fa-user-tie"></i></div>
+                            <div class="stat-value" id="crGeneral">—</div>
+                            <div class="stat-label">General Reps</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-blue"><i class="fas fa-building"></i></div>
+                            <div class="stat-value" id="crDepartmental">—</div>
+                            <div class="stat-label">Departmental Reps</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-green"><i class="fas fa-check-circle"></i></div>
+                            <div class="stat-value" id="crActive">—</div>
+                            <div class="stat-label">Active</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-red"><i class="fas fa-user-slash"></i></div>
+                            <div class="stat-value" id="crInactive">—</div>
+                            <div class="stat-label">Inactive</div>
+                        </div>
+                    </div>
+
+                    <div class="split-grid">
+                        <div class="content-card">
+                            <div class="card-header">
+                                <h2 class="card-title"><i class="fas fa-layer-group"></i> General Reps by Level</h2>
+                            </div>
+                            <div style="overflow-x: auto;">
+                                <table class="data-table">
+                                    <thead><tr><th>Level</th><th class="cell-right">Count</th><th class="cell-center">Status</th></tr></thead>
+                                    <tbody id="crByLevelBody">
+                                        <tr class="empty-row"><td colspan="3">Loading…</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="content-card">
+                            <div class="card-header">
+                                <h2 class="card-title"><i class="fas fa-building"></i> Dept. Reps by Department</h2>
+                            </div>
+                            <div style="overflow-x: auto;">
+                                <table class="data-table">
+                                    <thead><tr><th>Department</th><th class="cell-right">Count</th></tr></thead>
+                                    <tbody id="crByDeptBody">
+                                        <tr class="empty-row"><td colspan="2">Loading…</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== EVENTS PANEL ==================== -->
+                <div class="analytics-panel" id="panel-events">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon icon-gold"><i class="far fa-calendar-alt"></i></div>
+                            <div class="stat-value" id="evTotal">—</div>
+                            <div class="stat-label">Total Events</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-green"><i class="fas fa-globe"></i></div>
+                            <div class="stat-value" id="evPublished">—</div>
+                            <div class="stat-label">Published</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-blue"><i class="fas fa-clock"></i></div>
+                            <div class="stat-value" id="evUpcoming">—</div>
+                            <div class="stat-label">Upcoming</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-purple"><i class="fas fa-check-double"></i></div>
+                            <div class="stat-value" id="evPast">—</div>
+                            <div class="stat-label">Completed</div>
+                        </div>
+                    </div>
+
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h2 class="card-title"><i class="fas fa-fire"></i> Most Popular Events</h2>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Event</th>
+                                        <th>Category</th>
+                                        <th>Status</th>
+                                        <th class="cell-mono">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="evPopularBody">
+                                    <tr class="empty-row"><td colspan="4">Loading…</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== RESOURCES PANEL ==================== -->
+                <div class="analytics-panel" id="panel-resources">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon icon-gold"><i class="fas fa-book"></i></div>
+                            <div class="stat-value" id="rsTotal">—</div>
+                            <div class="stat-label">Total Resources</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-green"><i class="fas fa-check-circle"></i></div>
+                            <div class="stat-value" id="rsPublished">—</div>
+                            <div class="stat-label">Published</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-blue"><i class="fas fa-download"></i></div>
+                            <div class="stat-value" id="rsDownloads">—</div>
+                            <div class="stat-label">Total Downloads</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-red"><i class="fas fa-eye-slash"></i></div>
+                            <div class="stat-value" id="rsNoDownloads">—</div>
+                            <div class="stat-label">No Downloads Yet</div>
+                        </div>
+                    </div>
+
+                    <div class="split-grid">
+                        <div class="content-card">
+                            <div class="card-header">
+                                <h2 class="card-title"><i class="fas fa-star"></i> Most Downloaded</h2>
+                            </div>
+                            <div style="overflow-x: auto;">
+                                <table class="data-table">
+                                    <thead><tr><th>Resource</th><th>Category</th><th class="cell-right">Downloads</th></tr></thead>
+                                    <tbody id="rsTopBody">
+                                        <tr class="empty-row"><td colspan="3">Loading…</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="content-card">
+                            <div class="card-header">
+                                <h2 class="card-title"><i class="fas fa-tags"></i> By Category</h2>
+                            </div>
+                            <div style="overflow-x: auto;">
+                                <table class="data-table">
+                                    <thead><tr><th>Category</th><th class="cell-right">Count</th></tr></thead>
+                                    <tbody id="rsByCategoryBody">
+                                        <tr class="empty-row"><td colspan="2">Loading…</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== NEWS PANEL ==================== -->
+                <div class="analytics-panel" id="panel-news">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon icon-gold"><i class="far fa-newspaper"></i></div>
+                            <div class="stat-value" id="nwTotal">—</div>
+                            <div class="stat-label">Total Articles</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-green"><i class="fas fa-globe"></i></div>
+                            <div class="stat-value" id="nwPublished">—</div>
+                            <div class="stat-label">Published</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-blue"><i class="fas fa-file-alt"></i></div>
+                            <div class="stat-value" id="nwDrafts">—</div>
+                            <div class="stat-label">Drafts</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-purple"><i class="fas fa-clock"></i></div>
+                            <div class="stat-value" id="nwScheduled">—</div>
+                            <div class="stat-label">Scheduled</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-red"><i class="fas fa-eye"></i></div>
+                            <div class="stat-value" id="nwViews">—</div>
+                            <div class="stat-label">Total Views</div>
+                        </div>
+                    </div>
+
+                    <div class="split-grid">
+                        <div class="content-card">
+                            <div class="card-header">
+                                <h2 class="card-title"><i class="fas fa-star"></i> Most Viewed Articles</h2>
+                            </div>
+                            <div style="overflow-x: auto;">
+                                <table class="data-table">
+                                    <thead><tr><th>Article</th><th>Category</th><th class="cell-right">Views</th></tr></thead>
+                                    <tbody id="nwTopBody">
+                                        <tr class="empty-row"><td colspan="3">Loading…</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="content-card">
+                            <div class="card-header">
+                                <h2 class="card-title"><i class="fas fa-tags"></i> By Category</h2>
+                            </div>
+                            <div style="overflow-x: auto;">
+                                <table class="data-table">
+                                    <thead><tr><th>Category</th><th class="cell-right">Articles</th></tr></thead>
+                                    <tbody id="nwByCategoryBody">
+                                        <tr class="empty-row"><td colspan="2">Loading…</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== ADMISSIONS PANEL ==================== -->
+                <div class="analytics-panel" id="panel-admissions">
+                    <div class="content-card">
+                        <div class="panel-empty">
+                            <div class="panel-empty-icon"><i class="fas fa-user-graduate"></i></div>
+                            <h3>Admissions module not configured</h3>
+                            <p>Admission updates and enquiries will appear here once the Admissions module is set up.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== MESSAGES PANEL ==================== -->
+                <div class="analytics-panel" id="panel-messages">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon icon-gold"><i class="fas fa-inbox"></i></div>
+                            <div class="stat-value" id="msTotal">—</div>
+                            <div class="stat-label">Total Messages</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-red"><i class="fas fa-envelope"></i></div>
+                            <div class="stat-value" id="msUnread">—</div>
+                            <div class="stat-label">Unread</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-green"><i class="fas fa-reply"></i></div>
+                            <div class="stat-value" id="msReplied">—</div>
+                            <div class="stat-label">Replied</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-purple"><i class="fas fa-archive"></i></div>
+                            <div class="stat-value" id="msArchived">—</div>
+                            <div class="stat-label">Archived</div>
+                        </div>
+                    </div>
+
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h2 class="card-title"><i class="fas fa-chart-bar"></i> Messages Over Time</h2>
+                        </div>
+                        <div class="chart-container">
+                            <div class="chart-empty" id="messagesChartEmpty">No messages in this period</div>
+                            <svg class="chart-svg" id="messagesChart" style="display: none;"></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== MEDIA PANEL ==================== -->
+                <div class="analytics-panel" id="panel-media">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon icon-gold"><i class="far fa-images"></i></div>
+                            <div class="stat-value" id="mdTotal">—</div>
+                            <div class="stat-label">Total Files</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-green"><i class="fas fa-image"></i></div>
+                            <div class="stat-value" id="mdPictures">—</div>
+                            <div class="stat-label">Pictures</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-blue"><i class="fas fa-video"></i></div>
+                            <div class="stat-value" id="mdVideos">—</div>
+                            <div class="stat-label">Videos</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-purple"><i class="fas fa-database"></i></div>
+                            <div class="stat-value" id="mdStorage">—</div>
+                            <div class="stat-label">Storage Used</div>
+                        </div>
+                    </div>
+
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h2 class="card-title"><i class="fas fa-clock"></i> Recently Uploaded</h2>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>File</th>
+                                        <th>Type</th>
+                                        <th class="cell-mono">Size</th>
+                                        <th class="cell-mono">Uploaded</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="mdRecentBody">
+                                    <tr class="empty-row"><td colspan="4">Loading…</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== ADMIN ACTIVITY PANEL ==================== -->
+                <div class="analytics-panel" id="panel-admin">
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h2 class="card-title"><i class="fas fa-user-shield"></i> Recent Admin Activity</h2>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Action</th>
+                                        <th>User</th>
+                                        <th>Record</th>
+                                        <th class="cell-mono">Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminActivityBody">
+                                    <tr class="empty-row"><td colspan="4">Loading…</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h2 class="card-title"><i class="fas fa-sign-in-alt"></i> Recent Logins</h2>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Role</th>
+                                        <th>Status</th>
+                                        <th class="cell-mono">Last Login</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminLoginsBody">
+                                    <tr class="empty-row"><td colspan="4">Loading…</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== SYSTEM PANEL ==================== -->
+                <div class="analytics-panel" id="panel-system">
+                    <div class="split-grid">
+                        <div class="content-card">
+                            <div class="card-header">
+                                <h2 class="card-title"><i class="fas fa-heartbeat"></i> System Status</h2>
+                            </div>
+                            <div id="systemStatusList">
+                                <div class="status-item">
+                                    <span class="status-label">API Server</span>
+                                    <span class="status-value" id="sysApi"><span class="status-dot offline"></span> Checking…</span>
+                                </div>
+                                <div class="status-item">
+                                    <span class="status-label">Database</span>
+                                    <span class="status-value" id="sysDb"><span class="status-dot offline"></span> Checking…</span>
+                                </div>
+                                <div class="status-item">
+                                    <span class="status-label">File Storage</span>
+                                    <span class="status-value" id="sysStorage"><span class="status-dot offline"></span> —</span>
+                                </div>
+                                <div class="status-item">
+                                    <span class="status-label">Background Jobs</span>
+                                    <span class="status-value" id="sysJobs"><span class="status-dot offline"></span> Not configured</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="content-card">
+                            <div class="card-header">
+                                <h2 class="card-title"><i class="fas fa-info-circle"></i> Server Information</h2>
+                            </div>
+                            <div id="serverInfo">
+                                <div class="status-item">
+                                    <span class="status-label">Environment</span>
+                                    <span class="status-value" id="sysEnv">—</span>
+                                </div>
+                                <div class="status-item">
+                                    <span class="status-label">API Version</span>
+                                    <span class="status-value mono" id="sysVersion">—</span>
+                                </div>
+                                <div class="status-item">
+                                    <span class="status-label">Uptime</span>
+                                    <span class="status-value" id="sysUptime">—</span>
+                                </div>
+                                <div class="status-item">
+                                    <span class="status-label">Last Check</span>
+                                    <span class="status-value mono" id="sysLastCheck">—</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1207,19 +1641,78 @@
         </div>
     </div>
 
-    <!-- ============ DELETE MODAL ============ -->
-    <div class="modal" id="deleteModal">
+    <!-- ============ EXPORT MODAL ============ -->
+    <div class="modal" id="exportModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 class="modal-title"><i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i> Delete Message</h3>
-                <button class="modal-close" onclick="hideModal('deleteModal')" aria-label="Close">&times;</button>
+                <h3 class="modal-title"><i class="fas fa-download"></i> Export Report</h3>
+                <button class="modal-close" onclick="hideModal('exportModal')" aria-label="Close">&times;</button>
             </div>
             <div class="modal-body">
-                <p>This will permanently delete the message from <strong id="deleteMessageSender">this sender</strong>. This action cannot be undone.</p>
+                <label style="display: block; font-family: var(--font-mono); font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 8px;">Report Category</label>
+                <div class="export-options" id="exportCategoryOptions">
+                    <div class="export-option selected" data-category="complete">
+                        <div class="export-option-title"><i class="fas fa-file-archive"></i> Complete Report</div>
+                        <div class="export-option-sub">All data combined</div>
+                    </div>
+                    <div class="export-option" data-category="website">
+                        <div class="export-option-title"><i class="fas fa-globe"></i> Website Traffic</div>
+                        <div class="export-option-sub">Visitors &amp; page views</div>
+                    </div>
+                    <div class="export-option" data-category="members">
+                        <div class="export-option-title"><i class="fas fa-users"></i> Members</div>
+                        <div class="export-option-sub">Office holders &amp; appointments</div>
+                    </div>
+                    <div class="export-option" data-category="course-reps">
+                        <div class="export-option-title"><i class="fas fa-chalkboard-teacher"></i> Course Reps</div>
+                        <div class="export-option-sub">General &amp; departmental reps</div>
+                    </div>
+                    <div class="export-option" data-category="events">
+                        <div class="export-option-title"><i class="far fa-calendar-alt"></i> Events</div>
+                        <div class="export-option-sub">Event statistics</div>
+                    </div>
+                    <div class="export-option" data-category="resources">
+                        <div class="export-option-title"><i class="fas fa-book"></i> Resources</div>
+                        <div class="export-option-sub">Downloads &amp; materials</div>
+                    </div>
+                    <div class="export-option" data-category="news">
+                        <div class="export-option-title"><i class="far fa-newspaper"></i> News &amp; Articles</div>
+                        <div class="export-option-sub">Publication performance</div>
+                    </div>
+                    <div class="export-option" data-category="messages">
+                        <div class="export-option-title"><i class="far fa-comment-alt"></i> Messages</div>
+                        <div class="export-option-sub">Enquiries summary</div>
+                    </div>
+                    <div class="export-option" data-category="admin">
+                        <div class="export-option-title"><i class="fas fa-user-shield"></i> Admin Activity</div>
+                        <div class="export-option-sub">Recent actions</div>
+                    </div>
+                </div>
+
+                <label style="display: block; font-family: var(--font-mono); font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 8px; margin-top: 16px;">Format</label>
+                <div class="export-options" id="exportFormatOptions">
+                    <div class="export-option selected" data-format="csv">
+                        <div class="export-option-title"><i class="fas fa-file-csv"></i> CSV</div>
+                        <div class="export-option-sub">Spreadsheet-compatible</div>
+                    </div>
+                    <div class="export-option" data-format="json">
+                        <div class="export-option-title"><i class="fas fa-file-code"></i> JSON</div>
+                        <div class="export-option-sub">Structured data</div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 16px; padding: 12px 14px; background: var(--primary-tint); border-radius: var(--r); font-size: 0.75rem; color: var(--text-muted);">
+                    <i class="fas fa-info-circle" style="color: var(--accent);"></i>
+                    Report will include: <strong id="exportRangeLabel">Last 30 Days</strong>
+                    <span id="exportSessionLabel"></span>
+                    · Generated on <strong id="exportDate">—</strong>
+                </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="hideModal('deleteModal')" type="button">Cancel</button>
-                <button class="btn btn-danger" id="confirmDeleteBtn" type="button">Delete</button>
+                <button class="btn btn-secondary" onclick="hideModal('exportModal')" type="button">Cancel</button>
+                <button class="btn btn-gold" id="confirmExportBtn" type="button">
+                    <i class="fas fa-download"></i> Download Report
+                </button>
             </div>
         </div>
     </div>
@@ -1247,13 +1740,28 @@
 
     let currentUser = null;
     let inactivityTimeout = null;
-    let allMessages = [];
-    let filteredMessages = [];
-    let currentCategory = 'all';
-    let searchQuery = '';
-    let activeMessageId = null;
-    let deletingMessageId = null;
-    let composerMode = 'reply'; // reply | note
+
+    // Data caches
+    let dataCache = {
+        members: [],
+        courseReps: [],
+        events: [],
+        resources: [],
+        articles: [],
+        messages: [],
+        media: [],
+        sessions: [],
+        stats: null,
+        health: null
+    };
+
+    // State
+    let currentRange = '30d';
+    let currentPanel = 'overview';
+    let customFrom = null;
+    let customTo = null;
+    let selectedExportCategory = 'complete';
+    let selectedExportFormat = 'csv';
 
     // ============================================================
     // AUTH
@@ -1295,8 +1803,6 @@
         document.getElementById('userName').textContent = name;
         document.getElementById('userRole').textContent = roleLabel;
         document.getElementById('userAvatar').textContent = initial;
-        document.getElementById('sidebarUserName').textContent = name;
-        document.getElementById('sidebarUserRole').textContent = roleLabel;
     }
 
     async function confirmLogout() {
@@ -1317,529 +1823,1130 @@
             method: 'GET', credentials: 'include',
             headers: { 'Accept': 'application/json' }
         });
-        if (res.status === 401) { showToast('Session expired', 'warning'); setTimeout(() => window.location.replace('adlog.html'), 1200); throw new Error('Unauthorized'); }
+        if (res.status === 401) {
+            showToast('Session expired', 'warning');
+            setTimeout(() => window.location.replace('adlog.html'), 1200);
+            throw new Error('Unauthorized');
+        }
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
     }
-    async function apiPut(endpoint, body) {
-        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-            method: 'PUT', credentials: 'include',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify(body)
-        });
-        if (res.status === 401) { showToast('Session expired', 'warning'); setTimeout(() => window.location.replace('adlog.html'), 1200); throw new Error('Unauthorized'); }
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
-        return data;
+
+    // ============================================================
+    // DATE HELPERS
+    // ============================================================
+    function getRangeDates() {
+        const now = new Date();
+        const to = new Date(now);
+        let from = new Date(now);
+
+        if (currentRange === 'today') {
+            from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        } else if (currentRange === '7d') {
+            from.setDate(from.getDate() - 7);
+        } else if (currentRange === '30d') {
+            from.setDate(from.getDate() - 30);
+        } else if (currentRange === '90d') {
+            from.setDate(from.getDate() - 90);
+        } else if (currentRange === 'year') {
+            from = new Date(now.getFullYear(), 0, 1);
+        } else if (currentRange === 'custom') {
+            if (customFrom && customTo) {
+                from = new Date(customFrom);
+                to = new Date(customTo);
+                to.setHours(23, 59, 59, 999);
+            }
+        }
+
+        return { from, to };
     }
-    async function apiPost(endpoint, body) {
-        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-            method: 'POST', credentials: 'include',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify(body)
-        });
-        if (res.status === 401) { showToast('Session expired', 'warning'); setTimeout(() => window.location.replace('adlog.html'), 1200); throw new Error('Unauthorized'); }
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
-        return data;
+
+    function getRangeLabel() {
+        const labels = {
+            'today': 'Today',
+            '7d': 'Last 7 Days',
+            '30d': 'Last 30 Days',
+            '90d': 'Last 90 Days',
+            'year': 'This Year',
+            'custom': customFrom && customTo ? `${customFrom} to ${customTo}` : 'Custom Range'
+        };
+        return labels[currentRange] || 'Last 30 Days';
     }
-    async function apiDelete(endpoint) {
-        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-            method: 'DELETE', credentials: 'include',
-            headers: { 'Accept': 'application/json' }
-        });
-        if (res.status === 401) { showToast('Session expired', 'warning'); setTimeout(() => window.location.replace('adlog.html'), 1200); throw new Error('Unauthorized'); }
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
-        return data;
+
+    function inRange(dateStr) {
+        if (!dateStr) return false;
+        const { from, to } = getRangeDates();
+        const t = new Date(dateStr).getTime();
+        return t >= from.getTime() && t <= to.getTime();
     }
 
     // ============================================================
     // DATA LOADING
     // ============================================================
-    async function loadMessages() {
+    async function loadAllData() {
+        showLoading();
         try {
-            const res = await apiGet('/api/admin/messages');
-            const list = Array.isArray(res.data) ? res.data : (res.data?.messages || []);
-            allMessages = list.map(normalizeMessage);
-            updateStats();
-            updateCategoryCounts();
-            renderInbox();
-            updateSidebarBadge();
+            const results = await Promise.allSettled([
+                apiGet('/api/admin/stats'),
+                apiGet('/api/admin/members?limit=500'),
+                apiGet('/api/admin/course-reps'),
+                apiGet('/api/admin/events'),
+                apiGet('/api/admin/resources'),
+                apiGet('/api/admin/articles'),
+                apiGet('/api/admin/messages'),
+                apiGet('/api/admin/media'),
+                apiGet('/api/admin/sessions'),
+                apiGet('/api/health')
+            ]);
 
-            // If an active message exists, refresh its view too
-            if (activeMessageId) {
-                const stillExists = allMessages.find(m => String(m.id) === String(activeMessageId));
-                if (stillExists) renderReader(stillExists);
-                else { activeMessageId = null; renderEmptyReader(); }
-            }
+            const extract = (idx) => results[idx].status === 'fulfilled'
+                ? (Array.isArray(results[idx].value.data) ? results[idx].value.data : (results[idx].value.data?.items || []))
+                : [];
+
+            dataCache.stats = results[0].status === 'fulfilled' ? (results[0].value.data || {}) : {};
+            dataCache.members = extract(1);
+            dataCache.courseReps = extract(2);
+            dataCache.events = extract(3);
+            dataCache.resources = extract(4);
+            dataCache.articles = extract(5);
+            dataCache.messages = extract(6);
+            dataCache.media = extract(7);
+            dataCache.sessions = extract(8);
+            dataCache.health = results[9].status === 'fulfilled' ? results[9].value : null;
+
+            populateSessionFilter();
+            renderCurrentPanel();
         } catch (err) {
-            console.error('Load messages error:', err);
-            document.getElementById('inboxList').innerHTML = `
-                <div class="inbox-empty">
-                    <i class="fas fa-exclamation-triangle" style="font-size: 1.5rem; color: var(--warning); margin-bottom: 8px;"></i>
-                    <div style="font-weight: 600; margin-bottom: 4px;">Couldn't load messages</div>
-                    <div style="font-size: 0.75rem;">${escapeHtml(err.message)}</div>
-                </div>`;
+            console.error('Load error:', err);
+            showToast('Failed to load analytics data', 'error');
+        } finally {
+            hideLoading();
         }
     }
 
-    function normalizeMessage(m) {
-        return {
-            id: m.id,
-            name: m.name || m.sender_name || 'Unknown Sender',
-            email: m.email || m.sender_email || '',
-            subject: m.subject || 'No subject',
-            message: m.message || m.body || '',
-            is_read: !!m.is_read,
-            is_replied: !!m.is_replied,
-            is_archived: !!m.is_archived || m.status === 'archived',
-            is_spam: !!m.is_spam || m.status === 'spam',
-            replied_at: m.replied_at || null,
-            replies: Array.isArray(m.replies) ? m.replies : [],
-            notes: Array.isArray(m.notes) ? m.notes : [],
-            created_at: m.created_at || null,
-            read_at: m.read_at || null
-        };
+    function populateSessionFilter() {
+        const sel = document.getElementById('filterSession');
+        sel.innerHTML = '<option value="">All Sessions</option>' +
+            dataCache.sessions.map(s => {
+                const name = s.name || s.session_name;
+                return `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`;
+            }).join('');
     }
 
     // ============================================================
-    // STATS
+    // FILTER HELPERS
     // ============================================================
-    function updateStats() {
-        const all = allMessages.length;
-        const unread = allMessages.filter(m => !m.is_read && !m.is_archived).length;
-        const replied = allMessages.filter(m => m.is_replied).length;
-        const archived = allMessages.filter(m => m.is_archived).length;
+    function applyFilters(items, dateField = 'created_at') {
+        const session = document.getElementById('filterSession').value;
+        const department = document.getElementById('filterDepartment').value;
+        const level = document.getElementById('filterLevel').value;
 
-        document.getElementById('statAll').textContent = all;
-        document.getElementById('statUnread').textContent = unread;
-        document.getElementById('statReplied').textContent = replied;
-        document.getElementById('statArchived').textContent = archived;
+        return items.filter(item => {
+            if (session && item.session && item.session !== session) return false;
+            if (department && item.department && item.department !== department) return false;
+            if (level && item.level && item.level !== level) return false;
+            if (currentRange !== 'custom' || (customFrom && customTo)) {
+                const dateVal = item[dateField];
+                if (dateVal && !inRange(dateVal)) {
+                    // Keep items without dates visible (they may be historical records)
+                    // Only filter if the item HAS a date and it's outside range
+                    return false;
+                }
+            }
+            return true;
+        });
     }
 
-    function updateCategoryCounts() {
-        document.getElementById('countAll').textContent = allMessages.filter(m => !m.is_archived && !m.is_spam).length;
-        document.getElementById('countUnread').textContent = allMessages.filter(m => !m.is_read && !m.is_archived).length;
-        document.getElementById('countRead').textContent = allMessages.filter(m => m.is_read && !m.is_archived && !m.is_replied).length;
-        document.getElementById('countReplied').textContent = allMessages.filter(m => m.is_replied).length;
-        document.getElementById('countArchived').textContent = allMessages.filter(m => m.is_archived).length;
-        document.getElementById('countSpam').textContent = allMessages.filter(m => m.is_spam).length;
+    // ============================================================
+    // PANEL ROUTER
+    // ============================================================
+    function renderCurrentPanel() {
+        if (currentPanel === 'overview') renderOverview();
+        else if (currentPanel === 'website') renderWebsite();
+        else if (currentPanel === 'members') renderMembers();
+        else if (currentPanel === 'course-reps') renderCourseReps();
+        else if (currentPanel === 'events') renderEvents();
+        else if (currentPanel === 'resources') renderResources();
+        else if (currentPanel === 'news') renderNews();
+        else if (currentPanel === 'messages') renderMessages();
+        else if (currentPanel === 'media') renderMedia();
+        else if (currentPanel === 'admin') renderAdmin();
+        else if (currentPanel === 'system') renderSystem();
     }
 
-    function updateSidebarBadge() {
-        const unread = allMessages.filter(m => !m.is_read && !m.is_archived).length;
-        const badge = document.getElementById('sidebarMessageBadge');
-        const notif = document.getElementById('notificationBadge');
-        if (unread > 0) {
-            badge.textContent = unread > 99 ? '99+' : unread;
-            badge.style.display = '';
-            notif.textContent = unread;
-            notif.style.display = '';
+    // ============================================================
+    // OVERVIEW
+    // ============================================================
+    function renderOverview() {
+        const stats = dataCache.stats || {};
+        const members = dataCache.members.filter(m => m.position);
+        const resources = dataCache.resources;
+        const events = dataCache.events;
+        const articles = dataCache.articles;
+
+        const totalDownloads = resources.reduce((sum, r) => sum + (Number(r.download_count) || 0), 0);
+        const publishedResources = resources.filter(r => r.is_published || r.status === 'published').length;
+        const publishedEvents = events.filter(e => e.status === 'upcoming' || e.status === 'past' || e.status === 'published').length;
+        const publishedArticles = articles.filter(a => a.is_published && a.status === 'published').length;
+
+        document.getElementById('ovVisitors').textContent = stats.visitors || 'N/A';
+        document.getElementById('ovVisitorsChange').textContent = stats.visitors ? 'Live traffic data' : 'Analytics not connected';
+        document.getElementById('ovVisitorsChange').className = 'stat-change neutral';
+
+        document.getElementById('ovMembers').textContent = members.length;
+        document.getElementById('ovMembersChange').textContent = `${members.filter(m => m.status === 'active').length} active`;
+
+        document.getElementById('ovResources').textContent = publishedResources || resources.length;
+        document.getElementById('ovResourcesChange').textContent = `${resources.length} total`;
+
+        document.getElementById('ovDownloads').textContent = totalDownloads.toLocaleString();
+        document.getElementById('ovDownloadsChange').textContent = 'Across all resources';
+
+        document.getElementById('ovEvents').textContent = publishedEvents;
+        document.getElementById('ovEventsChange').textContent = `${events.length} total`;
+
+        document.getElementById('ovArticles').textContent = publishedArticles;
+        document.getElementById('ovArticlesChange').textContent = `${articles.length} total`;
+
+        // Popular content table
+        const popular = [];
+
+        resources.filter(r => r.download_count > 0).forEach(r => {
+            popular.push({
+                title: r.title,
+                type: 'Resource',
+                count: r.download_count,
+                id: r.id,
+                page: 'resources.html'
+            });
+        });
+
+        articles.filter(a => a.views > 0).forEach(a => {
+            popular.push({
+                title: a.title,
+                type: 'Article',
+                count: a.views,
+                id: a.id || a.uuid,
+                page: 'articles.html'
+            });
+        });
+
+        events.filter(e => e.expected_attendees > 0 || e.attendees > 0).forEach(e => {
+            popular.push({
+                title: e.title,
+                type: 'Event',
+                count: e.expected_attendees || e.attendees || 0,
+                id: e.id,
+                page: 'events.html'
+            });
+        });
+
+        popular.sort((a, b) => b.count - a.count);
+        const top = popular.slice(0, 6);
+
+        const tbody = document.getElementById('popularContentBody');
+        if (top.length === 0) {
+            tbody.innerHTML = '<tr class="empty-row"><td colspan="3">No popular content yet</td></tr>';
         } else {
-            badge.style.display = 'none';
-            notif.style.display = 'none';
+            tbody.innerHTML = top.map(item => `
+                <tr>
+                    <td><a href="${item.page}" style="color: var(--primary); font-weight: 600;">${escapeHtml(item.title)}</a></td>
+                    <td><span class="badge badge-muted">${item.type}</span></td>
+                    <td class="cell-right cell-mono">${item.count.toLocaleString()}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Quick status
+        checkQuickStatus();
+
+        // Draw traffic chart (using health endpoint or empty)
+        drawTrafficChart();
+    }
+
+    async function checkQuickStatus() {
+        const apiEl = document.getElementById('quickStatusApi');
+        const dbEl = document.getElementById('quickStatusDb');
+        const storageEl = document.getElementById('quickStatusStorage');
+        const messagesEl = document.getElementById('quickStatusMessages');
+
+        try {
+            const start = Date.now();
+            const res = await fetch(`${API_BASE_URL}/api/health`, { method: 'GET' });
+            const ms = Date.now() - start;
+            if (res.ok) {
+                apiEl.innerHTML = `<span class="status-dot"></span> ${ms}ms`;
+            } else {
+                apiEl.innerHTML = `<span class="status-dot warning"></span> HTTP ${res.status}`;
+            }
+        } catch {
+            apiEl.innerHTML = `<span class="status-dot danger"></span> Offline`;
+        }
+
+        dbEl.innerHTML = `<span class="status-dot"></span> Connected`;
+
+        const totalBytes = dataCache.media.reduce((sum, m) => sum + (Number(m.size_bytes) || 0), 0);
+        storageEl.textContent = formatBytes(totalBytes);
+
+        const unread = dataCache.messages.filter(m => !m.is_read && !m.is_archived).length;
+        messagesEl.textContent = unread;
+    }
+
+    function drawTrafficChart() {
+        // Website traffic requires external analytics — show empty state
+        const svg = document.getElementById('trafficChart');
+        const empty = document.getElementById('trafficChartEmpty');
+        const meta = document.getElementById('chartMeta');
+
+        // Try to use health endpoint's data if available
+        if (dataCache.health && dataCache.health.traffic) {
+            empty.style.display = 'none';
+            svg.style.display = 'block';
+            meta.textContent = `${dataCache.health.traffic.length} data points`;
+
+            const data = dataCache.health.traffic;
+            renderLineChart(svg, data);
+        } else {
+            empty.style.display = 'flex';
+            svg.style.display = 'none';
+            meta.textContent = 'No traffic data';
+        }
+    }
+
+    function renderLineChart(svg, data) {
+        const width = svg.clientWidth || 800;
+        const height = 260;
+        const padding = { top: 20, right: 20, bottom: 40, left: 50 };
+        const chartW = width - padding.left - padding.right;
+        const chartH = height - padding.top - padding.bottom;
+
+        svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+        svg.innerHTML = '';
+
+        const maxVal = Math.max(...data.map(d => d.value), 1);
+        const stepX = data.length > 1 ? chartW / (data.length - 1) : chartW;
+
+        // Y-axis grid lines
+        for (let i = 0; i <= 4; i++) {
+            const y = padding.top + (chartH / 4) * i;
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', padding.left);
+            line.setAttribute('y1', y);
+            line.setAttribute('x2', width - padding.right);
+            line.setAttribute('y2', y);
+            line.setAttribute('stroke', '#E5E9E4');
+            line.setAttribute('stroke-width', '1');
+            svg.appendChild(line);
+
+            const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            label.setAttribute('x', padding.left - 8);
+            label.setAttribute('y', y + 4);
+            label.setAttribute('text-anchor', 'end');
+            label.setAttribute('font-size', '10');
+            label.setAttribute('fill', '#8A9894');
+            label.textContent = Math.round(maxVal - (maxVal / 4) * i);
+            svg.appendChild(label);
+        }
+
+        // X-axis labels
+        data.forEach((d, i) => {
+            if (i % Math.ceil(data.length / 7) !== 0 && i !== data.length - 1) return;
+            const x = padding.left + stepX * i;
+            const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            label.setAttribute('x', x);
+            label.setAttribute('y', height - 15);
+            label.setAttribute('text-anchor', 'middle');
+            label.setAttribute('font-size', '10');
+            label.setAttribute('fill', '#8A9894');
+            label.textContent = d.label || '';
+            svg.appendChild(label);
+        });
+
+        // Line path
+        let pathD = '';
+        data.forEach((d, i) => {
+            const x = padding.left + stepX * i;
+            const y = padding.top + chartH - (d.value / maxVal) * chartH;
+            pathD += (i === 0 ? 'M' : 'L') + x + ',' + y + ' ';
+        });
+
+        // Area fill
+        const areaD = pathD + `L${padding.left + stepX * (data.length - 1)},${padding.top + chartH} L${padding.left},${padding.top + chartH} Z`;
+        const area = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        area.setAttribute('d', areaD);
+        area.setAttribute('fill', 'rgba(213, 168, 59, 0.15)');
+        svg.appendChild(area);
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', pathD);
+        path.setAttribute('stroke', '#D5A83B');
+        path.setAttribute('stroke-width', '2.5');
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke-linecap', 'round');
+        path.setAttribute('stroke-linejoin', 'round');
+        svg.appendChild(path);
+
+        // Data points
+        data.forEach((d, i) => {
+            const x = padding.left + stepX * i;
+            const y = padding.top + chartH - (d.value / maxVal) * chartH;
+            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            circle.setAttribute('cx', x);
+            circle.setAttribute('cy', y);
+            circle.setAttribute('r', '4');
+            circle.setAttribute('fill', '#FFFFFF');
+            circle.setAttribute('stroke', '#D5A83B');
+            circle.setAttribute('stroke-width', '2');
+            svg.appendChild(circle);
+        });
+    }
+
+    // ============================================================
+    // WEBSITE
+    // ============================================================
+    function renderWebsite() {
+        if (dataCache.health && dataCache.health.traffic) {
+            document.getElementById('websiteEmpty').style.display = 'none';
+            document.getElementById('websiteStats').style.display = 'block';
+
+            const t = dataCache.health.traffic;
+            document.getElementById('wsVisitors').textContent = t.totalVisitors || '0';
+            document.getElementById('wsUnique').textContent = t.uniqueVisitors || '0';
+            document.getElementById('wsPageviews').textContent = t.pageviews || '0';
+            document.getElementById('wsSessions').textContent = t.sessions || '0';
+        } else {
+            document.getElementById('websiteEmpty').style.display = 'block';
+            document.getElementById('websiteStats').style.display = 'none';
         }
     }
 
     // ============================================================
-    // INBOX RENDER
+    // MEMBERS
     // ============================================================
-    function filterMessages() {
-        let filtered = allMessages.slice();
+    function renderMembers() {
+        const members = dataCache.members.filter(m => m.position);
 
-        // Apply category filter
-        if (currentCategory === 'unread') {
-            filtered = filtered.filter(m => !m.is_read && !m.is_archived);
-        } else if (currentCategory === 'read') {
-            filtered = filtered.filter(m => m.is_read && !m.is_replied && !m.is_archived);
-        } else if (currentCategory === 'replied') {
-            filtered = filtered.filter(m => m.is_replied);
-        } else if (currentCategory === 'archived') {
-            filtered = filtered.filter(m => m.is_archived);
-        } else if (currentCategory === 'spam') {
-            filtered = filtered.filter(m => m.is_spam);
+        document.getElementById('mTotal').textContent = members.length;
+        document.getElementById('mActive').textContent = members.filter(m => m.status === 'active').length;
+        document.getElementById('mInactive').textContent = members.filter(m => m.status !== 'active').length;
+        document.getElementById('mPositions').textContent = new Set(members.map(m => m.position).filter(Boolean)).size;
+
+        // By position
+        const byPosition = {};
+        members.forEach(m => {
+            const pos = m.position || 'Unknown';
+            byPosition[pos] = (byPosition[pos] || 0) + 1;
+        });
+
+        const posTbody = document.getElementById('mByPositionBody');
+        const posEntries = Object.entries(byPosition).sort((a, b) => b[1] - a[1]);
+        if (posEntries.length === 0) {
+            posTbody.innerHTML = '<tr class="empty-row"><td colspan="2">No members yet</td></tr>';
         } else {
-            filtered = filtered.filter(m => !m.is_archived && !m.is_spam);
+            posTbody.innerHTML = posEntries.map(([pos, count]) => `
+                <tr>
+                    <td>${escapeHtml(pos)}</td>
+                    <td class="cell-right cell-mono"><strong>${count}</strong></td>
+                </tr>
+            `).join('');
         }
 
-        // Apply search
-        if (searchQuery) {
-            const q = searchQuery.toLowerCase();
-            filtered = filtered.filter(m =>
-                m.name.toLowerCase().includes(q) ||
-                m.email.toLowerCase().includes(q) ||
-                m.subject.toLowerCase().includes(q) ||
-                m.message.toLowerCase().includes(q)
-            );
+        // By session
+        const bySession = {};
+        members.forEach(m => {
+            const sess = m.session || 'Unassigned';
+            bySession[sess] = (bySession[sess] || 0) + 1;
+        });
+
+        const sessTbody = document.getElementById('mBySessionBody');
+        const sessEntries = Object.entries(bySession).sort((a, b) => b[0].localeCompare(a[0]));
+        if (sessEntries.length === 0) {
+            sessTbody.innerHTML = '<tr class="empty-row"><td colspan="2">No session data</td></tr>';
+        } else {
+            sessTbody.innerHTML = sessEntries.map(([sess, count]) => `
+                <tr>
+                    <td class="cell-mono">${escapeHtml(sess)}</td>
+                    <td class="cell-right cell-mono"><strong>${count}</strong></td>
+                </tr>
+            `).join('');
+        }
+    }
+
+    // ============================================================
+    // COURSE REPS
+    // ============================================================
+    function renderCourseReps() {
+        const reps = dataCache.courseReps;
+        const general = reps.filter(r => r.rep_type === 'general' || r.representative_type === 'general');
+        const departmental = reps.filter(r => r.rep_type === 'departmental' || r.representative_type === 'departmental');
+
+        document.getElementById('crGeneral').textContent = general.length;
+        document.getElementById('crDepartmental').textContent = departmental.length;
+        document.getElementById('crActive').textContent = reps.filter(r => r.status === 'active').length;
+        document.getElementById('crInactive').textContent = reps.filter(r => r.status !== 'active').length;
+
+        // By level (general)
+        const byLevel = {};
+        general.forEach(r => {
+            const lvl = r.level || 'Unknown';
+            if (!byLevel[lvl]) byLevel[lvl] = { count: 0, active: 0 };
+            byLevel[lvl].count++;
+            if (r.status === 'active') byLevel[lvl].active++;
+        });
+
+        const lvlTbody = document.getElementById('crByLevelBody');
+        const lvlEntries = Object.entries(byLevel).sort((a, b) => a[0].localeCompare(b[0]));
+        if (lvlEntries.length === 0) {
+            lvlTbody.innerHTML = '<tr class="empty-row"><td colspan="3">No general reps</td></tr>';
+        } else {
+            lvlTbody.innerHTML = lvlEntries.map(([lvl, data]) => {
+                const isAssigned = data.active > 0;
+                return `
+                    <tr>
+                        <td><strong>${escapeHtml(lvl)}</strong></td>
+                        <td class="cell-right cell-mono">${data.count}</td>
+                        <td class="cell-center">
+                            ${isAssigned
+                                ? '<span class="badge badge-success"><i class="fas fa-check" style="font-size:0.5rem;"></i> Assigned</span>'
+                                : '<span class="badge badge-warning">Vacant</span>'}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
         }
 
-        // Sort by created_at descending
-        filtered.sort((a, b) => {
+        // By department (departmental)
+        const byDept = {};
+        departmental.forEach(r => {
+            const dept = r.department || 'Unknown';
+            byDept[dept] = (byDept[dept] || 0) + 1;
+        });
+
+        const deptTbody = document.getElementById('crByDeptBody');
+        const deptEntries = Object.entries(byDept).sort((a, b) => b[1] - a[1]);
+        if (deptEntries.length === 0) {
+            deptTbody.innerHTML = '<tr class="empty-row"><td colspan="2">No departmental reps</td></tr>';
+        } else {
+            deptTbody.innerHTML = deptEntries.map(([dept, count]) => `
+                <tr>
+                    <td>${escapeHtml(shortDept(dept))}</td>
+                    <td class="cell-right cell-mono"><strong>${count}</strong></td>
+                </tr>
+            `).join('');
+        }
+    }
+
+    // ============================================================
+    // EVENTS
+    // ============================================================
+    function renderEvents() {
+        const events = dataCache.events;
+
+        document.getElementById('evTotal').textContent = events.length;
+        document.getElementById('evPublished').textContent = events.filter(e => e.is_published || e.status === 'upcoming' || e.status === 'past').length;
+        document.getElementById('evUpcoming').textContent = events.filter(e => e.status === 'upcoming').length;
+        document.getElementById('evPast').textContent = events.filter(e => e.status === 'past').length;
+
+        // Most popular events — sorted by registration/attendees or date
+        const sorted = [...events].sort((a, b) => {
+            const aCount = a.expected_attendees || a.attendees || a.registration_count || 0;
+            const bCount = b.expected_attendees || b.attendees || b.registration_count || 0;
+            return bCount - aCount;
+        });
+
+        const tbody = document.getElementById('evPopularBody');
+        if (sorted.length === 0) {
+            tbody.innerHTML = '<tr class="empty-row"><td colspan="4">No events yet</td></tr>';
+        } else {
+            tbody.innerHTML = sorted.slice(0, 8).map(e => {
+                const status = e.status || 'upcoming';
+                const statusBadge = {
+                    upcoming: '<span class="badge badge-info">Upcoming</span>',
+                    past: '<span class="badge badge-success">Completed</span>',
+                    postponed: '<span class="badge badge-warning">Postponed</span>',
+                    cancelled: '<span class="badge badge-danger">Cancelled</span>'
+                }[status] || `<span class="badge badge-muted">${escapeHtml(status)}</span>`;
+
+                return `
+                    <tr>
+                        <td><a href="events.html" style="color: var(--primary); font-weight: 600;">${escapeHtml(e.title || 'Untitled')}</a></td>
+                        <td>${escapeHtml(e.category || '—')}</td>
+                        <td>${statusBadge}</td>
+                        <td class="cell-mono">${formatDate(e.date)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    }
+
+    // ============================================================
+    // RESOURCES
+    // ============================================================
+    function renderResources() {
+        const resources = dataCache.resources;
+        const totalDownloads = resources.reduce((sum, r) => sum + (Number(r.download_count) || 0), 0);
+
+        document.getElementById('rsTotal').textContent = resources.length;
+        document.getElementById('rsPublished').textContent = resources.filter(r => r.is_published || r.status === 'published').length;
+        document.getElementById('rsDownloads').textContent = totalDownloads.toLocaleString();
+        document.getElementById('rsNoDownloads').textContent = resources.filter(r => !r.download_count || r.download_count === 0).length;
+
+        // Top downloads
+        const sorted = [...resources].sort((a, b) => (b.download_count || 0) - (a.download_count || 0)).slice(0, 8);
+        const tbody = document.getElementById('rsTopBody');
+        if (sorted.length === 0) {
+            tbody.innerHTML = '<tr class="empty-row"><td colspan="3">No resources yet</td></tr>';
+        } else {
+            tbody.innerHTML = sorted.map(r => `
+                <tr>
+                    <td><a href="resources.html" style="color: var(--primary); font-weight: 600;">${escapeHtml(r.title || 'Untitled')}</a></td>
+                    <td>${escapeHtml(r.category || '—')}</td>
+                    <td class="cell-right cell-mono"><strong>${(r.download_count || 0).toLocaleString()}</strong></td>
+                </tr>
+            `).join('');
+        }
+
+        // By category
+        const byCategory = {};
+        resources.forEach(r => {
+            const cat = r.category || 'Uncategorized';
+            byCategory[cat] = (byCategory[cat] || 0) + 1;
+        });
+
+        const catTbody = document.getElementById('rsByCategoryBody');
+        const catEntries = Object.entries(byCategory).sort((a, b) => b[1] - a[1]);
+        if (catEntries.length === 0) {
+            catTbody.innerHTML = '<tr class="empty-row"><td colspan="2">No categories</td></tr>';
+        } else {
+            catTbody.innerHTML = catEntries.map(([cat, count]) => `
+                <tr>
+                    <td>${escapeHtml(cat)}</td>
+                    <td class="cell-right cell-mono"><strong>${count}</strong></td>
+                </tr>
+            `).join('');
+        }
+    }
+
+    // ============================================================
+    // NEWS
+    // ============================================================
+    function renderNews() {
+        const articles = dataCache.articles;
+        const totalViews = articles.reduce((sum, a) => sum + (Number(a.view_count) || 0), 0);
+
+        document.getElementById('nwTotal').textContent = articles.length;
+        document.getElementById('nwPublished').textContent = articles.filter(a => a.is_published && a.status === 'published').length;
+        document.getElementById('nwDrafts').textContent = articles.filter(a => !a.is_published && a.status !== 'scheduled').length;
+        document.getElementById('nwScheduled').textContent = articles.filter(a => a.status === 'scheduled').length;
+        document.getElementById('nwViews').textContent = totalViews.toLocaleString();
+
+        // Top viewed
+        const sorted = [...articles].sort((a, b) => (b.view_count || 0) - (a.view_count || 0)).slice(0, 8);
+        const tbody = document.getElementById('nwTopBody');
+        if (sorted.length === 0) {
+            tbody.innerHTML = '<tr class="empty-row"><td colspan="3">No articles yet</td></tr>';
+        } else {
+            tbody.innerHTML = sorted.map(a => `
+                <tr>
+                    <td><a href="articles.html" style="color: var(--primary); font-weight: 600;">${escapeHtml(a.title || 'Untitled')}</a></td>
+                    <td>${escapeHtml(a.category || '—')}</td>
+                    <td class="cell-right cell-mono"><strong>${(a.view_count || 0).toLocaleString()}</strong></td>
+                </tr>
+            `).join('');
+        }
+
+        // By category
+        const byCategory = {};
+        articles.forEach(a => {
+            const cat = a.category || 'Uncategorized';
+            byCategory[cat] = (byCategory[cat] || 0) + 1;
+        });
+
+        const catTbody = document.getElementById('nwByCategoryBody');
+        const catEntries = Object.entries(byCategory).sort((a, b) => b[1] - a[1]);
+        if (catEntries.length === 0) {
+            catTbody.innerHTML = '<tr class="empty-row"><td colspan="2">No categories</td></tr>';
+        } else {
+            catTbody.innerHTML = catEntries.map(([cat, count]) => `
+                <tr>
+                    <td>${escapeHtml(cat)}</td>
+                    <td class="cell-right cell-mono"><strong>${count}</strong></td>
+                </tr>
+            `).join('');
+        }
+    }
+
+    // ============================================================
+    // MESSAGES
+    // ============================================================
+    function renderMessages() {
+        const messages = dataCache.messages;
+
+        document.getElementById('msTotal').textContent = messages.length;
+        document.getElementById('msUnread').textContent = messages.filter(m => !m.is_read && !m.is_archived).length;
+        document.getElementById('msReplied').textContent = messages.filter(m => m.is_replied).length;
+        document.getElementById('msArchived').textContent = messages.filter(m => m.is_archived).length;
+
+        // Chart: messages over time (grouped by day)
+        const filtered = messages.filter(m => m.created_at && inRange(m.created_at));
+        const byDay = {};
+        filtered.forEach(m => {
+            const d = new Date(m.created_at);
+            const key = d.toISOString().slice(0, 10);
+            byDay[key] = (byDay[key] || 0) + 1;
+        });
+
+        const dates = Object.keys(byDay).sort();
+        const svg = document.getElementById('messagesChart');
+        const empty = document.getElementById('messagesChartEmpty');
+
+        if (dates.length === 0) {
+            svg.style.display = 'none';
+            empty.style.display = 'flex';
+            return;
+        }
+
+        svg.style.display = 'block';
+        empty.style.display = 'none';
+
+        const data = dates.map(d => ({
+            label: new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            value: byDay[d]
+        }));
+
+        renderBarChart(svg, data);
+    }
+
+    function renderBarChart(svg, data) {
+        const width = svg.clientWidth || 800;
+        const height = 260;
+        const padding = { top: 20, right: 20, bottom: 40, left: 50 };
+        const chartW = width - padding.left - padding.right;
+        const chartH = height - padding.top - padding.bottom;
+
+        svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+        svg.innerHTML = '';
+
+        const maxVal = Math.max(...data.map(d => d.value), 1);
+        const barW = Math.min(40, chartW / data.length * 0.7);
+        const stepX = chartW / data.length;
+
+        // Y-axis grid
+        for (let i = 0; i <= 4; i++) {
+            const y = padding.top + (chartH / 4) * i;
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', padding.left);
+            line.setAttribute('y1', y);
+            line.setAttribute('x2', width - padding.right);
+            line.setAttribute('y2', y);
+            line.setAttribute('stroke', '#E5E9E4');
+            line.setAttribute('stroke-width', '1');
+            svg.appendChild(line);
+
+            const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            label.setAttribute('x', padding.left - 8);
+            label.setAttribute('y', y + 4);
+            label.setAttribute('text-anchor', 'end');
+            label.setAttribute('font-size', '10');
+            label.setAttribute('fill', '#8A9894');
+            label.textContent = Math.round(maxVal - (maxVal / 4) * i);
+            svg.appendChild(label);
+        }
+
+        // Bars
+        data.forEach((d, i) => {
+            const x = padding.left + stepX * i + (stepX - barW) / 2;
+            const barH = (d.value / maxVal) * chartH;
+            const y = padding.top + chartH - barH;
+
+            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.setAttribute('x', x);
+            rect.setAttribute('y', y);
+            rect.setAttribute('width', barW);
+            rect.setAttribute('height', barH);
+            rect.setAttribute('fill', '#D5A83B');
+            rect.setAttribute('rx', '3');
+            svg.appendChild(rect);
+
+            // X label
+            if (i % Math.ceil(data.length / 8) === 0 || i === data.length - 1) {
+                const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                label.setAttribute('x', x + barW / 2);
+                label.setAttribute('y', height - 15);
+                label.setAttribute('text-anchor', 'middle');
+                label.setAttribute('font-size', '10');
+                label.setAttribute('fill', '#8A9894');
+                label.textContent = d.label;
+                svg.appendChild(label);
+            }
+        });
+    }
+
+    // ============================================================
+    // MEDIA
+    // ============================================================
+    function renderMedia() {
+        const media = dataCache.media;
+        const totalBytes = media.reduce((sum, m) => sum + (Number(m.size_bytes) || 0), 0);
+
+        document.getElementById('mdTotal').textContent = media.length;
+        document.getElementById('mdPictures').textContent = media.filter(m => m.media_type === 'picture' || m.type === 'picture').length;
+        document.getElementById('mdVideos').textContent = media.filter(m => m.media_type === 'video' || m.type === 'video').length;
+        document.getElementById('mdStorage').textContent = formatBytes(totalBytes);
+
+        // Recently uploaded
+        const sorted = [...media].sort((a, b) => {
             const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
             const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
             return tb - ta;
-        });
+        }).slice(0, 10);
 
-        filteredMessages = filtered;
-    }
-
-    function renderInbox() {
-        filterMessages();
-        const list = document.getElementById('inboxList');
-
-        if (filteredMessages.length === 0) {
-            list.innerHTML = `
-                <div class="inbox-empty">
-                    <i class="far fa-inbox" style="font-size: 2rem; opacity: 0.4; margin-bottom: 8px;"></i>
-                    <div style="font-weight: 600; margin-bottom: 4px;">No messages here</div>
-                    <div style="font-size: 0.75rem;">
-                        ${searchQuery ? 'Try adjusting your search' : 'This category is empty'}
-                    </div>
-                </div>`;
-            return;
+        const tbody = document.getElementById('mdRecentBody');
+        if (sorted.length === 0) {
+            tbody.innerHTML = '<tr class="empty-row"><td colspan="4">No media yet</td></tr>';
+        } else {
+            tbody.innerHTML = sorted.map(m => {
+                const type = m.media_type || m.type || 'file';
+                const isVideo = type === 'video';
+                return `
+                    <tr>
+                        <td><a href="media.html" style="color: var(--primary); font-weight: 600;">${escapeHtml(m.title || 'Untitled')}</a></td>
+                        <td>
+                            ${isVideo
+                                ? '<span class="badge badge-info"><i class="fas fa-video" style="font-size:0.5rem;"></i> Video</span>'
+                                : '<span class="badge badge-gold"><i class="fas fa-image" style="font-size:0.5rem;"></i> Picture</span>'}
+                        </td>
+                        <td class="cell-mono">${formatBytes(m.size_bytes)}</td>
+                        <td class="cell-mono">${formatDate(m.created_at)}</td>
+                    </tr>
+                `;
+            }).join('');
         }
-
-        list.innerHTML = filteredMessages.map(m => {
-            const isActive = activeMessageId === m.id ? 'active' : '';
-            const isUnread = !m.is_read && !m.is_archived && !m.is_spam ? 'unread' : '';
-            return `
-                <div class="message-item ${isActive} ${isUnread}" data-id="${escapeHtml(m.id)}">
-                    <div class="message-item-top">
-                        <div class="message-sender">${escapeHtml(m.name)}</div>
-                        <div class="message-time">${formatRelativeTime(m.created_at)}</div>
-                    </div>
-                    <div class="message-subject">${escapeHtml(m.subject)}</div>
-                    <div class="message-preview">${escapeHtml(m.message)}</div>
-                    <div class="message-footer">
-                        ${renderStatusBadge(m)}
-                    </div>
-                </div>`;
-        }).join('');
-
-        // Attach click handlers
-        list.querySelectorAll('.message-item').forEach(el => {
-            el.addEventListener('click', () => openMessage(el.dataset.id));
-        });
-    }
-
-    function renderStatusBadge(m) {
-        if (m.is_spam) return '<span class="status-badge badge-danger"><i class="fas fa-ban" style="font-size:0.5rem;"></i> Spam</span>';
-        if (m.is_archived) return '<span class="status-badge badge-purple"><i class="fas fa-archive" style="font-size:0.5rem;"></i> Archived</span>';
-        if (m.is_replied) return '<span class="status-badge badge-success"><i class="fas fa-reply" style="font-size:0.5rem;"></i> Replied</span>';
-        if (!m.is_read) return '<span class="status-badge badge-gold"><i class="fas fa-envelope" style="font-size:0.5rem;"></i> Unread</span>';
-        return '<span class="status-badge badge-info"><i class="fas fa-envelope-open" style="font-size:0.5rem;"></i> Read</span>';
     }
 
     // ============================================================
-    // READER
+    // ADMIN
     // ============================================================
-    function renderEmptyReader() {
-        document.getElementById('readerPanel').innerHTML = `
-            <div class="reader-empty">
-                <div class="reader-empty-icon">
-                    <i class="far fa-envelope-open"></i>
-                </div>
-                <h3>No message selected</h3>
-                <p>Choose a message from the inbox to read it, reply, or add a note.</p>
-            </div>`;
-    }
+    function renderAdmin() {
+        // Recent admin logins from users table (via members cache — approximate)
+        const activityBody = document.getElementById('adminActivityBody');
+        const loginsBody = document.getElementById('adminLoginsBody');
 
-    async function openMessage(id) {
-        const message = allMessages.find(m => String(m.id) === String(id));
-        if (!message) return;
-        activeMessageId = message.id;
+        // Build activity from article/resource/message updates
+        const recentActivity = [];
 
-        // Mark as read if unread
-        if (!message.is_read) {
-            try {
-                await apiPut(`/api/admin/messages/${message.id}/read`, { is_read: true });
-                message.is_read = true;
-                updateStats();
-                updateCategoryCounts();
-                updateSidebarBadge();
-                renderInbox();
-            } catch (err) {
-                console.warn('Could not mark as read:', err);
+        dataCache.articles.slice(0, 5).forEach(a => {
+            if (a.updated_at || a.created_at) {
+                recentActivity.push({
+                    action: 'Article updated',
+                    user: a.author || 'Admin',
+                    record: a.title,
+                    time: a.updated_at || a.created_at,
+                    link: 'articles.html'
+                });
             }
-        }
-
-        renderReader(message);
-        renderInbox();
-    }
-
-    function renderReader(message) {
-        const panel = document.getElementById('readerPanel');
-
-        // Build replies and notes HTML
-        let threadHtml = '';
-        const replies = message.replies || [];
-        const notes = message.notes || [];
-
-        if (replies.length > 0) {
-            threadHtml += `<div class="thread-label">Replies</div>`;
-            threadHtml += replies.map(r => `
-                <div class="reply-bubble">
-                    <div class="reply-meta">${escapeHtml(r.author || 'Admin')} · ${formatRelativeTime(r.created_at)}</div>
-                    <div>${escapeHtml(r.content || r.message || '')}</div>
-                </div>`).join('');
-        }
-
-        if (notes.length > 0) {
-            threadHtml += `<div class="thread-label">Internal Notes</div>`;
-            threadHtml += notes.map(n => `
-                <div class="note-bubble">
-                    <div class="note-meta"><i class="fas fa-lock"></i> ${escapeHtml(n.author || 'Admin')} · ${formatRelativeTime(n.created_at)}</div>
-                    <div>${escapeHtml(n.content || n.message || '')}</div>
-                </div>`).join('');
-        }
-
-        panel.innerHTML = `
-            <div class="reader-header">
-                <div class="reader-subject">${escapeHtml(message.subject)}</div>
-                <div class="reader-meta">
-                    <div class="reader-meta-item">
-                        <i class="fas fa-user"></i>
-                        <strong>${escapeHtml(message.name)}</strong>
-                    </div>
-                    <div class="reader-meta-item">
-                        <i class="fas fa-envelope"></i>
-                        ${escapeHtml(message.email || '—')}
-                    </div>
-                    <div class="reader-meta-item">
-                        <i class="fas fa-clock"></i>
-                        ${formatFullDate(message.created_at)}
-                    </div>
-                    ${message.is_replied ? `<div class="reader-meta-item"><i class="fas fa-reply" style="color: var(--success);"></i> Replied</div>` : ''}
-                </div>
-            </div>
-
-            <div class="reader-actions">
-                <button class="reader-action-btn" data-action="toggle-read">
-                    <i class="fas fa-${message.is_read ? 'envelope' : 'envelope-open'}"></i>
-                    ${message.is_read ? 'Mark unread' : 'Mark read'}
-                </button>
-                <button class="reader-action-btn" data-action="archive">
-                    <i class="fas fa-archive"></i>
-                    ${message.is_archived ? 'Unarchive' : 'Archive'}
-                </button>
-                <button class="reader-action-btn" data-action="spam">
-                    <i class="fas fa-ban"></i>
-                    ${message.is_spam ? 'Unmark spam' : 'Mark spam'}
-                </button>
-                <button class="reader-action-btn danger" data-action="delete">
-                    <i class="fas fa-trash"></i>
-                    Delete
-                </button>
-            </div>
-
-            <div class="reader-body" id="readerBody">
-                <div class="message-bubble">${escapeHtml(message.message)}</div>
-                ${threadHtml}
-            </div>
-
-            <div class="reader-composer">
-                <div class="composer-tabs">
-                    <button class="composer-tab active" data-composer="reply">
-                        <i class="fas fa-reply" style="margin-right: 4px;"></i> Reply
-                    </button>
-                    <button class="composer-tab" data-composer="note">
-                        <i class="fas fa-lock" style="margin-right: 4px;"></i> Internal note
-                    </button>
-                </div>
-                <textarea class="composer-textarea" id="composerText" placeholder="Write your reply…"></textarea>
-                <div class="composer-actions">
-                    <div style="font-size: 0.6875rem; color: var(--text-dim); font-family: var(--font-mono);">
-                        <i class="fas fa-shield-alt"></i>
-                        <span id="composerHint">Reply will be sent to ${escapeHtml(message.email || 'sender')}</span>
-                    </div>
-                    <button class="btn btn-primary btn-sm" id="composerSendBtn">
-                        <i class="fas fa-paper-plane"></i> <span id="composerSendText">Send Reply</span>
-                    </button>
-                </div>
-            </div>`;
-
-        // Wire up reader action buttons
-        panel.querySelectorAll('[data-action]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const action = btn.dataset.action;
-                if (action === 'toggle-read') toggleRead(message);
-                else if (action === 'archive') toggleArchive(message);
-                else if (action === 'spam') toggleSpam(message);
-                else if (action === 'delete') openDeleteModal(message.id);
-            });
         });
 
-        // Wire up composer tabs
-        panel.querySelectorAll('[data-composer]').forEach(tab => {
-            tab.addEventListener('click', () => {
-                composerMode = tab.dataset.composer;
-                panel.querySelectorAll('[data-composer]').forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                const textarea = document.getElementById('composerText');
-                const hint = document.getElementById('composerHint');
-                const sendText = document.getElementById('composerSendText');
-                if (composerMode === 'reply') {
-                    textarea.placeholder = 'Write your reply…';
-                    hint.textContent = `Reply will be sent to ${message.email || 'sender'}`;
-                    sendText.textContent = 'Send Reply';
-                } else {
-                    textarea.placeholder = 'Add an internal note (visible only to admins)…';
-                    hint.textContent = 'Note is internal — never sent to sender';
-                    sendText.textContent = 'Save Note';
-                }
-            });
+        dataCache.resources.slice(0, 5).forEach(r => {
+            if (r.created_at) {
+                recentActivity.push({
+                    action: 'Resource uploaded',
+                    user: 'Admin',
+                    record: r.title,
+                    time: r.created_at,
+                    link: 'resources.html'
+                });
+            }
         });
 
-        // Wire up send button
-        document.getElementById('composerSendBtn').addEventListener('click', () => sendMessage(message));
+        dataCache.members.slice(0, 5).forEach(m => {
+            if (m.updated_at || m.created_at) {
+                recentActivity.push({
+                    action: 'Member updated',
+                    user: 'Admin',
+                    record: m.full_name,
+                    time: m.updated_at || m.created_at,
+                    link: 'members.html'
+                });
+            }
+        });
 
-        // Scroll to bottom of body
-        const body = document.getElementById('readerBody');
-        if (body) body.scrollTop = body.scrollHeight;
-    }
+        recentActivity.sort((a, b) => {
+            const ta = a.time ? new Date(a.time).getTime() : 0;
+            const tb = b.time ? new Date(b.time).getTime() : 0;
+            return tb - ta;
+        });
 
-    async function sendMessage(message) {
-        const textarea = document.getElementById('composerText');
-        const text = textarea.value.trim();
-        if (!text) {
-            showToast('Please write a message first', 'warning');
-            textarea.focus();
-            return;
+        if (recentActivity.length === 0) {
+            activityBody.innerHTML = '<tr class="empty-row"><td colspan="4">No recent activity</td></tr>';
+        } else {
+            activityBody.innerHTML = recentActivity.slice(0, 10).map(a => `
+                <tr>
+                    <td>${escapeHtml(a.action)}</td>
+                    <td>${escapeHtml(a.user)}</td>
+                    <td><a href="${a.link}" style="color: var(--primary); font-weight: 600;">${escapeHtml(a.record)}</a></td>
+                    <td class="cell-mono">${formatRelative(a.time)}</td>
+                </tr>
+            `).join('');
         }
 
-        const btn = document.getElementById('composerSendBtn');
-        const original = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Sending…';
-
-        try {
-            if (composerMode === 'reply') {
-                await apiPost(`/api/admin/messages/${message.id}/reply`, {
-                    content: text
-                });
-                message.is_replied = true;
-                message.replied_at = new Date().toISOString();
-                message.replies = message.replies || [];
-                message.replies.push({
-                    author: currentUser?.fullName || 'Admin',
-                    content: text,
-                    created_at: new Date().toISOString()
-                });
-                showToast('Reply sent', 'success');
+        // Logins — from users or from session data
+        if (dataCache.members.length > 0) {
+            const usersWithLogin = dataCache.members.filter(m => m.last_login).slice(0, 10);
+            if (usersWithLogin.length > 0) {
+                loginsBody.innerHTML = usersWithLogin.map(u => `
+                    <tr>
+                        <td>${escapeHtml(u.full_name || 'Unknown')}</td>
+                        <td>${escapeHtml(u.role || 'member')}</td>
+                        <td>${u.is_active !== false ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-danger">Inactive</span>'}</td>
+                        <td class="cell-mono">${formatRelative(u.last_login)}</td>
+                    </tr>
+                `).join('');
             } else {
-                await apiPost(`/api/admin/messages/${message.id}/notes`, {
-                    content: text
-                });
-                message.notes = message.notes || [];
-                message.notes.push({
-                    author: currentUser?.fullName || 'Admin',
-                    content: text,
-                    created_at: new Date().toISOString()
-                });
-                showToast('Note saved', 'success');
+                loginsBody.innerHTML = '<tr class="empty-row"><td colspan="4">No login records available</td></tr>';
             }
-
-            updateStats();
-            updateCategoryCounts();
-            renderReader(message);
-            renderInbox();
-        } catch (err) {
-            console.error('Send error:', err);
-            showToast(err.message || 'Failed to save', 'error');
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = original;
+        } else {
+            loginsBody.innerHTML = '<tr class="empty-row"><td colspan="4">No login records available</td></tr>';
         }
     }
 
     // ============================================================
-    // MESSAGE ACTIONS
+    // SYSTEM
     // ============================================================
-    async function toggleRead(message) {
-        try {
-            const newState = !message.is_read;
-            await apiPut(`/api/admin/messages/${message.id}/read`, { is_read: newState });
-            message.is_read = newState;
-            updateStats();
-            updateCategoryCounts();
-            updateSidebarBadge();
-            renderReader(message);
-            renderInbox();
-            showToast(newState ? 'Marked as read' : 'Marked as unread', 'success');
-        } catch (err) {
-            showToast(err.message || 'Failed to update', 'error');
-        }
-    }
+    async function renderSystem() {
+        const sysApi = document.getElementById('sysApi');
+        const sysDb = document.getElementById('sysDb');
+        const sysStorage = document.getElementById('sysStorage');
+        const sysEnv = document.getElementById('sysEnv');
+        const sysVersion = document.getElementById('sysVersion');
+        const sysUptime = document.getElementById('sysUptime');
+        const sysLastCheck = document.getElementById('sysLastCheck');
 
-    async function toggleArchive(message) {
         try {
-            const newState = !message.is_archived;
-            await apiPut(`/api/admin/messages/${message.id}`, { is_archived: newState, status: newState ? 'archived' : (message.is_replied ? 'replied' : 'read') });
-            message.is_archived = newState;
-            updateStats();
-            updateCategoryCounts();
-            renderReader(message);
-            renderInbox();
-            showToast(newState ? 'Message archived' : 'Message unarchived', 'success');
-        } catch (err) {
-            showToast(err.message || 'Failed to update', 'error');
-        }
-    }
+            const start = Date.now();
+            const res = await fetch(`${API_BASE_URL}/api/health`, { method: 'GET' });
+            const data = await res.json();
+            const ms = Date.now() - start;
 
-    async function toggleSpam(message) {
-        try {
-            const newState = !message.is_spam;
-            await apiPut(`/api/admin/messages/${message.id}`, { is_spam: newState });
-            message.is_spam = newState;
-            updateStats();
-            updateCategoryCounts();
-            renderReader(message);
-            renderInbox();
-            showToast(newState ? 'Marked as spam' : 'Unmarked spam', 'success');
-        } catch (err) {
-            showToast(err.message || 'Failed to update', 'error');
-        }
-    }
-
-    // ============================================================
-    // DELETE
-    // ============================================================
-    function openDeleteModal(id) {
-        const message = allMessages.find(m => String(m.id) === String(id));
-        if (!message) return;
-        deletingMessageId = id;
-        document.getElementById('deleteMessageSender').textContent = message.name;
-        showModal('deleteModal');
-    }
-
-    async function handleDelete() {
-        if (!deletingMessageId) return;
-        const btn = document.getElementById('confirmDeleteBtn');
-        const original = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Deleting…';
-        try {
-            await apiDelete(`/api/admin/messages/${deletingMessageId}`);
-            showToast('Message deleted', 'success');
-            hideModal('deleteModal');
-            if (activeMessageId === deletingMessageId) {
-                activeMessageId = null;
-                renderEmptyReader();
+            if (res.ok) {
+                sysApi.innerHTML = `<span class="status-dot"></span> Online (${ms}ms)`;
+                sysDb.innerHTML = `<span class="status-dot"></span> ${data.database?.status || 'Connected'}`;
+                sysEnv.textContent = data.environment || NODE_ENV || '—';
+                sysVersion.textContent = data.version || '—';
+                sysUptime.textContent = data.uptime ? formatUptime(data.uptime) : '—';
+            } else {
+                sysApi.innerHTML = `<span class="status-dot warning"></span> HTTP ${res.status}`;
+                sysDb.innerHTML = `<span class="status-dot warning"></span> Unknown`;
             }
-            deletingMessageId = null;
-            await loadMessages();
         } catch (err) {
-            showToast(err.message || 'Failed to delete', 'error');
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = original;
+            sysApi.innerHTML = `<span class="status-dot danger"></span> Offline`;
+            sysDb.innerHTML = `<span class="status-dot danger"></span> Unknown`;
         }
+
+        const totalBytes = dataCache.media.reduce((sum, m) => sum + (Number(m.size_bytes) || 0), 0);
+        sysStorage.innerHTML = `<span class="status-dot ${totalBytes > 0 ? '' : 'offline'}"></span> ${formatBytes(totalBytes)}`;
+
+        sysLastCheck.textContent = new Date().toLocaleTimeString();
     }
 
     // ============================================================
-    // UI HELPERS
+    // EXPORT
     // ============================================================
+    function openExportModal() {
+        document.getElementById('exportRangeLabel').textContent = getRangeLabel();
+        const session = document.getElementById('filterSession').value;
+        document.getElementById('exportSessionLabel').textContent = session ? ` · Session: ${session}` : '';
+        document.getElementById('exportDate').textContent = new Date().toLocaleDateString('en-US', {
+            year: 'numeric', month: 'long', day: 'numeric'
+        });
+        showModal('exportModal');
+    }
+
+    function setupExportOptions() {
+        document.querySelectorAll('#exportCategoryOptions .export-option').forEach(opt => {
+            opt.addEventListener('click', () => {
+                document.querySelectorAll('#exportCategoryOptions .export-option').forEach(o => o.classList.remove('selected'));
+                opt.classList.add('selected');
+                selectedExportCategory = opt.dataset.category;
+            });
+        });
+
+        document.querySelectorAll('#exportFormatOptions .export-option').forEach(opt => {
+            opt.addEventListener('click', () => {
+                document.querySelectorAll('#exportFormatOptions .export-option').forEach(o => o.classList.remove('selected'));
+                opt.classList.add('selected');
+                selectedExportFormat = opt.dataset.format;
+            });
+        });
+    }
+
+    function handleExport() {
+        let data;
+        let filename;
+
+        const date = new Date().toISOString().slice(0, 10);
+        const range = getRangeLabel().replace(/\s/g, '-').toLowerCase();
+
+        if (selectedExportCategory === 'complete') {
+            data = {
+                generated_at: new Date().toISOString(),
+                range: getRangeLabel(),
+                session: document.getElementById('filterSession').value || 'all',
+                department: document.getElementById('filterDepartment').value || 'all',
+                level: document.getElementById('filterLevel').value || 'all',
+                stats: dataCache.stats,
+                members: dataCache.members,
+                course_reps: dataCache.courseReps,
+                events: dataCache.events,
+                resources: dataCache.resources,
+                articles: dataCache.articles,
+                messages: dataCache.messages,
+                media: dataCache.media
+            };
+            filename = `nuesa-complete-report-${range}-${date}`;
+        } else if (selectedExportCategory === 'website') {
+            data = { generated_at: new Date().toISOString(), range: getRangeLabel(), traffic: dataCache.health?.traffic || {} };
+            filename = `nuesa-website-report-${range}-${date}`;
+        } else if (selectedExportCategory === 'members') {
+            data = { generated_at: new Date().toISOString(), session: document.getElementById('filterSession').value || 'all', members: dataCache.members.filter(m => m.position) };
+            filename = `nuesa-members-report-${range}-${date}`;
+        } else if (selectedExportCategory === 'course-reps') {
+            data = { generated_at: new Date().toISOString(), session: document.getElementById('filterSession').value || 'all', reps: dataCache.courseReps };
+            filename = `nuesa-course-reps-report-${range}-${date}`;
+        } else if (selectedExportCategory === 'events') {
+            data = { generated_at: new Date().toISOString(), range: getRangeLabel(), events: dataCache.events };
+            filename = `nuesa-events-report-${range}-${date}`;
+        } else if (selectedExportCategory === 'resources') {
+            data = { generated_at: new Date().toISOString(), range: getRangeLabel(), resources: dataCache.resources };
+            filename = `nuesa-resources-report-${range}-${date}`;
+        } else if (selectedExportCategory === 'news') {
+            data = { generated_at: new Date().toISOString(), range: getRangeLabel(), articles: dataCache.articles };
+            filename = `nuesa-news-report-${range}-${date}`;
+        } else if (selectedExportCategory === 'messages') {
+            data = { generated_at: new Date().toISOString(), range: getRangeLabel(), messages: dataCache.messages };
+            filename = `nuesa-messages-report-${range}-${date}`;
+        } else if (selectedExportCategory === 'admin') {
+            data = { generated_at: new Date().toISOString(), note: 'Admin activity is derived from record timestamps', articles: dataCache.articles, resources: dataCache.resources };
+            filename = `nuesa-admin-report-${range}-${date}`;
+        }
+
+        if (selectedExportFormat === 'csv') {
+            const csv = jsonToCSV(data);
+            downloadFile(csv, `${filename}.csv`, 'text/csv');
+        } else {
+            const json = JSON.stringify(data, null, 2);
+            downloadFile(json, `${filename}.json`, 'application/json');
+        }
+
+        hideModal('exportModal');
+        showToast('Report downloaded', 'success');
+    }
+
+    function jsonToCSV(data) {
+        const lines = [];
+
+        if (data.generated_at) {
+            lines.push(`# Generated: ${data.generated_at}`);
+            if (data.range) lines.push(`# Range: ${data.range}`);
+            if (data.session) lines.push(`# Session: ${data.session}`);
+            lines.push('');
+        }
+
+        // Flatten main collections
+        Object.keys(data).forEach(key => {
+            const val = data[key];
+            if (Array.isArray(val) && val.length > 0) {
+                lines.push(`# ${key.toUpperCase()}`);
+                const headers = Object.keys(val[0]);
+                lines.push(headers.map(h => `"${h}"`).join(','));
+
+                val.forEach(row => {
+                    lines.push(headers.map(h => {
+                        const v = row[h];
+                        if (v == null) return '""';
+                        if (typeof v === 'object') return `"${JSON.stringify(v).replace(/"/g, '""')}"`;
+                        return `"${String(v).replace(/"/g, '""')}"`;
+                    }).join(','));
+                });
+                lines.push('');
+            }
+        });
+
+        return lines.join('\n');
+    }
+
+    function downloadFile(content, filename, mimeType) {
+        const blob = new Blob([content], { type: `${mimeType};charset=utf-8;` });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    // ============================================================
+    // HELPERS
+    // ============================================================
+    function formatBytes(bytes) {
+        if (!bytes || bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    function formatDate(s) {
+        if (!s) return '—';
+        try {
+            const d = new Date(s);
+            if (isNaN(d.getTime())) return '—';
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        } catch { return '—'; }
+    }
+
+    function formatRelative(s) {
+        if (!s) return '—';
+        try {
+            const d = new Date(s);
+            if (isNaN(d.getTime())) return '—';
+            const diff = Date.now() - d.getTime();
+            const min = Math.floor(diff / 60000);
+            const hr = Math.floor(diff / 3600000);
+            const day = Math.floor(diff / 86400000);
+            if (min < 1) return 'Just now';
+            if (min < 60) return `${min}m ago`;
+            if (hr < 24) return `${hr}h ago`;
+            if (day < 7) return `${day}d ago`;
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        } catch { return '—'; }
+    }
+
+    function formatUptime(seconds) {
+        if (!seconds) return '—';
+        const d = Math.floor(seconds / 86400);
+        const h = Math.floor((seconds % 86400) / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        if (d > 0) return `${d}d ${h}h`;
+        if (h > 0) return `${h}h ${m}m`;
+        return `${m}m`;
+    }
+
+    function shortDept(dept) {
+        if (!dept) return '—';
+        if (dept.includes('Electrical')) return 'EEE';
+        if (dept.includes('Mechanical')) return 'MEE';
+        if (dept.includes('Civil')) return 'CVE';
+        return dept.split('/')[0].substring(0, 6);
+    }
+
+    function escapeHtml(str) {
+        if (str == null) return '';
+        return String(str)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
     function showLoading() { document.getElementById('loadingOverlay').classList.add('active'); }
     function hideLoading() { document.getElementById('loadingOverlay').classList.remove('active'); }
     function showModal(id) { const el = document.getElementById(id); if (el) { el.classList.add('active'); document.body.style.overflow = 'hidden'; } }
@@ -1855,46 +2962,72 @@
             <div class="toast-content">${escapeHtml(message)}</div>
             <button class="toast-close" aria-label="Close">&times;</button>`;
         document.body.appendChild(toast);
-        requestAnimationFrame(() => toast.classList.add('show'));
-        toast.querySelector('.toast-close').onclick = () => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); };
-        setTimeout(() => { if (toast.parentElement) { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); } }, duration);
+        toast.querySelector('.toast-close').onclick = () => { toast.classList.remove('toast-out'); setTimeout(() => toast.remove(), 300); };
+        setTimeout(() => { if (toast.parentElement) { toast.classList.add('toast-out'); setTimeout(() => toast.remove(), 300); } }, duration);
     }
 
-    function escapeHtml(str) {
-        if (str == null) return '';
-        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-    }
+    // ============================================================
+    // FILTER WIRING
+    // ============================================================
+    function setupFilterBar() {
+        // Date range chips
+        document.querySelectorAll('.date-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                currentRange = chip.dataset.range;
+                document.querySelectorAll('.date-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
 
-    function formatRelativeTime(s) {
-        if (!s) return '—';
-        try {
-            const d = new Date(s);
-            if (isNaN(d.getTime())) return s;
-            const now = new Date();
-            const diffMs = now - d;
-            const diffMin = Math.floor(diffMs / 60000);
-            const diffHr = Math.floor(diffMs / 3600000);
-            const diffDay = Math.floor(diffMs / 86400000);
+                const customRange = document.getElementById('customRange');
+                if (currentRange === 'custom') {
+                    customRange.classList.add('active');
+                    return;
+                } else {
+                    customRange.classList.remove('active');
+                }
 
-            if (diffMin < 1) return 'Just now';
-            if (diffMin < 60) return `${diffMin}m ago`;
-            if (diffHr < 24) return `${diffHr}h ago`;
-            if (diffDay < 2) return 'Yesterday';
-            if (diffDay < 7) return `${diffDay}d ago`;
-            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        } catch { return s; }
-    }
-
-    function formatFullDate(s) {
-        if (!s) return '—';
-        try {
-            const d = new Date(s);
-            if (isNaN(d.getTime())) return s;
-            return d.toLocaleString('en-US', {
-                year: 'numeric', month: 'long', day: 'numeric',
-                hour: '2-digit', minute: '2-digit'
+                updateRangeBadge();
+                renderCurrentPanel();
             });
-        } catch { return s; }
+        });
+
+        document.getElementById('applyCustomRange').addEventListener('click', () => {
+            const from = document.getElementById('customFrom').value;
+            const to = document.getElementById('customTo').value;
+            if (!from || !to) {
+                showToast('Please select both dates', 'warning');
+                return;
+            }
+            customFrom = from;
+            customTo = to;
+            updateRangeBadge();
+            renderCurrentPanel();
+        });
+
+        ['filterSession', 'filterDepartment', 'filterLevel'].forEach(id => {
+            document.getElementById(id).addEventListener('change', renderCurrentPanel);
+        });
+    }
+
+    function updateRangeBadge() {
+        document.getElementById('rangeBadgeText').textContent = getRangeLabel();
+    }
+
+    // ============================================================
+    // ANALYTICS TABS
+    // ============================================================
+    function setupAnalyticsTabs() {
+        document.querySelectorAll('.analytics-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                currentPanel = tab.dataset.panel;
+                document.querySelectorAll('.analytics-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                document.querySelectorAll('.analytics-panel').forEach(p => p.classList.remove('active'));
+                document.getElementById(`panel-${currentPanel}`).classList.add('active');
+
+                renderCurrentPanel();
+            });
+        });
     }
 
     // ============================================================
@@ -1929,33 +3062,14 @@
     }
 
     // ============================================================
-    // EXPORT
+    // HEADER SCROLL
     // ============================================================
-    function exportMessages() {
-        if (filteredMessages.length === 0) {
-            showToast('Nothing to export', 'warning');
-            return;
-        }
-        const headers = ['Name','Email','Subject','Status','Received'];
-        const rows = filteredMessages.map(m => {
-            let status = 'read';
-            if (m.is_spam) status = 'spam';
-            else if (m.is_archived) status = 'archived';
-            else if (m.is_replied) status = 'replied';
-            else if (!m.is_read) status = 'unread';
-            return [m.name, m.email, m.subject, status, m.created_at || ''];
-        });
-        const csv = [headers, ...rows]
-            .map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
-            .join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `nuesa-messages-${new Date().toISOString().slice(0,10)}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-        showToast(`Exported ${rows.length} messages`, 'success');
+    function setupHeaderScroll() {
+        const header = document.getElementById('mainHeader');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 8) header.classList.add('scrolled');
+            else header.classList.remove('scrolled');
+        }, { passive: true });
     }
 
     // ============================================================
@@ -1970,7 +3084,7 @@
     }
     function setupActivityListeners() {
         ['mousedown','keypress','scroll','touchstart'].forEach(ev =>
-            document.addEventListener(ev, resetInactivityTimer));
+            document.addEventListener(ev, resetInactivityTimer, { passive: true }));
         resetInactivityTimer();
     }
 
@@ -1979,70 +3093,32 @@
     // ============================================================
     async function init() {
         setupSidebar();
+        setupHeaderScroll();
+        setupFilterBar();
+        setupAnalyticsTabs();
+        setupExportOptions();
 
-        // Static wiring
         document.getElementById('logoutBtn').addEventListener('click', () => showModal('logoutModal'));
         document.getElementById('confirmLogout').addEventListener('click', confirmLogout);
-        document.getElementById('notificationBtn').addEventListener('click', () => {
-            // Already on messages page — focus inbox
-            document.getElementById('searchInput').focus();
-        });
-        document.getElementById('exportBtn').addEventListener('click', exportMessages);
-        document.getElementById('refreshBtn').addEventListener('click', async () => {
-            showToast('Refreshing…', 'info');
-            await loadMessages();
-            showToast('Messages refreshed', 'success');
-        });
-        document.getElementById('confirmDeleteBtn').addEventListener('click', handleDelete);
+        document.getElementById('notificationBtn').addEventListener('click', () => { window.location.href = 'messages.html'; });
+        document.getElementById('exportBtn').addEventListener('click', openExportModal);
+        document.getElementById('confirmExportBtn').addEventListener('click', handleExport);
 
-        // Search
-        document.getElementById('searchInput').addEventListener('input', (e) => {
-            searchQuery = e.target.value.trim();
-            renderInbox();
-        });
-
-        // Category tabs
-        document.querySelectorAll('.category-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                currentCategory = tab.dataset.category;
-                document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                renderInbox();
-            });
-        });
-
-        // Stat cards act as filter shortcuts
-        document.querySelectorAll('.stat-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const filter = card.dataset.filter;
-                if (filter) {
-                    currentCategory = filter;
-                    document.querySelectorAll('.category-tab').forEach(t => {
-                        if (t.dataset.category === filter) t.classList.add('active');
-                        else t.classList.remove('active');
-                    });
-                    renderInbox();
-                }
-            });
-        });
-
-        // Escape
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                ['deleteModal','logoutModal'].forEach(id => {
+                ['exportModal', 'logoutModal'].forEach(id => {
                     const el = document.getElementById(id);
                     if (el && el.classList.contains('active')) hideModal(id);
                 });
             }
         });
 
-        // Auth
         const ok = await checkAuth();
         if (!ok) return;
 
         setupActivityListeners();
-        await loadMessages();
-        hideLoading();
+        updateRangeBadge();
+        await loadAllData();
     }
 
     document.addEventListener('DOMContentLoaded', init);

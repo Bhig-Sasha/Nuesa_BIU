@@ -56,6 +56,7 @@
 
             --ease: cubic-bezier(0.22, 1, 0.36, 1);
             --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+            --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
             --dur-fast: 160ms;
             --dur:      240ms;
             --dur-slow: 420ms;
@@ -79,6 +80,7 @@
             line-height: 1.55;
             -webkit-font-smoothing: antialiased;
             overflow-x: hidden;
+            animation: pageFadeIn var(--dur-slow) var(--ease-out) both;
         }
 
         a { color: inherit; text-decoration: none; }
@@ -88,11 +90,12 @@
            ANIMATIONS
            ============================================================ */
         @keyframes pageFadeIn  { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes fadeIn     { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideInUp  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes scaleIn    { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
-        @keyframes rowReveal  { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes spin       { to { transform: rotate(360deg); } }
+        @keyframes fadeIn      { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideInUp   { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes scaleIn     { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+        @keyframes rowReveal   { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin        { to { transform: rotate(360deg); } }
+        @keyframes toastIn     { from { opacity: 0; transform: translateX(calc(100% + 40px)); } to { opacity: 1; transform: translateX(0); } }
 
         /* ============================================================
            LOADING
@@ -136,10 +139,9 @@
             max-width: 380px; z-index: 9998;
             border: 1px solid var(--border);
             border-left: 3px solid var(--info);
-            transform: translateX(calc(100% + 40px));
-            transition: transform var(--dur-slow) var(--ease-out);
+            animation: toastIn var(--dur-slow) var(--ease-out) forwards;
         }
-        .toast.show { transform: translateX(0); }
+        .toast.toast-out { transform: translateX(calc(100% + 40px)); transition: transform var(--dur) var(--ease); }
         .toast-success { border-left-color: var(--success); }
         .toast-error   { border-left-color: var(--danger); }
         .toast-warning { border-left-color: var(--warning); }
@@ -162,7 +164,7 @@
         /* ============================================================
            SHELL
            ============================================================ */
-        .dashboard-container { display: flex; min-height: 100vh; animation: pageFadeIn 500ms var(--ease); }
+        .dashboard-container { display: flex; min-height: 100vh; }
 
         /* ============================================================
            SIDEBAR
@@ -174,7 +176,7 @@
             position: fixed; top: 0; left: 0; bottom: 0;
             z-index: 40;
             transition: transform var(--dur) var(--ease);
-            overflow: hidden; /* no outer scroll */
+            overflow: hidden;
         }
         @media (max-width: 900px) {
             .sidebar { transform: translateX(-100%); }
@@ -185,7 +187,7 @@
             padding: 24px 20px 20px;
             display: flex; align-items: center; gap: 12px;
             border-bottom: 1px solid rgba(255,255,255,0.08);
-            flex-shrink: 0; /* pinned */
+            flex-shrink: 0;
         }
         .sidebar-logo {
             width: 44px; height: 44px;
@@ -218,17 +220,14 @@
             padding: 16px 12px;
             flex: 1 1 auto;
             overflow-y: auto;
-            min-height: 0; /* important for flex scroll */
+            min-height: 0;
             display: flex; flex-direction: column; gap: 3px;
             scrollbar-width: thin;
             scrollbar-color: rgba(255,255,255,0.15) transparent;
         }
         .nav::-webkit-scrollbar { width: 5px; }
         .nav::-webkit-scrollbar-track { background: transparent; }
-        .nav::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.15);
-            border-radius: 5px;
-        }
+        .nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 5px; }
         .nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
 
         .nav-section-label {
@@ -272,7 +271,7 @@
         .sidebar-footer {
             padding: 16px 12px 20px;
             border-top: 1px solid rgba(255,255,255,0.08);
-            flex-shrink: 0; /* pinned bottom */
+            flex-shrink: 0;
         }
         .logout-btn {
             width: 100%;
@@ -345,16 +344,7 @@
             .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
         }
 
-        .header-breadcrumb {
-            display: flex; align-items: center; gap: 8px;
-            font-size: 0.8125rem;
-            color: var(--text-muted);
-            font-weight: 500;
-        }
-        .header-breadcrumb i { font-size: 0.6875rem; color: var(--text-dim); }
-        .header-breadcrumb .current { color: var(--text); font-weight: 600; }
-
-        .header-actions { display: flex; align-items: center; gap: 8px; }
+        .header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 
         .notification-btn {
             position: relative;
@@ -408,6 +398,7 @@
             color: var(--text-dim);
             text-transform: uppercase; letter-spacing: 0.08em;
         }
+        @media (max-width: 640px) { .user-details { display: none; } }
 
         /* ============================================================
            MAIN AREA
@@ -436,6 +427,10 @@
             font-weight: 500;
         }
         .page-header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        @media (max-width: 640px) {
+            .page-header-actions { width: 100%; }
+            .page-header-actions .btn { flex: 1; justify-content: center; }
+        }
 
         /* ============================================================
            BUTTONS
@@ -470,22 +465,7 @@
         .btn-danger:hover { filter: brightness(0.92); }
         .btn-danger:active { transform: scale(0.97); }
         .btn-sm { padding: 6px 12px; font-size: 0.75rem; }
-
-        .btn::after {
-            content: '';
-            position: absolute;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.3);
-            transform: scale(0);
-            opacity: 0;
-            pointer-events: none;
-            transition: transform 400ms var(--ease-out), opacity 400ms var(--ease-out);
-        }
-        .btn:active::after {
-            transform: scale(2.5);
-            opacity: 1;
-            transition: transform 0ms, opacity 0ms;
-        }
+        .btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
         .icon-btn {
             width: 32px; height: 32px;
@@ -518,12 +498,16 @@
             border-radius: var(--r-lg);
             border: 1px solid var(--border);
             animation: slideInUp var(--dur) var(--ease) both;
+            cursor: pointer;
+            transition: border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
         }
         .stat-card:nth-child(1) { animation-delay: 40ms; }
         .stat-card:nth-child(2) { animation-delay: 100ms; }
         .stat-card:nth-child(3) { animation-delay: 160ms; }
         .stat-card:nth-child(4) { animation-delay: 220ms; }
         .stat-card:nth-child(5) { animation-delay: 280ms; }
+        .stat-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .stat-card.active { border-color: var(--accent); background: var(--accent-tint); }
         .stat-icon {
             width: 38px; height: 38px;
             border-radius: var(--r);
@@ -545,6 +529,62 @@
         .stat-label {
             color: var(--text-muted);
             font-size: 0.8125rem; font-weight: 600;
+        }
+
+        /* ============================================================
+           STATUS TABS
+           ============================================================ */
+        .status-tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--surface);
+            padding: 6px;
+            border-radius: var(--r-lg);
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+            overflow-x: auto;
+            animation: slideInUp var(--dur) var(--ease) both;
+            scrollbar-width: thin;
+        }
+        .status-tabs::-webkit-scrollbar { height: 3px; }
+        .status-tabs::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+        .status-tab {
+            padding: 10px 18px;
+            background: transparent;
+            border: none;
+            border-radius: var(--r);
+            font-family: inherit;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .status-tab:hover { background: var(--surface-muted); color: var(--text); }
+        .status-tab.active {
+            background: var(--primary);
+            color: var(--text-invert);
+        }
+        .status-tab.active i { color: var(--accent); }
+        .status-tab-count {
+            background: rgba(255,255,255,0.15);
+            padding: 1px 8px;
+            border-radius: 999px;
+            font-size: 0.6875rem;
+            font-family: var(--font-mono);
+            font-weight: 700;
+            min-width: 20px;
+            text-align: center;
+            line-height: 16px;
+        }
+        .status-tab:not(.active) .status-tab-count {
+            background: var(--surface-muted);
+            color: var(--text-muted);
         }
 
         /* ============================================================
@@ -578,7 +618,6 @@
             font-family: var(--font-mono);
         }
 
-        /* View toggle */
         .view-toggle {
             display: inline-flex;
             gap: 4px;
@@ -612,10 +651,11 @@
            ============================================================ */
         .filters {
             display: grid;
-            grid-template-columns: 2fr repeat(4, 1fr);
+            grid-template-columns: 2fr repeat(5, 1fr);
             gap: 10px;
             margin-bottom: 18px;
         }
+        @media (max-width: 1400px) { .filters { grid-template-columns: 2fr repeat(3, 1fr); } }
         @media (max-width: 1100px) { .filters { grid-template-columns: 1fr 1fr 1fr; } }
         @media (max-width: 640px) { .filters { grid-template-columns: 1fr 1fr; } }
         @media (max-width: 420px) { .filters { grid-template-columns: 1fr; } }
@@ -707,6 +747,7 @@
             transition: all var(--dur) var(--ease);
             display: flex; flex-direction: column;
             animation: slideInUp var(--dur) var(--ease) both;
+            position: relative;
         }
         .article-card:hover {
             transform: translateY(-3px);
@@ -739,6 +780,21 @@
             letter-spacing: 0.05em;
             backdrop-filter: blur(6px);
             box-shadow: var(--shadow-sm);
+        }
+        .featured-ribbon {
+            position: absolute;
+            top: 10px; left: 10px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.625rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: var(--accent);
+            color: var(--primary);
+            box-shadow: var(--shadow-sm);
+            display: flex; align-items: center; gap: 4px;
         }
         .article-body {
             padding: 14px 16px;
@@ -877,9 +933,67 @@
         .badge-purple   { background: var(--purple-tint);  color: var(--purple); }
         .badge-muted    { background: var(--surface-muted); color: var(--text-muted); }
 
-        .row-actions {
-            display: flex; gap: 4px;
-            justify-content: flex-end;
+        .row-actions { display: flex; gap: 4px; justify-content: flex-end; }
+
+        /* ============================================================
+           ACTIONS MENU
+           ============================================================ */
+        .actions-menu {
+            position: relative;
+            display: inline-block;
+        }
+        .actions-menu-trigger {
+            width: 32px; height: 32px;
+            border-radius: var(--r-sm);
+            border: 1px solid transparent;
+            background: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 0.9375rem;
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .actions-menu-trigger:hover { background: var(--surface-muted); color: var(--text); border-color: var(--border); }
+        .actions-menu-trigger.active { background: var(--primary-tint); color: var(--primary); border-color: var(--accent); }
+        .actions-menu-dropdown {
+            position: absolute;
+            top: calc(100% + 4px);
+            right: 0;
+            min-width: 220px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            box-shadow: var(--shadow-xl);
+            padding: 6px;
+            z-index: 100;
+            display: none;
+            animation: fadeIn var(--dur-fast) var(--ease);
+        }
+        .actions-menu-dropdown.open { display: block; }
+        .actions-menu-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 9px 12px;
+            border-radius: var(--r-sm);
+            font-size: 0.8125rem;
+            color: var(--text);
+            cursor: pointer;
+            transition: background var(--dur-fast) var(--ease);
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            font-family: inherit;
+        }
+        .actions-menu-item:hover { background: var(--surface-muted); }
+        .actions-menu-item i { width: 16px; text-align: center; color: var(--text-muted); font-size: 0.8125rem; }
+        .actions-menu-item:hover i { color: var(--primary); }
+        .actions-menu-item.danger { color: var(--danger); }
+        .actions-menu-item.danger i { color: var(--danger); }
+        .actions-menu-item.danger:hover { background: var(--danger-tint); }
+        .actions-menu-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 4px 6px;
         }
 
         /* ============================================================
@@ -902,7 +1016,7 @@
             margin: 0 auto 16px;
         }
         .empty-state h3 { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 6px; }
-        .empty-state p { font-size: 0.875rem; }
+        .empty-state p { font-size: 0.875rem; margin-bottom: 16px; }
 
         /* ============================================================
            PAGINATION
@@ -918,7 +1032,7 @@
             color: var(--text-muted);
             font-family: var(--font-mono);
         }
-        .pagination-controls { display: flex; gap: 6px; }
+        .pagination-controls { display: flex; gap: 6px; flex-wrap: wrap; }
         .page-btn {
             min-width: 32px; height: 32px;
             padding: 0 10px;
@@ -956,7 +1070,7 @@
             width: 100%; max-width: 560px;
             max-height: 92vh; overflow-y: auto;
             transform: translateY(-12px) scale(0.96);
-            transition: transform var(--dur) var(--ease-out);
+            transition: transform var(--dur) var(--ease-spring);
             box-shadow: var(--shadow-xl);
         }
         .modal.active .modal-content { transform: translateY(0) scale(1); }
@@ -990,6 +1104,10 @@
             display: flex; gap: 10px; justify-content: flex-end;
             position: sticky; bottom: 0;
             background: var(--surface);
+        }
+        @media (max-width: 480px) {
+            .modal-footer { flex-direction: column; }
+            .modal-footer .btn { width: 100%; justify-content: center; }
         }
 
         /* ============================================================
@@ -1038,10 +1156,10 @@
             padding: 32px 24px;
         }
         .editor-container {
-            max-width: 900px;
+            max-width: 1100px;
             margin: 0 auto;
             display: grid;
-            grid-template-columns: 1fr 300px;
+            grid-template-columns: 1fr 340px;
             gap: 24px;
         }
         @media (max-width: 900px) {
@@ -1064,6 +1182,19 @@
             border: 1px solid var(--border);
             padding: 20px;
         }
+        .editor-sidebar-card h4 {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+            margin-bottom: 14px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; gap: 6px;
+        }
+        .editor-sidebar-card h4 i { color: var(--accent); }
 
         .editor-input-title {
             width: 100%;
@@ -1106,6 +1237,7 @@
             padding: 8px 0;
             border-bottom: 1px solid var(--border);
             margin-bottom: 16px;
+            align-items: center;
         }
         .editor-tool {
             background: none;
@@ -1120,6 +1252,7 @@
         }
         .editor-tool:hover { background: var(--surface-muted); color: var(--text); }
         .editor-tool.active { background: var(--primary-tint); color: var(--primary); }
+        .editor-toolbar-divider { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
 
         .editor-content {
             width: 100%;
@@ -1193,6 +1326,27 @@
             color: var(--text-dim);
             font-family: var(--font-mono);
         }
+        .cover-upload .cover-actions {
+            position: absolute;
+            top: 8px; right: 8px;
+            display: flex; gap: 4px;
+            opacity: 0;
+            transition: opacity var(--dur-fast) var(--ease);
+        }
+        .cover-upload:hover .cover-actions { opacity: 1; }
+        .cover-action-btn {
+            width: 28px; height: 28px;
+            border-radius: var(--r-sm);
+            background: rgba(255,255,255,0.9);
+            border: none;
+            color: var(--text);
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.75rem;
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .cover-action-btn:hover { background: var(--surface); color: var(--primary); }
+        .cover-action-btn.danger:hover { background: var(--danger); color: white; }
 
         .checkbox-row {
             display: flex; align-items: flex-start; gap: 10px;
@@ -1225,12 +1379,12 @@
         .drawer {
             position: fixed;
             top: 0; right: 0; bottom: 0;
-            width: 100%; max-width: 500px;
+            width: 100%; max-width: 520px;
             background: var(--surface);
             box-shadow: var(--shadow-xl);
             z-index: 10000;
             transform: translateX(100%);
-            transition: transform var(--dur-slow) var(--ease-out);
+            transition: transform var(--dur-slow) var(--ease-spring);
             display: flex; flex-direction: column;
             overflow-y: auto;
         }
@@ -1306,6 +1460,20 @@
             line-height: 1.6;
             margin-bottom: 20px;
         }
+        .drawer-content-preview {
+            background: var(--surface-muted);
+            border-radius: var(--r);
+            padding: 14px;
+            font-size: 0.8125rem;
+            line-height: 1.6;
+            color: var(--text);
+            margin-bottom: 16px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            border: 1px solid var(--border);
+        }
+        .drawer-content-preview.expanded { max-height: none; }
 
         .drawer-section-title {
             font-family: var(--font-mono);
@@ -1329,11 +1497,24 @@
             padding: 10px 0;
             border-bottom: 1px solid var(--border);
             font-size: 0.8125rem;
+            gap: 12px;
         }
         .detail-row:last-child { border-bottom: none; }
-        .detail-label { color: var(--text-muted); font-weight: 500; }
-        .detail-value { color: var(--text); font-weight: 600; text-align: right; }
+        .detail-label { color: var(--text-muted); font-weight: 500; flex-shrink: 0; }
+        .detail-value { color: var(--text); font-weight: 600; text-align: right; word-break: break-word; }
         .detail-value.mono { font-family: var(--font-mono); font-size: 0.75rem; }
+
+        .activity-item {
+            padding: 10px 12px;
+            background: var(--surface-muted);
+            border-radius: var(--r);
+            margin-bottom: 6px;
+            font-size: 0.8125rem;
+            display: flex; gap: 10px;
+            border-left: 3px solid var(--accent);
+        }
+        .activity-item i { color: var(--accent); flex-shrink: 0; margin-top: 2px; }
+        .activity-meta { font-family: var(--font-mono); font-size: 0.6875rem; color: var(--text-dim); margin-top: 2px; }
 
         .drawer-footer {
             padding: 16px 22px;
@@ -1343,8 +1524,42 @@
         }
         .drawer-footer .btn { flex: 1; min-width: 100px; justify-content: center; }
 
+        @media (max-width: 420px) {
+            .drawer { max-width: 100%; }
+        }
+
         /* ============================================================
-           CATEGORIES MODAL
+           MEDIA PICKER MODAL
+           ============================================================ */
+        .media-picker-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 4px;
+        }
+        .media-picker-item {
+            aspect-ratio: 1;
+            border-radius: var(--r);
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all var(--dur-fast) var(--ease);
+            background: var(--surface-muted);
+            position: relative;
+        }
+        .media-picker-item:hover { border-color: var(--accent); transform: scale(1.02); }
+        .media-picker-item.selected { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-tint); }
+        .media-picker-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .media-picker-item .placeholder {
+            display: flex; align-items: center; justify-content: center;
+            width: 100%; height: 100%;
+            color: var(--text-dim); font-size: 1.5rem;
+        }
+
+        /* ============================================================
+           CATEGORIES MANAGEMENT
            ============================================================ */
         .category-list {
             display: flex; flex-direction: column; gap: 8px;
@@ -1356,8 +1571,11 @@
             background: var(--surface-muted);
             border: 1px solid var(--border);
             border-radius: var(--r);
+            transition: all var(--dur-fast) var(--ease);
         }
-        .category-item-info { flex: 1; }
+        .category-item:hover { background: var(--surface); border-color: var(--border-strong); }
+        .category-item.inactive { opacity: 0.65; }
+        .category-item-info { flex: 1; min-width: 0; }
         .category-item-name { font-weight: 600; color: var(--text); font-size: 0.875rem; }
         .category-item-slug { font-family: var(--font-mono); font-size: 0.6875rem; color: var(--text-dim); margin-top: 2px; }
         .category-item-count {
@@ -1369,7 +1587,9 @@
             padding: 2px 8px;
             border-radius: 999px;
             border: 1px solid var(--border);
+            white-space: nowrap;
         }
+        .category-item-actions { display: flex; gap: 2px; }
 
         /* ============================================================
            RESPONSIVE
@@ -1379,7 +1599,6 @@
             .stat-value { font-size: 1.375rem; }
             .user-details { display: none; }
             .header { padding: 0 16px; }
-            .header-breadcrumb { display: none; }
             .page-header-actions { width: 100%; }
             .page-header-actions .btn { flex: 1; justify-content: center; }
             .editor-topbar { padding: 0 16px; }
@@ -1452,14 +1671,9 @@
 
         <div class="main-content">
             <header class="header" id="mainHeader">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <button class="mobile-menu-btn" id="mobileMenuToggle" type="button" aria-label="Toggle menu">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    <div class="header-breadcrumb" id="headerBreadcrumb" style="display: none;">
-                        <!-- Breadcrumb removed per request -->
-                    </div>
-                </div>
+                <button class="mobile-menu-btn" id="mobileMenuToggle" type="button" aria-label="Toggle menu">
+                    <i class="fas fa-bars"></i>
+                </button>
                 <div class="header-actions">
                     <button class="notification-btn" id="notificationBtn" type="button" aria-label="Notifications">
                         <i class="far fa-bell"></i>
@@ -1480,7 +1694,7 @@
                 <div class="page-header">
                     <div>
                         <h1 class="page-title">News &amp; Articles</h1>
-                        <p class="page-subtitle">Manage association news, announcements and publications.</p>
+                        <p class="page-subtitle">Create, edit and publish NUESA news and articles.</p>
                     </div>
                     <div class="page-header-actions">
                         <button class="btn btn-secondary" id="categoriesBtn">
@@ -1497,37 +1711,61 @@
 
                 <!-- Stats -->
                 <div class="stats-grid">
-                    <div class="stat-card">
+                    <div class="stat-card" data-stat-filter="all">
                         <div class="stat-icon icon-green"><i class="far fa-newspaper"></i></div>
                         <div class="stat-value" id="statTotal">0</div>
                         <div class="stat-label">Total Articles</div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card" data-stat-filter="published">
                         <div class="stat-icon icon-gold"><i class="fas fa-globe"></i></div>
                         <div class="stat-value" id="statPublished">0</div>
                         <div class="stat-label">Published</div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card" data-stat-filter="draft">
                         <div class="stat-icon icon-blue"><i class="fas fa-file-alt"></i></div>
                         <div class="stat-value" id="statDrafts">0</div>
                         <div class="stat-label">Drafts</div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card" data-stat-filter="scheduled">
                         <div class="stat-icon icon-purple"><i class="fas fa-clock"></i></div>
                         <div class="stat-value" id="statScheduled">0</div>
                         <div class="stat-label">Scheduled</div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card" data-stat-filter="archived">
                         <div class="stat-icon icon-red"><i class="fas fa-archive"></i></div>
                         <div class="stat-value" id="statArchived">0</div>
                         <div class="stat-label">Archived</div>
                     </div>
                 </div>
 
+                <!-- Status tabs -->
+                <div class="status-tabs" id="statusTabs">
+                    <button class="status-tab active" data-status="all">
+                        <i class="fas fa-list"></i> All Articles
+                        <span class="status-tab-count" id="tabCountAll">0</span>
+                    </button>
+                    <button class="status-tab" data-status="published">
+                        <i class="fas fa-globe"></i> Published
+                        <span class="status-tab-count" id="tabCountPublished">0</span>
+                    </button>
+                    <button class="status-tab" data-status="draft">
+                        <i class="fas fa-file-alt"></i> Drafts
+                        <span class="status-tab-count" id="tabCountDrafts">0</span>
+                    </button>
+                    <button class="status-tab" data-status="scheduled">
+                        <i class="fas fa-clock"></i> Scheduled
+                        <span class="status-tab-count" id="tabCountScheduled">0</span>
+                    </button>
+                    <button class="status-tab" data-status="archived">
+                        <i class="fas fa-archive"></i> Archived
+                        <span class="status-tab-count" id="tabCountArchived">0</span>
+                    </button>
+                </div>
+
                 <!-- Directory -->
                 <div class="content-card">
                     <div class="card-header">
-                        <h2 class="card-title"><i class="fas fa-list-check"></i> Article Library</h2>
+                        <h2 class="card-title"><i class="fas fa-list-check"></i> <span id="tabTitle">All Articles</span></h2>
                         <div style="display: flex; align-items: center; gap: 12px;">
                             <span class="card-meta" id="resultCount">0 articles</span>
                             <div class="view-toggle" role="tablist">
@@ -1544,20 +1782,16 @@
                     <div class="filters">
                         <div class="search-wrapper">
                             <i class="fas fa-search"></i>
-                            <input type="text" class="search-input" id="searchInput" placeholder="Search article title or author…">
+                            <input type="text" class="search-input" id="searchInput" placeholder="Search title, keyword or author…">
                         </div>
                         <select class="filter-select" id="filterCategory">
                             <option value="">All Categories</option>
                         </select>
-                        <select class="filter-select" id="filterStatus">
-                            <option value="">All Statuses</option>
-                            <option value="published">Published</option>
-                            <option value="draft">Draft</option>
-                            <option value="scheduled">Scheduled</option>
-                            <option value="archived">Archived</option>
-                        </select>
                         <select class="filter-select" id="filterAuthor">
                             <option value="">All Authors</option>
+                        </select>
+                        <select class="filter-select" id="filterSession">
+                            <option value="">All Sessions</option>
                         </select>
                         <select class="filter-select" id="filterDate">
                             <option value="">All Dates</option>
@@ -1565,6 +1799,12 @@
                             <option value="this-week">This Week</option>
                             <option value="this-month">This Month</option>
                             <option value="older">Older</option>
+                        </select>
+                        <select class="filter-select" id="filterSort">
+                            <option value="newest">Newest First</option>
+                            <option value="oldest">Oldest First</option>
+                            <option value="most_viewed">Most Viewed</option>
+                            <option value="recently_updated">Recently Updated</option>
                         </select>
                     </div>
 
@@ -1642,33 +1882,44 @@
                         <button class="editor-tool" data-tool="bold" title="Bold"><i class="fas fa-bold"></i></button>
                         <button class="editor-tool" data-tool="italic" title="Italic"><i class="fas fa-italic"></i></button>
                         <button class="editor-tool" data-tool="underline" title="Underline"><i class="fas fa-underline"></i></button>
+                        <div class="editor-toolbar-divider"></div>
                         <button class="editor-tool" data-tool="h2" title="Heading"><i class="fas fa-heading"></i></button>
-                        <button class="editor-tool" data-tool="list" title="List"><i class="fas fa-list"></i></button>
+                        <button class="editor-tool" data-tool="list" title="Bullet List"><i class="fas fa-list-ul"></i></button>
+                        <button class="editor-tool" data-tool="ordered-list" title="Numbered List"><i class="fas fa-list-ol"></i></button>
                         <button class="editor-tool" data-tool="quote" title="Quote"><i class="fas fa-quote-right"></i></button>
+                        <div class="editor-toolbar-divider"></div>
                         <button class="editor-tool" data-tool="link" title="Link"><i class="fas fa-link"></i></button>
-                        <button class="editor-tool" data-tool="image" title="Image"><i class="fas fa-image"></i></button>
+                        <button class="editor-tool" data-tool="image" title="Insert Image"><i class="fas fa-image"></i></button>
                     </div>
 
                     <textarea
                         class="editor-content"
                         id="edContent"
-                        placeholder="Start writing your article…"></textarea>
+                        placeholder="Write your article here…"></textarea>
                 </div>
 
                 <!-- Sidebar column -->
                 <div class="editor-sidebar">
-                    <!-- Cover -->
+                    <!-- Featured Image -->
                     <div class="editor-sidebar-card">
-                        <label class="editor-side-label">Featured Image</label>
+                        <h4><i class="far fa-image"></i> Featured Image</h4>
                         <div class="cover-upload" id="coverUpload">
                             <i class="far fa-image placeholder-icon"></i>
-                            <div class="cover-hint">Upload cover image</div>
+                            <div class="cover-hint">Click to choose from Media Library</div>
+                            <div class="cover-actions" id="coverActions" style="display: none;">
+                                <button type="button" class="cover-action-btn" id="coverReplaceBtn" title="Replace">
+                                    <i class="fas fa-exchange-alt"></i>
+                                </button>
+                                <button type="button" class="cover-action-btn danger" id="coverRemoveBtn" title="Remove">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
                         </div>
-                        <input type="file" id="coverFileInput" accept="image/*" hidden>
                     </div>
 
-                    <!-- Settings -->
+                    <!-- Article Settings -->
                     <div class="editor-sidebar-card">
+                        <h4><i class="fas fa-cog"></i> Article Settings</h4>
                         <div class="editor-side-section">
                             <label class="editor-side-label" for="edCategory">Category</label>
                             <select class="form-select" id="edCategory">
@@ -1680,41 +1931,82 @@
                             <input type="text" class="form-input" id="edAuthor" placeholder="Author name">
                         </div>
                         <div class="editor-side-section">
+                            <label class="editor-side-label" for="edSession">Academic Session</label>
+                            <select class="form-select" id="edSession">
+                                <option value="">None</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Publishing -->
+                    <div class="editor-sidebar-card">
+                        <h4><i class="fas fa-paper-plane"></i> Publishing</h4>
+                        <div class="editor-side-section">
                             <label class="editor-side-label" for="edScheduled">Schedule Publication</label>
                             <input type="datetime-local" class="form-input" id="edScheduled">
+                            <p style="font-size: 0.6875rem; color: var(--text-dim); margin-top: 6px;">Leave empty to publish immediately</p>
                         </div>
-                    </div>
-
-                    <!-- SEO -->
-                    <div class="editor-sidebar-card">
-                        <label class="editor-side-label">SEO</label>
-                        <div class="editor-side-section">
-                            <input type="text" class="form-input" id="edSeoTitle" placeholder="SEO title">
-                        </div>
-                        <div class="editor-side-section">
-                            <textarea class="form-textarea" id="edSeoDescription" placeholder="SEO description" rows="2"></textarea>
-                        </div>
-                    </div>
-
-                    <!-- Extras -->
-                    <div class="editor-sidebar-card">
-                        <label class="editor-side-label">Extras</label>
                         <div class="checkbox-row">
                             <input type="checkbox" id="edFeatured">
                             <label for="edFeatured">
                                 <span class="cb-label">Feature on homepage</span>
-                                <span class="cb-hint">Eligible for the site's news section</span>
+                                <span class="cb-hint">Show in the featured news section</span>
                             </label>
                         </div>
                         <div class="checkbox-row">
                             <input type="checkbox" id="edAllowComments">
                             <label for="edAllowComments">
-                                <span class="cb-label">Allow comments</span>
+                                <span class="cb-label">Allow public comments</span>
                                 <span class="cb-hint">Enable reader discussion</span>
                             </label>
                         </div>
                     </div>
+
+                    <!-- SEO -->
+                    <div class="editor-sidebar-card">
+                        <h4><i class="fas fa-search"></i> SEO Settings</h4>
+                        <div class="editor-side-section">
+                            <label class="editor-side-label" for="edSeoTitle">SEO Page Title</label>
+                            <input type="text" class="form-input" id="edSeoTitle" placeholder="SEO title">
+                        </div>
+                        <div class="editor-side-section">
+                            <label class="editor-side-label" for="edSlug">URL Slug</label>
+                            <input type="text" class="form-input" id="edSlug" placeholder="article-url-slug">
+                        </div>
+                        <div class="editor-side-section">
+                            <label class="editor-side-label" for="edSeoDescription">Meta Description</label>
+                            <textarea class="form-textarea" id="edSeoDescription" placeholder="SEO description" rows="2"></textarea>
+                        </div>
+                    </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ MEDIA PICKER MODAL ============ -->
+    <div class="modal" id="mediaPickerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="far fa-images"></i> Select Featured Image</h3>
+                <button class="modal-close" onclick="hideModal('mediaPickerModal')" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="search-wrapper" style="margin-bottom: 14px;">
+                    <input type="text" class="search-input" id="mediaSearch" placeholder="Search pictures…">
+                    <i class="fas fa-search"></i>
+                </div>
+                <div class="media-picker-grid" id="mediaPickerGrid">
+                    <div class="empty-state" style="grid-column: 1 / -1;">
+                        <div class="empty-state-icon"><i class="fas fa-circle-notch fa-spin"></i></div>
+                        <h3>Loading pictures…</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('mediaPickerModal')" type="button">Cancel</button>
+                <button class="btn btn-primary" id="selectPictureBtn" type="button" disabled>
+                    <i class="fas fa-check"></i> Select Image
+                </button>
             </div>
         </div>
     </div>
@@ -1732,12 +2024,30 @@
             <h2 class="drawer-title" id="drawerTitle">—</h2>
             <p class="drawer-excerpt" id="drawerExcerpt">—</p>
 
-            <div class="drawer-section-title">Details</div>
+            <div class="drawer-section-title">Content Preview</div>
+            <div class="drawer-content-preview" id="drawerContent">—</div>
+            <button class="btn btn-secondary btn-sm" id="drawerToggleContentBtn" style="width: 100%; justify-content: center; margin-bottom: 16px; display: none;">
+                <i class="fas fa-expand-alt"></i> <span id="drawerToggleContentText">Show full content</span>
+            </button>
+
+            <div class="drawer-section-title">Article Information</div>
             <div class="detail-row"><span class="detail-label">Author</span><span class="detail-value" id="drawerAuthor">—</span></div>
             <div class="detail-row"><span class="detail-label">Editor</span><span class="detail-value" id="drawerEditor">—</span></div>
+            <div class="detail-row"><span class="detail-label">Created</span><span class="detail-value mono" id="drawerCreated">—</span></div>
+            <div class="detail-row"><span class="detail-label">Last Updated</span><span class="detail-value mono" id="drawerUpdated">—</span></div>
             <div class="detail-row"><span class="detail-label">Published</span><span class="detail-value mono" id="drawerPublished">—</span></div>
-            <div class="detail-row"><span class="detail-label">Views</span><span class="detail-value" id="drawerViews">0</span></div>
+            <div class="detail-row"><span class="detail-label">Session</span><span class="detail-value mono" id="drawerSession">—</span></div>
+
+            <div class="drawer-section-title">Publishing Information</div>
             <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value" id="drawerStatusText">—</span></div>
+            <div class="detail-row"><span class="detail-label">Featured</span><span class="detail-value" id="drawerFeaturedText">—</span></div>
+            <div class="detail-row"><span class="detail-label">Views</span><span class="detail-value" id="drawerViews">0</span></div>
+            <div class="detail-row"><span class="detail-label">Public URL</span><span class="detail-value mono" id="drawerPublicUrl">—</span></div>
+
+            <div class="drawer-section-title">Activity History</div>
+            <div id="drawerActivity">
+                <p style="font-size: 0.8125rem; color: var(--text-dim); font-style: italic;">No activity recorded.</p>
+            </div>
         </div>
         <div class="drawer-footer">
             <button class="btn btn-secondary btn-sm" id="drawerEditBtn"><i class="fas fa-pen"></i> Edit</button>
@@ -1804,6 +2114,24 @@
         </div>
     </div>
 
+    <!-- ============ CATEGORY CONFIRM DELETE MODAL ============ -->
+    <div class="modal" id="deleteCategoryModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i> Delete Category</h3>
+                <button class="modal-close" onclick="hideModal('deleteCategoryModal')" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Delete the category <strong id="deleteCategoryName">this category</strong>?</p>
+                <p style="margin-top: 10px; font-size: 0.8125rem; color: var(--danger); font-weight: 600;" id="deleteCategoryWarning"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('deleteCategoryModal')" type="button">Cancel</button>
+                <button class="btn btn-danger" id="confirmDeleteCategoryBtn" type="button">Delete Category</button>
+            </div>
+        </div>
+    </div>
+
     <script>
     // ============================================================
     // CONFIG
@@ -1811,17 +2139,39 @@
     const API_BASE_URL = '';
     const PAGE_SIZE = 8;
 
+    const DEFAULT_CATEGORIES = [
+        { name: 'General News', slug: 'general-news', description: 'General NUESA updates', is_active: true },
+        { name: 'Association Announcements', slug: 'association-announcements', description: 'Official association notices', is_active: true },
+        { name: 'Academic Updates', slug: 'academic-updates', description: 'Academic information', is_active: true },
+        { name: 'Engineering & Technology', slug: 'engineering-technology', description: 'Engineering developments', is_active: true },
+        { name: 'Student Achievements', slug: 'student-achievements', description: 'Student awards and accomplishments', is_active: true },
+        { name: 'Events & Reports', slug: 'events-reports', description: 'Reports about completed events', is_active: true },
+        { name: 'Opportunities', slug: 'opportunities', description: 'Scholarships, internships and programmes', is_active: true },
+        { name: 'Press Releases', slug: 'press-releases', description: 'Official statements', is_active: true }
+    ];
+
     let currentUser = null;
     let inactivityTimeout = null;
+
+    // Data
     let allArticles = [];
     let filteredArticles = [];
     let allCategories = [];
+    let allSessions = [];
+    let allMedia = [];
+
+    // State
     let currentPage = 1;
     let currentView = 'grid';
+    let currentStatusTab = 'all';
     let editingArticleId = null;
     let deletingArticleId = null;
     let viewingArticle = null;
     let coverImageUrl = '';
+    let pickerSelectedMedia = null;
+    let pickerTarget = 'cover'; // 'cover' or 'inline'
+    let deletingCategoryName = null;
+    let contentPreviewExpanded = false;
 
     // ============================================================
     // AUTH
@@ -1923,39 +2273,52 @@
     // ============================================================
     // DATA LOADING
     // ============================================================
-    async function loadData() {
+    async function loadSessions() {
         try {
-            try {
-                const catRes = await apiGet('/api/admin/articles/categories');
-                allCategories = Array.isArray(catRes.data) ? catRes.data : [];
-            } catch (err) {
-                console.warn('Categories endpoint unavailable, using defaults');
-                allCategories = [
-                    { name: 'General News', slug: 'general-news' },
-                    { name: 'Association Announcements', slug: 'association-announcements' },
-                    { name: 'Academic Updates', slug: 'academic-updates' },
-                    { name: 'Engineering & Technology', slug: 'engineering-technology' },
-                    { name: 'Student Achievements', slug: 'student-achievements' },
-                    { name: 'Events & Reports', slug: 'events-reports' },
-                    { name: 'Opportunities', slug: 'opportunities' },
-                    { name: 'Press Releases', slug: 'press-releases' }
-                ];
-            }
-
-            try {
-                const res = await apiGet('/api/admin/articles');
-                const list = Array.isArray(res.data) ? res.data : (res.data?.articles || []);
-                allArticles = list.map(normalizeArticle);
-            } catch (err) {
-                console.warn('Could not load articles:', err);
-                allArticles = [];
-            }
-
-            populateFilters();
-            updateStats();
-            applyFilters();
+            const res = await apiGet('/api/admin/sessions');
+            allSessions = Array.isArray(res.data) ? res.data : [];
         } catch (err) {
-            console.error('Load data error:', err);
+            console.warn('Could not load sessions:', err);
+            allSessions = [];
+        }
+    }
+
+    async function loadMedia() {
+        try {
+            const res = await apiGet('/api/admin/media?type=picture');
+            allMedia = Array.isArray(res.data) ? res.data : [];
+        } catch (err) {
+            console.warn('Could not load media:', err);
+            allMedia = [];
+        }
+    }
+
+    async function loadCategories() {
+        try {
+            const catRes = await apiGet('/api/admin/articles/categories');
+            const list = Array.isArray(catRes.data) ? catRes.data : [];
+            allCategories = list.length > 0
+                ? list.map(c => ({
+                    name: c.name || c.category,
+                    slug: c.slug || slugify(c.name || c.category),
+                    description: c.description || '',
+                    is_active: c.is_active !== false
+                }))
+                : [...DEFAULT_CATEGORIES];
+        } catch (err) {
+            console.warn('Categories endpoint unavailable, using defaults');
+            allCategories = [...DEFAULT_CATEGORIES];
+        }
+    }
+
+    async function loadArticles() {
+        try {
+            const res = await apiGet('/api/admin/articles');
+            const list = Array.isArray(res.data) ? res.data : (res.data?.articles || []);
+            allArticles = list.map(normalizeArticle);
+        } catch (err) {
+            console.warn('Could not load articles:', err);
+            allArticles = [];
         }
     }
 
@@ -1981,26 +2344,61 @@
             cover: a.featured_image || a.cover_image || '',
             seo_title: a.meta_title || '',
             seo_description: a.meta_description || '',
-            allow_comments: !!a.allow_comments
+            session: a.session || '',
+            allow_comments: !!a.allow_comments,
+            activity: Array.isArray(a.activity) ? a.activity : []
         };
+    }
+
+    async function loadData() {
+        showLoading();
+        try {
+            await Promise.all([loadSessions(), loadMedia(), loadCategories(), loadArticles()]);
+            populateFilters();
+            updateStats();
+            applyFilters();
+        } catch (err) {
+            console.error('Load data error:', err);
+        } finally {
+            hideLoading();
+        }
     }
 
     // ============================================================
     // FILTERS POPULATION
     // ============================================================
     function populateFilters() {
+        // Category filter
         const catFilter = document.getElementById('filterCategory');
         catFilter.innerHTML = '<option value="">All Categories</option>' +
-            allCategories.map(c => `<option value="${escapeHtml(c.name || c.slug)}">${escapeHtml(c.name || c.slug)}</option>`).join('');
+            allCategories.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('');
 
+        // Author filter
         const authorFilter = document.getElementById('filterAuthor');
         const authors = [...new Set(allArticles.map(a => a.author).filter(Boolean))].sort();
         authorFilter.innerHTML = '<option value="">All Authors</option>' +
             authors.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('');
 
+        // Session filter
+        const sessionFilter = document.getElementById('filterSession');
+        sessionFilter.innerHTML = '<option value="">All Sessions</option>' +
+            allSessions.map(s => {
+                const name = s.name || s.session_name;
+                return `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`;
+            }).join('');
+
+        // Editor category select
         const editorCatSelect = document.getElementById('edCategory');
         editorCatSelect.innerHTML = '<option value="">Select category</option>' +
-            allCategories.map(c => `<option value="${escapeHtml(c.name || c.slug)}">${escapeHtml(c.name || c.slug)}</option>`).join('');
+            allCategories.filter(c => c.is_active).map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('');
+
+        // Editor session select
+        const editorSessionSelect = document.getElementById('edSession');
+        editorSessionSelect.innerHTML = '<option value="">None</option>' +
+            allSessions.map(s => {
+                const name = s.name || s.session_name;
+                return `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`;
+            }).join('');
     }
 
     // ============================================================
@@ -2025,8 +2423,8 @@
 
     function updateStats() {
         const total = allArticles.length;
-        const published = allArticles.filter(a => a.is_published).length;
-        const drafts = allArticles.filter(a => a.status === 'draft' && !a.is_published).length;
+        const published = allArticles.filter(a => a.is_published && !a.is_scheduled).length;
+        const drafts = allArticles.filter(a => !a.is_published && !a.is_scheduled && a.status !== 'archived').length;
         const scheduled = allArticles.filter(a => a.is_scheduled).length;
         const archived = allArticles.filter(a => a.status === 'archived').length;
 
@@ -2035,17 +2433,70 @@
         animateNumber(document.getElementById('statDrafts'), drafts);
         animateNumber(document.getElementById('statScheduled'), scheduled);
         animateNumber(document.getElementById('statArchived'), archived);
+
+        // Tab counts
+        document.getElementById('tabCountAll').textContent = total;
+        document.getElementById('tabCountPublished').textContent = published;
+        document.getElementById('tabCountDrafts').textContent = drafts;
+        document.getElementById('tabCountScheduled').textContent = scheduled;
+        document.getElementById('tabCountArchived').textContent = archived;
     }
 
     // ============================================================
-    // FILTERS
+    // STATUS TABS
+    // ============================================================
+    function setupStatusTabs() {
+        document.querySelectorAll('.status-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                currentStatusTab = tab.dataset.status;
+                document.querySelectorAll('.status-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                // Update title
+                const titles = {
+                    all: 'All Articles',
+                    published: 'Published Articles',
+                    draft: 'Draft Articles',
+                    scheduled: 'Scheduled Articles',
+                    archived: 'Archived Articles'
+                };
+                document.getElementById('tabTitle').textContent = titles[currentStatusTab] || 'Articles';
+
+                applyFilters();
+            });
+        });
+
+        // Stat cards as filters
+        document.querySelectorAll('.stat-card[data-stat-filter]').forEach(card => {
+            card.addEventListener('click', () => {
+                const filter = card.dataset.statFilter;
+                currentStatusTab = filter;
+                document.querySelectorAll('.status-tab').forEach(t => {
+                    t.classList.toggle('active', t.dataset.status === filter);
+                });
+                const titles = {
+                    all: 'All Articles',
+                    published: 'Published Articles',
+                    draft: 'Draft Articles',
+                    scheduled: 'Scheduled Articles',
+                    archived: 'Archived Articles'
+                };
+                document.getElementById('tabTitle').textContent = titles[currentStatusTab] || 'Articles';
+                applyFilters();
+            });
+        });
+    }
+
+    // ============================================================
+    // FILTERS & SORTING
     // ============================================================
     function applyFilters() {
         const q = document.getElementById('searchInput').value.trim().toLowerCase();
         const cat = document.getElementById('filterCategory').value;
-        const status = document.getElementById('filterStatus').value;
         const author = document.getElementById('filterAuthor').value;
+        const session = document.getElementById('filterSession').value;
         const dateFilter = document.getElementById('filterDate').value;
+        const sort = document.getElementById('filterSort').value;
 
         const now = new Date();
         const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -2056,16 +2507,18 @@
         const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime();
 
         filteredArticles = allArticles.filter(a => {
+            // Status tab filter
+            if (currentStatusTab === 'published' && (!a.is_published || a.is_scheduled)) return false;
+            if (currentStatusTab === 'draft' && (a.is_published || a.is_scheduled || a.status === 'archived')) return false;
+            if (currentStatusTab === 'scheduled' && !a.is_scheduled) return false;
+            if (currentStatusTab === 'archived' && a.status !== 'archived') return false;
+
+            // Other filters
             if (cat && a.category !== cat) return false;
             if (author && a.author !== author) return false;
-            if (status) {
-                if (status === 'published' && !a.is_published) return false;
-                if (status === 'draft' && (a.is_published || a.is_scheduled)) return false;
-                if (status === 'scheduled' && !a.is_scheduled) return false;
-                if (status === 'archived' && a.status !== 'archived') return false;
-            }
+            if (session && a.session !== session) return false;
             if (q) {
-                const hay = `${a.title} ${a.excerpt} ${a.author}`.toLowerCase();
+                const hay = `${a.title} ${a.excerpt} ${a.author} ${a.content}`.toLowerCase();
                 if (!hay.includes(q)) return false;
             }
             if (dateFilter) {
@@ -2079,11 +2532,28 @@
             return true;
         });
 
-        filteredArticles.sort((a, b) => {
-            const ta = a.published_at ? new Date(a.published_at).getTime() : (a.created_at ? new Date(a.created_at).getTime() : 0);
-            const tb = b.published_at ? new Date(b.published_at).getTime() : (b.created_at ? new Date(b.created_at).getTime() : 0);
-            return tb - ta;
-        });
+        // Sort
+        if (sort === 'newest') {
+            filteredArticles.sort((a, b) => {
+                const ta = a.published_at ? new Date(a.published_at).getTime() : (a.created_at ? new Date(a.created_at).getTime() : 0);
+                const tb = b.published_at ? new Date(b.published_at).getTime() : (b.created_at ? new Date(b.created_at).getTime() : 0);
+                return tb - ta;
+            });
+        } else if (sort === 'oldest') {
+            filteredArticles.sort((a, b) => {
+                const ta = a.published_at ? new Date(a.published_at).getTime() : (a.created_at ? new Date(a.created_at).getTime() : 0);
+                const tb = b.published_at ? new Date(b.published_at).getTime() : (b.created_at ? new Date(b.created_at).getTime() : 0);
+                return ta - tb;
+            });
+        } else if (sort === 'most_viewed') {
+            filteredArticles.sort((a, b) => b.views - a.views);
+        } else if (sort === 'recently_updated') {
+            filteredArticles.sort((a, b) => {
+                const ta = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+                const tb = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+                return tb - ta;
+            });
+        }
 
         currentPage = 1;
         updateFilterSummary();
@@ -2092,7 +2562,7 @@
 
     function updateFilterSummary() {
         const active = [];
-        ['searchInput','filterCategory','filterStatus','filterAuthor','filterDate'].forEach(id => {
+        ['searchInput','filterCategory','filterAuthor','filterSession','filterDate'].forEach(id => {
             if (document.getElementById(id).value) active.push(id);
         });
         document.getElementById('filterCount').textContent = active.length
@@ -2103,8 +2573,12 @@
     }
 
     function clearFilters() {
-        ['searchInput','filterCategory','filterStatus','filterAuthor','filterDate']
-            .forEach(id => document.getElementById(id).value = '');
+        ['searchInput','filterCategory','filterAuthor','filterSession','filterDate','filterSort']
+            .forEach(id => {
+                const el = document.getElementById(id);
+                if (el.tagName === 'SELECT') el.selectedIndex = 0;
+                else el.value = '';
+            });
         applyFilters();
     }
 
@@ -2152,7 +2626,10 @@
                 <div class="empty-state">
                     <div class="empty-state-icon"><i class="far fa-newspaper"></i></div>
                     <h3>No articles found</h3>
-                    <p>Try adjusting your filters or write a new article.</p>
+                    <p>${currentStatusTab !== 'all' ? `No ${currentStatusTab} articles yet.` : 'Try adjusting your filters or write a new article.'}</p>
+                    <button class="btn btn-gold btn-sm" onclick="openEditor()">
+                        <i class="fas fa-pen"></i> Write New Article
+                    </button>
                 </div>`;
             return;
         }
@@ -2163,21 +2640,32 @@
             const cover = a.cover
                 ? `<img src="${escapeHtml(a.cover)}" alt="" onerror="this.style.display='none';this.parentNode.querySelector('.placeholder-icon').style.display='';"><i class="far fa-newspaper placeholder-icon" style="display:none;"></i>`
                 : `<i class="far fa-newspaper placeholder-icon"></i>`;
+            const featured = a.is_featured
+                ? `<span class="featured-ribbon"><i class="fas fa-star" style="font-size:0.5rem;"></i> Featured</span>`
+                : '';
             return `
                 <div class="article-card" data-id="${escapeHtml(a.id)}" style="animation-delay: ${i * 40}ms;">
                     <div class="article-cover">
                         ${cover}
+                        ${featured}
                         ${badge.replace('status-badge', 'article-status')}
                     </div>
                     <div class="article-body">
                         <span class="article-category">${escapeHtml(a.category)}</span>
                         <h3 class="article-title">${escapeHtml(a.title)}</h3>
-                        <p class="article-excerpt">${escapeHtml(a.excerpt || '')}</p>
+                        <p class="article-excerpt">${escapeHtml(a.excerpt || 'No excerpt')}</p>
                         <div class="article-footer">
                             <span>${escapeHtml(a.author)} · ${a.views} views</span>
                             <div class="article-footer-actions">
                                 <button class="icon-btn" data-action="edit" data-id="${escapeHtml(a.id)}" title="Edit"><i class="fas fa-pen"></i></button>
-                                <button class="icon-btn danger" data-action="delete" data-id="${escapeHtml(a.id)}" title="Delete"><i class="fas fa-trash"></i></button>
+                                <div class="actions-menu">
+                                    <button class="actions-menu-trigger" onclick="toggleActionsMenu(event, '${escapeHtml(a.id)}')">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <div class="actions-menu-dropdown" id="menu-${escapeHtml(a.id)}">
+                                        ${renderActionsMenu(a)}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2186,16 +2674,14 @@
 
         grid.querySelectorAll('.article-card').forEach(card => {
             card.addEventListener('click', (e) => {
-                if (e.target.closest('button')) return;
+                if (e.target.closest('button') || e.target.closest('.actions-menu')) return;
                 openDrawer(card.dataset.id);
             });
         });
-        grid.querySelectorAll('button[data-action]').forEach(btn => {
+        grid.querySelectorAll('button[data-action="edit"]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const id = btn.dataset.id;
-                if (btn.dataset.action === 'edit') openEditor(id);
-                else if (btn.dataset.action === 'delete') openDeleteModal(id);
+                openEditor(btn.dataset.id);
             });
         });
     }
@@ -2209,7 +2695,7 @@
             tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">
                 <div class="empty-state-icon"><i class="far fa-newspaper"></i></div>
                 <h3>No articles found</h3>
-                <p>Try adjusting your filters or write a new article.</p>
+                <p>${currentStatusTab !== 'all' ? `No ${currentStatusTab} articles yet.` : 'Try adjusting your filters.'}</p>
             </div></td></tr>`;
             return;
         }
@@ -2221,13 +2707,14 @@
                 ? `<img src="${escapeHtml(a.cover)}" alt="" onerror="this.style.display='none';this.parentNode.querySelector('i').style.display='';"><i class="far fa-newspaper" style="display:none;"></i>`
                 : `<i class="far fa-newspaper"></i>`;
             const dateStr = formatDate(a.published_at || a.created_at);
+            const featuredIcon = a.is_featured ? ' <i class="fas fa-star" style="color: var(--accent); font-size: 0.6875rem;" title="Featured"></i>' : '';
             return `
                 <tr data-id="${escapeHtml(a.id)}" style="animation-delay: ${i * 30}ms;">
                     <td>
                         <div class="article-cell">
                             <div class="article-thumb">${thumb}</div>
                             <div class="article-cell-info">
-                                <div class="article-cell-title">${escapeHtml(a.title)}</div>
+                                <div class="article-cell-title">${escapeHtml(a.title)}${featuredIcon}</div>
                                 <div class="article-cell-sub">${escapeHtml(a.category)}</div>
                             </div>
                         </div>
@@ -2239,9 +2726,15 @@
                     <td>${badge}</td>
                     <td>
                         <div class="row-actions">
-                            <button class="icon-btn" data-action="view" data-id="${escapeHtml(a.id)}" title="View"><i class="fas fa-eye"></i></button>
                             <button class="icon-btn" data-action="edit" data-id="${escapeHtml(a.id)}" title="Edit"><i class="fas fa-pen"></i></button>
-                            <button class="icon-btn danger" data-action="delete" data-id="${escapeHtml(a.id)}" title="Delete"><i class="fas fa-trash"></i></button>
+                            <div class="actions-menu">
+                                <button class="actions-menu-trigger" onclick="toggleActionsMenu(event, '${escapeHtml(a.id)}')">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <div class="actions-menu-dropdown" id="menu-${escapeHtml(a.id)}">
+                                    ${renderActionsMenu(a)}
+                                </div>
+                            </div>
                         </div>
                     </td>
                 </tr>`;
@@ -2249,19 +2742,63 @@
 
         tbody.querySelectorAll('tr[data-id]').forEach(tr => {
             tr.addEventListener('click', (e) => {
-                if (e.target.closest('button')) return;
+                if (e.target.closest('button') || e.target.closest('.actions-menu')) return;
                 openDrawer(tr.dataset.id);
             });
         });
-        tbody.querySelectorAll('button[data-action]').forEach(btn => {
+        tbody.querySelectorAll('button[data-action="edit"]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const id = btn.dataset.id;
-                if (btn.dataset.action === 'view') openDrawer(id);
-                else if (btn.dataset.action === 'edit') openEditor(id);
-                else if (btn.dataset.action === 'delete') openDeleteModal(id);
+                openEditor(btn.dataset.id);
             });
         });
+    }
+
+    function renderActionsMenu(a) {
+        const status = getDisplayStatus(a);
+        return `
+            <button class="actions-menu-item" onclick="openDrawer('${escapeHtml(a.id)}')">
+                <i class="fas fa-eye"></i> View Article
+            </button>
+            <button class="actions-menu-item" onclick="openEditor('${escapeHtml(a.id)}')">
+                <i class="fas fa-pen"></i> Edit Article
+            </button>
+            <button class="actions-menu-item" onclick="previewPublicPage('${escapeHtml(a.id)}')">
+                <i class="fas fa-external-link-alt"></i> Preview Public Page
+            </button>
+            <div class="actions-menu-divider"></div>
+            ${status === 'published' ? `
+                <button class="actions-menu-item" onclick="toggleArticlePublish('${escapeHtml(a.id)}', false)">
+                    <i class="fas fa-eye-slash"></i> Unpublish
+                </button>
+            ` : `
+                <button class="actions-menu-item" onclick="toggleArticlePublish('${escapeHtml(a.id)}', true)">
+                    <i class="fas fa-globe"></i> Publish Now
+                </button>
+            `}
+            <button class="actions-menu-item" onclick="openEditor('${escapeHtml(a.id)}', true)">
+                <i class="fas fa-clock"></i> Schedule Publication
+            </button>
+            <button class="actions-menu-item" onclick="duplicateArticleById('${escapeHtml(a.id)}')">
+                <i class="fas fa-copy"></i> Duplicate Article
+            </button>
+            <button class="actions-menu-item" onclick="toggleFeatured('${escapeHtml(a.id)}')">
+                <i class="fas fa-star"></i> ${a.is_featured ? 'Remove from Featured' : 'Feature on Homepage'}
+            </button>
+            <div class="actions-menu-divider"></div>
+            ${status === 'archived' ? `
+                <button class="actions-menu-item" onclick="unarchiveArticle('${escapeHtml(a.id)}')">
+                    <i class="fas fa-undo"></i> Restore from Archive
+                </button>
+            ` : `
+                <button class="actions-menu-item" onclick="archiveArticle('${escapeHtml(a.id)}')">
+                    <i class="fas fa-archive"></i> Archive
+                </button>
+            `}
+            <button class="actions-menu-item danger" onclick="openDeleteModal('${escapeHtml(a.id)}')">
+                <i class="fas fa-trash"></i> Delete
+            </button>
+        `;
     }
 
     function renderPagination() {
@@ -2303,9 +2840,123 @@
     }
 
     // ============================================================
+    // ACTIONS MENU
+    // ============================================================
+    function toggleActionsMenu(e, id) {
+        e.stopPropagation();
+        document.querySelectorAll('.actions-menu-dropdown.open').forEach(m => m.classList.remove('open'));
+        document.querySelectorAll('.actions-menu-trigger.active').forEach(t => t.classList.remove('active'));
+
+        const menu = document.getElementById(`menu-${id}`);
+        const trigger = e.currentTarget;
+        if (menu && !menu.classList.contains('open')) {
+            menu.classList.add('open');
+            trigger.classList.add('active');
+        }
+    }
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.actions-menu')) {
+            document.querySelectorAll('.actions-menu-dropdown.open').forEach(m => m.classList.remove('open'));
+            document.querySelectorAll('.actions-menu-trigger.active').forEach(t => t.classList.remove('active'));
+        }
+    });
+
+    // ============================================================
+    // ARTICLE ACTIONS
+    // ============================================================
+    async function toggleArticlePublish(id, publish) {
+        try {
+            await apiPut(`/api/admin/articles/${id}`, {
+                is_published: publish,
+                status: publish ? 'published' : 'draft',
+                published_at: publish ? new Date().toISOString() : null
+            });
+            showToast(publish ? 'Article published' : 'Article unpublished', 'success');
+            await loadArticles();
+            updateStats();
+            applyFilters();
+        } catch (err) {
+            showToast(err.message || 'Failed to update', 'error');
+        }
+    }
+
+    async function toggleFeatured(id) {
+        const a = allArticles.find(x => String(x.id) === String(id));
+        if (!a) return;
+        try {
+            await apiPut(`/api/admin/articles/${id}`, { is_featured: !a.is_featured });
+            showToast(a.is_featured ? 'Removed from featured' : 'Featured on homepage', 'success');
+            await loadArticles();
+            applyFilters();
+        } catch (err) {
+            showToast(err.message || 'Failed to update', 'error');
+        }
+    }
+
+    async function archiveArticle(id) {
+        try {
+            await apiPut(`/api/admin/articles/${id}`, { status: 'archived', is_published: false });
+            showToast('Article archived', 'success');
+            await loadArticles();
+            updateStats();
+            applyFilters();
+        } catch (err) {
+            showToast(err.message || 'Failed to archive', 'error');
+        }
+    }
+
+    async function unarchiveArticle(id) {
+        try {
+            await apiPut(`/api/admin/articles/${id}`, { status: 'draft', is_published: false });
+            showToast('Article restored to drafts', 'success');
+            await loadArticles();
+            updateStats();
+            applyFilters();
+        } catch (err) {
+            showToast(err.message || 'Failed to restore', 'error');
+        }
+    }
+
+    async function duplicateArticleById(id) {
+        const a = allArticles.find(x => String(x.id) === String(id));
+        if (!a) return;
+        try {
+            await apiPost('/api/admin/articles', {
+                title: `${a.title} (Copy)`,
+                excerpt: a.excerpt,
+                content: a.content,
+                author: a.author,
+                category: a.category,
+                featured_image: a.cover,
+                is_featured: false,
+                is_published: false,
+                status: 'draft',
+                meta_title: a.seo_title,
+                meta_description: a.seo_description,
+                session: a.session
+            });
+            showToast('Article duplicated', 'success');
+            await loadArticles();
+            applyFilters();
+        } catch (err) {
+            showToast(err.message || 'Failed to duplicate', 'error');
+        }
+    }
+
+    function previewPublicPage(id) {
+        const a = allArticles.find(x => String(x.id) === String(id));
+        if (!a) return;
+        const url = a.slug
+            ? `/news/${a.slug}`
+            : `/news/${a.id}`;
+        window.open(url, '_blank');
+    }
+
+    // ============================================================
     // EDITOR
     // ============================================================
-    function openEditor(id = null) {
+    function openEditor(id = null, focusScheduling = false) {
         editingArticleId = id;
         coverImageUrl = '';
 
@@ -2314,9 +2965,11 @@
         document.getElementById('edContent').value = '';
         document.getElementById('edAuthor').value = currentUser?.fullName || currentUser?.full_name || 'Administrator';
         document.getElementById('edCategory').value = '';
+        document.getElementById('edSession').value = '';
         document.getElementById('edScheduled').value = '';
         document.getElementById('edSeoTitle').value = '';
         document.getElementById('edSeoDescription').value = '';
+        document.getElementById('edSlug').value = '';
         document.getElementById('edFeatured').checked = false;
         document.getElementById('edAllowComments').checked = false;
         resetCoverUpload();
@@ -2330,8 +2983,10 @@
             document.getElementById('edContent').value = a.content;
             document.getElementById('edAuthor').value = a.author;
             document.getElementById('edCategory').value = a.category;
+            document.getElementById('edSession').value = a.session || '';
             document.getElementById('edSeoTitle').value = a.seo_title;
             document.getElementById('edSeoDescription').value = a.seo_description;
+            document.getElementById('edSlug').value = a.slug || '';
             document.getElementById('edFeatured').checked = a.is_featured;
             document.getElementById('edAllowComments').checked = a.allow_comments;
             if (a.published_at) {
@@ -2347,7 +3002,12 @@
 
         document.getElementById('editorShell').classList.add('active');
         document.body.style.overflow = 'hidden';
-        setTimeout(() => document.getElementById('edTitle').focus(), 200);
+
+        if (focusScheduling) {
+            setTimeout(() => document.getElementById('edScheduled').focus(), 300);
+        } else {
+            setTimeout(() => document.getElementById('edTitle').focus(), 200);
+        }
     }
 
     function closeEditor() {
@@ -2361,12 +3021,50 @@
         const upload = document.getElementById('coverUpload');
         upload.innerHTML = `
             <i class="far fa-image placeholder-icon"></i>
-            <div class="cover-hint">Upload cover image</div>`;
+            <div class="cover-hint">Click to choose from Media Library</div>
+            <div class="cover-actions" id="coverActions" style="display: none;">
+                <button type="button" class="cover-action-btn" id="coverReplaceBtn" title="Replace">
+                    <i class="fas fa-exchange-alt"></i>
+                </button>
+                <button type="button" class="cover-action-btn danger" id="coverRemoveBtn" title="Remove">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>`;
+        coverImageUrl = '';
+        rewireCoverActions();
     }
 
     function showCoverPreview(url) {
         const upload = document.getElementById('coverUpload');
-        upload.innerHTML = `<img src="${escapeHtml(url)}" alt="Cover preview" onerror="resetCoverUpload()">`;
+        upload.innerHTML = `
+            <img src="${escapeHtml(url)}" alt="Cover preview" onerror="resetCoverUpload()">
+            <div class="cover-actions" style="opacity: 1;">
+                <button type="button" class="cover-action-btn" id="coverReplaceBtn" title="Replace">
+                    <i class="fas fa-exchange-alt"></i>
+                </button>
+                <button type="button" class="cover-action-btn danger" id="coverRemoveBtn" title="Remove">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>`;
+        rewireCoverActions();
+    }
+
+    function rewireCoverActions() {
+        const replaceBtn = document.getElementById('coverReplaceBtn');
+        const removeBtn = document.getElementById('coverRemoveBtn');
+        if (replaceBtn) {
+            replaceBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openMediaPicker('cover');
+            });
+        }
+        if (removeBtn) {
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                coverImageUrl = '';
+                resetCoverUpload();
+            });
+        }
     }
 
     function toDateTimeLocal(s) {
@@ -2395,9 +3093,13 @@
                 else if (type === 'underline') replacement = `__${selected || 'underlined text'}__`;
                 else if (type === 'h2') replacement = `\n## ${selected || 'Heading'}\n`;
                 else if (type === 'list') replacement = `\n- ${selected || 'List item'}\n`;
+                else if (type === 'ordered-list') replacement = `\n1. ${selected || 'List item'}\n`;
                 else if (type === 'quote') replacement = `\n> ${selected || 'Quote'}\n`;
                 else if (type === 'link') replacement = `[${selected || 'link text'}](https://)`;
-                else if (type === 'image') replacement = `![${selected || 'alt text'}](https://)`;
+                else if (type === 'image') {
+                    openMediaPicker('inline');
+                    return;
+                }
 
                 textarea.value = textarea.value.substring(0, start) + replacement + textarea.value.substring(end);
                 textarea.focus();
@@ -2407,24 +3109,95 @@
         });
     }
 
+    // ============================================================
+    // COVER UPLOAD
+    // ============================================================
     function setupCoverUpload() {
-        document.getElementById('coverUpload').addEventListener('click', () => {
-            document.getElementById('coverFileInput').click();
+        const coverUpload = document.getElementById('coverUpload');
+        coverUpload.addEventListener('click', (e) => {
+            if (e.target.closest('.cover-action-btn')) return;
+            openMediaPicker('cover');
         });
+        rewireCoverActions();
+    }
 
-        document.getElementById('coverFileInput').addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                coverImageUrl = ev.target.result;
-                showCoverPreview(ev.target.result);
-            };
-            reader.readAsDataURL(file);
+    // ============================================================
+    // MEDIA PICKER
+    // ============================================================
+    function openMediaPicker(target = 'cover') {
+        pickerTarget = target;
+        pickerSelectedMedia = null;
+        document.getElementById('selectPictureBtn').disabled = true;
+        document.getElementById('mediaSearch').value = '';
+        renderMediaPicker(allMedia);
+        showModal('mediaPickerModal');
+    }
+
+    function renderMediaPicker(items) {
+        const grid = document.getElementById('mediaPickerGrid');
+        if (items.length === 0) {
+            grid.innerHTML = `
+                <div class="empty-state" style="grid-column: 1 / -1;">
+                    <div class="empty-state-icon"><i class="far fa-images"></i></div>
+                    <h3>No pictures available</h3>
+                    <p>Upload pictures to the Media Library first.</p>
+                </div>`;
+            return;
+        }
+
+        grid.innerHTML = items.map(m => `
+            <div class="media-picker-item" data-media-id="${escapeHtml(m.id)}">
+                ${m.url ? `<img src="${escapeHtml(m.url)}" alt="${escapeHtml(m.title || '')}" loading="lazy">`
+                       : `<div class="placeholder"><i class="far fa-image"></i></div>`}
+            </div>
+        `).join('');
+
+        grid.querySelectorAll('.media-picker-item').forEach(el => {
+            el.addEventListener('click', () => {
+                grid.querySelectorAll('.media-picker-item').forEach(x => x.classList.remove('selected'));
+                el.classList.add('selected');
+                pickerSelectedMedia = allMedia.find(m => String(m.id) === String(el.dataset.mediaId));
+                document.getElementById('selectPictureBtn').disabled = !pickerSelectedMedia;
+            });
         });
     }
 
-    async function saveArticle(status) {
+    function filterMediaPicker() {
+        const q = document.getElementById('mediaSearch').value.trim().toLowerCase();
+        const filtered = q
+            ? allMedia.filter(m =>
+                (m.title || '').toLowerCase().includes(q) ||
+                (m.tags || []).some(t => String(t).toLowerCase().includes(q))
+              )
+            : allMedia;
+        renderMediaPicker(filtered);
+    }
+
+    function handleMediaPickerSelect() {
+        if (!pickerSelectedMedia) return;
+        const url = pickerSelectedMedia.url;
+
+        if (pickerTarget === 'cover') {
+            coverImageUrl = url;
+            showCoverPreview(url);
+        } else if (pickerTarget === 'inline') {
+            const textarea = document.getElementById('edContent');
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const replacement = `![${pickerSelectedMedia.title || 'image'}](${url})`;
+            textarea.value = textarea.value.substring(0, start) + replacement + textarea.value.substring(end);
+            textarea.focus();
+            textarea.selectionStart = start + replacement.length;
+            textarea.selectionEnd = start + replacement.length;
+        }
+
+        hideModal('mediaPickerModal');
+    }
+
+    // ============================================================
+    // SAVE ARTICLE
+    // ============================================================
+    async function saveArticle(mode) {
         const title = document.getElementById('edTitle').value.trim();
         if (!title) {
             showToast('Please enter a title', 'warning');
@@ -2435,7 +3208,7 @@
         const scheduledVal = document.getElementById('edScheduled').value;
         const scheduledDate = scheduledVal ? new Date(scheduledVal) : null;
         const isFutureScheduled = scheduledDate && scheduledDate > new Date();
-        const finalStatus = status === 'publish' && isFutureScheduled ? 'scheduled' : status;
+        const finalStatus = mode === 'publish' && isFutureScheduled ? 'scheduled' : mode;
 
         const payload = {
             title,
@@ -2446,6 +3219,8 @@
             featured_image: coverImageUrl || '',
             meta_title: document.getElementById('edSeoTitle').value.trim(),
             meta_description: document.getElementById('edSeoDescription').value.trim(),
+            slug: document.getElementById('edSlug').value.trim() || slugify(title),
+            session: document.getElementById('edSession').value || null,
             is_featured: document.getElementById('edFeatured').checked,
             allow_comments: document.getElementById('edAllowComments').checked,
             is_published: finalStatus === 'publish' && !isFutureScheduled,
@@ -2462,7 +3237,9 @@
                 showToast('Article created', 'success');
             }
             closeEditor();
-            await loadData();
+            await loadArticles();
+            updateStats();
+            applyFilters();
         } catch (err) {
             console.error('Save error:', err);
             showToast(err.message || 'Failed to save article', 'error');
@@ -2470,16 +3247,17 @@
     }
 
     // ============================================================
-    // DRAWER
+    // DETAIL DRAWER
     // ============================================================
     function openDrawer(id) {
         const a = allArticles.find(x => String(x.id) === String(id));
         if (!a) return;
         viewingArticle = a;
+        contentPreviewExpanded = false;
 
         const hero = document.getElementById('drawerHero');
-        const existing = hero.querySelector('img');
-        if (existing) existing.remove();
+        const existingImg = hero.querySelector('img');
+        if (existingImg) existingImg.remove();
         const placeholder = hero.querySelector('.placeholder-icon');
         if (a.cover) {
             if (placeholder) placeholder.style.display = 'none';
@@ -2507,11 +3285,58 @@
         document.getElementById('drawerCategory').textContent = a.category;
         document.getElementById('drawerTitle').textContent = a.title;
         document.getElementById('drawerExcerpt').textContent = a.excerpt || 'No excerpt provided.';
+
+        const contentEl = document.getElementById('drawerContent');
+        contentEl.textContent = a.content || 'No content.';
+        contentEl.classList.remove('expanded');
+        const toggleBtn = document.getElementById('drawerToggleContentBtn');
+        if (a.content && a.content.length > 200) {
+            toggleBtn.style.display = 'flex';
+            document.getElementById('drawerToggleContentText').textContent = 'Show full content';
+        } else {
+            toggleBtn.style.display = 'none';
+        }
+
         document.getElementById('drawerAuthor').textContent = a.author;
         document.getElementById('drawerEditor').textContent = a.editor || '—';
-        document.getElementById('drawerPublished').textContent = formatDate(a.published_at || a.created_at);
-        document.getElementById('drawerViews').textContent = a.views;
+        document.getElementById('drawerCreated').textContent = formatDate(a.created_at);
+        document.getElementById('drawerUpdated').textContent = formatDate(a.updated_at);
+        document.getElementById('drawerPublished').textContent = formatDate(a.published_at);
+        document.getElementById('drawerSession').textContent = a.session || '—';
         document.getElementById('drawerStatusText').textContent = m.label;
+        document.getElementById('drawerFeaturedText').textContent = a.is_featured ? 'Yes' : 'No';
+        document.getElementById('drawerViews').textContent = a.views;
+        document.getElementById('drawerPublicUrl').textContent = a.slug ? `/news/${a.slug}` : `/news/${a.id}`;
+
+        // Activity
+        const activityEl = document.getElementById('drawerActivity');
+        const activity = [];
+        if (a.created_at) {
+            activity.push({ icon: 'fa-plus-circle', text: 'Article created', date: a.created_at });
+        }
+        if (a.updated_at && a.updated_at !== a.created_at) {
+            activity.push({ icon: 'fa-pen', text: 'Article edited', date: a.updated_at });
+        }
+        if (a.published_at) {
+            activity.push({ icon: 'fa-globe', text: 'Article published', date: a.published_at });
+        }
+        if (a.activity && a.activity.length > 0) {
+            a.activity.forEach(act => activity.push(act));
+        }
+
+        if (activity.length > 0) {
+            activityEl.innerHTML = activity.map(act => `
+                <div class="activity-item">
+                    <i class="fas ${act.icon || 'fa-circle'}"></i>
+                    <div>
+                        <div>${escapeHtml(act.text || act.action || '')}</div>
+                        <div class="activity-meta">${formatDate(act.date || act.created_at)}</div>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            activityEl.innerHTML = '<p style="font-size: 0.8125rem; color: var(--text-dim); font-style: italic;">No activity recorded.</p>';
+        }
 
         const publishText = document.getElementById('drawerPublishText');
         publishText.textContent = a.is_published ? 'Unpublish' : 'Publish';
@@ -2530,45 +3355,12 @@
         viewingArticle = null;
     }
 
-    async function togglePublish() {
-        if (!viewingArticle) return;
-        const next = !viewingArticle.is_published;
-        try {
-            await apiPut(`/api/admin/articles/${viewingArticle.id}`, {
-                is_published: next,
-                status: next ? 'published' : 'draft',
-                published_at: next ? new Date().toISOString() : null
-            });
-            showToast(next ? 'Article published' : 'Article unpublished', 'success');
-            closeDrawer();
-            await loadData();
-        } catch (err) {
-            showToast(err.message || 'Failed to update', 'error');
-        }
-    }
-
-    async function duplicateArticle() {
-        if (!viewingArticle) return;
-        try {
-            await apiPost('/api/admin/articles', {
-                title: `${viewingArticle.title} (Copy)`,
-                excerpt: viewingArticle.excerpt,
-                content: viewingArticle.content,
-                author: viewingArticle.author,
-                category: viewingArticle.category,
-                featured_image: viewingArticle.cover,
-                is_featured: false,
-                is_published: false,
-                status: 'draft',
-                meta_title: viewingArticle.seo_title,
-                meta_description: viewingArticle.seo_description
-            });
-            showToast('Article duplicated', 'success');
-            closeDrawer();
-            await loadData();
-        } catch (err) {
-            showToast(err.message || 'Failed to duplicate', 'error');
-        }
+    function toggleContentPreview() {
+        const contentEl = document.getElementById('drawerContent');
+        const toggleText = document.getElementById('drawerToggleContentText');
+        contentPreviewExpanded = !contentPreviewExpanded;
+        contentEl.classList.toggle('expanded', contentPreviewExpanded);
+        toggleText.textContent = contentPreviewExpanded ? 'Collapse content' : 'Show full content';
     }
 
     // ============================================================
@@ -2594,7 +3386,9 @@
             hideModal('deleteModal');
             if (viewingArticle && String(viewingArticle.id) === String(deletingArticleId)) closeDrawer();
             deletingArticleId = null;
-            await loadData();
+            await loadArticles();
+            updateStats();
+            applyFilters();
         } catch (err) {
             showToast(err.message || 'Failed to delete', 'error');
         } finally {
@@ -2613,17 +3407,72 @@
 
     function renderCategories() {
         const list = document.getElementById('categoryList');
-        list.innerHTML = allCategories.map(c => {
+        list.innerHTML = allCategories.map((c, i) => {
             const count = allArticles.filter(a => a.category === c.name).length;
+            const activeClass = c.is_active === false ? 'inactive' : '';
             return `
-                <div class="category-item">
+                <div class="category-item ${activeClass}">
                     <div class="category-item-info">
                         <div class="category-item-name">${escapeHtml(c.name)}</div>
                         <div class="category-item-slug">${escapeHtml(c.slug || '')}</div>
                     </div>
-                    <span class="category-item-count">${count}</span>
+                    <span class="category-item-count">${count} articles</span>
+                    <div class="category-item-actions">
+                        <button class="icon-btn" onclick="toggleCategoryActive(${i})" title="${c.is_active === false ? 'Activate' : 'Deactivate'}">
+                            <i class="fas fa-${c.is_active === false ? 'eye' : 'eye-slash'}"></i>
+                        </button>
+                        <button class="icon-btn danger" onclick="confirmDeleteCategory('${escapeHtml(c.name)}')" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
                 </div>`;
         }).join('') || '<p style="color: var(--text-dim); font-size: 0.8125rem;">No categories yet.</p>';
+    }
+
+    function toggleCategoryActive(index) {
+        const c = allCategories[index];
+        if (!c) return;
+        c.is_active = c.is_active === false ? true : false;
+        showToast(`Category ${c.is_active ? 'activated' : 'deactivated'} (local only)`, 'info');
+        renderCategories();
+        populateFilters();
+    }
+
+    function confirmDeleteCategory(name) {
+        const count = allArticles.filter(a => a.category === name).length;
+        deletingCategoryName = name;
+        document.getElementById('deleteCategoryName').textContent = name;
+        const warning = document.getElementById('deleteCategoryWarning');
+        if (count > 0) {
+            warning.textContent = `⚠️ ${count} article${count === 1 ? ' is' : 's are'} currently assigned to this category. Please reassign them before deleting.`;
+            document.getElementById('confirmDeleteCategoryBtn').disabled = true;
+        } else {
+            warning.textContent = '';
+            document.getElementById('confirmDeleteCategoryBtn').disabled = false;
+        }
+        showModal('deleteCategoryModal');
+    }
+
+    async function handleDeleteCategory() {
+        if (!deletingCategoryName) return;
+        const btn = document.getElementById('confirmDeleteCategoryBtn');
+        const original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Deleting…';
+        try {
+            await apiDelete(`/api/admin/articles/categories/${encodeURIComponent(deletingCategoryName)}`);
+            showToast('Category deleted', 'success');
+            hideModal('deleteCategoryModal');
+            deletingCategoryName = null;
+            await loadCategories();
+            populateFilters();
+            renderCategories();
+        } catch (err) {
+            showToast(err.message || 'Failed to delete category', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = original;
+        }
     }
 
     async function addCategory() {
@@ -2632,12 +3481,13 @@
             showToast('Enter a category name', 'warning');
             return;
         }
-        const slug = name.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        const slug = slugify(name);
         try {
             await apiPost('/api/admin/articles/categories', { name, slug });
             showToast('Category added', 'success');
             document.getElementById('newCategoryName').value = '';
-            await loadData();
+            await loadCategories();
+            populateFilters();
             renderCategories();
         } catch (err) {
             showToast(err.message || 'Failed to add category', 'error');
@@ -2662,9 +3512,16 @@
             <div class="toast-content">${escapeHtml(message)}</div>
             <button class="toast-close" aria-label="Close">&times;</button>`;
         document.body.appendChild(toast);
-        requestAnimationFrame(() => toast.classList.add('show'));
-        toast.querySelector('.toast-close').onclick = () => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); };
-        setTimeout(() => { if (toast.parentElement) { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); } }, duration);
+        toast.querySelector('.toast-close').onclick = () => {
+            toast.classList.add('toast-out');
+            setTimeout(() => toast.remove(), 300);
+        };
+        setTimeout(() => {
+            if (toast.parentElement) {
+                toast.classList.add('toast-out');
+                setTimeout(() => toast.remove(), 300);
+            }
+        }, duration);
     }
 
     function escapeHtml(str) {
@@ -2679,6 +3536,15 @@
             if (isNaN(d.getTime())) return String(s);
             return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
         } catch { return String(s); }
+    }
+
+    function slugify(str) {
+        return String(str)
+            .toLowerCase()
+            .trim()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-');
     }
 
     // ============================================================
@@ -2720,9 +3586,10 @@
             showToast('Nothing to export', 'warning');
             return;
         }
-        const headers = ['Title','Category','Author','Status','Views','Published'];
+        const headers = ['Title','Category','Author','Session','Status','Views','Created','Published'];
         const rows = filteredArticles.map(a => [
-            a.title, a.category, a.author, getDisplayStatus(a), a.views, a.published_at || ''
+            a.title, a.category, a.author, a.session || '', getDisplayStatus(a),
+            a.views, a.created_at || '', a.published_at || ''
         ]);
         const csv = [headers, ...rows]
             .map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
@@ -2770,6 +3637,7 @@
     async function init() {
         setupSidebar();
         setupHeaderScroll();
+        setupStatusTabs();
 
         // Static wiring
         document.getElementById('logoutBtn').addEventListener('click', () => showModal('logoutModal'));
@@ -2781,6 +3649,7 @@
         document.getElementById('clearFilters').addEventListener('click', clearFilters);
         document.getElementById('confirmDeleteBtn').addEventListener('click', handleDelete);
         document.getElementById('addCategoryBtn').addEventListener('click', addCategory);
+        document.getElementById('confirmDeleteCategoryBtn').addEventListener('click', handleDeleteCategory);
 
         // View toggle
         document.getElementById('gridViewBtn').addEventListener('click', () => {
@@ -2797,7 +3666,7 @@
         });
 
         // Filters
-        ['searchInput','filterCategory','filterStatus','filterAuthor','filterDate']
+        ['searchInput','filterCategory','filterAuthor','filterSession','filterDate','filterSort']
             .forEach(id => document.getElementById(id).addEventListener('input', applyFilters));
 
         // Editor
@@ -2807,26 +3676,39 @@
         document.getElementById('editorPreviewBtn').addEventListener('click', () => {
             const title = document.getElementById('edTitle').value;
             const excerpt = document.getElementById('edExcerpt').value;
-            showToast(`Preview: ${title || '(untitled)'} — ${excerpt.substring(0, 50)}…`, 'info');
+            if (!title) {
+                showToast('Add a title to preview', 'warning');
+                return;
+            }
+            showToast(`Preview: ${title} — ${excerpt.substring(0, 50)}…`, 'info');
         });
         setupEditorToolbar();
         setupCoverUpload();
+
+        // Media picker
+        document.getElementById('mediaSearch').addEventListener('input', filterMediaPicker);
+        document.getElementById('selectPictureBtn').addEventListener('click', handleMediaPickerSelect);
 
         // Drawer
         document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
         document.getElementById('drawerEditBtn').addEventListener('click', () => {
             if (viewingArticle) { const id = viewingArticle.id; closeDrawer(); openEditor(id); }
         });
-        document.getElementById('drawerPublishBtn').addEventListener('click', togglePublish);
-        document.getElementById('drawerDuplicateBtn').addEventListener('click', duplicateArticle);
+        document.getElementById('drawerPublishBtn').addEventListener('click', () => {
+            if (viewingArticle) toggleArticlePublish(viewingArticle.id, !viewingArticle.is_published);
+        });
+        document.getElementById('drawerDuplicateBtn').addEventListener('click', () => {
+            if (viewingArticle) duplicateArticleById(viewingArticle.id);
+        });
         document.getElementById('drawerDeleteBtn').addEventListener('click', () => {
             if (viewingArticle) { const id = viewingArticle.id; closeDrawer(); openDeleteModal(id); }
         });
+        document.getElementById('drawerToggleContentBtn').addEventListener('click', toggleContentPreview);
 
         // Escape
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                ['categoriesModal','deleteModal','logoutModal'].forEach(id => {
+                ['mediaPickerModal','categoriesModal','deleteModal','deleteCategoryModal','logoutModal'].forEach(id => {
                     const el = document.getElementById(id);
                     if (el && el.classList.contains('active')) hideModal(id);
                 });
@@ -2846,10 +3728,23 @@
 
     document.addEventListener('DOMContentLoaded', init);
 
+    // Expose for inline handlers
     window.showModal = showModal;
     window.hideModal = hideModal;
     window.confirmLogout = confirmLogout;
     window.closeDrawer = closeDrawer;
+    window.openDrawer = openDrawer;
+    window.openEditor = openEditor;
+    window.openDeleteModal = openDeleteModal;
+    window.toggleActionsMenu = toggleActionsMenu;
+    window.toggleArticlePublish = toggleArticlePublish;
+    window.toggleFeatured = toggleFeatured;
+    window.archiveArticle = archiveArticle;
+    window.unarchiveArticle = unarchiveArticle;
+    window.duplicateArticleById = duplicateArticleById;
+    window.previewPublicPage = previewPublicPage;
+    window.toggleCategoryActive = toggleCategoryActive;
+    window.confirmDeleteCategory = confirmDeleteCategory;
     </script>
 </body>
 </html>

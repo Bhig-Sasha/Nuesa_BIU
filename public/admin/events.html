@@ -1242,7 +1242,7 @@
                 <div class="page-header">
                     <div>
                         <h1 class="page-title">Events</h1>
-                        <p class="page-subtitle">Manage NUESA programmes, activities and gatherings.</p>
+                        <p class="page-subtitle">Manage NUESA events, announcements, registrations and event history.</p>
                     </div>
                     <div class="page-header-actions">
                         <button class="btn btn-secondary" id="exportBtn">
@@ -1300,18 +1300,20 @@
 
                     <div class="filters">
                         <div class="search-wrapper">
-                            <input type="text" class="search-input" id="searchInput" placeholder="Search events by title…">
+                            <input type="text" class="search-input" id="searchInput" placeholder="Search events by title or description…">
                             <i class="fas fa-search"></i>
                         </div>
                         <select class="filter-select" id="filterCategory">
                             <option value="">All Categories</option>
-                            <option value="workshop">Workshop</option>
-                            <option value="seminar">Seminar</option>
+                            <option value="academic">Academic</option>
+                            <option value="seminar-workshop">Seminar &amp; Workshop</option>
+                            <option value="conference">Conference</option>
                             <option value="competition">Competition</option>
-                            <option value="social">Social</option>
-                            <option value="excursion">Excursion</option>
-                            <option value="dinner">Dinner</option>
-                            <option value="nuesa-week">NUESA Week</option>
+                            <option value="orientation">Orientation</option>
+                            <option value="general-meeting">General Meeting</option>
+                            <option value="social-entertainment">Social &amp; Entertainment</option>
+                            <option value="sports">Sports</option>
+                            <option value="association-programme">Association Programme</option>
                             <option value="other">Other</option>
                         </select>
                         <select class="filter-select" id="filterStatus">
@@ -1321,7 +1323,6 @@
                             <option value="upcoming">Upcoming</option>
                             <option value="ongoing">Ongoing</option>
                             <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
                             <option value="archived">Archived</option>
                         </select>
                         <select class="filter-select" id="filterDate">
@@ -1381,32 +1382,38 @@
             </div>
             <form id="eventForm">
                 <div class="modal-body">
-                    <div class="form-section-title">Event Details</div>
+                    <div class="form-section-title">Basic Information</div>
                     <div class="form-grid">
                         <div class="form-group full">
                             <label class="form-label" for="eTitle">Event Title *</label>
                             <input type="text" class="form-input" id="eTitle" required>
                         </div>
                         <div class="form-group full">
-                            <label class="form-label" for="eDescription">Description</label>
+                            <label class="form-label" for="eSummary">Short Event Summary</label>
+                            <input type="text" class="form-input" id="eSummary" placeholder="Brief description for listings">
+                        </div>
+                        <div class="form-group full">
+                            <label class="form-label" for="eDescription">Full Description</label>
                             <textarea class="form-textarea" id="eDescription" placeholder="What is this event about?"></textarea>
                         </div>
                         <div class="form-group">
                             <label class="form-label" for="eCategory">Category *</label>
                             <select class="form-select" id="eCategory" required>
                                 <option value="">Choose category</option>
-                                <option value="workshop">Workshop</option>
-                                <option value="seminar">Seminar</option>
+                                <option value="academic">Academic</option>
+                                <option value="seminar-workshop">Seminar &amp; Workshop</option>
+                                <option value="conference">Conference</option>
                                 <option value="competition">Competition</option>
-                                <option value="social">Social</option>
-                                <option value="excursion">Excursion</option>
-                                <option value="dinner">Dinner</option>
-                                <option value="nuesa-week">NUESA Week</option>
+                                <option value="orientation">Orientation</option>
+                                <option value="general-meeting">General Meeting</option>
+                                <option value="social-entertainment">Social &amp; Entertainment</option>
+                                <option value="sports">Sports</option>
+                                <option value="association-programme">Association Programme</option>
                                 <option value="other">Other</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="eSession">Session</label>
+                            <label class="form-label" for="eSession">Academic Session</label>
                             <select class="form-select" id="eSession">
                                 <option value="2025/2026">2025/2026</option>
                                 <option value="2024/2025">2024/2025</option>
@@ -1415,65 +1422,105 @@
                         </div>
                     </div>
 
-                    <div class="form-section-title">Schedule</div>
+                    <div class="form-section-title">Event Media</div>
+                    <div class="form-grid">
+                        <div class="form-group full">
+                            <label class="form-label" for="ePoster">Poster Image URL</label>
+                            <input type="url" class="form-input" id="ePoster" placeholder="https://…/poster.jpg">
+                            <p class="form-hint">Select from Media Library or paste an image URL. Images only.</p>
+                        </div>
+                        <div class="form-group full">
+                            <label class="form-label" for="ePosterAlt">Image Alt Text</label>
+                            <input type="text" class="form-input" id="ePosterAlt" placeholder="Describe the poster image">
+                        </div>
+                    </div>
+
+                    <div class="form-section-title">Date and Time</div>
                     <div class="form-grid">
                         <div class="form-group">
-                            <label class="form-label" for="eStartDate">Start Date *</label>
+                            <label class="form-label" for="eStartDate">Event Start Date *</label>
                             <input type="date" class="form-input" id="eStartDate" required>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="eStartTime">Start Time</label>
+                            <label class="form-label" for="eStartTime">Event Start Time</label>
                             <input type="time" class="form-input" id="eStartTime">
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="eEndDate">End Date</label>
+                            <label class="form-label" for="eEndDate">Event End Date</label>
                             <input type="date" class="form-input" id="eEndDate">
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="eEndTime">End Time</label>
+                            <label class="form-label" for="eEndTime">Event End Time</label>
                             <input type="time" class="form-input" id="eEndTime">
                         </div>
-                        <div class="form-group full">
-                            <label class="form-label" for="eLocation">Venue *</label>
-                            <input type="text" class="form-input" id="eLocation" required placeholder="e.g. Main Auditorium, BIU">
-                        </div>
                     </div>
 
-                    <div class="form-section-title">Poster / Cover</div>
+                    <div class="form-section-title">Location</div>
                     <div class="form-grid">
                         <div class="form-group full">
-                            <label class="form-label" for="ePoster">Cover Image URL</label>
-                            <input type="url" class="form-input" id="ePoster" placeholder="https://…/poster.jpg">
-                            <p class="form-hint">Paste a URL from the Media Library, or leave blank for a placeholder.</p>
+                            <label class="form-label" for="eLocation">Venue Name *</label>
+                            <input type="text" class="form-input" id="eLocation" required placeholder="e.g. Main Auditorium, BIU">
+                        </div>
+                        <div class="form-group full">
+                            <label class="form-label" for="eCampus">Campus / Location</label>
+                            <input type="text" class="form-input" id="eCampus" placeholder="e.g. Main Campus">
+                        </div>
+                        <div class="form-group full">
+                            <label class="form-label" for="eVenueAddress">Full Venue Address</label>
+                            <input type="text" class="form-input" id="eVenueAddress" placeholder="Street, City, State">
+                        </div>
+                        <div class="form-group full">
+                            <label class="form-label" for="eOnlineLink">Online Event Link (if applicable)</label>
+                            <input type="url" class="form-input" id="eOnlineLink" placeholder="https://zoom.us/…">
                         </div>
                     </div>
 
-                    <div class="form-section-title">Registration</div>
+                    <div class="form-section-title">Registration Settings</div>
                     <div class="form-grid">
                         <div class="form-group">
                             <label class="form-label" for="eRegistrationType">Registration Type</label>
                             <select class="form-select" id="eRegistrationType">
                                 <option value="none">No registration required</option>
-                                <option value="internal">Internal (on-site)</option>
-                                <option value="external">External link</option>
+                                <option value="external">External registration link</option>
+                                <option value="internal">Internal registration form</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="eMaxAttendees">Maximum Attendees</label>
+                            <label class="form-label" for="eMaxAttendees">Maximum Attendee Capacity</label>
                             <input type="number" class="form-input" id="eMaxAttendees" min="0" placeholder="e.g. 200">
                         </div>
                         <div class="form-group full">
                             <label class="form-label" for="eRegistrationLink">Registration Link</label>
                             <input type="url" class="form-input" id="eRegistrationLink" placeholder="https://forms.gle/…">
                         </div>
+                        <div class="form-group">
+                            <label class="form-label" for="eRegistrationOpen">Registration Opening Date</label>
+                            <input type="date" class="form-input" id="eRegistrationOpen">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="eRegistrationClose">Registration Closing Date</label>
+                            <input type="date" class="form-input" id="eRegistrationClose">
+                        </div>
+                        <div class="form-group full">
+                            <label class="form-label" for="eRegistrationFields">Registration Fields</label>
+                            <input type="text" class="form-input" id="eRegistrationFields" placeholder="e.g. Name, Matric Number, Email, Phone">
+                            <p class="form-hint">Comma-separated list of fields for the internal registration form.</p>
+                        </div>
                     </div>
 
-                    <div class="form-section-title">Publishing</div>
+                    <div class="form-section-title">Publishing Settings</div>
                     <div class="checkbox-row">
                         <input type="checkbox" id="eFeatured">
                         <label for="eFeatured">
-                            <span class="cb-label">Feature this event</span>
-                            <span class="cb-hint">Pinned on the public site's Upcoming Events section</span>
+                            <span class="cb-label">Feature on Homepage</span>
+                            <span class="cb-hint">Pinned in the public site's Featured Event section</span>
+                        </label>
+                    </div>
+                    <div class="checkbox-row">
+                        <input type="checkbox" id="ePublicVisible" checked>
+                        <label for="ePublicVisible">
+                            <span class="cb-label">Allow public event visibility</span>
+                            <span class="cb-hint">Event can be seen on the public website when published</span>
                         </label>
                     </div>
                     <div class="checkbox-row">
@@ -1483,11 +1530,17 @@
                             <span class="cb-hint">If unchecked, the event is saved as a draft</span>
                         </label>
                     </div>
+                    <div class="form-group full" style="margin-top: 8px;">
+                        <label class="form-label" for="eSchedulePublish">Schedule Publication</label>
+                        <input type="datetime-local" class="form-input" id="eSchedulePublish">
+                        <p class="form-hint">Optional. Event will publish automatically at this time. Overrides "Publish immediately".</p>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="hideModal('eventModal')">Cancel</button>
+                    <button type="button" class="btn btn-secondary" id="saveDraftBtn">Save Draft</button>
                     <button type="submit" class="btn btn-primary" id="eventSubmitBtn">
-                        <i class="fas fa-check"></i> Save Event
+                        <i class="fas fa-check"></i> Publish Event
                     </button>
                 </div>
             </form>
@@ -1555,6 +1608,9 @@
             </div>
             <div class="modal-body">
                 <p>This will permanently delete <strong id="deleteEventName">this event</strong>. This action cannot be undone.</p>
+                <p id="deleteWarning" style="display:none; margin-top:10px; color: var(--danger); font-weight:600;">
+                    <i class="fas fa-exclamation-circle"></i> This event has registrations. Extra confirmation required.
+                </p>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="hideModal('deleteModal')" type="button">Cancel</button>
@@ -1697,31 +1753,40 @@
             id: e.id,
             title: e.title || 'Untitled event',
             description: e.description || '',
+            summary: e.summary || e.short_description || '',
             category: (e.category || 'other').toLowerCase(),
             location: e.location || e.venue || '',
+            campus: e.campus || '',
+            venue_address: e.venue_address || '',
+            online_link: e.online_link || '',
             start_date: start,
             start_time: e.start_time || '',
             end_date: end,
             end_time: e.end_time || '',
             poster: e.poster_url || e.featured_image || e.cover_image || '',
+            poster_alt: e.poster_alt || '',
             status: (e.status || 'draft').toLowerCase(),
             is_published: !!e.is_published,
             is_featured: !!e.is_featured || !!e.featured,
+            public_visible: e.public_visible !== false,
             session: e.session || '2025/2026',
             max_attendees: e.max_participants || e.max_attendees || null,
             registrations: e.registrations || e.registration_count || 0,
             registration_type: e.registration_type || 'none',
             registration_link: e.registration_link || '',
+            registration_open: e.registration_open || '',
+            registration_close: e.registration_close || '',
+            registration_fields: e.registration_fields || '',
+            schedule_publish: e.schedule_publish || '',
             created_at: e.created_at || null,
             updated_at: e.updated_at || null
         };
     }
 
     function computeDisplayStatus(evt) {
-        if (evt.status === 'draft' || (!evt.is_published && evt.status !== 'archived' && evt.status !== 'cancelled')) {
+        if (evt.status === 'draft' || (!evt.is_published && evt.status !== 'archived')) {
             return 'draft';
         }
-        if (evt.status === 'cancelled') return 'cancelled';
         if (evt.status === 'archived') return 'archived';
 
         const now = Date.now();
@@ -1796,7 +1861,7 @@
                 } else if (s !== status) return false;
             }
             if (q) {
-                const hay = `${e.title} ${e.description} ${e.location}`.toLowerCase();
+                const hay = `${e.title} ${e.description} ${e.summary} ${e.location}`.toLowerCase();
                 if (!hay.includes(q)) return false;
             }
             if (dateFilter) {
@@ -1871,7 +1936,7 @@
             const status = computeDisplayStatus(e);
             const statusBadge = renderStatusBadge(status);
             const posterHtml = e.poster
-                ? `<img src="${escapeHtml(e.poster)}" alt="${escapeHtml(e.title)}" onerror="this.style.display='none';this.parentNode.querySelector('.placeholder-icon').style.display='';">
+                ? `<img src="${escapeHtml(e.poster)}" alt="${escapeHtml(e.poster_alt || e.title)}" onerror="this.style.display='none';this.parentNode.querySelector('.placeholder-icon').style.display='';">
                    <i class="far fa-calendar-alt placeholder-icon" style="display:none;"></i>`
                 : `<i class="far fa-calendar-alt placeholder-icon"></i>`;
             const dateStr = formatEventDate(e);
@@ -1882,7 +1947,7 @@
                         ${statusBadge.replace('status-badge', 'event-status')}
                     </div>
                     <div class="event-body">
-                        <span class="event-category-tag">${escapeHtml(e.category)}</span>
+                        <span class="event-category-tag">${escapeHtml(formatCategory(e.category))}</span>
                         <h3 class="event-title">${escapeHtml(e.title)}</h3>
                         <div class="event-meta">
                             <div class="event-meta-row"><i class="far fa-calendar"></i> ${escapeHtml(dateStr)}</div>
@@ -1947,7 +2012,7 @@
                             </div>
                         </div>
                     </td>
-                    <td style="text-transform: capitalize;">${escapeHtml(e.category)}</td>
+                    <td style="text-transform: capitalize;">${escapeHtml(formatCategory(e.category))}</td>
                     <td class="cell-mono">${escapeHtml(formatEventDate(e))}</td>
                     <td>${escapeHtml(e.location || '—')}</td>
                     <td>${e.registrations}${e.max_attendees ? ' / ' + e.max_attendees : ''}</td>
@@ -1979,6 +2044,22 @@
         });
     }
 
+    function formatCategory(cat) {
+        const map = {
+            'academic': 'Academic',
+            'seminar-workshop': 'Seminar & Workshop',
+            'conference': 'Conference',
+            'competition': 'Competition',
+            'orientation': 'Orientation',
+            'general-meeting': 'General Meeting',
+            'social-entertainment': 'Social & Entertainment',
+            'sports': 'Sports',
+            'association-programme': 'Association Programme',
+            'other': 'Other'
+        };
+        return map[cat] || cat;
+    }
+
     function renderStatusBadge(status) {
         const map = {
             draft:     { cls: 'badge-muted',   icon: 'fa-file-alt',         label: 'Draft' },
@@ -1986,7 +2067,6 @@
             upcoming:  { cls: 'badge-info',    icon: 'fa-hourglass-half',   label: 'Upcoming' },
             ongoing:   { cls: 'badge-success', icon: 'fa-play-circle',      label: 'Ongoing' },
             completed: { cls: 'badge-purple',  icon: 'fa-check-double',     label: 'Completed' },
-            cancelled: { cls: 'badge-danger',  icon: 'fa-ban',              label: 'Cancelled' },
             archived:  { cls: 'badge-muted',   icon: 'fa-archive',          label: 'Archived' }
         };
         const m = map[status] || map.draft;
@@ -2042,20 +2122,30 @@
             if (!e) return;
             title.innerHTML = '<i class="fas fa-pen"></i> Edit Event';
             document.getElementById('eTitle').value = e.title;
+            document.getElementById('eSummary').value = e.summary || '';
             document.getElementById('eDescription').value = e.description;
             document.getElementById('eCategory').value = e.category;
             document.getElementById('eSession').value = e.session;
+            document.getElementById('ePoster').value = e.poster;
+            document.getElementById('ePosterAlt').value = e.poster_alt || '';
             document.getElementById('eStartDate').value = toDateInputValue(e.start_date);
             document.getElementById('eStartTime').value = e.start_time || '';
             document.getElementById('eEndDate').value = toDateInputValue(e.end_date);
             document.getElementById('eEndTime').value = e.end_time || '';
             document.getElementById('eLocation').value = e.location;
-            document.getElementById('ePoster').value = e.poster;
+            document.getElementById('eCampus').value = e.campus || '';
+            document.getElementById('eVenueAddress').value = e.venue_address || '';
+            document.getElementById('eOnlineLink').value = e.online_link || '';
             document.getElementById('eRegistrationType').value = e.registration_type;
             document.getElementById('eRegistrationLink').value = e.registration_link;
             document.getElementById('eMaxAttendees').value = e.max_attendees || '';
+            document.getElementById('eRegistrationOpen').value = toDateInputValue(e.registration_open);
+            document.getElementById('eRegistrationClose').value = toDateInputValue(e.registration_close);
+            document.getElementById('eRegistrationFields').value = e.registration_fields || '';
             document.getElementById('eFeatured').checked = e.is_featured;
+            document.getElementById('ePublicVisible').checked = e.public_visible !== false;
             document.getElementById('ePublishNow').checked = e.is_published;
+            document.getElementById('eSchedulePublish').value = e.schedule_publish || '';
         } else {
             title.innerHTML = '<i class="fas fa-plus-circle"></i> Create New Event';
         }
@@ -2066,29 +2156,48 @@
 
     async function handleEventSubmit(e) {
         e.preventDefault();
-        const btn = document.getElementById('eventSubmitBtn');
+        await saveEvent(false);
+    }
+
+    async function saveDraft() {
+        await saveEvent(true);
+    }
+
+    async function saveEvent(forceDraft) {
+        const btn = forceDraft ? document.getElementById('saveDraftBtn') : document.getElementById('eventSubmitBtn');
         const original = btn.innerHTML;
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Saving…';
 
-        const published = document.getElementById('ePublishNow').checked;
+        const published = forceDraft ? false : document.getElementById('ePublishNow').checked;
+        const schedulePublish = document.getElementById('eSchedulePublish').value;
         const payload = {
             title: document.getElementById('eTitle').value.trim(),
+            summary: document.getElementById('eSummary').value.trim(),
             description: document.getElementById('eDescription').value.trim(),
             category: document.getElementById('eCategory').value,
             session: document.getElementById('eSession').value,
+            poster_url: document.getElementById('ePoster').value.trim(),
+            poster_alt: document.getElementById('ePosterAlt').value.trim(),
             start_date: document.getElementById('eStartDate').value,
             start_time: document.getElementById('eStartTime').value,
             end_date: document.getElementById('eEndDate').value,
             end_time: document.getElementById('eEndTime').value,
             location: document.getElementById('eLocation').value.trim(),
-            poster_url: document.getElementById('ePoster').value.trim(),
+            campus: document.getElementById('eCampus').value.trim(),
+            venue_address: document.getElementById('eVenueAddress').value.trim(),
+            online_link: document.getElementById('eOnlineLink').value.trim(),
             registration_type: document.getElementById('eRegistrationType').value,
             registration_link: document.getElementById('eRegistrationLink').value.trim(),
             max_attendees: document.getElementById('eMaxAttendees').value ? parseInt(document.getElementById('eMaxAttendees').value) : null,
+            registration_open: document.getElementById('eRegistrationOpen').value,
+            registration_close: document.getElementById('eRegistrationClose').value,
+            registration_fields: document.getElementById('eRegistrationFields').value.trim(),
             is_featured: document.getElementById('eFeatured').checked,
-            is_published: published,
-            status: published ? 'published' : 'draft'
+            public_visible: document.getElementById('ePublicVisible').checked,
+            is_published: schedulePublish ? true : published,
+            schedule_publish: schedulePublish || null,
+            status: schedulePublish || published ? 'published' : 'draft'
         };
 
         try {
@@ -2124,7 +2233,7 @@
             if (placeholder) placeholder.style.display = 'none';
             const img = document.createElement('img');
             img.src = e.poster;
-            img.alt = e.title;
+            img.alt = e.poster_alt || e.title;
             img.onerror = () => { img.remove(); if (placeholder) placeholder.style.display = ''; };
             hero.insertBefore(img, hero.firstChild);
         } else if (placeholder) {
@@ -2138,14 +2247,13 @@
             upcoming:  { cls: 'badge-info',    label: 'Upcoming' },
             ongoing:   { cls: 'badge-success', label: 'Ongoing' },
             completed: { cls: 'badge-purple',  label: 'Completed' },
-            cancelled: { cls: 'badge-danger',  label: 'Cancelled' },
             archived:  { cls: 'badge-muted',   label: 'Archived' }
         };
         const m = map[status] || map.draft;
         badge.className = 'drawer-status-badge status-badge ' + m.cls;
         badge.textContent = m.label;
 
-        document.getElementById('drawerCategory').textContent = e.category;
+        document.getElementById('drawerCategory').textContent = formatCategory(e.category);
         document.getElementById('drawerTitle').textContent = e.title;
         document.getElementById('drawerDescription').textContent = e.description || 'No description provided.';
         document.getElementById('drawerStart').textContent = formatDateTime(e.start_date, e.start_time);
@@ -2154,7 +2262,7 @@
         document.getElementById('drawerSession').textContent = e.session;
         document.getElementById('drawerRegistered').textContent = e.registrations;
         document.getElementById('drawerCapacity').textContent = e.max_attendees || '—';
-        document.getElementById('drawerRegType').textContent = e.registration_type;
+        document.getElementById('drawerRegType').textContent = e.registration_type === 'none' ? 'None' : e.registration_type === 'external' ? 'External Link' : 'Internal Form';
         document.getElementById('drawerCreated').textContent = formatDate(e.created_at);
         document.getElementById('drawerUpdated').textContent = formatDate(e.updated_at);
 
@@ -2202,6 +2310,7 @@
         try {
             await apiPost('/api/admin/events', {
                 title: `${viewingEvent.title} (Copy)`,
+                summary: viewingEvent.summary,
                 description: viewingEvent.description,
                 category: viewingEvent.category,
                 session: viewingEvent.session,
@@ -2210,11 +2319,19 @@
                 end_date: viewingEvent.end_date,
                 end_time: viewingEvent.end_time,
                 location: viewingEvent.location,
+                campus: viewingEvent.campus,
+                venue_address: viewingEvent.venue_address,
+                online_link: viewingEvent.online_link,
                 poster_url: viewingEvent.poster,
+                poster_alt: viewingEvent.poster_alt,
                 registration_type: viewingEvent.registration_type,
                 registration_link: viewingEvent.registration_link,
+                registration_open: viewingEvent.registration_open,
+                registration_close: viewingEvent.registration_close,
+                registration_fields: viewingEvent.registration_fields,
                 max_attendees: viewingEvent.max_attendees,
                 is_featured: false,
+                public_visible: true,
                 is_published: false,
                 status: 'draft'
             });
@@ -2232,6 +2349,12 @@
         if (!e) return;
         deletingEventId = id;
         document.getElementById('deleteEventName').textContent = e.title;
+        const warn = document.getElementById('deleteWarning');
+        if (e.registrations > 0) {
+            warn.style.display = '';
+        } else {
+            warn.style.display = 'none';
+        }
         showModal('deleteModal');
     }
 
@@ -2386,7 +2509,7 @@
         }
         const headers = ['Title','Category','Session','Start Date','Start Time','End Date','End Time','Venue','Status','Registrations','Capacity'];
         const rows = filteredEvents.map(e => [
-            e.title, e.category, e.session, e.start_date, e.start_time, e.end_date, e.end_time,
+            e.title, formatCategory(e.category), e.session, e.start_date, e.start_time, e.end_date, e.end_time,
             e.location, computeDisplayStatus(e), e.registrations, e.max_attendees || ''
         ]);
         const csv = [headers, ...rows]
@@ -2427,6 +2550,7 @@
         document.getElementById('exportBtn').addEventListener('click', exportEvents);
         document.getElementById('clearFilters').addEventListener('click', clearFilters);
         document.getElementById('confirmDeleteBtn').addEventListener('click', handleDelete);
+        document.getElementById('saveDraftBtn').addEventListener('click', saveDraft);
 
         document.getElementById('gridViewBtn').addEventListener('click', () => {
             currentView = 'grid';

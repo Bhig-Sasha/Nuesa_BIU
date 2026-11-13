@@ -40,6 +40,8 @@
             --danger-tint:    #FBE6E2;
             --info:           #2C6FA8;
             --info-tint:      #E3EEF7;
+            --purple:         #6B3FA0;
+            --purple-tint:    #F0E9F8;
 
             --r-sm: 6px;
             --r:    10px;
@@ -139,10 +141,7 @@
             border-left: 3px solid var(--info);
             animation: toastIn var(--dur-slow) var(--ease-out) forwards;
         }
-        .toast.toast-out {
-            transform: translateX(calc(100% + 40px));
-            transition: transform var(--dur) var(--ease);
-        }
+        .toast.toast-out { transform: translateX(calc(100% + 40px)); transition: transform var(--dur) var(--ease); }
         .toast-success { border-left-color: var(--success); }
         .toast-error   { border-left-color: var(--danger); }
         .toast-warning { border-left-color: var(--warning); }
@@ -218,7 +217,6 @@
             margin-top: 3px;
         }
 
-        /* ---- Scrollable nav ---- */
         .nav {
             padding: 16px 12px; flex: 1;
             display: flex; flex-direction: column; gap: 3px;
@@ -229,10 +227,7 @@
             scrollbar-color: rgba(255,255,255,0.18) transparent;
         }
         .nav::-webkit-scrollbar { width: 5px; }
-        .nav::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.18);
-            border-radius: 4px;
-        }
+        .nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 4px; }
         .nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.32); }
         .nav::-webkit-scrollbar-track { background: transparent; }
 
@@ -279,7 +274,6 @@
         }
         .nav-item.active i { color: var(--accent); }
 
-        /* Sidebar footer — logout only */
         .sidebar-footer {
             padding: 16px 12px 20px;
             border-top: 1px solid rgba(255,255,255,0.08);
@@ -332,7 +326,7 @@
         @media (max-width: 900px) { .main-content { margin-left: 0; } }
 
         /* ============================================================
-           HEADER — no breadcrumb, profile on right
+           HEADER
            ============================================================ */
         .header {
             height: var(--header-h);
@@ -452,6 +446,38 @@
             .page-header-actions .btn { flex: 1; justify-content: center; }
         }
 
+        /* Session selector */
+        .session-selector {
+            display: flex; align-items: center; gap: 8px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            padding: 6px 12px 6px 14px;
+            margin-bottom: 18px;
+            animation: slideInUp var(--dur) var(--ease) both;
+        }
+        .session-selector i { color: var(--accent); font-size: 0.875rem; }
+        .session-selector label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-family: var(--font-mono);
+        }
+        .session-selector select {
+            border: none;
+            background: transparent;
+            font-family: inherit;
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: var(--primary);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: var(--r-sm);
+        }
+        .session-selector select:focus { outline: none; background: var(--primary-tint); }
+
         /* ============================================================
            BUTTONS
            ============================================================ */
@@ -539,7 +565,6 @@
         .stat-card:nth-child(2) { animation-delay: 100ms; }
         .stat-card:nth-child(3) { animation-delay: 160ms; }
         .stat-card:nth-child(4) { animation-delay: 220ms; }
-        .stat-card:nth-child(5) { animation-delay: 280ms; }
         .stat-card:hover {
             transform: translateY(-3px);
             box-shadow: var(--shadow-md);
@@ -573,7 +598,192 @@
         }
 
         /* ============================================================
-           CONTENT CARD
+           TABS (for General / Departmental / Directory / History)
+           ============================================================ */
+        .main-tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--surface);
+            padding: 6px;
+            border-radius: var(--r-lg);
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+            overflow-x: auto;
+            animation: slideInUp var(--dur) var(--ease) both;
+            scrollbar-width: thin;
+        }
+        .main-tabs::-webkit-scrollbar { height: 3px; }
+        .main-tabs::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+        .main-tab {
+            padding: 10px 18px;
+            background: transparent;
+            border: none;
+            border-radius: var(--r);
+            font-family: inherit;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .main-tab i { font-size: 0.875rem; }
+        .main-tab:hover { background: var(--surface-muted); color: var(--text); }
+        .main-tab.active {
+            background: var(--primary);
+            color: var(--text-invert);
+        }
+        .main-tab.active i { color: var(--accent); }
+
+        .tab-panel { display: none; animation: slideInUp var(--dur) var(--ease) both; }
+        .tab-panel.active { display: block; }
+
+        /* ============================================================
+           GENERAL REPS — Level Cards
+           ============================================================ */
+        .general-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 14px;
+        }
+        .level-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            padding: 18px;
+            animation: slideInUp var(--dur) var(--ease) both;
+            transition: all var(--dur) var(--ease);
+            position: relative;
+        }
+        .level-card:hover {
+            border-color: var(--accent);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+        .level-card.assigned {
+            border-left: 4px solid var(--success);
+        }
+        .level-card.vacant {
+            border-left: 4px solid var(--warning);
+            background: var(--surface-muted);
+        }
+        .level-card-header {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            margin-bottom: 14px;
+        }
+        .level-card-title {
+            font-size: 1.125rem;
+            font-weight: 800;
+            color: var(--text);
+        }
+        .level-card-subtitle {
+            font-size: 0.6875rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-family: var(--font-mono);
+            font-weight: 700;
+            margin-top: 2px;
+        }
+        .level-card-badge {
+            padding: 3px 9px;
+            border-radius: 999px;
+            font-size: 0.625rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .level-card-badge.assigned-badge { background: var(--success-tint); color: var(--success); }
+        .level-card-badge.vacant-badge   { background: var(--warning-tint); color: var(--warning); }
+
+        .rep-profile-row {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px;
+            border-radius: var(--r);
+            background: var(--surface-muted);
+            margin-bottom: 12px;
+        }
+        .rep-profile-avatar {
+            width: 48px; height: 48px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: var(--accent);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 1rem;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+        .rep-profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .rep-profile-info { flex: 1; min-width: 0; }
+        .rep-profile-name {
+            font-weight: 700; font-size: 0.875rem; color: var(--text);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .rep-profile-meta {
+            font-family: var(--font-mono);
+            font-size: 0.6875rem;
+            color: var(--text-dim);
+            margin-top: 2px;
+        }
+        .rep-profile-actions {
+            display: flex; gap: 6px;
+        }
+
+        /* ============================================================
+           DEPARTMENTAL REPS — Department Cards
+           ============================================================ */
+        .level-tabs {
+            display: flex; gap: 8px; flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        .level-tab {
+            padding: 8px 18px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: var(--surface);
+            color: var(--text-muted);
+            font-size: 0.8125rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            cursor: pointer;
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .level-tab:hover { border-color: var(--accent); color: var(--text); }
+        .level-tab.active {
+            background: var(--primary);
+            color: var(--text-invert);
+            border-color: var(--primary);
+        }
+
+        .dept-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 14px;
+        }
+        .dept-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            padding: 16px;
+            animation: slideInUp var(--dur) var(--ease) both;
+            transition: all var(--dur) var(--ease);
+        }
+        .dept-card:hover { border-color: var(--accent); box-shadow: var(--shadow-md); }
+        .dept-card.assigned { border-left: 4px solid var(--success); }
+        .dept-card.vacant   { border-left: 4px solid var(--warning); background: var(--surface-muted); }
+        .dept-card-title {
+            font-size: 0.9375rem; font-weight: 700;
+            color: var(--text);
+            margin-bottom: 10px;
+        }
+
+        /* ============================================================
+           DIRECTORY TABLE
            ============================================================ */
         .content-card {
             background: var(--surface);
@@ -603,9 +813,6 @@
             font-family: var(--font-mono);
         }
 
-        /* ============================================================
-           FILTERS
-           ============================================================ */
         .filters {
             display: grid;
             grid-template-columns: 2fr repeat(4, 1fr);
@@ -637,7 +844,6 @@
             color: var(--text);
             transition: all var(--dur-fast) var(--ease);
         }
-        .search-input::placeholder { color: var(--text-dim); }
         .search-input:focus {
             outline: none;
             border-color: var(--accent);
@@ -686,9 +892,6 @@
             font-weight: 600;
         }
 
-        /* ============================================================
-           TABLE
-           ============================================================ */
         .table-container {
             overflow-x: auto;
             border-radius: var(--r);
@@ -699,11 +902,10 @@
         }
         .table-container::-webkit-scrollbar { height: 8px; }
         .table-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-        .table-container::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
 
         .data-table {
             width: 100%; border-collapse: collapse;
-            min-width: 920px;
+            min-width: 960px;
         }
         .data-table th {
             background: var(--surface-muted);
@@ -730,20 +932,10 @@
             cursor: pointer;
             animation: rowReveal var(--dur) var(--ease-out) both;
         }
-        .data-table tbody tr:nth-child(1) { animation-delay: 20ms; }
-        .data-table tbody tr:nth-child(2) { animation-delay: 40ms; }
-        .data-table tbody tr:nth-child(3) { animation-delay: 60ms; }
-        .data-table tbody tr:nth-child(4) { animation-delay: 80ms; }
-        .data-table tbody tr:nth-child(5) { animation-delay: 100ms; }
-        .data-table tbody tr:nth-child(6) { animation-delay: 120ms; }
-        .data-table tbody tr:nth-child(7) { animation-delay: 140ms; }
-        .data-table tbody tr:nth-child(8) { animation-delay: 160ms; }
         .data-table tbody tr:hover { background: var(--surface-muted); }
         .data-table tbody tr:last-child td { border-bottom: none; }
 
-        .rep-cell {
-            display: flex; align-items: center; gap: 10px;
-        }
+        .rep-cell { display: flex; align-items: center; gap: 10px; }
         .rep-avatar {
             width: 34px; height: 34px;
             border-radius: 50%;
@@ -753,16 +945,27 @@
             font-size: 0.75rem;
             display: flex; align-items: center; justify-content: center;
             flex-shrink: 0;
-            transition: transform var(--dur) var(--ease-spring);
+            overflow: hidden;
         }
-        .data-table tbody tr:hover .rep-avatar { transform: scale(1.08); }
+        .rep-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .rep-name { font-weight: 600; color: var(--text); }
-        .rep-sub {
-            font-size: 0.6875rem;
-            color: var(--text-dim);
-            margin-top: 1px;
-        }
+        .rep-sub { font-size: 0.6875rem; color: var(--text-dim); margin-top: 1px; }
         .cell-mono { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); }
+
+        .type-badge {
+            padding: 3px 9px;
+            border-radius: 999px;
+            font-size: 0.625rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            display: inline-flex; align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+        .type-general { background: var(--purple-tint); color: var(--purple); }
+        .type-dept    { background: var(--info-tint); color: var(--info); }
 
         .status-badge {
             padding: 3px 9px;
@@ -780,16 +983,9 @@
         .badge-warning { background: var(--warning-tint); color: var(--warning); }
         .badge-danger  { background: var(--danger-tint);  color: var(--danger); }
         .badge-info    { background: var(--info-tint);    color: var(--info); }
-        .badge-gold    { background: var(--accent-tint);  color: var(--text-gold); }
 
-        .row-actions {
-            display: flex; gap: 4px;
-            justify-content: flex-end;
-        }
+        .row-actions { display: flex; gap: 4px; justify-content: flex-end; }
 
-        /* ============================================================
-           EMPTY STATE
-           ============================================================ */
         .empty-state {
             text-align: center;
             padding: 60px 20px;
@@ -806,11 +1002,8 @@
             margin: 0 auto 16px;
         }
         .empty-state h3 { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 6px; }
-        .empty-state p { font-size: 0.875rem; }
+        .empty-state p { font-size: 0.875rem; margin-bottom: 16px; }
 
-        /* ============================================================
-           PAGINATION
-           ============================================================ */
         .pagination {
             display: flex; justify-content: space-between;
             align-items: center;
@@ -835,11 +1028,7 @@
             font-weight: 600;
             transition: all var(--dur-fast) var(--ease);
         }
-        .page-btn:hover:not(:disabled) {
-            border-color: var(--accent);
-            color: var(--text);
-            transform: translateY(-1px);
-        }
+        .page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--text); }
         .page-btn.active { background: var(--primary); color: var(--text-invert); border-color: var(--primary); }
         .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
@@ -868,7 +1057,7 @@
             box-shadow: var(--shadow-xl);
         }
         .modal.active .modal-content { transform: translateY(0) scale(1); }
-        .modal-content.modal-lg { max-width: 720px; }
+        .modal-content.modal-lg { max-width: 780px; }
 
         .modal-header {
             padding: 18px 22px;
@@ -908,6 +1097,29 @@
         /* ============================================================
            FORM
            ============================================================ */
+        .form-step {
+            margin-bottom: 24px;
+        }
+        .form-step:last-child { margin-bottom: 0; }
+        .form-step-header {
+            display: flex; align-items: center; gap: 10px;
+            margin-bottom: 12px;
+        }
+        .form-step-num {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: var(--primary);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 0.75rem;
+            flex-shrink: 0;
+        }
+        .form-step-title {
+            font-size: 0.9375rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
         .form-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -943,6 +1155,48 @@
         }
         .form-select { cursor: pointer; }
 
+        /* Rep type selector */
+        .rep-type-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        @media (max-width: 480px) { .rep-type-selector { grid-template-columns: 1fr; } }
+        .rep-type-option {
+            padding: 14px;
+            border: 2px solid var(--border);
+            border-radius: var(--r);
+            cursor: pointer;
+            transition: all var(--dur-fast) var(--ease);
+            background: var(--surface);
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+        .rep-type-option:hover { border-color: var(--accent); background: var(--accent-tint); }
+        .rep-type-option.selected {
+            border-color: var(--primary);
+            background: var(--primary-tint);
+        }
+        .rep-type-option i {
+            font-size: 1.125rem;
+            color: var(--primary);
+            margin-top: 2px;
+        }
+        .rep-type-info { flex: 1; }
+        .rep-type-label {
+            font-weight: 700;
+            font-size: 0.8125rem;
+            color: var(--text);
+            margin-bottom: 2px;
+        }
+        .rep-type-desc {
+            font-size: 0.6875rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        /* Student search */
         .search-student { position: relative; }
         .search-student input { padding-left: 34px; }
         .search-student i {
@@ -973,7 +1227,6 @@
         }
         .student-result:last-child { border-bottom: none; }
         .student-result:hover { background: var(--surface-muted); }
-        .student-result.selected { background: var(--primary-tint); }
         .student-result-info { flex: 1; }
         .student-result-name { font-weight: 600; font-size: 0.875rem; }
         .student-result-meta {
@@ -999,7 +1252,9 @@
             font-weight: 700; font-size: 0.875rem;
             display: flex; align-items: center; justify-content: center;
             flex-shrink: 0;
+            overflow: hidden;
         }
+        .selected-student-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .selected-student-info { flex: 1; }
         .selected-student-name { font-weight: 700; font-size: 0.9375rem; }
         .selected-student-meta { font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono); }
@@ -1013,6 +1268,38 @@
         }
         .selected-student-clear:hover { background: var(--danger-tint); color: var(--danger); }
 
+        /* Profile picture selector */
+        .picture-selector {
+            display: flex; align-items: center; gap: 14px;
+            padding: 14px;
+            border: 1px dashed var(--border-strong);
+            border-radius: var(--r);
+            background: var(--surface-muted);
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .picture-preview {
+            width: 64px; height: 64px;
+            border-radius: 50%;
+            background: var(--primary-tint);
+            color: var(--primary);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+        .picture-preview img { width: 100%; height: 100%; object-fit: cover; }
+        .picture-info { flex: 1; }
+        .picture-info-title {
+            font-weight: 600;
+            font-size: 0.8125rem;
+            color: var(--text);
+            margin-bottom: 2px;
+        }
+        .picture-info-hint {
+            font-size: 0.6875rem;
+            color: var(--text-dim);
+        }
+
         .warning-box {
             padding: 12px 14px;
             background: var(--warning-tint);
@@ -1024,7 +1311,42 @@
             margin-top: 12px;
             animation: fadeIn var(--dur) var(--ease);
         }
-        .warning-box.active { display: block; }
+        .warning-box.active { display: flex; gap: 8px; align-items: flex-start; }
+
+        /* ============================================================
+           MEDIA PICKER MODAL
+           ============================================================ */
+        .media-picker-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 4px;
+        }
+        .media-picker-item {
+            aspect-ratio: 1;
+            border-radius: var(--r);
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all var(--dur-fast) var(--ease);
+            background: var(--surface-muted);
+            position: relative;
+        }
+        .media-picker-item:hover { border-color: var(--accent); transform: scale(1.02); }
+        .media-picker-item.selected { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-tint); }
+        .media-picker-item img {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .media-picker-item .placeholder {
+            display: flex; align-items: center; justify-content: center;
+            width: 100%; height: 100%;
+            color: var(--text-dim);
+            font-size: 1.5rem;
+        }
 
         /* ============================================================
            PROFILE DRAWER
@@ -1042,7 +1364,7 @@
         .drawer {
             position: fixed;
             top: 0; right: 0; bottom: 0;
-            width: 100%; max-width: 440px;
+            width: 100%; max-width: 460px;
             background: var(--surface);
             box-shadow: var(--shadow-xl);
             z-index: 10000;
@@ -1054,7 +1376,7 @@
         .drawer.active { transform: translateX(0); }
 
         .drawer-header {
-            padding: 22px;
+            padding: 24px 22px;
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-soft) 100%);
             color: var(--text-invert);
             position: relative;
@@ -1073,7 +1395,7 @@
         }
         .drawer-close:hover { background: rgba(255,255,255,0.24); transform: rotate(90deg); }
         .drawer-avatar {
-            width: 72px; height: 72px;
+            width: 80px; height: 80px;
             border-radius: 50%;
             background: var(--accent);
             color: var(--primary);
@@ -1081,13 +1403,23 @@
             display: flex; align-items: center; justify-content: center;
             margin-bottom: 12px;
             border: 3px solid var(--accent-soft);
-            animation: scaleIn var(--dur-slow) var(--ease-spring);
+            overflow: hidden;
         }
+        .drawer-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .drawer-name { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
+        .drawer-role {
+            font-size: 0.75rem;
+            color: var(--accent);
+            font-family: var(--font-mono);
+            margin-top: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
         .drawer-matric {
             font-family: var(--font-mono);
             font-size: 0.8125rem;
-            color: var(--accent);
+            color: rgba(255,255,255,0.75);
             margin-top: 2px;
         }
         .drawer-status {
@@ -1103,10 +1435,7 @@
             background: var(--accent);
             color: var(--primary);
         }
-        .drawer-status.inactive {
-            background: var(--danger);
-            color: var(--text-invert);
-        }
+        .drawer-status.inactive { background: var(--danger); color: var(--text-invert); }
 
         .drawer-body { padding: 22px; flex: 1; }
         .drawer-section-title {
@@ -1140,6 +1469,7 @@
             border-left: 3px solid var(--accent);
             font-size: 0.8125rem;
         }
+        .history-item.current { border-left-color: var(--success); }
         .history-item .history-title { font-weight: 600; color: var(--text); }
         .history-item .history-meta { font-size: 0.6875rem; color: var(--text-dim); font-family: var(--font-mono); margin-top: 2px; }
 
@@ -1150,9 +1480,7 @@
         }
         .drawer-footer .btn { flex: 1; min-width: 100px; justify-content: center; }
 
-        @media (max-width: 420px) {
-            .drawer { max-width: 100%; }
-        }
+        @media (max-width: 420px) { .drawer { max-width: 100%; } }
 
         /* ============================================================
            REDUCED MOTION
@@ -1190,10 +1518,11 @@
                 <div class="nav-section-label">Main</div>
                 <a href="dashboard.html" class="nav-item"><i class="fas fa-th-large"></i><span>Dashboard</span></a>
                 <a href="members.html" class="nav-item"><i class="fas fa-users"></i><span>Members</span></a>
-                <a href="courseReps.html" class="nav-item active"><i class="fas fa-chalkboard-teacher"></i><span>Course Reps</span></a>
+                <a href="executives.html" class="nav-item"><i class="fas fa-user-tie"></i><span>Executives</span></a>
                 <a href="events.html" class="nav-item"><i class="far fa-calendar-alt"></i><span>Events</span></a>
-                <a href="articles.html" class="nav-item"><i class="far fa-newspaper"></i><span>News &amp; Articles</span></a>
                 <a href="resources.html" class="nav-item"><i class="fas fa-book"></i><span>Resources</span></a>
+                <a href="courseReps.html" class="nav-item active"><i class="fas fa-chalkboard-teacher"></i><span>Course Reps</span></a>
+                <a href="articles.html" class="nav-item"><i class="far fa-newspaper"></i><span>News &amp; Articles</span></a>
                 <a href="media.html" class="nav-item"><i class="far fa-images"></i><span>Media Library</span></a>
                 <a href="messages.html" class="nav-item"><i class="far fa-comment-alt"></i><span>Messages</span></a>
 
@@ -1213,7 +1542,6 @@
         <div class="mobile-overlay" id="mobileOverlay"></div>
 
         <div class="main-content">
-            <!-- Header — no breadcrumb -->
             <header class="header" id="header">
                 <button class="mobile-menu-btn" id="mobileMenuToggle" type="button" aria-label="Toggle menu">
                     <i class="fas fa-bars"></i>
@@ -1238,7 +1566,7 @@
                 <div class="page-header">
                     <div>
                         <h1 class="page-title">Course Representatives</h1>
-                        <p class="page-subtitle">Manage department and level representatives.</p>
+                        <p class="page-subtitle">Manage level-wide and departmental course representatives, appointments and representative history.</p>
                     </div>
                     <div class="page-header-actions">
                         <button class="btn btn-secondary" id="exportBtn">
@@ -1253,109 +1581,176 @@
                     </div>
                 </div>
 
+                <!-- Session selector -->
+                <div class="session-selector">
+                    <i class="fas fa-calendar-check"></i>
+                    <label>Academic Session</label>
+                    <select id="sessionSelector">
+                        <option value="">Loading sessions…</option>
+                    </select>
+                </div>
+
                 <!-- Stats -->
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-icon icon-green"><i class="fas fa-user-tie"></i></div>
+                        <div class="stat-icon icon-gold"><i class="fas fa-user-tie"></i></div>
+                        <div class="stat-value" id="statGeneral">0</div>
+                        <div class="stat-label">General Reps</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-blue"><i class="fas fa-building"></i></div>
+                        <div class="stat-value" id="statDepartmental">0</div>
+                        <div class="stat-label">Departmental Reps</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-green"><i class="fas fa-users"></i></div>
                         <div class="stat-value" id="statTotal">0</div>
                         <div class="stat-label">Total Representatives</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon icon-gold"><i class="fas fa-check-circle"></i></div>
-                        <div class="stat-value" id="statActive">0</div>
-                        <div class="stat-label">Active Reps</div>
-                    </div>
-                    <div class="stat-card">
                         <div class="stat-icon icon-red"><i class="fas fa-user-slash"></i></div>
                         <div class="stat-value" id="statInactive">0</div>
-                        <div class="stat-label">Inactive Reps</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon icon-blue"><i class="fas fa-building"></i></div>
-                        <div class="stat-value" id="statDepartments">0</div>
-                        <div class="stat-label">Departments</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon icon-warn"><i class="fas fa-layer-group"></i></div>
-                        <div class="stat-value" id="statLevels">0</div>
-                        <div class="stat-label">Levels Covered</div>
+                        <div class="stat-label">Inactive Appointments</div>
                     </div>
                 </div>
 
-                <!-- Directory -->
-                <div class="content-card">
-                    <div class="card-header">
-                        <h2 class="card-title"><i class="fas fa-list-check"></i> Representatives Directory</h2>
-                        <span class="card-meta" id="resultCount">0 records</span>
-                    </div>
+                <!-- Main tabs -->
+                <div class="main-tabs" id="mainTabs">
+                    <button class="main-tab active" data-panel="general">
+                        <i class="fas fa-user-tie"></i> General Reps
+                    </button>
+                    <button class="main-tab" data-panel="departmental">
+                        <i class="fas fa-building"></i> Departmental Reps
+                    </button>
+                    <button class="main-tab" data-panel="directory">
+                        <i class="fas fa-list-check"></i> Full Directory
+                    </button>
+                    <button class="main-tab" data-panel="history">
+                        <i class="fas fa-history"></i> Appointment History
+                    </button>
+                </div>
 
-                    <div class="filters">
-                        <div class="search-wrapper">
-                            <input type="text" class="search-input" id="searchInput" placeholder="Search name or matric number…">
-                            <i class="fas fa-search"></i>
+                <!-- GENERAL REPS TAB -->
+                <div class="tab-panel active" id="panel-general">
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h2 class="card-title"><i class="fas fa-user-tie"></i> General Course Representatives</h2>
+                            <span class="card-meta" id="generalCount">0 assigned</span>
                         </div>
-                        <select class="filter-select" id="filterDepartment">
-                            <option value="">All Departments</option>
-                            <option value="Electrical/Electronics Engineering">Electrical/Electronics</option>
-                            <option value="Mechanical Engineering">Mechanical</option>
-                            <option value="Civil Engineering">Civil</option>
-                        </select>
-                        <select class="filter-select" id="filterLevel">
-                            <option value="">All Levels</option>
-                            <option value="100L">100L</option>
-                            <option value="200L">200L</option>
-                            <option value="300L">300L</option>
-                            <option value="400L">400L</option>
-                            <option value="500L">500L</option>
-                        </select>
-                        <select class="filter-select" id="filterSession">
-                            <option value="">All Sessions</option>
-                            <option value="2025/2026">2025/2026</option>
-                            <option value="2024/2025">2024/2025</option>
-                            <option value="2023/2024">2023/2024</option>
-                        </select>
-                        <select class="filter-select" id="filterStatus">
-                            <option value="">All Statuses</option>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
+                        <div class="general-grid" id="generalGrid">
+                            <div class="empty-state" style="grid-column: 1 / -1;">
+                                <div class="empty-state-icon"><i class="fas fa-circle-notch fa-spin"></i></div>
+                                <h3>Loading representatives…</h3>
+                            </div>
+                        </div>
                     </div>
+                </div>
 
-                    <div class="filter-row">
-                        <button class="filter-clear" id="clearFilters"><i class="fas fa-times"></i> Clear all</button>
-                        <span class="filter-count" id="filterCount"></span>
+                <!-- DEPARTMENTAL REPS TAB -->
+                <div class="tab-panel" id="panel-departmental">
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h2 class="card-title"><i class="fas fa-building"></i> Departmental Course Representatives</h2>
+                            <span class="card-meta" id="deptCount">0 assigned</span>
+                        </div>
+                        <div style="margin-bottom: 16px;">
+                            <label class="form-label" style="margin-bottom: 10px; display: block;">Select Academic Level</label>
+                            <div class="level-tabs" id="levelTabs"></div>
+                        </div>
+                        <div class="dept-grid" id="deptGrid">
+                            <div class="empty-state" style="grid-column: 1 / -1;">
+                                <div class="empty-state-icon"><i class="fas fa-hand-pointer"></i></div>
+                                <h3>Select a level above</h3>
+                                <p>Choose an academic level to view departmental representatives.</p>
+                            </div>
+                        </div>
                     </div>
+                </div>
 
-                    <div class="table-container">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Representative</th>
-                                    <th>Matric No.</th>
-                                    <th>Department</th>
-                                    <th>Level</th>
-                                    <th>Phone</th>
-                                    <th>Session</th>
-                                    <th>Status</th>
-                                    <th style="text-align: right;">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="repsTbody">
-                                <tr>
-                                    <td colspan="8">
-                                        <div class="empty-state">
-                                            <div class="empty-state-icon"><i class="fas fa-circle-notch fa-spin"></i></div>
-                                            <h3>Loading representatives…</h3>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                <!-- DIRECTORY TAB -->
+                <div class="tab-panel" id="panel-directory">
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h2 class="card-title"><i class="fas fa-list-check"></i> Representative Directory</h2>
+                            <span class="card-meta" id="resultCount">0 records</span>
+                        </div>
+
+                        <div class="filters">
+                            <div class="search-wrapper">
+                                <input type="text" class="search-input" id="searchInput" placeholder="Search name, matric number or department…">
+                                <i class="fas fa-search"></i>
+                            </div>
+                            <select class="filter-select" id="filterType">
+                                <option value="">All Types</option>
+                                <option value="general">General Reps</option>
+                                <option value="departmental">Departmental Reps</option>
+                            </select>
+                            <select class="filter-select" id="filterLevel">
+                                <option value="">All Levels</option>
+                            </select>
+                            <select class="filter-select" id="filterDepartment">
+                                <option value="">All Departments</option>
+                            </select>
+                            <select class="filter-select" id="filterStatus">
+                                <option value="">All Statuses</option>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-row">
+                            <button class="filter-clear" id="clearFilters"><i class="fas fa-times"></i> Clear all</button>
+                            <span class="filter-count" id="filterCount"></span>
+                        </div>
+
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Representative</th>
+                                        <th>Type</th>
+                                        <th>Level</th>
+                                        <th>Department</th>
+                                        <th>Matric No.</th>
+                                        <th>Session</th>
+                                        <th>Status</th>
+                                        <th style="text-align: right;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="repsTbody">
+                                    <tr>
+                                        <td colspan="8">
+                                            <div class="empty-state">
+                                                <div class="empty-state-icon"><i class="fas fa-circle-notch fa-spin"></i></div>
+                                                <h3>Loading representatives…</h3>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="pagination">
+                            <span class="pagination-info" id="paginationInfo">—</span>
+                            <div class="pagination-controls" id="paginationControls"></div>
+                        </div>
                     </div>
+                </div>
 
-                    <div class="pagination">
-                        <span class="pagination-info" id="paginationInfo">—</span>
-                        <div class="pagination-controls" id="paginationControls"></div>
+                <!-- HISTORY TAB -->
+                <div class="tab-panel" id="panel-history">
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h2 class="card-title"><i class="fas fa-history"></i> Appointment History</h2>
+                            <span class="card-meta">All appointments across sessions</span>
+                        </div>
+                        <div id="historyContainer">
+                            <div class="empty-state">
+                                <div class="empty-state-icon"><i class="fas fa-history"></i></div>
+                                <h3>No history to display yet</h3>
+                                <p>Previous appointments will appear here as new sessions are created.</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </main>
@@ -1366,21 +1761,73 @@
     <div class="modal" id="repModal">
         <div class="modal-content modal-lg">
             <div class="modal-header">
-                <h3 class="modal-title" id="repModalTitle"><i class="fas fa-user-plus"></i> Add Course Representative</h3>
+                <h3 class="modal-title" id="repModalTitle"><i class="fas fa-user-plus"></i> Add New Representative</h3>
                 <button class="modal-close" onclick="hideModal('repModal')" aria-label="Close">&times;</button>
             </div>
             <form id="repForm">
                 <div class="modal-body">
-                    <div id="studentSelectorSection">
-                        <div class="form-group full">
-                            <label class="form-label" for="studentSearch">Search Existing Student *</label>
-                            <div class="search-student">
-                                <i class="fas fa-search"></i>
-                                <input type="text" class="form-input" id="studentSearch" placeholder="Search by name or matric number…" autocomplete="off">
-                            </div>
-                            <div class="student-results" id="studentResults"></div>
+                    <!-- STEP 1: Representative type -->
+                    <div class="form-step">
+                        <div class="form-step-header">
+                            <div class="form-step-num">1</div>
+                            <div class="form-step-title">Representative Type</div>
                         </div>
+                        <div class="rep-type-selector" id="repTypeSelector">
+                            <div class="rep-type-option selected" data-type="general">
+                                <i class="fas fa-user-tie"></i>
+                                <div class="rep-type-info">
+                                    <div class="rep-type-label">General Rep</div>
+                                    <div class="rep-type-desc">Represents the entire level</div>
+                                </div>
+                            </div>
+                            <div class="rep-type-option" data-type="departmental">
+                                <i class="fas fa-building"></i>
+                                <div class="rep-type-info">
+                                    <div class="rep-type-label">Departmental Rep</div>
+                                    <div class="rep-type-desc">Represents a department</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
+                    <!-- STEP 2: Academic assignment -->
+                    <div class="form-step">
+                        <div class="form-step-header">
+                            <div class="form-step-num">2</div>
+                            <div class="form-step-title">Academic Assignment</div>
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label">Academic Session *</label>
+                                <select class="form-select" id="rSession" required>
+                                    <option value="">Select session</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Academic Level *</label>
+                                <select class="form-select" id="rLevel" required>
+                                    <option value="">Select level</option>
+                                    <option value="200L">200 Level</option>
+                                    <option value="300L">300 Level</option>
+                                    <option value="400L">400 Level</option>
+                                    <option value="500L">500 Level</option>
+                                </select>
+                            </div>
+                            <div class="form-group full" id="deptField" style="display: none;">
+                                <label class="form-label">Department *</label>
+                                <select class="form-select" id="rDepartment">
+                                    <option value="">Select department</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 3: Select student -->
+                    <div class="form-step">
+                        <div class="form-step-header">
+                            <div class="form-step-num">3</div>
+                            <div class="form-step-title">Select Student</div>
+                        </div>
                         <div id="selectedStudentContainer" style="display: none;">
                             <div class="selected-student">
                                 <div class="selected-student-avatar" id="selectedStudentAvatar">A</div>
@@ -1388,47 +1835,51 @@
                                     <div class="selected-student-name" id="selectedStudentName">—</div>
                                     <div class="selected-student-meta" id="selectedStudentMeta">—</div>
                                 </div>
-                                <button type="button" class="selected-student-clear" id="clearSelectedStudent" aria-label="Clear">
+                                <button type="button" class="selected-student-clear" id="clearSelectedStudent" aria-label="Change student">
                                     <i class="fas fa-times"></i>
                                 </button>
                             </div>
                         </div>
+                        <div class="form-group full" id="studentSearchWrapper">
+                            <label class="form-label">Search Existing Member *</label>
+                            <div class="search-student">
+                                <i class="fas fa-search"></i>
+                                <input type="text" class="form-input" id="studentSearch" placeholder="Search by name or matric number…" autocomplete="off">
+                            </div>
+                            <div class="student-results" id="studentResults"></div>
+                        </div>
                     </div>
 
-                    <div class="form-grid" style="margin-top: 16px;">
-                        <div class="form-group">
-                            <label class="form-label" for="rDepartment">Department *</label>
-                            <select class="form-select" id="rDepartment" required>
-                                <option value="">Select department</option>
-                                <option value="Electrical/Electronics Engineering">Electrical/Electronics Engineering</option>
-                                <option value="Mechanical Engineering">Mechanical Engineering</option>
-                                <option value="Civil Engineering">Civil Engineering</option>
-                            </select>
+                    <!-- STEP 4: Profile picture -->
+                    <div class="form-step">
+                        <div class="form-step-header">
+                            <div class="form-step-num">4</div>
+                            <div class="form-step-title">Profile Picture</div>
+                        </div>
+                        <div class="picture-selector">
+                            <div class="picture-preview" id="picturePreview">
+                                <i class="far fa-user"></i>
+                            </div>
+                            <div class="picture-info">
+                                <div class="picture-info-title" id="pictureTitle">No profile picture selected</div>
+                                <div class="picture-info-hint" id="pictureHint">Choose from the Media Library</div>
+                            </div>
+                            <button type="button" class="btn btn-secondary btn-sm" id="browseMediaBtn">
+                                <i class="far fa-images"></i> Browse Media
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- STEP 5: Appointment status -->
+                    <div class="form-step">
+                        <div class="form-step-header">
+                            <div class="form-step-num">5</div>
+                            <div class="form-step-title">Appointment Status</div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="rLevel">Academic Level *</label>
-                            <select class="form-select" id="rLevel" required>
-                                <option value="">Select level</option>
-                                <option value="100L">100L</option>
-                                <option value="200L">200L</option>
-                                <option value="300L">300L</option>
-                                <option value="400L">400L</option>
-                                <option value="500L">500L</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="rSession">Academic Session *</label>
-                            <select class="form-select" id="rSession" required>
-                                <option value="2025/2026">2025/2026</option>
-                                <option value="2024/2025">2024/2025</option>
-                                <option value="2023/2024">2023/2024</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="rStatus">Status</label>
                             <select class="form-select" id="rStatus">
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
+                                <option value="active">Active — Currently serving</option>
+                                <option value="inactive">Inactive — Not currently serving</option>
                             </select>
                         </div>
                     </div>
@@ -1441,33 +1892,66 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="hideModal('repModal')">Cancel</button>
                     <button type="submit" class="btn btn-primary" id="repSubmitBtn" disabled>
-                        <i class="fas fa-check"></i> Assign Representative
+                        <i class="fas fa-check"></i> Save Representative
                     </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- ============ REP PROFILE DRAWER ============ -->
+    <!-- ============ MEDIA PICKER MODAL ============ -->
+    <div class="modal" id="mediaPickerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="far fa-images"></i> Select Profile Picture</h3>
+                <button class="modal-close" onclick="hideModal('mediaPickerModal')" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="search-wrapper" style="margin-bottom: 14px;">
+                    <input type="text" class="search-input" id="mediaSearch" placeholder="Search pictures…">
+                    <i class="fas fa-search"></i>
+                </div>
+                <div class="media-picker-grid" id="mediaPickerGrid">
+                    <div class="empty-state" style="grid-column: 1 / -1;">
+                        <div class="empty-state-icon"><i class="fas fa-circle-notch fa-spin"></i></div>
+                        <h3>Loading pictures…</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('mediaPickerModal')" type="button">Cancel</button>
+                <button class="btn btn-primary" id="selectPictureBtn" type="button" disabled>
+                    <i class="fas fa-check"></i> Select Picture
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ PROFILE DRAWER ============ -->
     <div class="drawer-overlay" id="profileOverlay"></div>
     <aside class="drawer" id="profileDrawer" aria-hidden="true">
         <div class="drawer-header">
             <button class="drawer-close" onclick="closeProfileDrawer()" aria-label="Close">&times;</button>
             <div class="drawer-avatar" id="profileAvatar">A</div>
             <div class="drawer-name" id="profileName">Loading…</div>
+            <div class="drawer-role" id="profileRole">—</div>
             <div class="drawer-matric" id="profileMatric">—</div>
             <div class="drawer-status" id="profileStatus">Active</div>
         </div>
         <div class="drawer-body">
-            <div class="drawer-section-title">Assignment Details</div>
-            <div class="detail-row"><span class="detail-label">Department</span><span class="detail-value" id="profileDept">—</span></div>
-            <div class="detail-row"><span class="detail-label">Academic Level</span><span class="detail-value" id="profileLevel">—</span></div>
-            <div class="detail-row"><span class="detail-label">Session</span><span class="detail-value mono" id="profileSession">—</span></div>
-            <div class="detail-row"><span class="detail-label">Date Appointed</span><span class="detail-value mono" id="profileDate">—</span></div>
-
-            <div class="drawer-section-title">Contact</div>
+            <div class="drawer-section-title">Personal Information</div>
+            <div class="detail-row"><span class="detail-label">Full Name</span><span class="detail-value" id="profileFullName">—</span></div>
+            <div class="detail-row"><span class="detail-label">Matric Number</span><span class="detail-value mono" id="profileMatricValue">—</span></div>
             <div class="detail-row"><span class="detail-label">Email</span><span class="detail-value" id="profileEmail">—</span></div>
             <div class="detail-row"><span class="detail-label">Phone</span><span class="detail-value" id="profilePhone">—</span></div>
+            <div class="detail-row"><span class="detail-label">Department</span><span class="detail-value" id="profileDept">—</span></div>
+            <div class="detail-row"><span class="detail-label">Academic Level</span><span class="detail-value" id="profileLevel">—</span></div>
+
+            <div class="drawer-section-title">Appointment Information</div>
+            <div class="detail-row"><span class="detail-label">Type</span><span class="detail-value" id="profileType">—</span></div>
+            <div class="detail-row"><span class="detail-label">Session</span><span class="detail-value mono" id="profileSession">—</span></div>
+            <div class="detail-row"><span class="detail-label">Appointed</span><span class="detail-value mono" id="profileDate">—</span></div>
+            <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value" id="profileStatusText">—</span></div>
 
             <div class="drawer-section-title">Appointment History</div>
             <div id="profileHistory">
@@ -1510,32 +1994,55 @@
                 <button class="modal-close" onclick="hideModal('removeModal')" aria-label="Close">&times;</button>
             </div>
             <div class="modal-body">
-                <p>This will remove the appointment for <strong id="removeRepName">this representative</strong>. This action cannot be undone.</p>
+                <p>This will remove the appointment for <strong id="removeRepName">this representative</strong>. The student member record and their profile picture will NOT be deleted.</p>
+                <p style="margin-top: 10px; font-size: 0.8125rem; color: var(--text-muted);">This action cannot be undone.</p>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="hideModal('removeModal')" type="button">Cancel</button>
-                <button class="btn btn-danger" id="confirmRemoveBtn" type="button">Remove</button>
+                <button class="btn btn-danger" id="confirmRemoveBtn" type="button">Remove Appointment</button>
             </div>
         </div>
     </div>
 
     <script>
     // ============================================================
-    // CONFIGURATION
+    // CONFIG
     // ============================================================
     const API_BASE_URL = '';
     const PAGE_SIZE = 8;
+    const DEFAULT_LEVELS = ['200L', '300L', '400L', '500L'];
+    const DEFAULT_DEPARTMENTS = [
+        'Electrical/Electronics Engineering',
+        'Mechanical Engineering',
+        'Civil Engineering'
+    ];
 
     let currentUser = null;
     let inactivityTimeout = null;
+
+    // Data
     let allReps = [];
     let allMembers = [];
+    let allMedia = [];
+    let allSessions = [];
+    let departments = [...DEFAULT_DEPARTMENTS];
+    let levels = [...DEFAULT_LEVELS];
+
+    // State
+    let currentSession = '';
+    let currentTab = 'general';
+    let currentLevelTab = '200L';
     let filteredReps = [];
     let currentPage = 1;
     let editingRepId = null;
     let removingRepId = null;
     let viewingRep = null;
+
+    // Form state
     let selectedStudent = null;
+    let selectedPicture = null;
+    let selectedRepType = 'general';
+    let pickerSelectedMedia = null;
 
     // ============================================================
     // AUTH
@@ -1544,8 +2051,7 @@
         try {
             showLoading();
             const res = await fetch(`${API_BASE_URL}/api/admin/session`, {
-                method: 'GET',
-                credentials: 'include',
+                method: 'GET', credentials: 'include',
                 headers: { 'Accept': 'application/json' }
             });
             if (res.status === 200) {
@@ -1562,7 +2068,7 @@
             hideLoading();
             return false;
         } catch (err) {
-            console.error('Auth check error:', err);
+            console.error('Auth error:', err);
             showToast('Connection error', 'error');
             hideLoading();
             return false;
@@ -1573,11 +2079,9 @@
         if (!currentUser) return;
         const name = currentUser.fullName || currentUser.full_name || 'Administrator';
         const role = currentUser.role || 'admin';
-        const initial = name.charAt(0).toUpperCase();
-        const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
         document.getElementById('userName').textContent = name;
-        document.getElementById('userRole').textContent = roleLabel;
-        document.getElementById('userAvatar').textContent = initial;
+        document.getElementById('userRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
+        document.getElementById('userAvatar').textContent = name.charAt(0).toUpperCase();
     }
 
     async function confirmLogout() {
@@ -1595,8 +2099,7 @@
     // ============================================================
     async function apiGet(endpoint) {
         const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-            method: 'GET',
-            credentials: 'include',
+            method: 'GET', credentials: 'include',
             headers: { 'Accept': 'application/json' }
         });
         if (res.status === 401) {
@@ -1607,11 +2110,9 @@
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
     }
-
     async function apiPost(endpoint, body) {
         const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-            method: 'POST',
-            credentials: 'include',
+            method: 'POST', credentials: 'include',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify(body)
         });
@@ -1620,11 +2121,9 @@
         if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
         return data;
     }
-
     async function apiPut(endpoint, body) {
         const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-            method: 'PUT',
-            credentials: 'include',
+            method: 'PUT', credentials: 'include',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify(body)
         });
@@ -1633,11 +2132,9 @@
         if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
         return data;
     }
-
     async function apiDelete(endpoint) {
         const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-            method: 'DELETE',
-            credentials: 'include',
+            method: 'DELETE', credentials: 'include',
             headers: { 'Accept': 'application/json' }
         });
         if (res.status === 401) { showToast('Session expired', 'warning'); setTimeout(() => window.location.replace('adlog.html'), 1200); throw new Error('Unauthorized'); }
@@ -1649,52 +2146,83 @@
     // ============================================================
     // DATA LOADING
     // ============================================================
-    async function loadData() {
+    async function loadSessions() {
         try {
-            try {
-                const membersRes = await apiGet('/api/admin/members');
-                const list = Array.isArray(membersRes.data) ? membersRes.data : (membersRes.data?.members || []);
-                allMembers = list.map(normalizeMember);
-            } catch (err) {
-                console.warn('Could not load members for selector:', err);
-                allMembers = [];
-            }
+            const res = await apiGet('/api/admin/sessions');
+            allSessions = Array.isArray(res.data) ? res.data : [];
+            const active = allSessions.find(s => s.is_active);
+            currentSession = active ? (active.name || active.session_name) : (allSessions[0]?.name || '');
 
-            try {
-                const repsRes = await apiGet('/api/admin/course-reps');
-                allReps = Array.isArray(repsRes.data) ? repsRes.data.map(normalizeRep) : [];
-            } catch (err) {
-                console.warn('Could not load course reps:', err);
-                allReps = [];
-            }
+            const selector = document.getElementById('sessionSelector');
+            const formSelector = document.getElementById('rSession');
+            const options = allSessions
+                .sort((a, b) => (b.name || '').localeCompare(a.name || ''))
+                .map(s => {
+                    const name = s.name || s.session_name;
+                    const label = s.is_active ? `${name} (Active)` : name;
+                    return `<option value="${escapeHtml(name)}">${escapeHtml(label)}</option>`;
+                }).join('');
 
-            updateStats();
-            applyFilters();
+            selector.innerHTML = options || '<option value="">No sessions configured</option>';
+            formSelector.innerHTML = '<option value="">Select session</option>' + options;
+
+            if (currentSession) {
+                selector.value = currentSession;
+                formSelector.value = currentSession;
+            }
         } catch (err) {
-            console.error('Load data error:', err);
-            document.getElementById('repsTbody').innerHTML = `
-                <tr><td colspan="8">
-                    <div class="empty-state">
-                        <div class="empty-state-icon"><i class="fas fa-exclamation-triangle"></i></div>
-                        <h3>Couldn't load representatives</h3>
-                        <p>${escapeHtml(err.message)}</p>
-                    </div>
-                </td></tr>
-            `;
+            console.warn('Could not load sessions:', err);
+            document.getElementById('sessionSelector').innerHTML = '<option value="">No sessions configured</option>';
+            // Fallback default
+            currentSession = new Date().getFullYear() + '/' + (new Date().getFullYear() + 1);
+        }
+    }
+
+    async function loadMembers() {
+        try {
+            const res = await apiGet('/api/admin/members?limit=1000');
+            const list = Array.isArray(res.data) ? res.data : (res.data?.members || []);
+            allMembers = list.map(normalizeMember);
+        } catch (err) {
+            console.warn('Could not load members:', err);
+            allMembers = [];
+        }
+    }
+
+    async function loadMedia() {
+        try {
+            const res = await apiGet('/api/admin/media?type=picture');
+            const list = Array.isArray(res.data) ? res.data : [];
+            allMedia = list.filter(m => m.type === 'picture');
+        } catch (err) {
+            console.warn('Could not load media:', err);
+            allMedia = [];
+        }
+    }
+
+    async function loadReps() {
+        try {
+            const res = await apiGet('/api/admin/course-reps');
+            const list = Array.isArray(res.data) ? res.data : [];
+            allReps = list.map(normalizeRep);
+        } catch (err) {
+            console.warn('Could not load course reps:', err);
+            allReps = [];
         }
     }
 
     function normalizeMember(m) {
         return {
-            id: m.id,
+            id: m.id || m.uuid,
             full_name: m.full_name || m.fullName || '',
             matric_no: m.matric_no || m.matricNumber || m.matric || '',
             email: m.email || '',
             phone: m.phone || '',
             department: m.department || '',
             level: m.level || '',
-            session: m.session || '2025/2026',
-            status: (m.status || 'active').toLowerCase()
+            session: m.session || '',
+            status: (m.status || 'active').toLowerCase(),
+            profile_picture: m.profile_picture || m.profile_image || ''
         };
     }
 
@@ -1702,34 +2230,92 @@
         return {
             id: r.id,
             student_id: r.student_id || r.member_id || null,
-            full_name: r.full_name || r.fullName || r.student_name || '',
+            full_name: r.full_name || r.fullName || r.student_name || r.member_name || '',
             matric_no: r.matric_no || r.matricNumber || r.matric || '',
-            email: r.email || '',
-            phone: r.phone || '',
-            department: r.department || '',
+            email: r.email || r.member_email || '',
+            phone: r.phone || r.member_phone || '',
+            department: r.department || r.department_name || '',
             level: r.level || '',
-            session: r.session || '2025/2026',
+            session: r.session || r.session_name || '',
+            rep_type: (r.rep_type || r.representative_type || 'general').toLowerCase(),
             status: (r.status || 'active').toLowerCase(),
-            created_at: r.created_at || null,
+            profile_picture: r.profile_picture || r.profile_image || '',
+            created_at: r.created_at || r.appointed_at || null,
+            appointed_by: r.created_by_name || r.appointed_by || '',
             history: Array.isArray(r.history) ? r.history : []
         };
+    }
+
+    async function loadAll() {
+        showLoading();
+        try {
+            await Promise.all([
+                loadSessions(),
+                loadMembers(),
+                loadMedia()
+            ]);
+            await loadReps();
+
+            buildLevelAndDepartmentOptions();
+            updateStats();
+            renderAll();
+        } catch (err) {
+            console.error('Load error:', err);
+            showToast('Failed to load data', 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    function buildLevelAndDepartmentOptions() {
+        // Levels from existing reps + defaults
+        const levelsFromReps = allReps.map(r => r.level).filter(Boolean);
+        levels = [...new Set([...DEFAULT_LEVELS, ...levelsFromReps])].sort();
+
+        // Departments from existing reps + defaults
+        const deptsFromReps = allReps.map(r => r.department).filter(Boolean);
+        departments = [...new Set([...DEFAULT_DEPARTMENTS, ...deptsFromReps])].sort();
+
+        // Populate filter dropdowns
+        document.getElementById('filterLevel').innerHTML = '<option value="">All Levels</option>' +
+            levels.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join('');
+        document.getElementById('filterDepartment').innerHTML = '<option value="">All Departments</option>' +
+            departments.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+
+        // Populate form department
+        document.getElementById('rDepartment').innerHTML = '<option value="">Select department</option>' +
+            departments.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+
+        // Populate level tabs
+        const levelTabs = document.getElementById('levelTabs');
+        levelTabs.innerHTML = levels.map(l => `
+            <button class="level-tab ${l === currentLevelTab ? 'active' : ''}" data-level="${escapeHtml(l)}">
+                ${escapeHtml(l.replace('L', ' Level'))}
+            </button>
+        `).join('');
+        levelTabs.querySelectorAll('.level-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                currentLevelTab = tab.dataset.level;
+                levelTabs.querySelectorAll('.level-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                renderDepartmental();
+            });
+        });
     }
 
     // ============================================================
     // STATS
     // ============================================================
     function updateStats() {
-        const total = allReps.length;
-        const active = allReps.filter(r => r.status === 'active').length;
-        const inactive = allReps.filter(r => r.status === 'inactive').length;
-        const departments = new Set(allReps.map(r => r.department).filter(Boolean)).size;
-        const levels = new Set(allReps.map(r => r.level).filter(Boolean)).size;
+        const sessionReps = allReps.filter(r => !currentSession || r.session === currentSession);
+        const general = sessionReps.filter(r => r.rep_type === 'general');
+        const departmental = sessionReps.filter(r => r.rep_type === 'departmental');
+        const inactive = sessionReps.filter(r => r.status === 'inactive');
 
-        animateNumber('statTotal', total);
-        animateNumber('statActive', active);
-        animateNumber('statInactive', inactive);
-        animateNumber('statDepartments', departments);
-        animateNumber('statLevels', levels);
+        animateNumber('statGeneral', general.length);
+        animateNumber('statDepartmental', departmental.length);
+        animateNumber('statTotal', sessionReps.length);
+        animateNumber('statInactive', inactive.length);
     }
 
     function animateNumber(id, target) {
@@ -1750,22 +2336,178 @@
     }
 
     // ============================================================
-    // FILTERS
+    // RENDER: ALL
+    // ============================================================
+    function renderAll() {
+        renderGeneral();
+        renderDepartmental();
+        renderDirectory();
+        renderHistory();
+    }
+
+    // ============================================================
+    // RENDER: GENERAL REPS (Level Cards)
+    // ============================================================
+    function renderGeneral() {
+        const grid = document.getElementById('generalGrid');
+        const sessionReps = allReps.filter(r =>
+            r.rep_type === 'general' &&
+            (!currentSession || r.session === currentSession)
+        );
+
+        document.getElementById('generalCount').textContent = `${sessionReps.length} assigned`;
+
+        if (sessionReps.length === 0 && levels.length === 0) {
+            grid.innerHTML = `
+                <div class="empty-state" style="grid-column: 1 / -1;">
+                    <div class="empty-state-icon"><i class="fas fa-user-tie"></i></div>
+                    <h3>No general reps yet</h3>
+                    <p>Add the first general course rep to get started.</p>
+                </div>`;
+            return;
+        }
+
+        grid.innerHTML = levels.map(lvl => {
+            const rep = sessionReps.find(r => r.level === lvl && r.status === 'active')
+                     || sessionReps.find(r => r.level === lvl);
+
+            if (rep) {
+                return `
+                    <div class="level-card assigned">
+                        <div class="level-card-header">
+                            <div>
+                                <div class="level-card-title">${escapeHtml(lvl)}</div>
+                                <div class="level-card-subtitle">General Course Rep</div>
+                            </div>
+                            <span class="level-card-badge assigned-badge">Assigned</span>
+                        </div>
+                        <div class="rep-profile-row">
+                            <div class="rep-profile-avatar">${renderAvatar(rep)}</div>
+                            <div class="rep-profile-info">
+                                <div class="rep-profile-name">${escapeHtml(rep.full_name)}</div>
+                                <div class="rep-profile-meta">${escapeHtml(rep.matric_no || '—')}</div>
+                            </div>
+                        </div>
+                        <div class="rep-profile-actions">
+                            <button class="btn btn-secondary btn-sm" onclick="openProfileDrawer('${escapeHtml(rep.id)}')">
+                                <i class="fas fa-eye"></i> View
+                            </button>
+                            <button class="btn btn-secondary btn-sm" onclick="openRepModal('${escapeHtml(rep.id)}')">
+                                <i class="fas fa-pen"></i> Edit
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="level-card vacant">
+                    <div class="level-card-header">
+                        <div>
+                            <div class="level-card-title">${escapeHtml(lvl)}</div>
+                            <div class="level-card-subtitle">General Course Rep</div>
+                        </div>
+                        <span class="level-card-badge vacant-badge">Vacant</span>
+                    </div>
+                    <p style="font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 12px;">
+                        No general rep assigned for this level in ${escapeHtml(currentSession || 'this session')}.
+                    </p>
+                    <button class="btn btn-gold btn-sm" onclick="openAddRepModal('general', '${escapeHtml(lvl)}')">
+                        <i class="fas fa-user-plus"></i> Assign Rep
+                    </button>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // ============================================================
+    // RENDER: DEPARTMENTAL REPS (Dept Cards)
+    // ============================================================
+    function renderDepartmental() {
+        const grid = document.getElementById('deptGrid');
+        const sessionReps = allReps.filter(r =>
+            r.rep_type === 'departmental' &&
+            r.level === currentLevelTab &&
+            (!currentSession || r.session === currentSession)
+        );
+
+        document.getElementById('deptCount').textContent = `${sessionReps.length} assigned`;
+
+        if (!currentLevelTab) {
+            grid.innerHTML = `
+                <div class="empty-state" style="grid-column: 1 / -1;">
+                    <div class="empty-state-icon"><i class="fas fa-hand-pointer"></i></div>
+                    <h3>Select a level above</h3>
+                    <p>Choose an academic level to view departmental representatives.</p>
+                </div>`;
+            return;
+        }
+
+        grid.innerHTML = departments.map(dept => {
+            const rep = sessionReps.find(r => r.department === dept && r.status === 'active')
+                     || sessionReps.find(r => r.department === dept);
+
+            if (rep) {
+                return `
+                    <div class="dept-card assigned">
+                        <div class="level-card-header">
+                            <div class="dept-card-title">${escapeHtml(dept)}</div>
+                            <span class="level-card-badge assigned-badge">Assigned</span>
+                        </div>
+                        <div class="rep-profile-row">
+                            <div class="rep-profile-avatar">${renderAvatar(rep)}</div>
+                            <div class="rep-profile-info">
+                                <div class="rep-profile-name">${escapeHtml(rep.full_name)}</div>
+                                <div class="rep-profile-meta">${escapeHtml(rep.matric_no || '—')}</div>
+                            </div>
+                        </div>
+                        <div class="rep-profile-actions">
+                            <button class="btn btn-secondary btn-sm" onclick="openProfileDrawer('${escapeHtml(rep.id)}')">
+                                <i class="fas fa-eye"></i> View
+                            </button>
+                            <button class="btn btn-secondary btn-sm" onclick="openRepModal('${escapeHtml(rep.id)}')">
+                                <i class="fas fa-pen"></i> Edit
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="dept-card vacant">
+                    <div class="level-card-header">
+                        <div class="dept-card-title">${escapeHtml(dept)}</div>
+                        <span class="level-card-badge vacant-badge">Vacant</span>
+                    </div>
+                    <p style="font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 12px;">
+                        No departmental rep assigned.
+                    </p>
+                    <button class="btn btn-gold btn-sm" onclick="openAddRepModal('departmental', '${escapeHtml(currentLevelTab)}', '${escapeHtml(dept)}')">
+                        <i class="fas fa-user-plus"></i> Assign Rep
+                    </button>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // ============================================================
+    // RENDER: DIRECTORY
     // ============================================================
     function applyFilters() {
         const q = document.getElementById('searchInput').value.trim().toLowerCase();
-        const dept = document.getElementById('filterDepartment').value;
+        const type = document.getElementById('filterType').value;
         const lvl = document.getElementById('filterLevel').value;
-        const sess = document.getElementById('filterSession').value;
+        const dept = document.getElementById('filterDepartment').value;
         const status = document.getElementById('filterStatus').value;
 
         filteredReps = allReps.filter(r => {
-            if (dept && r.department !== dept) return false;
+            if (currentSession && r.session !== currentSession) return false;
+            if (type && r.rep_type !== type) return false;
             if (lvl && r.level !== lvl) return false;
-            if (sess && r.session !== sess) return false;
+            if (dept && r.department !== dept) return false;
             if (status && r.status !== status) return false;
             if (q) {
-                const hay = `${r.full_name} ${r.matric_no} ${r.email}`.toLowerCase();
+                const hay = `${r.full_name} ${r.matric_no} ${r.email} ${r.department}`.toLowerCase();
                 if (!hay.includes(q)) return false;
             }
             return true;
@@ -1773,15 +2515,15 @@
 
         currentPage = 1;
         updateFilterSummary();
-        renderTable();
+        renderDirectory();
     }
 
     function updateFilterSummary() {
         const active = [];
         if (document.getElementById('searchInput').value) active.push('search');
-        if (document.getElementById('filterDepartment').value) active.push('department');
+        if (document.getElementById('filterType').value) active.push('type');
         if (document.getElementById('filterLevel').value) active.push('level');
-        if (document.getElementById('filterSession').value) active.push('session');
+        if (document.getElementById('filterDepartment').value) active.push('dept');
         if (document.getElementById('filterStatus').value) active.push('status');
 
         document.getElementById('filterCount').textContent = active.length
@@ -1792,15 +2534,12 @@
     }
 
     function clearFilters() {
-        ['searchInput','filterDepartment','filterLevel','filterSession','filterStatus']
+        ['searchInput', 'filterType', 'filterLevel', 'filterDepartment', 'filterStatus']
             .forEach(id => document.getElementById(id).value = '');
         applyFilters();
     }
 
-    // ============================================================
-    // TABLE
-    // ============================================================
-    function renderTable() {
+    function renderDirectory() {
         const tbody = document.getElementById('repsTbody');
         const start = (currentPage - 1) * PAGE_SIZE;
         const pageItems = filteredReps.slice(start, start + PAGE_SIZE);
@@ -1811,34 +2550,40 @@
                     <div class="empty-state">
                         <div class="empty-state-icon"><i class="fas fa-user-slash"></i></div>
                         <h3>No representatives found</h3>
-                        <p>Try adjusting your filters or assign a new representative.</p>
+                        <p>Try adjusting your filters or add a new representative.</p>
+                        <button class="btn btn-gold btn-sm" onclick="openAddRepModal()">
+                            <i class="fas fa-user-plus"></i> Add Representative
+                        </button>
                     </div>
-                </td></tr>
-            `;
+                </td></tr>`;
             renderPagination();
             return;
         }
 
         tbody.innerHTML = pageItems.map(r => {
-            const initials = getInitials(r.full_name);
+            const typeBadge = r.rep_type === 'general'
+                ? '<span class="type-badge type-general">General</span>'
+                : '<span class="type-badge type-dept">Departmental</span>';
             const statusBadge = r.status === 'active'
                 ? '<span class="status-badge badge-success">Active</span>'
                 : '<span class="status-badge badge-danger">Inactive</span>';
+            const deptDisplay = r.rep_type === 'general' ? 'Level-wide' : (r.department || '—');
+
             return `
                 <tr data-id="${escapeHtml(r.id)}">
                     <td>
                         <div class="rep-cell">
-                            <div class="rep-avatar">${escapeHtml(initials)}</div>
+                            <div class="rep-avatar">${renderAvatar(r)}</div>
                             <div>
                                 <div class="rep-name">${escapeHtml(r.full_name || '—')}</div>
                                 <div class="rep-sub">${escapeHtml(r.email || '')}</div>
                             </div>
                         </div>
                     </td>
-                    <td class="cell-mono">${escapeHtml(r.matric_no || '—')}</td>
-                    <td>${escapeHtml(r.department || '—')}</td>
+                    <td>${typeBadge}</td>
                     <td><strong>${escapeHtml(r.level || '—')}</strong></td>
-                    <td>${escapeHtml(r.phone || '—')}</td>
+                    <td>${escapeHtml(deptDisplay)}</td>
+                    <td class="cell-mono">${escapeHtml(r.matric_no || '—')}</td>
                     <td class="cell-mono">${escapeHtml(r.session || '—')}</td>
                     <td>${statusBadge}</td>
                     <td>
@@ -1848,8 +2593,7 @@
                             <button class="icon-btn danger" data-action="remove" data-id="${escapeHtml(r.id)}" title="Remove"><i class="fas fa-user-times"></i></button>
                         </div>
                     </td>
-                </tr>
-            `;
+                </tr>`;
         }).join('');
 
         renderPagination();
@@ -1864,10 +2608,9 @@
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const id = btn.dataset.id;
-                const action = btn.dataset.action;
-                if (action === 'view') openProfileDrawer(id);
-                else if (action === 'edit') openRepModal(id);
-                else if (action === 'remove') openRemoveModal(id);
+                if (btn.dataset.action === 'view') openProfileDrawer(id);
+                else if (btn.dataset.action === 'edit') openRepModal(id);
+                else if (btn.dataset.action === 'remove') openRemoveModal(id);
             });
         });
     }
@@ -1905,9 +2648,205 @@
                 if (val === 'prev') currentPage = Math.max(1, currentPage - 1);
                 else if (val === 'next') currentPage = Math.min(totalPages, currentPage + 1);
                 else currentPage = parseInt(val);
-                renderTable();
+                renderDirectory();
             });
         });
+    }
+
+    // ============================================================
+    // RENDER: HISTORY
+    // ============================================================
+    function renderHistory() {
+        const container = document.getElementById('historyContainer');
+        if (allReps.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon"><i class="fas fa-history"></i></div>
+                    <h3>No history to display yet</h3>
+                    <p>Previous appointments will appear here as new sessions are created.</p>
+                </div>`;
+            return;
+        }
+
+        // Group reps by session
+        const bySession = {};
+        allReps.forEach(r => {
+            const s = r.session || 'Unknown';
+            if (!bySession[s]) bySession[s] = [];
+            bySession[s].push(r);
+        });
+
+        const sessionKeys = Object.keys(bySession).sort((a, b) => b.localeCompare(a));
+
+        container.innerHTML = sessionKeys.map(sess => {
+            const reps = bySession[sess];
+            const activeCount = reps.filter(r => r.status === 'active').length;
+            const isCurrent = sess === currentSession;
+
+            return `
+                <div style="margin-bottom: 24px;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                        <h3 style="font-size: 1rem; font-weight: 700; color: var(--text);">
+                            ${escapeHtml(sess)}
+                        </h3>
+                        ${isCurrent ? '<span class="status-badge badge-success">Current</span>' : ''}
+                        <span style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono); margin-left: auto;">
+                            ${reps.length} appointment${reps.length === 1 ? '' : 's'} · ${activeCount} active
+                        </span>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" style="min-width: 700px;">
+                            <thead>
+                                <tr>
+                                    <th>Representative</th>
+                                    <th>Type</th>
+                                    <th>Level</th>
+                                    <th>Department</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${reps.map(r => {
+                                    const typeBadge = r.rep_type === 'general'
+                                        ? '<span class="type-badge type-general">General</span>'
+                                        : '<span class="type-badge type-dept">Departmental</span>';
+                                    const statusBadge = r.status === 'active'
+                                        ? '<span class="status-badge badge-success">Active</span>'
+                                        : '<span class="status-badge badge-warning">Former</span>';
+                                    const deptDisplay = r.rep_type === 'general' ? 'Level-wide' : (r.department || '—');
+                                    return `
+                                        <tr>
+                                            <td>
+                                                <div class="rep-cell">
+                                                    <div class="rep-avatar">${renderAvatar(r)}</div>
+                                                    <div>
+                                                        <div class="rep-name">${escapeHtml(r.full_name)}</div>
+                                                        <div class="rep-sub">${escapeHtml(r.matric_no || '—')}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>${typeBadge}</td>
+                                            <td><strong>${escapeHtml(r.level || '—')}</strong></td>
+                                            <td>${escapeHtml(deptDisplay)}</td>
+                                            <td>${statusBadge}</td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // ============================================================
+    // MODAL: ADD / EDIT REP
+    // ============================================================
+    function openAddRepModal(type = 'general', level = '', department = '') {
+        openRepModal(null, { type, level, department });
+    }
+
+    function openRepModal(id = null, prefill = null) {
+        editingRepId = id;
+        selectedStudent = null;
+        selectedPicture = null;
+        selectedRepType = 'general';
+
+        document.getElementById('repForm').reset();
+        clearStudentSelection();
+        resetPicturePreview();
+
+        const title = document.getElementById('repModalTitle');
+        const sessionSelector = document.getElementById('rSession');
+
+        // Defaults
+        if (currentSession) sessionSelector.value = currentSession;
+
+        if (id) {
+            // EDIT MODE
+            const r = allReps.find(x => String(x.id) === String(id));
+            if (!r) return;
+            title.innerHTML = '<i class="fas fa-pen"></i> Edit Representative';
+            selectedRepType = r.rep_type || 'general';
+            updateRepTypeUI();
+            document.getElementById('rSession').value = r.session || currentSession;
+            document.getElementById('rLevel').value = r.level || '';
+            document.getElementById('rDepartment').value = r.department || '';
+            document.getElementById('rStatus').value = r.status || 'active';
+
+            // Find matching member
+            const matchingMember = allMembers.find(m =>
+                String(m.matric_no || '').toLowerCase() === String(r.matric_no || '').toLowerCase() ||
+                String(m.id) === String(r.student_id)
+            );
+
+            if (matchingMember) {
+                selectStudent(matchingMember);
+            } else {
+                // Show rep info even without member record
+                selectedStudent = {
+                    id: r.student_id || r.id,
+                    full_name: r.full_name,
+                    matric_no: r.matric_no,
+                    email: r.email,
+                    phone: r.phone,
+                    department: r.department,
+                    level: r.level
+                };
+                document.getElementById('selectedStudentContainer').style.display = 'flex';
+                document.getElementById('selectedStudentAvatar').innerHTML = renderAvatar(r);
+                document.getElementById('selectedStudentName').textContent = r.full_name;
+                document.getElementById('selectedStudentMeta').textContent =
+                    `${r.matric_no || '—'} · ${r.department || ''} · ${r.level || ''}`;
+                document.getElementById('studentSearchWrapper').style.display = 'none';
+                document.getElementById('repSubmitBtn').disabled = false;
+            }
+
+            // Set picture
+            if (r.profile_picture) {
+                selectedPicture = { url: r.profile_picture };
+                showPicturePreview(r.profile_picture);
+            }
+        } else {
+            // ADD MODE
+            title.innerHTML = '<i class="fas fa-user-plus"></i> Add New Representative';
+            if (prefill) {
+                selectedRepType = prefill.type || 'general';
+                updateRepTypeUI();
+                if (prefill.level) document.getElementById('rLevel').value = prefill.level;
+                if (prefill.department) document.getElementById('rDepartment').value = prefill.department;
+            } else {
+                updateRepTypeUI();
+            }
+        }
+
+        showModal('repModal');
+        checkDuplicateAssignment();
+
+        if (!id) {
+            setTimeout(() => document.getElementById('studentSearch').focus(), 200);
+        }
+    }
+
+    function updateRepTypeUI() {
+        // Toggle selected class on rep type options
+        document.querySelectorAll('.rep-type-option').forEach(opt => {
+            if (opt.dataset.type === selectedRepType) opt.classList.add('selected');
+            else opt.classList.remove('selected');
+        });
+
+        // Show/hide department field
+        const deptField = document.getElementById('deptField');
+        const deptSelect = document.getElementById('rDepartment');
+        if (selectedRepType === 'departmental') {
+            deptField.style.display = 'flex';
+            deptSelect.required = true;
+        } else {
+            deptField.style.display = 'none';
+            deptSelect.required = false;
+            deptSelect.value = '';
+        }
     }
 
     // ============================================================
@@ -1922,11 +2861,11 @@
                 if (!hay.includes(q)) return false;
             }
             return m.status === 'active';
-        }).slice(0, 8);
+        }).slice(0, 10);
 
         if (matches.length === 0) {
             results.innerHTML = `<div class="student-result" style="cursor:default; justify-content:center; color: var(--text-dim);">
-                <em>No matching students found</em>
+                <em>No matching members found. Only registered members can be assigned.</em>
             </div>`;
             results.classList.add('active');
             return;
@@ -1934,10 +2873,10 @@
 
         results.innerHTML = matches.map(m => `
             <div class="student-result" data-member-id="${escapeHtml(m.id)}">
-                <div class="rep-avatar">${escapeHtml(getInitials(m.full_name))}</div>
+                <div class="rep-avatar" style="width: 32px; height: 32px;">${renderAvatar(m)}</div>
                 <div class="student-result-info">
                     <div class="student-result-name">${escapeHtml(m.full_name)}</div>
-                    <div class="student-result-meta">${escapeHtml(m.matric_no || '—')} · ${escapeHtml(m.department || '')} · ${escapeHtml(m.level || '')}</div>
+                    <div class="student-result-meta">${escapeHtml(m.matric_no || '—')} · ${escapeHtml(m.department || '')}</div>
                 </div>
             </div>
         `).join('');
@@ -1955,15 +2894,27 @@
         selectedStudent = member;
         document.getElementById('studentResults').classList.remove('active');
         document.getElementById('studentSearch').value = '';
-        document.getElementById('selectedStudentContainer').style.display = 'block';
+        document.getElementById('selectedStudentContainer').style.display = 'flex';
+        document.getElementById('studentSearchWrapper').style.display = 'none';
 
-        document.getElementById('selectedStudentAvatar').textContent = getInitials(member.full_name);
+        document.getElementById('selectedStudentAvatar').innerHTML = renderAvatar(member);
         document.getElementById('selectedStudentName').textContent = member.full_name;
         document.getElementById('selectedStudentMeta').textContent =
             `${member.matric_no || '—'} · ${member.department || ''} · ${member.level || ''}`;
 
-        if (member.department) document.getElementById('rDepartment').value = member.department;
-        if (member.level) document.getElementById('rLevel').value = member.level;
+        // Auto-populate department/level from member
+        if (member.department && !document.getElementById('rDepartment').value) {
+            document.getElementById('rDepartment').value = member.department;
+        }
+        if (member.level && !document.getElementById('rLevel').value) {
+            document.getElementById('rLevel').value = member.level;
+        }
+
+        // Load member's existing picture if we have one
+        if (member.profile_picture) {
+            selectedPicture = { url: member.profile_picture };
+            showPicturePreview(member.profile_picture);
+        }
 
         document.getElementById('repSubmitBtn').disabled = false;
         checkDuplicateAssignment();
@@ -1972,10 +2923,75 @@
     function clearStudentSelection() {
         selectedStudent = null;
         document.getElementById('selectedStudentContainer').style.display = 'none';
+        document.getElementById('studentSearchWrapper').style.display = 'flex';
         document.getElementById('studentSearch').value = '';
         document.getElementById('studentResults').classList.remove('active');
         document.getElementById('duplicateWarning').classList.remove('active');
         document.getElementById('repSubmitBtn').disabled = true;
+    }
+
+    // ============================================================
+    // PICTURE PICKER (Media Library)
+    // ============================================================
+    function resetPicturePreview() {
+        document.getElementById('picturePreview').innerHTML = '<i class="far fa-user"></i>';
+        document.getElementById('pictureTitle').textContent = 'No profile picture selected';
+        document.getElementById('pictureHint').textContent = 'Choose from the Media Library';
+        selectedPicture = null;
+    }
+
+    function showPicturePreview(url) {
+        document.getElementById('picturePreview').innerHTML = `<img src="${escapeHtml(url)}" alt="">`;
+        document.getElementById('pictureTitle').textContent = 'Profile picture selected';
+        document.getElementById('pictureHint').textContent = 'Click Browse to change';
+    }
+
+    function openMediaPicker() {
+        pickerSelectedMedia = null;
+        document.getElementById('selectPictureBtn').disabled = true;
+        document.getElementById('mediaSearch').value = '';
+        renderMediaPicker(allMedia);
+        showModal('mediaPickerModal');
+    }
+
+    function renderMediaPicker(items) {
+        const grid = document.getElementById('mediaPickerGrid');
+        if (items.length === 0) {
+            grid.innerHTML = `
+                <div class="empty-state" style="grid-column: 1 / -1;">
+                    <div class="empty-state-icon"><i class="far fa-images"></i></div>
+                    <h3>No pictures available</h3>
+                    <p>Upload pictures to the Media Library first.</p>
+                </div>`;
+            return;
+        }
+
+        grid.innerHTML = items.map(m => `
+            <div class="media-picker-item" data-media-id="${escapeHtml(m.id)}">
+                ${m.url ? `<img src="${escapeHtml(m.url)}" alt="${escapeHtml(m.title || '')}" loading="lazy">`
+                        : `<div class="placeholder"><i class="far fa-image"></i></div>`}
+            </div>
+        `).join('');
+
+        grid.querySelectorAll('.media-picker-item').forEach(el => {
+            el.addEventListener('click', () => {
+                grid.querySelectorAll('.media-picker-item').forEach(x => x.classList.remove('selected'));
+                el.classList.add('selected');
+                pickerSelectedMedia = allMedia.find(m => String(m.id) === String(el.dataset.mediaId));
+                document.getElementById('selectPictureBtn').disabled = !pickerSelectedMedia;
+            });
+        });
+    }
+
+    function filterMediaPicker() {
+        const q = document.getElementById('mediaSearch').value.trim().toLowerCase();
+        const filtered = q
+            ? allMedia.filter(m =>
+                (m.title || '').toLowerCase().includes(q) ||
+                (m.tags || []).some(t => String(t).toLowerCase().includes(q))
+              )
+            : allMedia;
+        renderMediaPicker(filtered);
     }
 
     // ============================================================
@@ -1992,96 +3008,77 @@
             return;
         }
 
-        const dept = document.getElementById('rDepartment').value;
+        const session = document.getElementById('rSession').value;
         const lvl = document.getElementById('rLevel').value;
-        const sess = document.getElementById('rSession').value;
+        const dept = document.getElementById('rDepartment').value;
 
-        if (!dept || !lvl || !sess) {
+        if (!session || !lvl || (selectedRepType === 'departmental' && !dept)) {
             warning.classList.remove('active');
-            submitBtn.disabled = false;
+            submitBtn.disabled = true;
             return;
         }
 
+        // Check for duplicate active assignment
         const existing = allReps.find(r =>
             String(r.id) !== String(editingRepId || '') &&
             r.status === 'active' &&
-            String(r.matric_no || '').toLowerCase() === String(selectedStudent.matric_no || '').toLowerCase() &&
-            r.session === sess &&
-            r.department === dept &&
-            r.level === lvl
+            r.session === session &&
+            r.rep_type === selectedRepType &&
+            r.level === lvl &&
+            (selectedRepType === 'departmental' ? r.department === dept : true)
         );
 
         if (existing) {
-            warningText.textContent = `This student is already an active ${lvl} representative for ${dept} in ${sess}. Duplicate active assignments are not allowed.`;
+            const scope = selectedRepType === 'general'
+                ? `${lvl} general rep`
+                : `${dept} ${lvl} departmental rep`;
+            warningText.textContent = `An active ${scope} already exists for ${session} (${existing.full_name}). Only one active rep is allowed per position.`;
             warning.classList.add('active');
             submitBtn.disabled = true;
-        } else {
-            const conflicting = allReps.find(r =>
-                String(r.id) !== String(editingRepId || '') &&
-                r.status === 'active' &&
-                r.session === sess &&
-                r.department === dept &&
-                r.level === lvl
-            );
-
-            if (conflicting) {
-                warningText.textContent = `Note: ${dept} ${lvl} for ${sess} already has an active representative (${conflicting.full_name}). This will create a second active assignment for the same level and department.`;
-                warning.classList.add('active');
-            } else {
-                warning.classList.remove('active');
-            }
-            submitBtn.disabled = false;
+            return;
         }
+
+        // Check for duplicate student assignment (same student in same session/type/scope)
+        const studentConflict = allReps.find(r =>
+            String(r.id) !== String(editingRepId || '') &&
+            r.status === 'active' &&
+            r.session === session &&
+            r.matric_no === selectedStudent.matric_no
+        );
+
+        if (studentConflict) {
+            warningText.textContent = `This student is already an active representative (${studentConflict.rep_type} - ${studentConflict.level}) for ${session}.`;
+            warning.classList.add('active');
+            submitBtn.disabled = true;
+            return;
+        }
+
+        warning.classList.remove('active');
+        submitBtn.disabled = false;
     }
 
     // ============================================================
-    // ADD / EDIT REP MODAL
+    // SUBMIT REP
     // ============================================================
-    function openRepModal(id = null) {
-        editingRepId = id;
-        const title = document.getElementById('repModalTitle');
-        const form = document.getElementById('repForm');
-        form.reset();
-        clearStudentSelection();
-
-        if (id) {
-            const r = allReps.find(x => String(x.id) === String(id));
-            if (!r) return;
-            title.innerHTML = '<i class="fas fa-pen"></i> Edit Representative';
-
-            const matchingMember = allMembers.find(m =>
-                String(m.matric_no || '').toLowerCase() === String(r.matric_no || '').toLowerCase() ||
-                String(m.id) === String(r.student_id)
-            );
-
-            if (matchingMember) {
-                selectStudent(matchingMember);
-            } else {
-                document.getElementById('selectedStudentContainer').style.display = 'block';
-                document.getElementById('selectedStudentAvatar').textContent = getInitials(r.full_name);
-                document.getElementById('selectedStudentName').textContent = r.full_name;
-                document.getElementById('selectedStudentMeta').textContent =
-                    `${r.matric_no || '—'} · ${r.department || ''} · ${r.level || ''}`;
-                document.getElementById('repSubmitBtn').disabled = false;
-            }
-
-            document.getElementById('rDepartment').value = r.department || '';
-            document.getElementById('rLevel').value = r.level || '';
-            document.getElementById('rSession').value = r.session || '2025/2026';
-            document.getElementById('rStatus').value = r.status || 'active';
-            checkDuplicateAssignment();
-        } else {
-            title.innerHTML = '<i class="fas fa-user-plus"></i> Add Course Representative';
-        }
-
-        showModal('repModal');
-        setTimeout(() => document.getElementById('studentSearch').focus(), 200);
-    }
-
     async function handleRepSubmit(e) {
         e.preventDefault();
+
         if (!selectedStudent) {
             showToast('Please select a student', 'warning');
+            return;
+        }
+
+        const session = document.getElementById('rSession').value;
+        const lvl = document.getElementById('rLevel').value;
+        const status = document.getElementById('rStatus').value;
+        const dept = selectedRepType === 'departmental' ? document.getElementById('rDepartment').value : null;
+
+        if (!session || !lvl) {
+            showToast('Session and level are required', 'warning');
+            return;
+        }
+        if (selectedRepType === 'departmental' && !dept) {
+            showToast('Department is required for departmental reps', 'warning');
             return;
         }
 
@@ -2092,14 +3089,18 @@
 
         const payload = {
             student_id: selectedStudent.id,
+            member_id: selectedStudent.id,
             full_name: selectedStudent.full_name,
             matric_no: selectedStudent.matric_no,
             email: selectedStudent.email,
             phone: selectedStudent.phone,
-            department: document.getElementById('rDepartment').value,
-            level: document.getElementById('rLevel').value,
-            session: document.getElementById('rSession').value,
-            status: document.getElementById('rStatus').value
+            department: dept || null,
+            level: lvl,
+            session,
+            rep_type: selectedRepType,
+            representative_type: selectedRepType,
+            status,
+            profile_picture: selectedPicture?.url || null
         };
 
         try {
@@ -2111,9 +3112,11 @@
                 showToast('Representative assigned', 'success');
             }
             hideModal('repModal');
-            await loadData();
+            await loadReps();
+            updateStats();
+            renderAll();
         } catch (err) {
-            console.error('Save rep error:', err);
+            console.error('Save error:', err);
             showToast(err.message || 'Failed to save representative', 'error');
         } finally {
             btn.disabled = false;
@@ -2129,39 +3132,52 @@
         if (!r) return;
         viewingRep = r;
 
-        document.getElementById('profileAvatar').textContent = getInitials(r.full_name);
+        document.getElementById('profileAvatar').innerHTML = renderAvatar(r);
         document.getElementById('profileName').textContent = r.full_name || '—';
+        document.getElementById('profileRole').textContent = r.rep_type === 'general'
+            ? `${r.level} General Course Representative`
+            : `${r.department} · ${r.level} Departmental Rep`;
         document.getElementById('profileMatric').textContent = r.matric_no || '—';
 
         const statusEl = document.getElementById('profileStatus');
         statusEl.textContent = (r.status || '').toUpperCase();
         statusEl.className = 'drawer-status ' + (r.status === 'inactive' ? 'inactive' : '');
 
-        document.getElementById('profileDept').textContent = r.department || '—';
-        document.getElementById('profileLevel').textContent = r.level || '—';
-        document.getElementById('profileSession').textContent = r.session || '—';
-        document.getElementById('profileDate').textContent = formatDate(r.created_at);
+        document.getElementById('profileFullName').textContent = r.full_name || '—';
+        document.getElementById('profileMatricValue').textContent = r.matric_no || '—';
         document.getElementById('profileEmail').textContent = r.email || '—';
         document.getElementById('profilePhone').textContent = r.phone || '—';
+        document.getElementById('profileDept').textContent = r.rep_type === 'general' ? 'Level-wide' : (r.department || '—');
+        document.getElementById('profileLevel').textContent = r.level || '—';
 
-        const toggleText = document.getElementById('profileToggleText');
-        toggleText.textContent = r.status === 'active' ? 'Deactivate' : 'Activate';
+        document.getElementById('profileType').textContent = r.rep_type === 'general' ? 'General' : 'Departmental';
+        document.getElementById('profileSession').textContent = r.session || '—';
+        document.getElementById('profileDate').textContent = formatDate(r.created_at);
+        document.getElementById('profileStatusText').textContent = r.status === 'active' ? 'Active' : 'Inactive';
 
+        document.getElementById('profileToggleText').textContent = r.status === 'active' ? 'Deactivate' : 'Reactivate';
+
+        // History
         const historyEl = document.getElementById('profileHistory');
-        if (r.history && r.history.length > 0) {
-            historyEl.innerHTML = r.history.map(h => `
-                <div class="history-item">
-                    <div class="history-title">${escapeHtml(h.title || 'Assignment')}</div>
-                    <div class="history-meta">${escapeHtml(h.date || '')} · ${escapeHtml(h.session || '')}</div>
-                </div>
-            `).join('');
+        const history = allReps.filter(h =>
+            h.matric_no === r.matric_no && h.id !== r.id
+        ).concat([r]).sort((a, b) => (b.session || '').localeCompare(a.session || ''));
+
+        if (history.length > 0) {
+            historyEl.innerHTML = history.map(h => {
+                const isCurrent = h.id === r.id;
+                return `
+                    <div class="history-item ${isCurrent ? 'current' : ''}">
+                        <div class="history-title">
+                            ${escapeHtml(h.session || '—')} · ${h.rep_type === 'general' ? 'General' : 'Departmental'} · ${escapeHtml(h.level || '')}
+                            ${isCurrent ? ' ← Current' : ''}
+                        </div>
+                        <div class="history-meta">${h.status === 'active' ? 'Active' : 'Former'} · ${formatDate(h.created_at)}</div>
+                    </div>
+                `;
+            }).join('');
         } else {
-            historyEl.innerHTML = `
-                <div class="history-item">
-                    <div class="history-title">Currently serving</div>
-                    <div class="history-meta">${escapeHtml(r.session || '—')} · ${escapeHtml(r.department || '')} · ${escapeHtml(r.level || '')}</div>
-                </div>
-            `;
+            historyEl.innerHTML = `<p style="font-size: 0.8125rem; color: var(--text-dim); font-style: italic;">No other appointments on record.</p>`;
         }
 
         document.getElementById('profileOverlay').classList.add('active');
@@ -2183,11 +3199,13 @@
         const newStatus = viewingRep.status === 'active' ? 'inactive' : 'active';
         try {
             await apiPut(`/api/admin/course-reps/${viewingRep.id}`, { status: newStatus });
-            showToast(`Representative ${newStatus === 'active' ? 'activated' : 'deactivated'}`, 'success');
+            showToast(`Representative ${newStatus === 'active' ? 'reactivated' : 'deactivated'}`, 'success');
             closeProfileDrawer();
-            await loadData();
+            await loadReps();
+            updateStats();
+            renderAll();
         } catch (err) {
-            console.error('Toggle status error:', err);
+            console.error('Toggle error:', err);
             showToast(err.message || 'Failed to update status', 'error');
         }
     }
@@ -2212,14 +3230,16 @@
 
         try {
             await apiDelete(`/api/admin/course-reps/${removingRepId}`);
-            showToast('Representative removed', 'success');
+            showToast('Appointment removed', 'success');
             hideModal('removeModal');
             if (viewingRep && String(viewingRep.id) === String(removingRepId)) closeProfileDrawer();
             removingRepId = null;
-            await loadData();
+            await loadReps();
+            updateStats();
+            renderAll();
         } catch (err) {
             console.error('Remove error:', err);
-            showToast(err.message || 'Failed to remove representative', 'error');
+            showToast(err.message || 'Failed to remove appointment', 'error');
         } finally {
             btn.disabled = false;
             btn.innerHTML = original;
@@ -2227,30 +3247,68 @@
     }
 
     // ============================================================
+    // EXPORT / IMPORT
+    // ============================================================
+    function exportReps() {
+        const toExport = filteredReps.length > 0
+            ? filteredReps
+            : allReps.filter(r => !currentSession || r.session === currentSession);
+
+        if (toExport.length === 0) {
+            showToast('Nothing to export', 'warning');
+            return;
+        }
+
+        const headers = ['Full Name', 'Matric No.', 'Email', 'Phone', 'Type', 'Department', 'Level', 'Session', 'Status', 'Appointed'];
+        const rows = toExport.map(r => [
+            r.full_name, r.matric_no, r.email, r.phone,
+            r.rep_type === 'general' ? 'General' : 'Departmental',
+            r.rep_type === 'general' ? 'Level-wide' : r.department,
+            r.level, r.session, r.status, r.created_at || ''
+        ]);
+
+        const csv = [headers, ...rows]
+            .map(row => row.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
+            .join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `nuesa-course-reps-${currentSession.replace(/\//g, '-')}-${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast(`Exported ${rows.length} representatives`, 'success');
+    }
+
+    function importReps() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.csv,.xlsx,.xls';
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            showToast(`Import of "${file.name}" is coming soon`, 'info');
+        };
+        input.click();
+    }
+
+    // ============================================================
     // UI HELPERS
     // ============================================================
     function showLoading() { document.getElementById('loadingOverlay').classList.add('active'); }
     function hideLoading() { document.getElementById('loadingOverlay').classList.remove('active'); }
-
-    function showModal(id) {
-        const el = document.getElementById(id);
-        if (el) { el.classList.add('active'); document.body.style.overflow = 'hidden'; }
-    }
-    function hideModal(id) {
-        const el = document.getElementById(id);
-        if (el) { el.classList.remove('active'); document.body.style.overflow = ''; }
-    }
+    function showModal(id) { const el = document.getElementById(id); if (el) { el.classList.add('active'); document.body.style.overflow = 'hidden'; } }
+    function hideModal(id) { const el = document.getElementById(id); if (el) { el.classList.remove('active'); document.body.style.overflow = ''; } }
 
     function showToast(message, type = 'info', duration = 4000) {
         document.querySelectorAll('.toast').forEach(t => t.remove());
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
-        const icons = { success:'check-circle', error:'exclamation-circle', warning:'exclamation-triangle', info:'info-circle' };
+        const icons = { success: 'check-circle', error: 'exclamation-circle', warning: 'exclamation-triangle', info: 'info-circle' };
         toast.innerHTML = `
             <div class="toast-icon"><i class="fas fa-${icons[type] || 'info-circle'}"></i></div>
             <div class="toast-content">${escapeHtml(message)}</div>
-            <button class="toast-close" aria-label="Close">&times;</button>
-        `;
+            <button class="toast-close" aria-label="Close">&times;</button>`;
         document.body.appendChild(toast);
         toast.querySelector('.toast-close').onclick = () => {
             toast.classList.add('toast-out');
@@ -2274,6 +3332,13 @@
     function getInitials(name) {
         if (!name) return '?';
         return name.split(/\s+/).filter(Boolean).map(n => n[0]).slice(0, 2).join('').toUpperCase() || '?';
+    }
+
+    function renderAvatar(r) {
+        if (r.profile_picture) {
+            return `<img src="${escapeHtml(r.profile_picture)}" alt="" onerror="this.style.display='none';this.parentNode.textContent='${escapeHtml(getInitials(r.full_name))}'">`;
+        }
+        return escapeHtml(getInitials(r.full_name));
     }
 
     function formatDate(s) {
@@ -2317,9 +3382,6 @@
         });
     }
 
-    // ============================================================
-    // HEADER SCROLL SHADOW
-    // ============================================================
     function setupHeaderScroll() {
         const header = document.getElementById('header');
         if (!header) return;
@@ -2331,9 +3393,6 @@
         onScroll();
     }
 
-    // ============================================================
-    // BUTTON HOVER GLOW
-    // ============================================================
     function setupButtonRipple() {
         document.querySelectorAll('.btn').forEach(btn => {
             btn.addEventListener('mousemove', (e) => {
@@ -2342,43 +3401,6 @@
                 btn.style.setProperty('--my', ((e.clientY - rect.top) / rect.height * 100) + '%');
             });
         });
-    }
-
-    // ============================================================
-    // EXPORT / IMPORT
-    // ============================================================
-    function exportReps() {
-        if (filteredReps.length === 0) {
-            showToast('Nothing to export', 'warning');
-            return;
-        }
-        const headers = ['Full Name','Matric No.','Email','Phone','Department','Level','Session','Status','Date Appointed'];
-        const rows = filteredReps.map(r => [
-            r.full_name, r.matric_no, r.email, r.phone, r.department, r.level, r.session, r.status, r.created_at || ''
-        ]);
-        const csv = [headers, ...rows]
-            .map(row => row.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
-            .join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `nuesa-course-reps-${new Date().toISOString().slice(0,10)}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-        showToast(`Exported ${rows.length} representatives`, 'success');
-    }
-
-    function importReps() {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.csv,.xlsx,.xls';
-        input.onchange = async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            showToast(`Import of "${file.name}" started (placeholder)`, 'info');
-        };
-        input.click();
     }
 
     // ============================================================
@@ -2392,7 +3414,7 @@
         }, 29 * 60 * 1000);
     }
     function setupActivityListeners() {
-        ['mousedown','keypress','scroll','touchstart'].forEach(ev =>
+        ['mousedown', 'keypress', 'scroll', 'touchstart'].forEach(ev =>
             document.addEventListener(ev, resetInactivityTimer, { passive: true }));
         resetInactivityTimer();
     }
@@ -2405,36 +3427,76 @@
         setupHeaderScroll();
         setupButtonRipple();
 
+        // Static wiring
         document.getElementById('logoutBtn').addEventListener('click', () => showModal('logoutModal'));
         document.getElementById('confirmLogout').addEventListener('click', confirmLogout);
-        document.getElementById('notificationBtn').addEventListener('click', () => {
-            window.location.href = 'messages.html';
-        });
-        document.getElementById('addRepBtn').addEventListener('click', () => openRepModal());
+        document.getElementById('notificationBtn').addEventListener('click', () => { window.location.href = 'messages.html'; });
+        document.getElementById('addRepBtn').addEventListener('click', () => openAddRepModal());
         document.getElementById('exportBtn').addEventListener('click', exportReps);
         document.getElementById('importBtn').addEventListener('click', importReps);
         document.getElementById('clearFilters').addEventListener('click', clearFilters);
         document.getElementById('confirmRemoveBtn').addEventListener('click', handleRemove);
         document.getElementById('clearSelectedStudent').addEventListener('click', clearStudentSelection);
+        document.getElementById('browseMediaBtn').addEventListener('click', openMediaPicker);
+        document.getElementById('mediaSearch').addEventListener('input', filterMediaPicker);
+        document.getElementById('selectPictureBtn').addEventListener('click', () => {
+            if (pickerSelectedMedia) {
+                selectedPicture = { url: pickerSelectedMedia.url, id: pickerSelectedMedia.id };
+                showPicturePreview(pickerSelectedMedia.url);
+                hideModal('mediaPickerModal');
+            }
+        });
 
-        ['searchInput','filterDepartment','filterLevel','filterSession','filterStatus']
-            .forEach(id => document.getElementById(id).addEventListener('input', applyFilters));
+        // Tab switching
+        document.querySelectorAll('.main-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                currentTab = tab.dataset.panel;
+                document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+                document.getElementById(`panel-${currentTab}`).classList.add('active');
+            });
+        });
 
+        // Session change
+        document.getElementById('sessionSelector').addEventListener('change', (e) => {
+            currentSession = e.target.value;
+            updateStats();
+            renderAll();
+        });
+
+        // Rep type selection
+        document.querySelectorAll('.rep-type-option').forEach(opt => {
+            opt.addEventListener('click', () => {
+                selectedRepType = opt.dataset.type;
+                updateRepTypeUI();
+                checkDuplicateAssignment();
+            });
+        });
+
+        // Student search
         const studentSearch = document.getElementById('studentSearch');
         studentSearch.addEventListener('input', () => openStudentResults(studentSearch.value));
         studentSearch.addEventListener('focus', () => openStudentResults(studentSearch.value));
         document.addEventListener('click', (e) => {
-            if (!e.target.closest('#studentSelectorSection')) {
+            if (!e.target.closest('#studentSearchWrapper')) {
                 document.getElementById('studentResults').classList.remove('active');
             }
         });
 
-        ['rDepartment','rLevel','rSession'].forEach(id => {
+        // Filters
+        ['searchInput', 'filterType', 'filterLevel', 'filterDepartment', 'filterStatus'].forEach(id => {
+            document.getElementById(id).addEventListener('input', applyFilters);
+        });
+
+        // Form change handlers
+        ['rSession', 'rLevel', 'rDepartment'].forEach(id => {
             document.getElementById(id).addEventListener('change', checkDuplicateAssignment);
         });
 
         document.getElementById('repForm').addEventListener('submit', handleRepSubmit);
 
+        // Profile drawer
         document.getElementById('profileOverlay').addEventListener('click', closeProfileDrawer);
         document.getElementById('profileEditBtn').addEventListener('click', () => {
             if (viewingRep) {
@@ -2452,9 +3514,10 @@
             }
         });
 
+        // Escape key
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                ['repModal','removeModal','logoutModal'].forEach(id => {
+                ['repModal', 'mediaPickerModal', 'removeModal', 'logoutModal'].forEach(id => {
                     const el = document.getElementById(id);
                     if (el && el.classList.contains('active')) hideModal(id);
                 });
@@ -2464,12 +3527,12 @@
             }
         });
 
+        // Auth
         const ok = await checkAuth();
         if (!ok) return;
 
         setupActivityListeners();
-        await loadData();
-        hideLoading();
+        await loadAll();
     }
 
     document.addEventListener('DOMContentLoaded', init);
@@ -2478,6 +3541,10 @@
     window.hideModal = hideModal;
     window.confirmLogout = confirmLogout;
     window.closeProfileDrawer = closeProfileDrawer;
+    window.openProfileDrawer = openProfileDrawer;
+    window.openRepModal = openRepModal;
+    window.openAddRepModal = openAddRepModal;
+    window.openRemoveModal = openRemoveModal;
     </script>
 </body>
 </html>
