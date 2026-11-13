@@ -40,6 +40,8 @@
             --danger-tint:    #FBE6E2;
             --info:           #2C6FA8;
             --info-tint:      #E3EEF7;
+            --purple:         #6B3FA0;
+            --purple-tint:    #F0E9F8;
 
             --r-sm: 6px;
             --r:    10px;
@@ -87,9 +89,11 @@
         /* ============================================================
            ANIMATIONS
            ============================================================ */
+        @keyframes pageFadeIn  { from { opacity: 0; } to { opacity: 1; } }
         @keyframes fadeIn      { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideInUp   { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes scaleIn     { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+        @keyframes rowReveal   { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes spin        { to { transform: rotate(360deg); } }
 
         /* ============================================================
@@ -167,7 +171,7 @@
         /* ============================================================
            SHELL
            ============================================================ */
-        .dashboard-container { display: flex; min-height: 100vh; }
+        .dashboard-container { display: flex; min-height: 100vh; animation: pageFadeIn 500ms var(--ease); }
 
         /* ============================================================
            SIDEBAR
@@ -179,12 +183,8 @@
             position: fixed; top: 0; left: 0; bottom: 0;
             z-index: 40;
             transition: transform var(--dur) var(--ease);
-            overflow-y: auto;
-            overflow-x: hidden;
+            overflow: hidden; /* no outer scroll — three pinned zones */
         }
-        .sidebar::-webkit-scrollbar { width: 4px; }
-        .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
-
         @media (max-width: 900px) {
             .sidebar { transform: translateX(-100%); }
             .sidebar.open { transform: translateX(0); box-shadow: var(--shadow-xl); }
@@ -194,6 +194,7 @@
             padding: 24px 20px 20px;
             display: flex; align-items: center; gap: 12px;
             border-bottom: 1px solid rgba(255,255,255,0.08);
+            flex-shrink: 0; /* pinned top */
         }
 
         .sidebar-logo {
@@ -206,7 +207,9 @@
             letter-spacing: -0.02em;
             box-shadow: 0 4px 12px rgba(213, 168, 59, 0.35);
             flex-shrink: 0;
+            transition: transform var(--dur-fast) var(--ease);
         }
+        .sidebar-header:hover .sidebar-logo { transform: rotate(-8deg) scale(1.05); }
 
         .sidebar-title {
             font-size: 0.9375rem; font-weight: 800;
@@ -224,11 +227,23 @@
             margin-top: 3px;
         }
 
-        /* Single-line nav items */
+        /* Independently scrolling nav */
         .nav {
-            padding: 16px 12px; flex: 1;
+            padding: 16px 12px;
+            flex: 1 1 auto;
+            overflow-y: auto;
+            min-height: 0; /* crucial for flex scroll */
             display: flex; flex-direction: column; gap: 3px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.15) transparent;
         }
+        .nav::-webkit-scrollbar { width: 5px; }
+        .nav::-webkit-scrollbar-track { background: transparent; }
+        .nav::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.15);
+            border-radius: 5px;
+        }
+        .nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
 
         .nav-section-label {
             font-family: var(--font-mono);
@@ -253,6 +268,7 @@
             overflow: hidden;
             transition: all var(--dur-fast) var(--ease);
             position: relative;
+            flex-shrink: 0;
         }
 
         .nav-item > span { display: inline-block; line-height: 1.2; }
@@ -261,14 +277,14 @@
             width: 18px;
             font-size: 0.9375rem;
             color: rgba(255,255,255,0.55);
-            transition: color var(--dur-fast) var(--ease);
+            transition: color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
             flex-shrink: 0;
             line-height: 1;
             text-align: center;
         }
 
-        .nav-item:hover { background: rgba(255,255,255,0.06); color: var(--text-invert); }
-        .nav-item:hover i { color: var(--accent); }
+        .nav-item:hover { background: rgba(255,255,255,0.06); color: var(--text-invert); transform: translateX(2px); }
+        .nav-item:hover i { color: var(--accent); transform: scale(1.08); }
 
         .nav-item.active {
             background: var(--primary-soft);
@@ -289,23 +305,7 @@
         .sidebar-footer {
             padding: 16px 12px 20px;
             border-top: 1px solid rgba(255,255,255,0.08);
-        }
-
-        .user-quick-info {
-            padding: 12px;
-            background: rgba(255,255,255,0.04);
-            border-radius: var(--r);
-            margin-bottom: 10px;
-        }
-        .user-quick-info .user-name {
-            font-weight: 700; color: var(--text-invert);
-            font-size: 0.875rem; margin-bottom: 2px;
-        }
-        .user-quick-info .user-role {
-            font-family: var(--font-mono);
-            font-size: 0.6875rem; font-weight: 600;
-            color: var(--accent);
-            letter-spacing: 0.05em; text-transform: uppercase;
+            flex-shrink: 0; /* pinned bottom */
         }
 
         .logout-btn {
@@ -324,6 +324,7 @@
             background: var(--danger);
             color: var(--text-invert);
             border-color: var(--danger);
+            transform: translateY(-1px);
         }
 
         /* ============================================================
@@ -364,7 +365,9 @@
             display: flex; align-items: center; justify-content: space-between;
             position: sticky; top: 0; z-index: 30;
             gap: 12px;
+            transition: box-shadow var(--dur) var(--ease);
         }
+        .header.scrolled { box-shadow: var(--shadow-md); }
 
         .mobile-menu-btn {
             display: none;
@@ -431,7 +434,9 @@
             font-weight: 800; font-size: 0.875rem;
             flex-shrink: 0;
             border: 2px solid var(--accent);
+            transition: transform var(--dur-fast) var(--ease);
         }
+        .user-info:hover .user-avatar { transform: scale(1.06); }
 
         .user-details { line-height: 1.25; min-width: 0; }
         .user-details .user-name {
@@ -500,9 +505,9 @@
             animation: slideInUp var(--dur) var(--ease) both;
         }
         .stat-card:nth-child(1) { animation-delay: 40ms; }
-        .stat-card:nth-child(2) { animation-delay: 80ms; }
-        .stat-card:nth-child(3) { animation-delay: 120ms; }
-        .stat-card:nth-child(4) { animation-delay: 160ms; }
+        .stat-card:nth-child(2) { animation-delay: 100ms; }
+        .stat-card:nth-child(3) { animation-delay: 160ms; }
+        .stat-card:nth-child(4) { animation-delay: 220ms; }
 
         .stat-card:hover {
             transform: translateY(-3px);
@@ -643,7 +648,12 @@
             border-radius: var(--r);
             border: 1px solid var(--border);
             background: var(--surface);
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-strong) var(--surface-muted);
         }
+        .table-container::-webkit-scrollbar { height: 8px; }
+        .table-container::-webkit-scrollbar-track { background: var(--surface-muted); }
+        .table-container::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 8px; }
 
         .data-table {
             width: 100%; border-collapse: collapse;
@@ -674,6 +684,7 @@
 
         .data-table tbody tr {
             transition: background var(--dur-fast) var(--ease);
+            animation: rowReveal var(--dur) var(--ease) both;
         }
         .data-table tbody tr:hover { background: var(--surface-muted); }
         .data-table tbody tr:last-child td { border-bottom: none; }
@@ -710,6 +721,8 @@
             display: inline-flex; align-items: center; gap: 8px;
             transition: all var(--dur-fast) var(--ease);
             line-height: 1.4;
+            position: relative;
+            overflow: hidden;
         }
 
         .btn-primary {
@@ -721,6 +734,7 @@
             transform: translateY(-1px);
             box-shadow: var(--shadow-md);
         }
+        .btn-primary:active { transform: translateY(0) scale(0.97); }
 
         .btn-secondary {
             background: var(--surface);
@@ -728,6 +742,23 @@
             border: 1px solid var(--border-strong);
         }
         .btn-secondary:hover { background: var(--surface-muted); }
+        .btn-secondary:active { transform: scale(0.97); }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            transform: scale(0);
+            opacity: 0;
+            pointer-events: none;
+            transition: transform 400ms var(--ease-out), opacity 400ms var(--ease-out);
+        }
+        .btn:active::after {
+            transform: scale(2.5);
+            opacity: 1;
+            transition: transform 0ms, opacity 0ms;
+        }
 
         /* ============================================================
            MODAL
@@ -749,7 +780,7 @@
             background: var(--surface);
             border-radius: var(--r-lg);
             width: 100%; max-width: 400px;
-            transform: translateY(-12px) scale(0.98);
+            transform: translateY(-12px) scale(0.96);
             transition: transform var(--dur) var(--ease-out);
             box-shadow: var(--shadow-xl);
         }
@@ -807,6 +838,19 @@
             .header { padding: 0 16px; }
             .card-header { flex-direction: column; align-items: flex-start; gap: 12px; }
         }
+        @media (max-width: 480px) {
+            .modal-footer { flex-direction: column; }
+            .modal-footer .btn { width: 100%; justify-content: center; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -846,10 +890,6 @@
             </nav>
 
             <div class="sidebar-footer">
-                <div class="user-quick-info">
-                    <div class="user-name" id="sidebarUserName">Administrator</div>
-                    <div class="user-role" id="sidebarUserRole">Admin</div>
-                </div>
                 <button class="logout-btn" id="logoutBtn" type="button">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
@@ -863,7 +903,7 @@
         <!-- Main Content -->
         <div class="main-content">
             <!-- Header (no breadcrumb) -->
-            <header class="header">
+            <header class="header" id="mainHeader">
                 <button class="mobile-menu-btn" id="mobileMenuToggle" type="button" aria-label="Toggle menu">
                     <i class="fas fa-bars"></i>
                 </button>
@@ -1048,8 +1088,6 @@
         document.getElementById('userName').textContent = name;
         document.getElementById('userRole').textContent = roleLabel;
         document.getElementById('userAvatar').textContent = initial;
-        document.getElementById('sidebarUserName').textContent = name;
-        document.getElementById('sidebarUserRole').textContent = roleLabel;
         document.getElementById('welcomeMessage').textContent = `Welcome back, ${name}.`;
     }
 
@@ -1089,6 +1127,22 @@
     // ============================================================
     // DASHBOARD DATA
     // ============================================================
+    function animateNumber(el, target, duration = 500) {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            el.textContent = target;
+            return;
+        }
+        const start = performance.now();
+        function step(now) {
+            const elapsed = now - start;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            el.textContent = Math.round(target * eased);
+            if (progress < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+    }
+
     async function loadDashboardData() {
         try {
             let stats = { members: 0, events: 0, messages: 0, resources: 0, activeMembers: 0 };
@@ -1103,11 +1157,11 @@
                 try { const rs = await apiGet('/api/admin/resources'); stats.resources = rs.data?.length || 0; } catch {}
             }
 
-            document.getElementById('totalMembers').textContent    = stats.members || 0;
-            document.getElementById('activeMembers').textContent   = `${stats.activeMembers || 0} active`;
-            document.getElementById('totalEvents').textContent     = stats.events || 0;
-            document.getElementById('unreadMessages').textContent = stats.messages || 0;
-            document.getElementById('totalResources').textContent  = stats.resources || 0;
+            animateNumber(document.getElementById('totalMembers'), stats.members || 0);
+            document.getElementById('activeMembers').textContent = `${stats.activeMembers || 0} active`;
+            animateNumber(document.getElementById('totalEvents'), stats.events || 0);
+            animateNumber(document.getElementById('unreadMessages'), stats.messages || 0);
+            animateNumber(document.getElementById('totalResources'), stats.resources || 0);
 
             const badge = document.getElementById('notificationBadge');
             if ((stats.messages || 0) > 0) {
@@ -1121,8 +1175,8 @@
             try {
                 const members = await apiGet('/api/admin/members');
                 if (members.data && members.data.length > 0) {
-                    recentActivity.innerHTML = members.data.slice(0, 5).map(m => `
-                        <tr>
+                    recentActivity.innerHTML = members.data.slice(0, 5).map((m, i) => `
+                        <tr style="animation-delay: ${i * 40}ms;">
                             <td>New member added: <strong>${escapeHtml(m.full_name || 'Unknown')}</strong></td>
                             <td class="text-muted">System</td>
                             <td class="text-muted">${formatDateTime(m.created_at)}</td>
@@ -1250,6 +1304,17 @@
     }
 
     // ============================================================
+    // HEADER SCROLL SHADOW
+    // ============================================================
+    function setupHeaderScroll() {
+        const header = document.getElementById('mainHeader');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 8) header.classList.add('scrolled');
+            else header.classList.remove('scrolled');
+        }, { passive: true });
+    }
+
+    // ============================================================
     // INACTIVITY
     // ============================================================
     function resetInactivityTimer() {
@@ -1260,7 +1325,8 @@
         }, 29 * 60 * 1000);
     }
     function setupActivityListeners() {
-        ['mousedown','keypress','scroll','touchstart'].forEach(ev => document.addEventListener(ev, resetInactivityTimer));
+        ['mousedown','keypress','scroll','touchstart'].forEach(ev =>
+            document.addEventListener(ev, resetInactivityTimer, { passive: true }));
         resetInactivityTimer();
     }
 
@@ -1269,6 +1335,7 @@
     // ============================================================
     async function init() {
         setupSidebar();
+        setupHeaderScroll();
 
         const logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) logoutBtn.addEventListener('click', () => showModal('logoutModal'));
