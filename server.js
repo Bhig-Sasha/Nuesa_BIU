@@ -1016,34 +1016,46 @@ app.use('/api/members', memberRouter);
 // -------------------- 3.5 PUBLIC EVENTS ROUTES --------------
 const eventRouter = express.Router();
 
-eventRouter.get('/test', (req, res) => {
-    res.json({ message: 'Event router test route works', timestamp: new Date().toISOString(), requestId: req.id });
-});
-
+// GET /api/events — list all events
 eventRouter.get('/', cacheMiddleware(120, ['biu_events']), async (req, res) => {
     try {
-        const { status = 'upcoming', category, limit = 50 } = req.query;
+        const { status = 'all', category, limit = 100 } = req.query;
+
         let where = {};
-        if (status !== 'all') where.status = status;
+        if (status && status !== 'all') where.status = status;
         if (category && category !== 'all') where.category = category;
 
         const result = await db.query('select', 'biu_events', {
-            where, order: { column: 'date', ascending: status === 'past' ? false : true }, limit: parseInt(limit)
+            where,
+            order: {
+                column: 'date',
+                ascending: status === 'past' ? false : true
+            },
+            limit: parseInt(limit)
         });
 
         res.json({
-            status: 'success', data: result.data, count: result.data.length,
-            message: result.data.length === 0 ? 'No events found' : undefined
+            status: 'success',
+            data: result.data,
+            count: result.data.length
         });
     } catch (error) {
-        logger.error('Events API error:', { message: error.message, code: error.code, requestId: req.id });
+        logger.error('Events API error:', {
+            message: error.message,
+            code: error.code,
+            requestId: req.id
+        });
         res.status(500).json({ status: 'error', message: 'Failed to fetch events' });
     }
 });
 
+// GET /api/events/status/upcoming — explicit upcoming filter
 eventRouter.get('/status/upcoming', cacheMiddleware(60, ['biu_events']), async (req, res) => {
     try {
-        const result = await db.query('select', 'biu_events', { where: { status: 'upcoming' }, order: { column: 'date', ascending: true } });
+        const result = await db.query('select', 'biu_events', {
+            where: { status: 'upcoming' },
+            order: { column: 'date', ascending: true }
+        });
         res.json({ status: 'success', data: result.data, count: result.data.length });
     } catch (error) {
         logger.error('Error fetching upcoming events:', { requestId: req.id, error: error.message });
@@ -1051,9 +1063,13 @@ eventRouter.get('/status/upcoming', cacheMiddleware(60, ['biu_events']), async (
     }
 });
 
+// GET /api/events/status/past — explicit past filter
 eventRouter.get('/status/past', cacheMiddleware(300, ['biu_events']), async (req, res) => {
     try {
-        const result = await db.query('select', 'biu_events', { where: { status: 'past' }, order: { column: 'date', ascending: false } });
+        const result = await db.query('select', 'biu_events', {
+            where: { status: 'past' },
+            order: { column: 'date', ascending: false }
+        });
         res.json({ status: 'success', data: result.data, count: result.data.length });
     } catch (error) {
         logger.error('Error fetching past events:', { requestId: req.id, error: error.message });
@@ -1061,9 +1077,13 @@ eventRouter.get('/status/past', cacheMiddleware(300, ['biu_events']), async (req
     }
 });
 
+// GET /api/events/category/:category
 eventRouter.get('/category/:category', cacheMiddleware(120, ['biu_events']), async (req, res) => {
     try {
-        const result = await db.query('select', 'biu_events', { where: { category: req.params.category }, order: { column: 'date', ascending: true } });
+        const result = await db.query('select', 'biu_events', {
+            where: { category: req.params.category },
+            order: { column: 'date', ascending: true }
+        });
         res.json({ status: 'success', data: result.data, count: result.data.length });
     } catch (error) {
         logger.error('Error fetching events by category:', { requestId: req.id, error: error.message });
@@ -1071,10 +1091,13 @@ eventRouter.get('/category/:category', cacheMiddleware(120, ['biu_events']), asy
     }
 });
 
+// GET /api/events/:id — single event (must stay LAST, since :id matches anything)
 eventRouter.get('/:id', cacheMiddleware(300, ['biu_events']), async (req, res) => {
     try {
         const result = await db.query('select', 'biu_events', { where: { id: req.params.id } });
-        if (result.data.length === 0) return res.status(404).json({ status: 'error', message: 'Event not found' });
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Event not found' });
+        }
         res.json({ status: 'success', data: result.data[0] });
     } catch (error) {
         logger.error('Error fetching event:', { requestId: req.id, error: error.message });
@@ -1088,28 +1111,34 @@ console.log('✅ [12] /api/events router registered');
 // -------------------- 3.6 PUBLIC RESOURCES ROUTES -----------
 const resourceRouter = express.Router();
 
-resourceRouter.get('/test', (req, res) => {
-    res.json({ message: 'Resources router test route works', timestamp: new Date().toISOString(), requestId: req.id });
-});
-
+// GET /api/resources — list all resources with optional filters
 resourceRouter.get('/', cacheMiddleware(120, ['resources']), async (req, res) => {
     try {
-        const { category, department, level, course_code, year, semester, limit = 50 } = req.query;
+        const { category, department, level, course_code, year, semester, limit = 100 } = req.query;
+
         let where = {};
         if (category && category !== 'all') where.category = category;
         if (department && department !== 'all') where.department = department;
-        if (level) where.level = parseInt(level);
+        if (level && level !== 'all') {
+            // Accept "100" or "100L" — normalize to integer
+            const levelNum = parseInt(String(level).replace(/[^\d]/g, ''), 10);
+            if (!isNaN(levelNum)) where.level = levelNum;
+        }
         if (course_code && course_code !== 'all') where.course_code = course_code;
         if (year && year !== 'all') where.year = year;
         if (semester && semester !== 'all') where.semester = semester;
 
         const result = await db.query('select', 'resources', {
-            where, order: { column: 'created_at', ascending: false }, limit: parseInt(limit)
+            where,
+            order: { column: 'created_at', ascending: false },
+            limit: parseInt(limit)
         });
 
         res.json({ status: 'success', data: result.data, count: result.data.length });
     } catch (error) {
-        logger.error('Resources API error:', { message: error.message, code: error.code, requestId: req.id });
+        logger.error('Resources API error:', {
+            message: error.message, code: error.code, requestId: req.id
+        });
         if (error.message && error.message.includes('relation') && error.message.includes('does not exist')) {
             return res.status(500).json({ status: 'error', message: 'Resources table not found in database' });
         }
@@ -1117,18 +1146,30 @@ resourceRouter.get('/', cacheMiddleware(120, ['resources']), async (req, res) =>
     }
 });
 
+// GET /api/resources/past-questions — filter category flexibly (singular OR plural)
 resourceRouter.get('/past-questions', cacheMiddleware(120, ['resources']), async (req, res) => {
     try {
-        const { department, level, course_code, year, semester, limit = 50 } = req.query;
-        let where = { category: 'past-question' };
+        const { department, level, course_code, year, semester, limit = 100 } = req.query;
+
+        // Accept any of these common spellings so old data still works
+        // Supabase `.in()` needs an array — use the operator form
+        let where = {
+            category: { operator: 'in', value: ['past-question', 'past-questions', 'past_question', 'Past Question', 'Past Questions'] }
+        };
+
         if (department && department !== 'all') where.department = department;
-        if (level) where.level = parseInt(level);
+        if (level && level !== 'all') {
+            const levelNum = parseInt(String(level).replace(/[^\d]/g, ''), 10);
+            if (!isNaN(levelNum)) where.level = levelNum;
+        }
         if (course_code && course_code !== 'all') where.course_code = course_code;
         if (year && year !== 'all') where.year = year;
         if (semester && semester !== 'all') where.semester = semester;
 
         const result = await db.query('select', 'resources', {
-            where, order: { column: 'year', ascending: false }, limit: parseInt(limit)
+            where,
+            order: { column: 'year', ascending: false },
+            limit: parseInt(limit)
         });
 
         res.json({ status: 'success', data: result.data, count: result.data.length });
@@ -1138,12 +1179,16 @@ resourceRouter.get('/past-questions', cacheMiddleware(120, ['resources']), async
     }
 });
 
+// GET /api/resources/meta/categories — return distinct categories
+// Supabase JS client does NOT support SQL DISTINCT in .select(),
+// so we fetch the column and dedupe in JS.
 resourceRouter.get('/meta/categories', async (req, res) => {
     try {
         const result = await db.query('select', 'resources', {
-            select: 'DISTINCT category', where: { category: { operator: 'isNull', value: false } }
+            select: 'category',
+            where: { category: { operator: 'isNull', value: false } }
         });
-        const categories = result.data.map(i => i.category).filter(Boolean);
+        const categories = [...new Set(result.data.map(i => i.category).filter(Boolean))].sort();
         res.json({ status: 'success', data: categories });
     } catch (error) {
         logger.error('Error fetching categories:', { requestId: req.id, error: error.message });
@@ -1151,12 +1196,14 @@ resourceRouter.get('/meta/categories', async (req, res) => {
     }
 });
 
+// GET /api/resources/meta/departments — return distinct departments
 resourceRouter.get('/meta/departments', async (req, res) => {
     try {
         const result = await db.query('select', 'resources', {
-            select: 'DISTINCT department', where: { department: { operator: 'isNull', value: false } }
+            select: 'department',
+            where: { department: { operator: 'isNull', value: false } }
         });
-        const departments = result.data.map(i => i.department).filter(Boolean);
+        const departments = [...new Set(result.data.map(i => i.department).filter(Boolean))].sort();
         res.json({ status: 'success', data: departments });
     } catch (error) {
         logger.error('Error fetching departments:', { requestId: req.id, error: error.message });
@@ -1164,31 +1211,55 @@ resourceRouter.get('/meta/departments', async (req, res) => {
     }
 });
 
+// GET /api/resources/meta/courses — return distinct course codes/titles
 resourceRouter.get('/meta/courses', async (req, res) => {
     try {
         const { department } = req.query;
-        let where = { course_code: { operator: 'isNull', value: false } };
-        if (department) where.department = department;
 
-        const result = await db.query('select', 'resources', { select: 'DISTINCT course_code, course_title', where });
-        res.json({ status: 'success', data: result.data });
+        let where = { course_code: { operator: 'isNull', value: false } };
+        if (department && department !== 'all') where.department = department;
+
+        const result = await db.query('select', 'resources', {
+            select: 'course_code, course_title',
+            where
+        });
+
+        // Dedupe by course_code in JS (Supabase has no DISTINCT)
+        const seen = new Set();
+        const courses = [];
+        for (const row of result.data) {
+            if (!row.course_code) continue;
+            const key = row.course_code.toLowerCase();
+            if (seen.has(key)) continue;
+            seen.add(key);
+            courses.push({ course_code: row.course_code, course_title: row.course_title || '' });
+        }
+        courses.sort((a, b) => a.course_code.localeCompare(b.course_code));
+
+        res.json({ status: 'success', data: courses });
     } catch (error) {
         logger.error('Error fetching courses:', { requestId: req.id, error: error.message });
         res.status(500).json({ status: 'error', message: 'Failed to fetch courses' });
     }
 });
 
+// POST /api/resources/:id/download — increment download count
 resourceRouter.post('/:id/download', async (req, res) => {
     try {
         const getResult = await db.query('select', 'resources', {
-            where: { id: req.params.id }, select: 'download_count'
+            where: { id: req.params.id },
+            select: 'download_count'
         });
-        if (getResult.data.length === 0) return res.status(404).json({ status: 'error', message: 'Resource not found' });
+        if (getResult.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Resource not found' });
+        }
 
         const newCount = (getResult.data[0].download_count || 0) + 1;
         await db.query('update', 'resources', {
-            data: { download_count: newCount, updated_at: new Date() }, where: { id: req.params.id }
+            data: { download_count: newCount, updated_at: new Date() },
+            where: { id: req.params.id }
         });
+
         res.json({ status: 'success', data: { download_count: newCount }, message: 'Download count updated' });
     } catch (error) {
         logger.error('Error updating download count:', { requestId: req.id, error: error.message });
@@ -1196,10 +1267,13 @@ resourceRouter.post('/:id/download', async (req, res) => {
     }
 });
 
+// GET /api/resources/:id — single resource (must stay LAST — matches any single segment)
 resourceRouter.get('/:id', cacheMiddleware(300, ['resources']), async (req, res) => {
     try {
         const result = await db.query('select', 'resources', { where: { id: req.params.id } });
-        if (result.data.length === 0) return res.status(404).json({ status: 'error', message: 'Resource not found' });
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Resource not found' });
+        }
         res.json({ status: 'success', data: result.data[0] });
     } catch (error) {
         logger.error('Error fetching resource:', { requestId: req.id, error: error.message });
