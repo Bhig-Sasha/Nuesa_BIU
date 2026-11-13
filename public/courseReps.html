@@ -3,17 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="NUESA BIU Course Representatives — Meet the General Reps, Assistant Reps, and Departmental Representatives for each level.">
     <title>NUESA BIU – Course Representatives</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* ===== ROOT VARIABLES ===== */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
             --emerald-50: #ecfdf5;
             --emerald-100: #d1fae5;
@@ -27,10 +23,12 @@
             --emerald-900: #064e3b;
             --teal-400: #2dd4bf;
             --teal-500: #14b8a6;
+            --amber-50: #fffbeb;
             --amber-300: #fcd34d;
             --amber-400: #fbbf24;
             --amber-500: #f59e0b;
-            --amber-50: #fffbeb;
+            --amber-800: #92400e;
+            --amber-900: #78350f;
             --slate-50: #f8fafc;
             --slate-100: #f1f5f9;
             --slate-200: #e2e8f0;
@@ -59,19 +57,18 @@
             --transition-slow: 0.5s ease;
         }
 
-        html {
-            scroll-behavior: smooth;
-        }
-
+        html { scroll-behavior: smooth; }
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--gray-100);
             color: var(--gray-800);
             line-height: 1.5;
             overflow-x: hidden;
+            padding-top: 80px; /* offset for fixed navbar */
         }
+        body.menu-open { overflow: hidden; }
 
-        /* ===== MODERN RESPONSIVE NAVBAR ===== */
+        /* ===== NAVBAR ===== */
         .navbar {
             position: fixed;
             top: 0;
@@ -84,27 +81,15 @@
             padding: 1rem 0;
             backdrop-filter: blur(8px);
         }
-
         .navbar.scrolled {
             background-color: rgba(6, 78, 59, 0.98);
             backdrop-filter: blur(10px);
             box-shadow: var(--shadow-lg);
             padding: 0.5rem 0;
         }
+        .nav-container { max-width: 80rem; margin: 0 auto; padding: 0 2rem; }
+        .nav-flex { display: flex; justify-content: space-between; align-items: center; }
 
-        .nav-container {
-            max-width: 80rem;
-            margin: 0 auto;
-            padding: 0 2rem;
-        }
-
-        .nav-flex {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        /* Logo */
         .logo-link {
             display: flex;
             align-items: center;
@@ -112,39 +97,14 @@
             text-decoration: none;
             transition: transform 0.3s ease;
         }
+        .logo-link:hover { transform: scale(1.05); }
 
-        .logo-link:hover {
-            transform: scale(1.05);
-        }
+        .logo-main { font-size: 1.5rem; font-weight: 900; color: var(--white); letter-spacing: -0.05em; }
+        .logo-highlight { font-size: 1.5rem; font-weight: 900; color: var(--amber-400); letter-spacing: -0.05em; }
 
-        .logo-main {
-            font-size: 1.5rem;
-            font-weight: 900;
-            color: var(--white);
-            letter-spacing: -0.05em;
-        }
-
-        .logo-highlight {
-            font-size: 1.5rem;
-            font-weight: 900;
-            color: var(--amber-400);
-            letter-spacing: -0.05em;
-        }
-
-        /* Desktop Navigation */
-        .nav-menu {
-            display: flex;
-            align-items: center;
-        }
-
-        .nav-links {
-            display: flex;
-            align-items: center;
-            gap: 2rem;
-            list-style: none;
-        }
-
-        .nav-links li a {
+        /* Flat desktop nav */
+        .nav-menu { display: flex; align-items: center; gap: 1.75rem; }
+        .nav-menu > a {
             font-family: 'Roboto Mono', monospace;
             font-size: 0.75rem;
             font-weight: 600;
@@ -154,9 +114,9 @@
             transition: color 0.2s;
             position: relative;
             padding: 0.5rem 0;
+            white-space: nowrap;
         }
-
-        .nav-links li a::after {
+        .nav-menu > a::after {
             content: '';
             position: absolute;
             bottom: 0;
@@ -166,24 +126,11 @@
             background-color: var(--amber-400);
             transition: width 0.3s;
         }
+        .nav-menu > a:hover { color: var(--amber-400); }
+        .nav-menu > a:hover::after { width: 100%; }
+        .nav-menu > a.active { color: var(--amber-400); }
+        .nav-menu > a.active::after { width: 100%; }
 
-        .nav-links li a:hover {
-            color: var(--amber-400);
-        }
-
-        .nav-links li a:hover::after {
-            width: 100%;
-        }
-
-        .nav-links li a.active {
-            color: var(--amber-400);
-        }
-
-        .nav-links li a.active::after {
-            width: 100%;
-        }
-
-        /* Mobile Menu Button */
         .hamburger {
             display: none;
             cursor: pointer;
@@ -192,7 +139,6 @@
             border: none;
             padding: 0.5rem;
         }
-
         .hamburger span {
             display: block;
             width: 25px;
@@ -202,28 +148,15 @@
             transition: all 0.3s ease;
             border-radius: 3px;
         }
+        .hamburger.active span:nth-child(1) { transform: rotate(45deg) translate(5px, 6px); background-color: var(--amber-400); }
+        .hamburger.active span:nth-child(2) { opacity: 0; }
+        .hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(5px, -6px); background-color: var(--amber-400); }
 
-        .hamburger.active span:nth-child(1) {
-            transform: rotate(45deg) translate(5px, 6px);
-            background-color: var(--amber-400);
-        }
-
-        .hamburger.active span:nth-child(2) {
-            opacity: 0;
-        }
-
-        .hamburger.active span:nth-child(3) {
-            transform: rotate(-45deg) translate(5px, -6px);
-            background-color: var(--amber-400);
-        }
-
-        /* Mobile Navigation */
+        /* Flat mobile overlay */
         .mobile-nav {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100vh;
+            top: 0; left: 0;
+            width: 100%; height: 100vh;
             background: linear-gradient(135deg, var(--emerald-900), var(--emerald-800));
             display: flex;
             flex-direction: column;
@@ -232,82 +165,46 @@
             z-index: 999;
             opacity: 0;
             visibility: hidden;
-            transition: all 0.4s ease;
+            transition: opacity 0.4s ease, visibility 0.4s;
             padding: 2rem;
+            overflow-y: auto;
         }
+        .mobile-nav.active { opacity: 1; visibility: visible; }
 
-        .mobile-nav.active {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .mobile-nav ul {
-            list-style: none;
-            text-align: center;
-        }
-
-        .mobile-nav ul li {
-            margin: 1.5rem 0;
-            opacity: 0;
-            transform: translateY(20px);
-            transition: all 0.4s ease;
-        }
-
-        .mobile-nav.active ul li {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .mobile-nav.active ul li:nth-child(1) { transition-delay: 0.1s; }
-        .mobile-nav.active ul li:nth-child(2) { transition-delay: 0.2s; }
-        .mobile-nav.active ul li:nth-child(3) { transition-delay: 0.3s; }
-        .mobile-nav.active ul li:nth-child(4) { transition-delay: 0.4s; }
-        .mobile-nav.active ul li:nth-child(5) { transition-delay: 0.5s; }
-        .mobile-nav.active ul li:nth-child(6) { transition-delay: 0.6s; }
-        .mobile-nav.active ul li:nth-child(7) { transition-delay: 0.7s; }
-        .mobile-nav.active ul li:nth-child(8) { transition-delay: 0.8s; }
-        .mobile-nav.active ul li:nth-child(9) { transition-delay: 0.9s; }
-        .mobile-nav.active ul li:nth-child(10) { transition-delay: 1s; }
-
-        .mobile-nav ul li a {
+        .mobile-nav > a {
             font-family: 'Roboto Mono', monospace;
             font-size: 1.5rem;
             font-weight: 600;
             letter-spacing: 0.1em;
             text-decoration: none;
             color: var(--white);
-            transition: color 0.3s;
+            transition: color 0.3s, transform 0.3s, opacity 0.4s;
             display: inline-block;
             padding: 0.5rem 1rem;
+            margin: 0.35rem 0;
+            opacity: 0;
+            transform: translateY(20px);
         }
+        .mobile-nav.active > a { opacity: 1; transform: translateY(0); }
+        .mobile-nav.active > a:nth-child(1) { transition-delay: 0.05s; }
+        .mobile-nav.active > a:nth-child(2) { transition-delay: 0.10s; }
+        .mobile-nav.active > a:nth-child(3) { transition-delay: 0.15s; }
+        .mobile-nav.active > a:nth-child(4) { transition-delay: 0.20s; }
+        .mobile-nav.active > a:nth-child(5) { transition-delay: 0.25s; }
+        .mobile-nav.active > a:nth-child(6) { transition-delay: 0.30s; }
+        .mobile-nav.active > a:nth-child(7) { transition-delay: 0.35s; }
+        .mobile-nav.active > a:nth-child(8) { transition-delay: 0.40s; }
+        .mobile-nav.active > a:nth-child(9) { transition-delay: 0.45s; }
 
-        .mobile-nav ul li a:hover {
-            color: var(--amber-400);
-            transform: translateX(10px);
-        }
+        .mobile-nav > a:hover { color: var(--amber-400); transform: translateX(10px); }
+        .mobile-nav > a.active { color: var(--amber-400); border-left: 4px solid var(--amber-400); }
 
-        .mobile-nav ul li a.active {
-            color: var(--amber-400);
-            border-left: 4px solid var(--amber-400);
-        }
-
-        /* Main content padding to account for fixed navbar */
-        .main-content {
-            padding-top: 80px;
-        }
-
-        /* Media Queries for Responsive Navbar */
         @media screen and (max-width: 1024px) {
-            .nav-links {
-                display: none;
-            }
-
-            .hamburger {
-                display: block;
-            }
+            .nav-menu { display: none; }
+            .hamburger { display: block; }
         }
 
-        /* ===== REST OF YOUR EXISTING STYLES (keep all your other styles) ===== */
+        /* ===== HERO ===== */
         .hero {
             position: relative;
             background: linear-gradient(135deg, var(--emerald-800), var(--emerald-600), var(--teal-500));
@@ -316,109 +213,54 @@
             animation: gradientShift 10s ease infinite;
             background-size: 200% 200%;
         }
-
         @keyframes gradientShift {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
             100% { background-position: 0% 50%; }
         }
-
         .hero-blob-1 {
-            position: absolute;
-            top: 2.5rem;
-            left: 2.5rem;
-            width: 12rem;
-            height: 12rem;
-            background-color: rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            filter: blur(2rem);
+            position: absolute; top: 2.5rem; left: 2.5rem;
+            width: 12rem; height: 12rem; background-color: rgba(255,255,255,0.1);
+            border-radius: 50%; filter: blur(2rem);
             animation: float 8s ease-in-out infinite;
         }
-
         .hero-blob-2 {
-            position: absolute;
-            bottom: 2.5rem;
-            right: 5rem;
-            width: 16rem;
-            height: 16rem;
-            background-color: rgba(45, 212, 191, 0.2);
-            border-radius: 50%;
-            filter: blur(3rem);
+            position: absolute; bottom: 2.5rem; right: 5rem;
+            width: 16rem; height: 16rem; background-color: rgba(45,212,191,0.2);
+            border-radius: 50%; filter: blur(3rem);
             animation: float 12s ease-in-out infinite reverse;
         }
-
         @keyframes float {
             0%, 100% { transform: translateY(0) translateX(0); }
             50% { transform: translateY(-20px) translateX(10px); }
         }
-
         .hero-content {
-            max-width: 80rem;
-            margin: 0 auto;
-            position: relative;
-            z-index: 10;
-            text-align: center;
+            max-width: 80rem; margin: 0 auto;
+            position: relative; z-index: 10; text-align: center;
             animation: fadeInUp 1s ease;
         }
-
         @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-
         .hero-title {
-            font-size: 2.5rem;
-            font-weight: 900;
-            color: white;
-            margin-bottom: 1rem;
-            letter-spacing: -0.025em;
+            font-size: 2.5rem; font-weight: 900; color: white;
+            margin-bottom: 1rem; letter-spacing: -0.025em;
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-
         .hero-subtitle {
-            color: rgba(236, 253, 245, 1);
-            max-width: 42rem;
-            margin: 0 auto;
-            font-family: 'Roboto Mono', monospace;
-            font-size: 0.875rem;
-            opacity: 0.9;
+            color: rgba(236, 253, 245, 1); max-width: 42rem; margin: 0 auto;
+            font-family: 'Roboto Mono', monospace; font-size: 0.875rem; opacity: 0.9;
         }
 
-        /* ===== CONTAINER & LAYOUT ===== */
-        .container {
-            width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 1rem;
-        }
+        /* ===== CONTAINER ===== */
+        .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
+        @media (min-width: 640px) { .container { padding: 0 1.5rem; } }
+        @media (min-width: 1024px) { .container { padding: 0 2rem; } }
+        .mt-8 { margin-top: 2rem; }
+        .mb-8 { margin-bottom: 2rem; }
 
-        @media (min-width: 640px) {
-            .container {
-                padding: 0 1.5rem;
-            }
-        }
-
-        @media (min-width: 1024px) {
-            .container {
-                padding: 0 2rem;
-            }
-        }
-
-        .mt-8 {
-            margin-top: 2rem;
-        }
-
-        .mb-8 {
-            margin-bottom: 2rem;
-        }
-
-        /* ===== ENHANCED TOOLBAR WITH ANIMATIONS ===== */
+        /* ===== TOOLBAR ===== */
         .toolbar {
             background-color: white;
             border-radius: 1rem;
@@ -433,65 +275,35 @@
             position: relative;
             overflow: hidden;
         }
-
         .toolbar::before {
             content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
+            position: absolute; top: 0; left: 0; right: 0;
             height: 4px;
             background: linear-gradient(90deg, var(--emerald-400), var(--teal-400), var(--amber-400));
             animation: shimmer 2s infinite;
             background-size: 200% 100%;
         }
-
         @keyframes shimmer {
             0% { background-position: 0% 0; }
             100% { background-position: 200% 0; }
         }
-
         @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-
         @media (min-width: 640px) {
-            .toolbar {
-                flex-direction: row;
-                justify-content: space-between;
-                align-items: center;
-            }
+            .toolbar { flex-direction: row; justify-content: space-between; align-items: center; }
         }
-
-        .toolbar-left,
-        .toolbar-right {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            width: 100%;
-            flex-wrap: wrap;
+        .toolbar-left, .toolbar-right {
+            display: flex; align-items: center; gap: 1rem;
+            width: 100%; flex-wrap: wrap;
         }
-
         @media (min-width: 640px) {
-            .toolbar-left,
-            .toolbar-right {
-                width: auto;
-            }
+            .toolbar-left, .toolbar-right { width: auto; }
         }
 
-        /* Enhanced Select Styles */
-        .select-wrapper {
-            position: relative;
-            min-width: 200px;
-        }
-
+        /* Select */
+        .select-wrapper { position: relative; min-width: 200px; }
         .select {
             appearance: none;
             background-color: var(--slate-50);
@@ -512,14 +324,12 @@
             background-size: 5px 5px, 5px 5px;
             background-repeat: no-repeat;
         }
-
         .select:hover {
             border-color: var(--emerald-400);
             background-color: white;
             transform: translateY(-1px);
             box-shadow: var(--shadow-md);
         }
-
         .select:focus {
             outline: none;
             border-color: var(--emerald-500);
@@ -527,7 +337,7 @@
             transform: translateY(-2px);
         }
 
-        /* Enhanced View Toggle */
+        /* View toggle */
         .view-toggle {
             display: flex;
             background-color: var(--slate-50);
@@ -536,7 +346,6 @@
             border: 2px solid var(--slate-200);
             gap: 0.25rem;
         }
-
         .view-btn {
             padding: 0.5rem;
             border-radius: 0.5rem;
@@ -551,57 +360,27 @@
             position: relative;
             overflow: hidden;
         }
-
         .view-btn::before {
             content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
+            position: absolute; top: 50%; left: 50%;
+            width: 0; height: 0;
             border-radius: 50%;
             background-color: rgba(16, 185, 129, 0.2);
             transform: translate(-50%, -50%);
             transition: width 0.3s, height 0.3s;
         }
-
-        .view-btn:hover::before {
-            width: 100%;
-            height: 100%;
-        }
-
-        .view-btn:hover {
-            color: var(--slate-600);
-            transform: scale(1.05);
-        }
-
+        .view-btn:hover::before { width: 100%; height: 100%; }
+        .view-btn:hover { color: var(--slate-600); transform: scale(1.05); }
         .view-btn.active {
             background: linear-gradient(135deg, var(--emerald-500), var(--emerald-600));
             color: white;
             box-shadow: var(--shadow-md);
         }
+        .view-btn svg { width: 1.25rem; height: 1.25rem; transition: transform var(--transition-fast); }
+        .view-btn:hover svg { transform: scale(1.1); }
 
-        .view-btn.active:hover {
-            transform: scale(1.05);
-        }
-
-        .view-btn svg {
-            width: 1.25rem;
-            height: 1.25rem;
-            transition: transform var(--transition-fast);
-        }
-
-        .view-btn:hover svg {
-            transform: scale(1.1);
-        }
-
-        /* Enhanced Search */
-        .search-wrapper {
-            position: relative;
-            flex: 1;
-            min-width: 250px;
-        }
-
+        /* Search */
+        .search-wrapper { position: relative; flex: 1; min-width: 250px; }
         .search-input {
             width: 100%;
             background-color: var(--slate-50);
@@ -613,14 +392,12 @@
             font-family: 'Inter', sans-serif;
             transition: all var(--transition-fast);
         }
-
         .search-input:hover {
             border-color: var(--emerald-400);
             background-color: white;
             transform: translateY(-1px);
             box-shadow: var(--shadow-md);
         }
-
         .search-input:focus {
             outline: none;
             border-color: var(--emerald-500);
@@ -628,25 +405,20 @@
             transform: translateY(-2px);
             background-color: white;
         }
-
         .search-icon {
-            position: absolute;
-            left: 1rem;
-            top: 50%;
+            position: absolute; left: 1rem; top: 50%;
             transform: translateY(-50%);
-            width: 1.25rem;
-            height: 1.25rem;
+            width: 1.25rem; height: 1.25rem;
             color: var(--slate-400);
-            transition: all var(--transition-fast);
             pointer-events: none;
+            transition: all var(--transition-fast);
         }
-
         .search-input:focus + .search-icon {
             color: var(--emerald-500);
             transform: translateY(-50%) scale(1.1);
         }
 
-        /* Enhanced Filter Chips */
+        /* Filter chips */
         .filter-chips {
             display: flex;
             gap: 0.75rem;
@@ -654,16 +426,7 @@
             margin-top: 1rem;
             animation: fadeIn 0.5s ease 0.2s both;
         }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-            }
-            to {
-                opacity: 1;
-            }
-        }
-
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .chip {
             background-color: white;
             border: 2px solid var(--slate-200);
@@ -678,8 +441,8 @@
             align-items: center;
             gap: 0.5rem;
             box-shadow: var(--shadow-sm);
+            font-family: 'Inter', sans-serif;
         }
-
         .chip:hover {
             background-color: var(--slate-50);
             border-color: var(--emerald-400);
@@ -687,33 +450,17 @@
             transform: translateY(-2px);
             box-shadow: var(--shadow-md);
         }
-
         .chip.active {
             background: linear-gradient(135deg, var(--emerald-500), var(--emerald-600));
             color: white;
             border-color: transparent;
             box-shadow: var(--shadow-lg);
         }
+        .chip.active:hover { transform: translateY(-2px) scale(1.05); box-shadow: var(--shadow-xl); }
+        .chip i { font-size: 0.75rem; transition: transform var(--transition-fast); }
+        .chip:hover i { transform: rotate(360deg); }
 
-        .chip.active:hover {
-            transform: translateY(-2px) scale(1.05);
-            box-shadow: var(--shadow-xl);
-        }
-
-        .chip i {
-            font-size: 0.75rem;
-            transition: transform var(--transition-fast);
-        }
-
-        .chip:hover i {
-            transform: rotate(360deg);
-        }
-
-        .chip.active i {
-            color: white;
-        }
-
-        /* ===== COURSE REPRESENTATIVES CARD STYLES ===== */
+        /* ===== REPS GRID ===== */
         .reps-grid {
             display: grid;
             grid-template-columns: 1fr;
@@ -722,24 +469,9 @@
             transform: translateY(0);
             transition: opacity var(--transition-slow), transform var(--transition-slow);
         }
-
-        @media (min-width: 640px) {
-            .reps-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (min-width: 1024px) {
-            .reps-grid {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
-
-        @media (min-width: 1280px) {
-            .reps-grid {
-                grid-template-columns: repeat(4, 1fr);
-            }
-        }
+        @media (min-width: 640px) { .reps-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (min-width: 1024px) { .reps-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (min-width: 1280px) { .reps-grid { grid-template-columns: repeat(4, 1fr); } }
 
         .rep-card {
             background-color: white;
@@ -748,43 +480,23 @@
             border: 1px solid var(--slate-100);
             overflow: hidden;
             transition: all var(--transition-base);
-            opacity: 1;
-            transform: scale(1);
             animation: cardPopIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
             position: relative;
         }
-
         @keyframes cardPopIn {
-            0% {
-                opacity: 0;
-                transform: scale(0.9) translateY(20px);
-            }
-            100% {
-                opacity: 1;
-                transform: scale(1) translateY(0);
-            }
+            0% { opacity: 0; transform: scale(0.9) translateY(20px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
         }
-
-        .rep-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: var(--shadow-xl);
-        }
-
+        .rep-card:hover { transform: translateY(-8px) scale(1.02); box-shadow: var(--shadow-xl); }
         .rep-card::after {
             content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
+            position: absolute; top: 0; left: 0; right: 0;
             height: 4px;
             background: linear-gradient(90deg, var(--emerald-400), var(--teal-400), var(--amber-400));
             transform: scaleX(0);
             transition: transform var(--transition-base);
         }
-
-        .rep-card:hover::after {
-            transform: scaleX(1);
-        }
+        .rep-card:hover::after { transform: scaleX(1); }
 
         .card-header {
             background: linear-gradient(135deg, var(--emerald-700), var(--emerald-500));
@@ -796,41 +508,29 @@
             position: relative;
             overflow: hidden;
         }
-
         .card-header::before {
             content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
+            position: absolute; top: -50%; left: -50%;
+            width: 200%; height: 200%;
             background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 50%);
             opacity: 0;
             transition: opacity var(--transition-base);
         }
-
         .rep-card:hover .card-header::before {
             opacity: 1;
             animation: rotate 4s linear infinite;
         }
-
-        @keyframes rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .card-header i {
             font-size: 1.75rem;
             opacity: 0.9;
             filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
             animation: bounce 2s ease infinite;
         }
-
         @keyframes bounce {
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-3px); }
         }
-
         .card-header h3 {
             font-weight: 800;
             font-size: 1.5rem;
@@ -838,14 +538,9 @@
             text-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
-        .card-body {
-            padding: 1.5rem;
-        }
-
+        .card-body { padding: 1.5rem; }
         .rep-item {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
+            display: flex; align-items: center; gap: 0.75rem;
             margin-bottom: 1rem;
             padding: 0.75rem;
             border-radius: 0.75rem;
@@ -853,51 +548,31 @@
             position: relative;
             overflow: hidden;
         }
-
         .rep-item::before {
             content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
+            position: absolute; left: 0; top: 0; bottom: 0;
             width: 3px;
             background: linear-gradient(to bottom, var(--emerald-400), var(--emerald-600));
             transform: scaleY(0);
             transition: transform var(--transition-base);
         }
-
-        .rep-item:hover::before {
-            transform: scaleY(1);
-        }
-
-        .rep-item:hover {
-            background-color: var(--slate-50);
-            transform: translateX(5px);
-        }
-
+        .rep-item:hover::before { transform: scaleY(1); }
+        .rep-item:hover { background-color: var(--slate-50); transform: translateX(5px); }
         .rep-icon {
-            width: 2.5rem;
-            height: 2.5rem;
+            width: 2.5rem; height: 2.5rem;
             border-radius: 50%;
             background: linear-gradient(135deg, var(--emerald-100), var(--emerald-200));
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: flex; align-items: center; justify-content: center;
             color: var(--emerald-600);
             flex-shrink: 0;
             transition: all var(--transition-fast);
         }
-
         .rep-item:hover .rep-icon {
             transform: scale(1.1) rotate(360deg);
             background: linear-gradient(135deg, var(--emerald-500), var(--emerald-600));
             color: white;
         }
-
-        .rep-info {
-            flex: 1;
-        }
-
+        .rep-info { flex: 1; min-width: 0; }
         .rep-label {
             font-size: 0.7rem;
             font-weight: 700;
@@ -907,22 +582,16 @@
             font-family: 'Roboto Mono', monospace;
             transition: color var(--transition-fast);
         }
-
-        .rep-item:hover .rep-label {
-            color: var(--emerald-700);
-        }
-
+        .rep-item:hover .rep-label { color: var(--emerald-700); }
         .rep-name {
             font-weight: 600;
             color: var(--slate-900);
             line-height: 1.4;
             transition: color var(--transition-fast);
+            overflow-wrap: break-word;
+            word-break: break-word;
         }
-
-        .rep-name.not-assigned {
-            color: var(--slate-400);
-            font-style: italic;
-        }
+        .rep-name.not-assigned { color: var(--slate-400); font-style: italic; }
 
         .dept-badge {
             background: linear-gradient(135deg, var(--slate-100), var(--slate-200));
@@ -937,7 +606,6 @@
             transition: all var(--transition-fast);
             border: 1px solid var(--slate-300);
         }
-
         .rep-item:hover .dept-badge {
             background: linear-gradient(135deg, var(--emerald-500), var(--emerald-600));
             color: white;
@@ -952,27 +620,14 @@
             max-height: 0;
             background: linear-gradient(to bottom, var(--slate-50), white);
         }
-
-        .expand-section.open {
-            max-height: 500px;
-        }
-
-        .expand-content {
-            padding: 1.5rem;
-        }
-
+        .expand-section.open { max-height: 500px; }
+        .expand-content { padding: 1.5rem; }
         .dept-grid {
             display: grid;
             grid-template-columns: 1fr;
             gap: 0.75rem;
         }
-
-        @media (min-width: 640px) {
-            .dept-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
+        @media (min-width: 640px) { .dept-grid { grid-template-columns: repeat(2, 1fr); } }
         .dept-item {
             background-color: white;
             border-radius: 0.75rem;
@@ -982,41 +637,28 @@
             transition: all var(--transition-fast);
             box-shadow: var(--shadow-sm);
         }
-
         .dept-item:hover {
             transform: translateY(-2px) scale(1.02);
             border-color: var(--emerald-400);
             box-shadow: var(--shadow-md);
         }
-
         .dept-name {
             font-weight: 700;
             color: var(--slate-800);
             margin-bottom: 0.25rem;
+            overflow-wrap: break-word;
         }
-
         .dept-rep {
             color: var(--slate-600);
             font-size: 0.75rem;
             display: flex;
             align-items: center;
             gap: 0.25rem;
+            overflow-wrap: break-word;
         }
-
-        .dept-rep i {
-            color: var(--emerald-500);
-            font-size: 0.625rem;
-            transition: transform var(--transition-fast);
-        }
-
-        .dept-item:hover .dept-rep i {
-            transform: scale(1.5) rotate(360deg);
-        }
-
-        .pending {
-            color: var(--slate-400);
-            font-style: italic;
-        }
+        .dept-rep i { color: var(--emerald-500); font-size: 0.625rem; transition: transform var(--transition-fast); }
+        .dept-item:hover .dept-rep i { transform: scale(1.5) rotate(360deg); }
+        .pending { color: var(--slate-400); font-style: italic; }
 
         .expand-btn {
             width: 100%;
@@ -1037,43 +679,21 @@
             position: relative;
             overflow: hidden;
         }
-
         .expand-btn::before {
             content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
+            position: absolute; top: 50%; left: 50%;
+            width: 0; height: 0;
             border-radius: 50%;
             background-color: rgba(16, 185, 129, 0.1);
             transform: translate(-50%, -50%);
             transition: width 0.6s, height 0.6s;
         }
+        .expand-btn:hover::before { width: 300px; height: 300px; }
+        .expand-btn:hover { background: linear-gradient(to bottom, var(--emerald-50), white); color: var(--emerald-700); }
+        .expand-btn i { transition: transform var(--transition-fast); }
+        .expand-btn:hover i { transform: translateY(2px); }
 
-        .expand-btn:hover::before {
-            width: 300px;
-            height: 300px;
-        }
-
-        .expand-btn:hover {
-            background: linear-gradient(to bottom, var(--emerald-50), white);
-            color: var(--emerald-700);
-        }
-
-        .expand-btn i {
-            transition: transform var(--transition-fast);
-        }
-
-        .expand-btn:hover i {
-            transform: translateY(2px);
-        }
-
-        .expand-btn .fa-chevron-up:hover i {
-            transform: translateY(-2px);
-        }
-
-        /* List View Styles */
+        /* List view */
         .reps-list {
             display: flex;
             flex-direction: column;
@@ -1082,7 +702,6 @@
             transform: translateY(0);
             transition: opacity var(--transition-slow), transform var(--transition-slow);
         }
-
         .list-item {
             background-color: white;
             border-radius: 1rem;
@@ -1093,24 +712,15 @@
             animation: slideInRight 0.5s ease;
             position: relative;
         }
-
         @keyframes slideInRight {
-            from {
-                opacity: 0;
-                transform: translateX(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
+            from { opacity: 0; transform: translateX(30px); }
+            to { opacity: 1; transform: translateX(0); }
         }
-
         .list-item:hover {
             box-shadow: var(--shadow-xl);
             transform: translateY(-2px) scale(1.01);
             border-color: var(--emerald-300);
         }
-
         .list-header {
             display: flex;
             flex-direction: column;
@@ -1118,25 +728,13 @@
             gap: 1rem;
             cursor: pointer;
             transition: all var(--transition-fast);
-            background: linear-gradient(to right, transparent, transparent);
         }
-
-        .list-item:hover .list-header {
-            background: linear-gradient(to right, var(--slate-50), transparent);
-        }
-
+        .list-item:hover .list-header { background: linear-gradient(to right, var(--slate-50), transparent); }
         @media (min-width: 768px) {
-            .list-header {
-                flex-direction: row;
-                align-items: center;
-                justify-content: space-between;
-            }
+            .list-header { flex-direction: row; align-items: center; justify-content: space-between; }
         }
-
         .list-level {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
+            display: flex; align-items: center; gap: 0.75rem;
             background: linear-gradient(135deg, var(--emerald-700), var(--emerald-500));
             color: white;
             padding: 0.75rem 1.5rem;
@@ -1146,22 +744,12 @@
             box-shadow: var(--shadow-md);
             transition: all var(--transition-fast);
         }
-
-        .list-item:hover .list-level {
-            transform: scale(1.05) rotate(2deg);
-            box-shadow: var(--shadow-lg);
-        }
-
-        .list-level i {
-            font-size: 1.25rem;
-            animation: pulse 2s ease infinite;
-        }
-
+        .list-item:hover .list-level { transform: scale(1.05) rotate(2deg); box-shadow: var(--shadow-lg); }
+        .list-level i { font-size: 1.25rem; animation: pulse 2s ease infinite; }
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.7; }
         }
-
         .list-summary {
             display: flex;
             flex: 1;
@@ -1169,11 +757,8 @@
             gap: 1.5rem;
             align-items: center;
         }
-
         .summary-item {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
+            display: flex; align-items: center; gap: 0.75rem;
             font-size: 0.875rem;
             color: var(--slate-600);
             padding: 0.5rem 1rem;
@@ -1181,40 +766,21 @@
             background-color: var(--slate-50);
             transition: all var(--transition-fast);
         }
-
         .summary-item:hover {
             background-color: var(--emerald-50);
             transform: translateY(-2px);
             box-shadow: var(--shadow-md);
         }
-
-        .summary-item strong {
-            color: var(--slate-900);
-            font-weight: 600;
-        }
-
-        .expand-icon {
-            color: var(--emerald-600);
-            font-size: 1.25rem;
-            transition: all var(--transition-fast);
-        }
-
-        .list-item:hover .expand-icon {
-            transform: scale(1.2);
-            color: var(--emerald-700);
-        }
-
+        .summary-item strong { color: var(--slate-900); font-weight: 600; }
+        .expand-icon { color: var(--emerald-600); font-size: 1.25rem; transition: all var(--transition-fast); }
+        .list-item:hover .expand-icon { transform: scale(1.2); color: var(--emerald-700); }
         .list-expand {
             max-height: 0;
             overflow: hidden;
             transition: max-height var(--transition-base) cubic-bezier(0.4, 0, 0.2, 1);
             background: linear-gradient(to bottom, var(--slate-50), white);
         }
-
-        .list-expand.open {
-            max-height: 800px;
-        }
-
+        .list-expand.open { max-height: 800px; }
         .list-dept-grid {
             padding: 1.5rem;
             display: grid;
@@ -1222,7 +788,7 @@
             gap: 1rem;
         }
 
-        /* Info Banner */
+        /* Info banner */
         .info-banner {
             background: linear-gradient(135deg, var(--amber-50), #fef3c7);
             border-left: 4px solid var(--amber-400);
@@ -1237,54 +803,37 @@
             position: relative;
             overflow: hidden;
         }
-
         @keyframes slideInLeft {
-            from {
-                opacity: 0;
-                transform: translateX(-30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
+            from { opacity: 0; transform: translateX(-30px); }
+            to { opacity: 1; transform: translateX(0); }
         }
-
         .info-banner::before {
             content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
+            position: absolute; top: -50%; left: -50%;
+            width: 200%; height: 200%;
             background: radial-gradient(circle, rgba(251, 191, 36, 0.1) 0%, transparent 70%);
             animation: rotate 20s linear infinite;
         }
-
         .info-banner i {
             color: var(--amber-500);
             font-size: 1.5rem;
             animation: ring 2s ease infinite;
+            flex-shrink: 0;
         }
-
         @keyframes ring {
             0%, 100% { transform: rotate(0); }
             10%, 30%, 50%, 70%, 90% { transform: rotate(-10deg); }
             20%, 40%, 60%, 80% { transform: rotate(10deg); }
         }
-
         .info-banner h4 {
             font-weight: 700;
             color: var(--amber-900);
             margin-bottom: 0.25rem;
             font-size: 1.125rem;
         }
+        .info-banner p { color: var(--amber-800); font-size: 0.875rem; }
 
-        .info-banner p {
-            color: var(--amber-800);
-            font-size: 0.875rem;
-        }
-
-        /* Empty State */
+        /* Empty state */
         .empty-state {
             text-align: center;
             padding: 4rem 2rem;
@@ -1294,64 +843,45 @@
             grid-column: 1 / -1;
             animation: fadeInScale 0.5s ease;
         }
-
         @keyframes fadeInScale {
-            from {
-                opacity: 0;
-                transform: scale(0.9);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
         }
-
         .empty-state i {
             font-size: 4rem;
             color: var(--slate-300);
             margin-bottom: 1rem;
             animation: bounce 2s ease infinite;
         }
-
-        .empty-state h3 {
-            font-size: 1.5rem;
-            color: var(--slate-600);
-            margin-bottom: 0.5rem;
+        .empty-state h3 { font-size: 1.5rem; color: var(--slate-600); margin-bottom: 0.5rem; }
+        .empty-state button {
+            margin-top: 1rem;
+            padding: 0.5rem 1rem;
+            background: var(--emerald-600);
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
         }
+        .empty-state button:hover { background: var(--emerald-700); }
 
-        .hidden {
-            display: none !important;
-        }
+        .hidden { display: none !important; }
 
-        /* Loading Spinner */
-        .loading-container {
-            text-align: center;
-            padding: 4rem;
-        }
-
+        /* Loading */
+        .loading-container { text-align: center; padding: 4rem; }
         .loading-spinner {
             display: inline-block;
-            width: 4rem;
-            height: 4rem;
+            width: 4rem; height: 4rem;
             border: 4px solid var(--emerald-200);
             border-radius: 50%;
             border-top-color: var(--emerald-600);
             animation: spin 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-container p { margin-top: 1rem; color: var(--slate-600); animation: pulse 2s ease infinite; }
 
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        .loading-container p {
-            margin-top: 1rem;
-            color: var(--slate-600);
-            animation: pulse 2s ease infinite;
-        }
-
-        /* Footer Styles */
+        /* ===== FOOTER ===== */
         .footer {
             background: linear-gradient(135deg, var(--slate-800) 0%, var(--slate-900) 100%);
             border-top: 4px solid var(--emerald-500);
@@ -1360,57 +890,17 @@
             position: relative;
             overflow: hidden;
         }
-
         .footer::before {
             content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
+            position: absolute; top: 0; left: 0; right: 0;
             height: 1px;
             background: linear-gradient(90deg, transparent, var(--emerald-400), transparent);
             animation: shimmer 2s infinite;
         }
-
-        .footer-container {
-            max-width: 80rem;
-            margin: 0 auto;
-            padding: 0 1rem;
-            position: relative;
-            z-index: 1;
-        }
-
-        .footer-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 3rem;
-            margin-bottom: 3rem;
-        }
-
-        @media (min-width: 768px) {
-            .footer-grid {
-                grid-template-columns: repeat(4, 1fr);
-            }
-        }
-
-        .footer-section {
-            animation: fadeInUp 0.5s ease;
-            animation-fill-mode: both;
-        }
-
-        .footer-section:nth-child(1) { animation-delay: 0.1s; }
-        .footer-section:nth-child(2) { animation-delay: 0.2s; }
-        .footer-section:nth-child(3) { animation-delay: 0.3s; }
-        .footer-section:nth-child(4) { animation-delay: 0.4s; }
-
-        .footer-section h3 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--white);
-            margin-bottom: 1rem;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        }
-
+        .footer-container { max-width: 80rem; margin: 0 auto; padding: 0 1rem; position: relative; z-index: 1; }
+        .footer-grid { display: grid; grid-template-columns: 1fr; gap: 3rem; margin-bottom: 3rem; }
+        @media (min-width: 768px) { .footer-grid { grid-template-columns: repeat(4, 1fr); } }
+        .footer-section h3 { font-size: 1.5rem; font-weight: 700; color: var(--white); margin-bottom: 1rem; }
         .footer-section h4 {
             font-family: 'Roboto Mono', monospace;
             font-size: 0.875rem;
@@ -1420,7 +910,6 @@
             letter-spacing: 0.1em;
             margin-bottom: 1.5rem;
         }
-
         .footer-text {
             font-family: 'Roboto Mono', monospace;
             font-size: 0.875rem;
@@ -1428,12 +917,7 @@
             margin-bottom: 1.5rem;
             line-height: 1.6;
         }
-
-        .social-icons {
-            display: flex;
-            gap: 1rem;
-        }
-
+        .social-icons { display: flex; gap: 1rem; }
         .social-icon {
             color: var(--slate-400);
             transition: all var(--transition-fast);
@@ -1447,23 +931,14 @@
             justify-content: center;
             text-decoration: none;
         }
-
         .social-icon:hover {
             color: var(--white);
             background: linear-gradient(135deg, var(--emerald-500), var(--emerald-600));
             transform: translateY(-3px) rotate(360deg);
         }
-
-        .footer-links {
-            list-style: none;
-        }
-
-        .footer-links li {
-            margin-bottom: 0.75rem;
-        }
-
-        .footer-links a,
-        .footer-links span {
+        .footer-links { list-style: none; }
+        .footer-links li { margin-bottom: 0.75rem; }
+        .footer-links a, .footer-links span {
             font-family: 'Roboto Mono', monospace;
             font-size: 0.875rem;
             color: var(--slate-300);
@@ -1471,30 +946,20 @@
             transition: all var(--transition-fast);
             display: inline-block;
         }
-
-        .footer-links a:hover {
-            color: var(--emerald-400);
-            transform: translateX(5px);
-        }
-
+        .footer-links a:hover { color: var(--emerald-400); transform: translateX(5px); }
         .footer-contact-item {
             display: flex;
             align-items: flex-start;
             margin-bottom: 1rem;
             transition: transform var(--transition-fast);
         }
-
-        .footer-contact-item:hover {
-            transform: translateX(5px);
-        }
-
+        .footer-contact-item:hover { transform: translateX(5px); }
         .footer-contact-icon {
             margin-right: 0.75rem;
             flex-shrink: 0;
             color: var(--emerald-400);
             margin-top: 0.125rem;
         }
-
         .footer-bottom {
             border-top: 1px solid var(--slate-700);
             padding-top: 2rem;
@@ -1503,31 +968,15 @@
             justify-content: space-between;
             align-items: center;
         }
-
-        @media (min-width: 768px) {
-            .footer-bottom {
-                flex-direction: row;
-            }
-        }
-
+        @media (min-width: 768px) { .footer-bottom { flex-direction: row; } }
         .footer-bottom p {
             font-family: 'Roboto Mono', monospace;
             font-size: 0.75rem;
             color: var(--slate-400);
             margin-bottom: 1rem;
         }
-
-        @media (min-width: 768px) {
-            .footer-bottom p {
-                margin-bottom: 0;
-            }
-        }
-
-        .footer-bottom-links {
-            display: flex;
-            gap: 1.5rem;
-        }
-
+        @media (min-width: 768px) { .footer-bottom p { margin-bottom: 0; } }
+        .footer-bottom-links { display: flex; gap: 1.5rem; }
         .footer-bottom-links a {
             font-family: 'Roboto Mono', monospace;
             font-size: 0.75rem;
@@ -1536,70 +985,50 @@
             transition: all var(--transition-fast);
             position: relative;
         }
-
         .footer-bottom-links a::after {
             content: '';
-            position: absolute;
-            bottom: -2px;
-            left: 0;
-            width: 0;
-            height: 1px;
+            position: absolute; bottom: -2px; left: 0;
+            width: 0; height: 1px;
             background-color: var(--emerald-400);
             transition: width var(--transition-fast);
         }
+        .footer-bottom-links a:hover { color: var(--emerald-400); }
+        .footer-bottom-links a:hover::after { width: 100%; }
 
-        .footer-bottom-links a:hover {
-            color: var(--emerald-400);
-        }
-
-        .footer-bottom-links a:hover::after {
-            width: 100%;
-        }
-
-        .icon {
-            width: 1.25rem;
-            height: 1.25rem;
-        }
-
-        .icon-sm {
-            width: 1rem;
-            height: 1rem;
-        }
-
-        /* Prevent body scroll when mobile menu is open */
-        body.menu-open {
-            overflow: hidden;
+        /* ===== REDUCED MOTION ===== */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- ===== NAVBAR ===== -->
-    <!-- ===== MODERN RESPONSIVE NAVBAR ===== -->
+    <!-- ===== NAVBAR (flat, href-driven) ===== -->
     <nav class="navbar" id="navbar">
         <div class="nav-container">
             <div class="nav-flex">
-                <a href="/" class="logo-link">
+                <a href="index.html" class="logo-link" aria-label="NUESA BIU Home">
                     <span class="logo-main">N.U.E.S.A</span>
                     <span class="logo-highlight">BIU</span>
                 </a>
 
-                <!-- Desktop Navigation -->
-                <div class="nav-menu">
-                    <ul class="nav-links">
-                        <li><a href="index.html" class="active">HOME</a></li>
-                        <li><a href="about.html">ABOUT</a></li>
-                        <li><a href="members.html">MEMBERS</a></li>
-                        <li><a href="events.html">EVENTS</a></li>
-                        <li><a href="resources.html">RESOURCES</a></li>
-                        <li><a href="admission.html">ADMISSION</a></li>
-                        <li><a href="courseReps.html">COURSE REPS</a></li>
-                        <li><a href="news.html">NEWS</a></li>
-                        <li><a href="contacts.html">CONTACT</a></li>
-                    </ul>
+                <div class="nav-menu" id="desktopLinks">
+                    <a href="index.html">HOME</a>
+                    <a href="about.html">ABOUT</a>
+                    <a href="members.html">MEMBERS</a>
+                    <a href="events.html">EVENTS</a>
+                    <a href="resources.html">RESOURCES</a>
+                    <a href="admission.html">ADMISSION</a>
+                    <a href="courseReps.html">COURSE REPS</a>
+                    <a href="news.html">NEWS</a>
+                    <a href="contacts.html">CONTACT</a>
                 </div>
 
-                <!-- Hamburger Menu Button -->
-                <button class="hamburger" id="hamburger">
+                <button class="hamburger" id="hamburger" aria-label="Toggle navigation" aria-expanded="false" aria-controls="mobileNav">
                     <span></span>
                     <span></span>
                     <span></span>
@@ -1607,110 +1036,101 @@
             </div>
         </div>
 
-        <!-- Mobile Navigation -->
-        <div class="mobile-nav" id="mobileNav">
-            <ul>
-                <li><a href="index.html" class="active">HOME</a></li>
-                <li><a href="about.html">ABOUT</a></li>
-                <li><a href="members.html">MEMBERS</a></li>
-                <li><a href="events.html">EVENTS</a></li>
-                <li><a href="resources.html">RESOURCES</a></li>
-                <li><a href="admission.html">ADMISSION</a></li>
-                <li><a href="courseReps.html">COURSE REPS</a></li>
-                <li><a href="news.html">NEWS</a></li>
-                <li><a href="contacts.html">CONTACT</a></li>
-            </ul>
+        <div class="mobile-nav" id="mobileNav" aria-hidden="true">
+            <a href="index.html">HOME</a>
+            <a href="about.html">ABOUT</a>
+            <a href="members.html">MEMBERS</a>
+            <a href="events.html">EVENTS</a>
+            <a href="resources.html">RESOURCES</a>
+            <a href="admission.html">ADMISSION</a>
+            <a href="courseReps.html">COURSE REPS</a>
+            <a href="news.html">NEWS</a>
+            <a href="contacts.html">CONTACT</a>
         </div>
     </nav>
 
-    <!-- ===== MAIN CONTENT ===== -->
-    <div class="main-wrapper">
-        <!-- ===== HERO SECTION ===== -->
-        <div class="hero">
-            <div class="hero-blob-1"></div>
-            <div class="hero-blob-2"></div>
-            <div class="hero-content">
-                <h1 class="hero-title">Course Representatives</h1>
-                <p class="hero-subtitle">Meet your dedicated departmental reps for the 2025/2026 session</p>
+    <!-- ===== HERO ===== -->
+    <div class="hero">
+        <div class="hero-blob-1"></div>
+        <div class="hero-blob-2"></div>
+        <div class="hero-content">
+            <h1 class="hero-title">Course Representatives</h1>
+            <p class="hero-subtitle">Meet your dedicated departmental reps for the 2025/2026 session</p>
+        </div>
+    </div>
+
+    <!-- ===== MAIN CONTAINER ===== -->
+    <div class="container mt-8">
+        <!-- TOOLBAR -->
+        <div class="toolbar">
+            <div class="toolbar-left">
+                <div class="select-wrapper">
+                    <select id="sessionSelect" class="select" aria-label="Session">
+                        <option value="2025/2026">2025/2026</option>
+                        <option value="2024/2025">2024/2025</option>
+                        <option value="2023/2024">2023/2024</option>
+                    </select>
+                </div>
+                <div class="view-toggle" role="group" aria-label="View toggle">
+                    <button class="view-btn active" id="gridViewBtn" title="Grid View" aria-pressed="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="7" rx="1"/>
+                            <rect x="14" y="3" width="7" height="7" rx="1"/>
+                            <rect x="14" y="14" width="7" height="7" rx="1"/>
+                            <rect x="3" y="14" width="7" height="7" rx="1"/>
+                        </svg>
+                    </button>
+                    <button class="view-btn" id="listViewBtn" title="List View" aria-pressed="false">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="8" y1="6" x2="21" y2="6" stroke-linecap="round"/>
+                            <line x1="8" y1="12" x2="21" y2="12" stroke-linecap="round"/>
+                            <line x1="8" y1="18" x2="21" y2="18" stroke-linecap="round"/>
+                            <line x1="3" y1="6" x2="3.01" y2="6" stroke-linecap="round"/>
+                            <line x1="3" y1="12" x2="3.01" y2="12" stroke-linecap="round"/>
+                            <line x1="3" y1="18" x2="3.01" y2="18" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="toolbar-right">
+                <div class="search-wrapper">
+                    <input type="text" placeholder="Search reps or levels..." class="search-input" id="searchInput" aria-label="Search">
+                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="m21 21-4.35-4.35"/>
+                    </svg>
+                </div>
             </div>
         </div>
 
-        <!-- ===== MAIN CONTAINER ===== -->
-        <div class="container mt-8">
-            <!-- ===== TOOLBAR ===== -->
-            <div class="toolbar">
-                <div class="toolbar-left">
-                    <div class="select-wrapper">
-                        <select id="sessionSelect" class="select">
-                            <option value="2025/2026">2025/2026</option>
-                            <option value="2024/2025">2024/2025</option>
-                            <option value="2023/2024">2023/2024</option>
-                        </select>
-                    </div>
-                    <div class="view-toggle">
-                        <button class="view-btn active" id="gridViewBtn" title="Grid View">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="3" width="7" height="7" rx="1"/>
-                                <rect x="14" y="3" width="7" height="7" rx="1"/>
-                                <rect x="14" y="14" width="7" height="7" rx="1"/>
-                                <rect x="3" y="14" width="7" height="7" rx="1"/>
-                            </svg>
-                        </button>
-                        <button class="view-btn" id="listViewBtn" title="List View">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="8" y1="6" x2="21" y2="6" stroke-linecap="round"/>
-                                <line x1="8" y1="12" x2="21" y2="12" stroke-linecap="round"/>
-                                <line x1="8" y1="18" x2="21" y2="18" stroke-linecap="round"/>
-                                <line x1="3" y1="6" x2="3.01" y2="6" stroke-linecap="round"/>
-                                <line x1="3" y1="12" x2="3.01" y2="12" stroke-linecap="round"/>
-                                <line x1="3" y1="18" x2="3.01" y2="18" stroke-linecap="round"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-                <div class="toolbar-right">
-                    <div class="search-wrapper">
-                        <input type="text" placeholder="Search reps or levels..." class="search-input" id="searchInput">
-                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"/>
-                            <path d="m21 21-4.35-4.35"/>
-                        </svg>
-                    </div>
-                </div>
+        <!-- INFO BANNER -->
+        <div class="info-banner">
+            <i class="fas fa-info-circle"></i>
+            <div>
+                <h4 id="sessionTitle">2025/2026 Course Representatives</h4>
+                <p>Each level has a General Representative, an Assistant, and Departmental Representatives. Click "View Departments" to see all departmental reps.</p>
             </div>
+        </div>
 
-            <!-- ===== INFO BANNER ===== -->
-            <div class="info-banner">
-                <i class="fas fa-info-circle"></i>
-                <div>
-                    <h4 id="sessionTitle">2025/2026 Course Representatives</h4>
-                    <p>Each level has a General Representative, an Assistant, and Departmental Representatives. Click "View Departments" to see all departmental reps.</p>
-                </div>
-            </div>
+        <!-- FILTER CHIPS -->
+        <div class="filter-chips mb-8" id="levelFilters" role="group" aria-label="Filter by level">
+            <button class="chip active" data-level="all"><i class="fas fa-layer-group"></i> All Levels</button>
+        </div>
 
-            <!-- ===== FILTER CHIPS (by level) ===== -->
-            <div class="filter-chips mb-8" id="levelFilters">
-                <span class="chip active" data-level="all"><i class="fas fa-layer-group"></i> All Levels</span>
-            </div>
+        <!-- LOADING -->
+        <div id="loadingContainer" class="loading-container">
+            <div class="loading-spinner"></div>
+            <p>Loading course representatives...</p>
+        </div>
 
-            <!-- ===== LOADING STATE ===== -->
-            <div id="loadingContainer" class="loading-container">
-                <div class="loading-spinner"></div>
-                <p>Loading course representatives...</p>
-            </div>
+        <!-- GRID / LIST / EMPTY -->
+        <div id="gridContainer" class="reps-grid"></div>
+        <div id="listContainer" class="reps-list hidden"></div>
 
-            <!-- ===== GRID VIEW CONTAINER ===== -->
-            <div id="gridContainer" class="reps-grid"></div>
-            
-            <!-- ===== LIST VIEW CONTAINER ===== -->
-            <div id="listContainer" class="reps-list"></div>
-
-            <!-- ===== EMPTY STATE ===== -->
-            <div id="emptyState" class="empty-state hidden">
-                <i class="fas fa-users-slash"></i>
-                <h3>No representatives found</h3>
-                <p>Try adjusting your search or selecting a different level</p>
-            </div>
+        <div id="emptyState" class="empty-state hidden">
+            <i class="fas fa-users-slash"></i>
+            <h3>No representatives found</h3>
+            <p>Try adjusting your search or selecting a different level</p>
         </div>
     </div>
 
@@ -1722,10 +1142,10 @@
                     <h3>N.U.E.S.A <span style="color: var(--emerald-400);">BIU</span></h3>
                     <p class="footer-text">Empowering the next generation of engineers through innovation, unity, and excellence.</p>
                     <div class="social-icons">
-                        <a href="#" class="social-icon"><i class="fab fa-facebook-f"></i></a>
-                        <a href="#" class="social-icon"><i class="fab fa-twitter"></i></a>
-                        <a href="#" class="social-icon"><i class="fab fa-instagram"></i></a>
-                        <a href="#" class="social-icon"><i class="fab fa-linkedin-in"></i></a>
+                        <a href="#" class="social-icon" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="social-icon" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="social-icon" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="social-icon" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
                     </div>
                 </div>
                 <div class="footer-section">
@@ -1774,22 +1194,19 @@
     </footer>
 
     <script>
-        (function() {
-            // ============================================
-            // NUESA BIU COURSE REPS PAGE - BACKEND INTEGRATION
-            // ============================================
-            
-            // ===== CONFIGURATION =====
-            const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
-            
-            // ===== DATA (will be populated from API) =====
-            let levelsData = [];
+        (function () {
+            'use strict';
 
-            // ===== DOM elements =====
+            // ============ CONFIG ============
+            const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
+
+            // ============ DOM ============
             const navbar = document.getElementById('navbar');
-            const mobileBtn = document.getElementById('mobileMenuBtn');
-            const mobileOverlay = document.getElementById('mobileOverlay');
-            const menuIcon = document.getElementById('menuIcon');
+            const hamburger = document.getElementById('hamburger');
+            const mobileNav = document.getElementById('mobileNav');
+            const desktopLinks = document.querySelectorAll('.nav-menu > a');
+            const mobileLinks = document.querySelectorAll('.mobile-nav > a');
+
             const sessionSelect = document.getElementById('sessionSelect');
             const sessionTitle = document.getElementById('sessionTitle');
             const searchInput = document.getElementById('searchInput');
@@ -1801,353 +1218,248 @@
             const listViewBtn = document.getElementById('listViewBtn');
             const levelFilters = document.getElementById('levelFilters');
 
-            // ===== State =====
+            // ============ STATE ============
+            let levelsData = [];
             let currentView = 'grid';
             let searchQuery = '';
             let selectedLevel = 'all';
             let expandedLevel = null;
             let expandedListItem = null;
 
-            // ===== Navbar scroll effect =====
-            function updateNavbar() {
-                if (window.scrollY > 20) navbar.classList.add('scrolled');
-                else navbar.classList.remove('scrolled');
+            // ============ HELPERS ============
+            function escapeHtml(str) {
+                if (str === null || str === undefined) return '';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
             }
-            window.addEventListener('scroll', updateNavbar);
-            updateNavbar();
 
-        // ==================== NAVBAR FUNCTIONALITY ====================
-        const hamburger = document.getElementById('hamburger');
-        const mobileNav = document.getElementById('mobileNav');
-        const mobileLinks = document.querySelectorAll('.mobile-nav ul li a');
-        const desktopLinks = document.querySelectorAll('.nav-links li a');
+            function slugFromUrl(url) {
+                let p = url.split('#')[0].split('?')[0];
+                if (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1);
+                const last = p.split('/').pop() || 'index';
+                return (last.replace(/\.html$/i, '') || 'index').toLowerCase();
+            }
 
-        // Get current path for active link highlighting
-        let currentPath = window.location.pathname;
-        if (currentPath.endsWith('.html')) {
-            currentPath = currentPath.replace('.html', '');
-        }
-        if (currentPath === '/' || currentPath === '/index') {
-            currentPath = '/';
-        }
+            // ============ NAVBAR ============
+            function setupNavbar() {
+                const currentSlug = slugFromUrl(window.location.pathname);
 
-        // Update active links
-        function updateActiveLinks() {
-            desktopLinks.forEach(link => {
-                const href = link.getAttribute('href').replace('.html', '');
-                if (href === currentPath || (currentPath === '/' && href === 'index')) {
-                    link.classList.add('active');
-                } else {
-                    link.classList.remove('active');
+                function updateActive() {
+                    [].concat(Array.from(desktopLinks), Array.from(mobileLinks)).forEach(link => {
+                        const target = slugFromUrl(link.getAttribute('href') || '');
+                        const isHome = (currentSlug === 'index' || currentSlug === '') && target === 'index';
+                        link.classList.toggle('active', target === currentSlug || isHome);
+                    });
                 }
-            });
+                updateActive();
 
-            mobileLinks.forEach(link => {
-                const href = link.getAttribute('href').replace('.html', '');
-                if (href === currentPath || (currentPath === '/' && href === 'index')) {
-                    link.classList.add('active');
-                } else {
-                    link.classList.remove('active');
+                function onScroll() {
+                    navbar.classList.toggle('scrolled', window.scrollY > 20);
                 }
-            });
-        }
+                window.addEventListener('scroll', onScroll);
+                onScroll();
 
-        // Navbar scroll effect
-        function handleScroll() {
-            if (window.scrollY > 20) {
-                navbar.classList.add('scrolled');
-            } else {
-                navbar.classList.remove('scrolled');
+                function openMobile() {
+                    hamburger.classList.add('active');
+                    hamburger.setAttribute('aria-expanded', 'true');
+                    mobileNav.classList.add('active');
+                    mobileNav.setAttribute('aria-hidden', 'false');
+                    document.body.classList.add('menu-open');
+                }
+                function closeMobile() {
+                    hamburger.classList.remove('active');
+                    hamburger.setAttribute('aria-expanded', 'false');
+                    mobileNav.classList.remove('active');
+                    mobileNav.setAttribute('aria-hidden', 'true');
+                    document.body.classList.remove('menu-open');
+                }
+                function toggleMobile() {
+                    mobileNav.classList.contains('active') ? closeMobile() : openMobile();
+                }
+
+                hamburger.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleMobile();
+                });
+
+                mobileLinks.forEach(link => link.addEventListener('click', () => closeMobile()));
+
+                document.addEventListener('click', (e) => {
+                    if (mobileNav.classList.contains('active') &&
+                        !mobileNav.contains(e.target) &&
+                        !hamburger.contains(e.target)) {
+                        closeMobile();
+                    }
+                });
+
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && mobileNav.classList.contains('active')) closeMobile();
+                });
             }
-        }
-        window.addEventListener('scroll', handleScroll);
-        handleScroll();
 
-        // Toggle mobile menu
-        function toggleMobileMenu(open) {
-            if (open) {
-                hamburger.classList.add('active');
-                mobileNav.classList.add('active');
-                document.body.classList.add('menu-open');
-            } else {
-                hamburger.classList.remove('active');
-                mobileNav.classList.remove('active');
-                document.body.classList.remove('menu-open');
-            }
-        }
-
-        hamburger.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const isOpen = hamburger.classList.contains('active');
-            toggleMobileMenu(!isOpen);
-        });
-
-        // Close mobile menu when clicking a link
-        mobileLinks.forEach(link => {
-            link.addEventListener('click', () => {
-                toggleMobileMenu(false);
-            });
-        });
-
-        // Close mobile menu when clicking outside
-        document.addEventListener('click', (e) => {
-            if (mobileNav.classList.contains('active') && 
-                !mobileNav.contains(e.target) && 
-                !hamburger.contains(e.target)) {
-                toggleMobileMenu(false);
-            }
-        });
-
-        // Close on escape key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && mobileNav.classList.contains('active')) {
-                toggleMobileMenu(false);
-            }
-        });
-
-        updateActiveLinks();
-
-            // ===== Process API response =====
+            // ============ DATA PROCESSING ============
             function processApiResponse(result) {
-                if (result.status === 'success' && result.data && result.data.length > 0) {
-                    // Transform data - parse departments if it's a string
+                if (result && result.status === 'success' && Array.isArray(result.data) && result.data.length > 0) {
                     levelsData = result.data.map(rep => {
-                        // Parse departments if it's a string
                         let departments = rep.departments;
                         if (typeof departments === 'string') {
-                            try {
-                                // Remove the escape characters and parse
-                                departments = JSON.parse(departments);
-                            } catch (e) {
+                            try { departments = JSON.parse(departments); }
+                            catch (e) {
                                 console.error('Error parsing departments for level', rep.level, e);
                                 departments = [];
                             }
                         }
-                        
                         return {
                             level: rep.level,
                             genRep: rep.gen_rep || 'Not Assigned',
                             asstGenRep: rep.asst_gen_rep || 'Not Assigned',
-                            deptCount: departments?.length || 0,
-                            departments: departments || []
+                            deptCount: Array.isArray(departments) ? departments.length : 0,
+                            departments: Array.isArray(departments) ? departments : []
                         };
                     });
-                    
-                    console.log('Transformed data:', levelsData);
-                    
-                    // Update session title
                     sessionTitle.textContent = `${sessionSelect.value} Course Representatives`;
-                    
-                    // Render level chips
-                    renderLevelChips();
-                    
-                    // Filter and render
-                    filterAndRender();
-                    
-                    // Hide loading state
-                    loadingContainer.classList.add('hidden');
                 } else {
-                    // No data found
-                    console.log('No data found for session:', sessionSelect.value);
                     levelsData = [];
-                    renderLevelChips();
-                    filterAndRender();
-                    loadingContainer.classList.add('hidden');
                 }
+                renderLevelChips();
+                filterAndRender();
+                loadingContainer.classList.add('hidden');
             }
 
-            // ===== Fetch available sessions =====
             async function fetchAvailableSessions() {
                 try {
-                    console.log('Fetching available sessions...');
-                    const response = await fetch(`${API_BASE_URL}/api/course-reps/sessions`);
-                    
-                    if (response.ok) {
-                        const result = await response.json();
-                        if (result.status === 'success' && result.data && result.data.length > 0) {
-                            // Populate session dropdown
+                    const res = await fetch(`${API_BASE_URL}/api/course-reps/sessions`);
+                    if (res.ok) {
+                        const result = await res.json();
+                        if (result.status === 'success' && Array.isArray(result.data) && result.data.length > 0) {
                             const currentValue = sessionSelect.value;
-                            sessionSelect.innerHTML = result.data.map(session => 
-                                `<option value="${session}" ${session === currentValue ? 'selected' : ''}>${session} Session</option>`
+                            sessionSelect.innerHTML = result.data.map(s =>
+                                `<option value="${escapeHtml(s)}" ${s === currentValue ? 'selected' : ''}>${escapeHtml(s)} Session</option>`
                             ).join('');
                             return;
                         }
                     }
-                    
-                    // If sessions endpoint fails or returns no data, use default sessions
-                    console.log('Using default sessions');
-                    const defaultSessions = ['2025/2026', '2024/2025', '2023/2024'];
-                    const currentValue = sessionSelect.value;
-                    sessionSelect.innerHTML = defaultSessions.map(session => 
-                        `<option value="${session}" ${session === currentValue ? 'selected' : ''}>${session} Session</option>`
-                    ).join('');
-                    
-                } catch (error) {
-                    console.error('Failed to fetch sessions, using defaults:', error);
-                    // Use default sessions on error
-                    const defaultSessions = ['2025/2026', '2024/2025', '2023/2024'];
-                    const currentValue = sessionSelect.value;
-                    sessionSelect.innerHTML = defaultSessions.map(session => 
-                        `<option value="${session}" ${session === currentValue ? 'selected' : ''}>${session} Session</option>`
-                    ).join('');
+                } catch (err) {
+                    console.warn('Sessions endpoint unavailable:', err.message);
                 }
+                // Defaults preserved (already in HTML)
             }
 
-            // ===== Fetch course reps from API =====
             async function fetchCourseReps() {
+                loadingContainer.classList.remove('hidden');
+                gridContainer.classList.add('hidden');
+                listContainer.classList.add('hidden');
+                emptyState.classList.add('hidden');
+
+                const session = sessionSelect.value;
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000);
+
                 try {
-                    // Show loading state
-                    loadingContainer.classList.remove('hidden');
-                    gridContainer.classList.add('hidden');
-                    listContainer.classList.add('hidden');
-                    emptyState.classList.add('hidden');
-                    
-                    const session = sessionSelect.value;
-                    console.log(`Fetching course reps for session: ${session}`);
-                    
-                    // Create abort controller for timeout
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-                    
-                    // First, check if API is accessible
-                    console.log('Checking API availability...');
-                    try {
-                        const baseCheck = await fetch(`${API_BASE_URL}/api/course-reps/sessions`, {
-                            signal: controller.signal
-                        });
-                        
-                        if (baseCheck.ok) {
-                            const sessionsData = await baseCheck.json();
-                            console.log('Available sessions:', sessionsData);
-                        }
-                    } catch (err) {
-                        console.log('Sessions endpoint not available, continuing...');
-                    }
-                    
-                    // Now fetch course reps
                     const url = `${API_BASE_URL}/api/course-reps?session=${encodeURIComponent(session)}`;
-                    console.log('Fetching from:', url);
-                    
-                    const response = await fetch(url, {
-                        signal: controller.signal
-                    });
-                    
+                    const response = await fetch(url, { signal: controller.signal });
                     clearTimeout(timeoutId);
-                    
-                    if (!response.ok) {
-                        if (response.status === 404) {
-                            // Try alternative session format
-                            console.log('Trying alternative session format...');
-                            const altSession = session.replace('/', '-');
-                            const altUrl = `${API_BASE_URL}/api/course-reps?session=${encodeURIComponent(altSession)}`;
-                            console.log('Trying:', altUrl);
-                            
-                            const altResponse = await fetch(altUrl);
-                            if (altResponse.ok) {
-                                const altResult = await altResponse.json();
-                                console.log('Alternative format worked!', altResult);
-                                processApiResponse(altResult);
-                                return;
-                            }
+
+                    if (!response.ok && response.status === 404) {
+                        // Fallback: try alternative format
+                        const altSession = session.replace('/', '-');
+                        const altUrl = `${API_BASE_URL}/api/course-reps?session=${encodeURIComponent(altSession)}`;
+                        const altRes = await fetch(altUrl);
+                        if (altRes.ok) {
+                            const altResult = await altRes.json();
+                            processApiResponse(altResult);
+                            return;
                         }
-                        throw new Error(`HTTP error! status: ${response.status}`);
                     }
-                    
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+
                     const result = await response.json();
-                    console.log('API Response:', result);
-                    
                     processApiResponse(result);
-                    
                 } catch (error) {
-                    console.error('Failed to fetch course reps:', error);
-                    
-                    // Show error in UI
+                    clearTimeout(timeoutId);
                     loadingContainer.classList.add('hidden');
                     emptyState.classList.remove('hidden');
-                    
+
                     if (error.name === 'AbortError') {
                         emptyState.innerHTML = `
                             <i class="fas fa-clock" style="color: var(--amber-500);"></i>
                             <h3>Request Timeout</h3>
-                            <p>The server is taking too long to respond. The service might be starting up.</p>
-                            <p style="font-size: 0.8rem; margin-top: 1rem; color: var(--slate-500);">Please wait a moment and try again.</p>
-                            <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: var(--emerald-600); color: white; border: none; border-radius: 0.5rem; cursor: pointer; transition: all 0.3s;">
-                                <i class="fas fa-sync-alt"></i> Retry
-                            </button>
+                            <p>The server is taking too long to respond.</p>
+                            <p style="font-size: 0.8rem; margin-top: 1rem; color: var(--slate-500);">Please wait and try again.</p>
+                            <button type="button" data-action="reload">Retry</button>
                         `;
                     } else {
                         emptyState.innerHTML = `
                             <i class="fas fa-exclamation-triangle" style="color: var(--amber-500);"></i>
                             <h3>Failed to load data</h3>
                             <p>Please try again later or contact support.</p>
-                            <p style="font-size: 0.8rem; margin-top: 1rem; color: var(--slate-500);">${error.message}</p>
-                            <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: var(--emerald-600); color: white; border: none; border-radius: 0.5rem; cursor: pointer; transition: all 0.3s;">
-                                <i class="fas fa-sync-alt"></i> Retry
-                            </button>
+                            <p style="font-size: 0.8rem; margin-top: 1rem; color: var(--slate-500);">${escapeHtml(error.message)}</p>
+                            <button type="button" data-action="reload">Retry</button>
                         `;
                     }
                 }
             }
 
-            // ===== Populate level filter chips =====
+            // ============ RENDER CHIPS ============
             function renderLevelChips() {
-                const levels = ['all', ...new Set(levelsData.map(l => l.level))];
-                
-                // Sort levels numerically (100L, 200L, etc.)
-                levels.sort((a, b) => {
-                    if (a === 'all') return -1;
-                    if (b === 'all') return 1;
-                    const numA = parseInt(a);
-                    const numB = parseInt(b);
-                    return numA - numB;
+                const uniqueLevels = [...new Set(levelsData.map(l => l.level))].filter(Boolean);
+                uniqueLevels.sort((a, b) => {
+                    const na = parseInt(a, 10);
+                    const nb = parseInt(b, 10);
+                    if (isNaN(na) && isNaN(nb)) return String(a).localeCompare(String(b));
+                    if (isNaN(na)) return 1;
+                    if (isNaN(nb)) return -1;
+                    return na - nb;
                 });
-                
+                const levels = ['all', ...uniqueLevels];
+
                 levelFilters.innerHTML = levels.map(lvl => {
-                    const active = selectedLevel === lvl ? 'active' : '';
+                    const isActive = selectedLevel === lvl;
                     const icon = lvl === 'all' ? 'fa-layer-group' : 'fa-graduation-cap';
                     const label = lvl === 'all' ? 'All Levels' : lvl;
-                    return `<span class="chip ${active}" data-level="${lvl}"><i class="fas ${icon}"></i> ${label}</span>`;
+                    return `<button type="button" class="chip ${isActive ? 'active' : ''}" data-level="${escapeHtml(lvl)}"><i class="fas ${icon}"></i> ${escapeHtml(label)}</button>`;
                 }).join('');
-                
-                document.querySelectorAll('.chip').forEach(chip => {
-                    chip.addEventListener('click', () => {
-                        selectedLevel = chip.dataset.level;
-                        renderLevelChips();
-                        filterAndRender();
-                    });
-                });
             }
 
-            // ===== Filtering =====
+            levelFilters.addEventListener('click', (e) => {
+                const chip = e.target.closest('.chip');
+                if (!chip) return;
+                selectedLevel = chip.dataset.level;
+                renderLevelChips();
+                filterAndRender();
+            });
+
+            // ============ FILTER ============
             function filterLevels() {
                 let filtered = levelsData;
-                
-                // Filter by level
                 if (selectedLevel !== 'all') {
                     filtered = filtered.filter(l => l.level === selectedLevel);
                 }
-                
-                // Filter by search query
                 if (searchQuery) {
                     const q = searchQuery.toLowerCase();
-                    filtered = filtered.filter(l => 
-                        l.level.toLowerCase().includes(q) ||
-                        l.genRep.toLowerCase().includes(q) ||
-                        l.asstGenRep.toLowerCase().includes(q) ||
-                        (l.departments && l.departments.some(d => 
-                            (d.name && d.name.toLowerCase().includes(q)) || 
+                    filtered = filtered.filter(l =>
+                        (l.level || '').toLowerCase().includes(q) ||
+                        (l.genRep || '').toLowerCase().includes(q) ||
+                        (l.asstGenRep || '').toLowerCase().includes(q) ||
+                        (l.departments && l.departments.some(d =>
+                            (d.name && d.name.toLowerCase().includes(q)) ||
                             (d.rep && d.rep.toLowerCase().includes(q))
                         ))
                     );
                 }
-                
                 return filtered;
             }
 
             function filterAndRender() {
                 const filtered = filterLevels();
-                
                 if (filtered.length === 0) {
                     emptyState.classList.remove('hidden');
                     gridContainer.classList.add('hidden');
@@ -2159,9 +1471,7 @@
                     `;
                     return;
                 }
-                
                 emptyState.classList.add('hidden');
-                
                 if (currentView === 'grid') {
                     gridContainer.classList.remove('hidden');
                     listContainer.classList.add('hidden');
@@ -2173,30 +1483,38 @@
                 }
             }
 
-            // ===== Render functions =====
+            // ============ RENDER GRID ============
             function renderGrid(levels) {
-                let html = '';
-                levels.forEach((level, index) => {
+                gridContainer.innerHTML = levels.map((level, index) => {
                     const isExpanded = expandedLevel === level.level;
-                    html += `
-                        <div class="rep-card" data-level="${level.level}" style="animation-delay: ${index * 0.1}s">
+                    const deptItems = level.departments.length > 0
+                        ? level.departments.map(d => `
+                            <div class="dept-item">
+                                <div class="dept-name">${escapeHtml(d.name || 'Unknown Department')}</div>
+                                <div class="dept-rep"><i class="fas fa-user-circle"></i> <span class="${d.rep === 'Pending' ? 'pending' : ''}">${escapeHtml(d.rep || 'Pending')}</span></div>
+                            </div>
+                        `).join('')
+                        : `<div class="dept-item"><div class="dept-name">No departmental reps</div></div>`;
+
+                    return `
+                        <div class="rep-card" data-level="${escapeHtml(level.level)}" style="animation-delay: ${index * 0.1}s">
                             <div class="card-header">
                                 <i class="fas fa-graduation-cap"></i>
-                                <h3>${level.level}</h3>
+                                <h3>${escapeHtml(level.level)}</h3>
                             </div>
                             <div class="card-body">
                                 <div class="rep-item">
                                     <div class="rep-icon"><i class="fas fa-user-tie"></i></div>
                                     <div class="rep-info">
                                         <div class="rep-label">General Rep</div>
-                                        <div class="rep-name ${level.genRep === 'Not Assigned' ? 'not-assigned' : ''}">${level.genRep}</div>
+                                        <div class="rep-name ${level.genRep === 'Not Assigned' ? 'not-assigned' : ''}">${escapeHtml(level.genRep)}</div>
                                     </div>
                                 </div>
                                 <div class="rep-item">
                                     <div class="rep-icon"><i class="fas fa-user"></i></div>
                                     <div class="rep-info">
                                         <div class="rep-label">Assistant Gen Rep</div>
-                                        <div class="rep-name ${level.asstGenRep === 'Not Assigned' ? 'not-assigned' : ''}">${level.asstGenRep}</div>
+                                        <div class="rep-name ${level.asstGenRep === 'Not Assigned' ? 'not-assigned' : ''}">${escapeHtml(level.asstGenRep)}</div>
                                     </div>
                                 </div>
                                 <div class="rep-item">
@@ -2207,88 +1525,107 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="expand-section ${isExpanded ? 'open' : ''}" id="expand-${level.level}">
+                            <div class="expand-section ${isExpanded ? 'open' : ''}">
                                 <div class="expand-content">
-                                    <div class="dept-grid">
-                                        ${level.departments.map(d => `
-                                            <div class="dept-item">
-                                                <div class="dept-name">${d.name || 'Unknown Department'}</div>
-                                                <div class="dept-rep"><i class="fas fa-user-circle"></i> <span class="${d.rep === 'Pending' ? 'pending' : ''}">${d.rep || 'Pending'}</span></div>
-                                            </div>
-                                        `).join('')}
-                                    </div>
+                                    <div class="dept-grid">${deptItems}</div>
                                 </div>
                             </div>
-                            <button class="expand-btn" onclick="toggleGridExpand('${level.level}')">
+                            <button type="button" class="expand-btn" data-action="toggle-grid" data-level="${escapeHtml(level.level)}">
                                 <i class="fas ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'}"></i>
                                 <span>${isExpanded ? 'Hide Departments' : 'View Departments'}</span>
                             </button>
                         </div>
                     `;
-                });
-                gridContainer.innerHTML = html;
+                }).join('');
             }
 
-            window.toggleGridExpand = (level) => {
-                expandedLevel = expandedLevel === level ? null : level;
-                filterAndRender();
-            };
-
+            // ============ RENDER LIST ============
             function renderList(levels) {
-                let html = '';
-                levels.forEach((level, index) => {
+                listContainer.innerHTML = levels.map((level, index) => {
                     const isExpanded = expandedListItem === level.level;
-                    html += `
+                    const deptItems = level.departments.length > 0
+                        ? level.departments.map(d => `
+                            <div class="dept-item">
+                                <div class="dept-name">${escapeHtml(d.name || 'Unknown Department')}</div>
+                                <div class="dept-rep"><i class="fas fa-user-circle"></i> <span class="${d.rep === 'Pending' ? 'pending' : ''}">${escapeHtml(d.rep || 'Pending')}</span></div>
+                            </div>
+                        `).join('')
+                        : `<div class="dept-item"><div class="dept-name">No departmental reps</div></div>`;
+
+                    return `
                         <div class="list-item" style="animation-delay: ${index * 0.1}s">
-                            <div class="list-header" onclick="toggleListExpand('${level.level}')">
+                            <div class="list-header" data-action="toggle-list" data-level="${escapeHtml(level.level)}" role="button" tabindex="0" aria-expanded="${isExpanded}">
                                 <div class="list-level">
                                     <i class="fas fa-graduation-cap"></i>
-                                    <span>${level.level}</span>
+                                    <span>${escapeHtml(level.level)}</span>
                                 </div>
                                 <div class="list-summary">
-                                    <span class="summary-item"><i class="fas fa-user-tie"></i> <strong>Gen Rep:</strong> ${level.genRep}</span>
-                                    <span class="summary-item"><i class="fas fa-user"></i> <strong>Asst:</strong> ${level.asstGenRep}</span>
+                                    <span class="summary-item"><i class="fas fa-user-tie"></i> <strong>Gen Rep:</strong> ${escapeHtml(level.genRep)}</span>
+                                    <span class="summary-item"><i class="fas fa-user"></i> <strong>Asst:</strong> ${escapeHtml(level.asstGenRep)}</span>
                                     <span class="summary-item"><i class="fas fa-users"></i> <strong>Depts:</strong> ${level.deptCount}</span>
                                 </div>
                                 <i class="fas ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'} expand-icon"></i>
                             </div>
                             <div class="list-expand ${isExpanded ? 'open' : ''}">
-                                <div class="list-dept-grid">
-                                    ${level.departments.map(d => `
-                                        <div class="dept-item">
-                                            <div class="dept-name">${d.name || 'Unknown Department'}</div>
-                                            <div class="dept-rep"><i class="fas fa-user-circle"></i> <span class="${d.rep === 'Pending' ? 'pending' : ''}">${d.rep || 'Pending'}</span></div>
-                                        </div>
-                                    `).join('')}
-                                </div>
+                                <div class="list-dept-grid">${deptItems}</div>
                             </div>
                         </div>
                     `;
-                });
-                listContainer.innerHTML = html;
+                }).join('');
             }
 
-            window.toggleListExpand = (level) => {
+            // ============ EVENT DELEGATION ============
+            gridContainer.addEventListener('click', (e) => {
+                const btn = e.target.closest('[data-action="toggle-grid"]');
+                if (!btn) return;
+                const level = btn.dataset.level;
+                expandedLevel = expandedLevel === level ? null : level;
+                filterAndRender();
+            });
+
+            listContainer.addEventListener('click', (e) => {
+                const header = e.target.closest('[data-action="toggle-list"]');
+                if (!header) return;
+                const level = header.dataset.level;
                 expandedListItem = expandedListItem === level ? null : level;
                 filterAndRender();
-            };
+            });
 
-            // ===== View toggle =====
+            listContainer.addEventListener('keydown', (e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                const header = e.target.closest('[data-action="toggle-list"]');
+                if (!header) return;
+                e.preventDefault();
+                const level = header.dataset.level;
+                expandedListItem = expandedListItem === level ? null : level;
+                filterAndRender();
+            });
+
+            emptyState.addEventListener('click', (e) => {
+                const btn = e.target.closest('[data-action="reload"]');
+                if (!btn) return;
+                window.location.reload();
+            });
+
+            // ============ VIEW TOGGLE ============
             gridViewBtn.addEventListener('click', () => {
                 currentView = 'grid';
                 gridViewBtn.classList.add('active');
+                gridViewBtn.setAttribute('aria-pressed', 'true');
                 listViewBtn.classList.remove('active');
+                listViewBtn.setAttribute('aria-pressed', 'false');
                 filterAndRender();
             });
-            
             listViewBtn.addEventListener('click', () => {
                 currentView = 'list';
                 listViewBtn.classList.add('active');
+                listViewBtn.setAttribute('aria-pressed', 'true');
                 gridViewBtn.classList.remove('active');
+                gridViewBtn.setAttribute('aria-pressed', 'false');
                 filterAndRender();
             });
 
-            // ===== Search with debounce =====
+            // ============ SEARCH (debounced) ============
             let searchTimeout;
             searchInput.addEventListener('input', (e) => {
                 clearTimeout(searchTimeout);
@@ -2298,32 +1635,27 @@
                 }, 300);
             });
 
-            // ===== Session change =====
+            // ============ SESSION CHANGE ============
             sessionSelect.addEventListener('change', () => {
-                // Reset expanded states
                 expandedLevel = null;
                 expandedListItem = null;
                 selectedLevel = 'all';
-                
-                // Show loading with fade out effect
                 gridContainer.style.opacity = '0';
                 listContainer.style.opacity = '0';
-                
                 setTimeout(() => {
-                    fetchCourseReps();
-                }, 300);
+                    fetchCourseReps().then(() => {
+                        gridContainer.style.opacity = '1';
+                        listContainer.style.opacity = '1';
+                    });
+                }, 200);
             });
 
-            // ===== Initialize =====
-            async function initialize() {
-                // First fetch available sessions
+            // ============ INIT ============
+            (async function init() {
+                setupNavbar();
                 await fetchAvailableSessions();
-                // Then fetch course reps
                 await fetchCourseReps();
-            }
-            
-            // Start initialization
-            initialize();
+            })();
         })();
     </script>
 </body>
