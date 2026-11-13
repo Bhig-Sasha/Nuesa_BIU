@@ -664,9 +664,7 @@
             box-shadow: var(--shadow-md);
             transform: translateY(-2px);
         }
-        .level-card.assigned {
-            border-left: 4px solid var(--success);
-        }
+        .level-card.assigned { border-left: 4px solid var(--success); }
         .level-card.vacant {
             border-left: 4px solid var(--warning);
             background: var(--surface-muted);
@@ -730,9 +728,7 @@
             color: var(--text-dim);
             margin-top: 2px;
         }
-        .rep-profile-actions {
-            display: flex; gap: 6px;
-        }
+        .rep-profile-actions { display: flex; gap: 6px; }
 
         /* ============================================================
            DEPARTMENTAL REPS — Department Cards
@@ -1097,9 +1093,7 @@
         /* ============================================================
            FORM
            ============================================================ */
-        .form-step {
-            margin-bottom: 24px;
-        }
+        .form-step { margin-bottom: 24px; }
         .form-step:last-child { margin-bottom: 0; }
         .form-step-header {
             display: flex; align-items: center; gap: 10px;
@@ -1562,14 +1556,11 @@
                 <div class="page-header">
                     <div>
                         <h1 class="page-title">Course Representatives</h1>
-                        <p class="page-subtitle">Manage level-wide and departmental course representatives, appointments and representative history.</p>
+                        <p class="page-subtitle">Manage General and Departmental Course Representatives.</p>
                     </div>
                     <div class="page-header-actions">
                         <button class="btn btn-secondary" id="exportBtn">
                             <i class="fas fa-download"></i> Export
-                        </button>
-                        <button class="btn btn-secondary" id="importBtn">
-                            <i class="fas fa-file-import"></i> Import
                         </button>
                         <button class="btn btn-gold" id="addRepBtn">
                             <i class="fas fa-user-plus"></i> Add Representative
@@ -2169,7 +2160,6 @@
         } catch (err) {
             console.warn('Could not load sessions:', err);
             document.getElementById('sessionSelector').innerHTML = '<option value="">No sessions configured</option>';
-            // Fallback default
             currentSession = new Date().getFullYear() + '/' + (new Date().getFullYear() + 1);
         }
     }
@@ -2264,25 +2254,19 @@
     }
 
     function buildLevelAndDepartmentOptions() {
-        // Levels from existing reps + defaults
         const levelsFromReps = allReps.map(r => r.level).filter(Boolean);
         levels = [...new Set([...DEFAULT_LEVELS, ...levelsFromReps])].sort();
 
-        // Departments from existing reps + defaults
         const deptsFromReps = allReps.map(r => r.department).filter(Boolean);
         departments = [...new Set([...DEFAULT_DEPARTMENTS, ...deptsFromReps])].sort();
 
-        // Populate filter dropdowns
         document.getElementById('filterLevel').innerHTML = '<option value="">All Levels</option>' +
             levels.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join('');
         document.getElementById('filterDepartment').innerHTML = '<option value="">All Departments</option>' +
             departments.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
-
-        // Populate form department
         document.getElementById('rDepartment').innerHTML = '<option value="">Select department</option>' +
             departments.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
 
-        // Populate level tabs
         const levelTabs = document.getElementById('levelTabs');
         levelTabs.innerHTML = levels.map(l => `
             <button class="level-tab ${l === currentLevelTab ? 'active' : ''}" data-level="${escapeHtml(l)}">
@@ -2352,16 +2336,6 @@
         );
 
         document.getElementById('generalCount').textContent = `${sessionReps.length} assigned`;
-
-        if (sessionReps.length === 0 && levels.length === 0) {
-            grid.innerHTML = `
-                <div class="empty-state" style="grid-column: 1 / -1;">
-                    <div class="empty-state-icon"><i class="fas fa-user-tie"></i></div>
-                    <h3>No general reps yet</h3>
-                    <p>Add the first general course rep to get started.</p>
-                </div>`;
-            return;
-        }
 
         grid.innerHTML = levels.map(lvl => {
             const rep = sessionReps.find(r => r.level === lvl && r.status === 'active')
@@ -2664,7 +2638,6 @@
             return;
         }
 
-        // Group reps by session
         const bySession = {};
         allReps.forEach(r => {
             const s = r.session || 'Unknown';
@@ -2756,11 +2729,9 @@
         const title = document.getElementById('repModalTitle');
         const sessionSelector = document.getElementById('rSession');
 
-        // Defaults
         if (currentSession) sessionSelector.value = currentSession;
 
         if (id) {
-            // EDIT MODE
             const r = allReps.find(x => String(x.id) === String(id));
             if (!r) return;
             title.innerHTML = '<i class="fas fa-pen"></i> Edit Representative';
@@ -2771,7 +2742,6 @@
             document.getElementById('rDepartment').value = r.department || '';
             document.getElementById('rStatus').value = r.status || 'active';
 
-            // Find matching member
             const matchingMember = allMembers.find(m =>
                 String(m.matric_no || '').toLowerCase() === String(r.matric_no || '').toLowerCase() ||
                 String(m.id) === String(r.student_id)
@@ -2780,7 +2750,6 @@
             if (matchingMember) {
                 selectStudent(matchingMember);
             } else {
-                // Show rep info even without member record
                 selectedStudent = {
                     id: r.student_id || r.id,
                     full_name: r.full_name,
@@ -2799,13 +2768,11 @@
                 document.getElementById('repSubmitBtn').disabled = false;
             }
 
-            // Set picture
             if (r.profile_picture) {
                 selectedPicture = { url: r.profile_picture };
                 showPicturePreview(r.profile_picture);
             }
         } else {
-            // ADD MODE
             title.innerHTML = '<i class="fas fa-user-plus"></i> Add New Representative';
             if (prefill) {
                 selectedRepType = prefill.type || 'general';
@@ -2826,13 +2793,11 @@
     }
 
     function updateRepTypeUI() {
-        // Toggle selected class on rep type options
         document.querySelectorAll('.rep-type-option').forEach(opt => {
             if (opt.dataset.type === selectedRepType) opt.classList.add('selected');
             else opt.classList.remove('selected');
         });
 
-        // Show/hide department field
         const deptField = document.getElementById('deptField');
         const deptSelect = document.getElementById('rDepartment');
         if (selectedRepType === 'departmental') {
@@ -2898,7 +2863,6 @@
         document.getElementById('selectedStudentMeta').textContent =
             `${member.matric_no || '—'} · ${member.department || ''} · ${member.level || ''}`;
 
-        // Auto-populate department/level from member
         if (member.department && !document.getElementById('rDepartment').value) {
             document.getElementById('rDepartment').value = member.department;
         }
@@ -2906,7 +2870,6 @@
             document.getElementById('rLevel').value = member.level;
         }
 
-        // Load member's existing picture if we have one
         if (member.profile_picture) {
             selectedPicture = { url: member.profile_picture };
             showPicturePreview(member.profile_picture);
@@ -3014,7 +2977,6 @@
             return;
         }
 
-        // Check for duplicate active assignment
         const existing = allReps.find(r =>
             String(r.id) !== String(editingRepId || '') &&
             r.status === 'active' &&
@@ -3034,7 +2996,6 @@
             return;
         }
 
-        // Check for duplicate student assignment (same student in same session/type/scope)
         const studentConflict = allReps.find(r =>
             String(r.id) !== String(editingRepId || '') &&
             r.status === 'active' &&
@@ -3153,7 +3114,6 @@
 
         document.getElementById('profileToggleText').textContent = r.status === 'active' ? 'Deactivate' : 'Reactivate';
 
-        // History
         const historyEl = document.getElementById('profileHistory');
         const history = allReps.filter(h =>
             h.matric_no === r.matric_no && h.id !== r.id
@@ -3243,7 +3203,7 @@
     }
 
     // ============================================================
-    // EXPORT / IMPORT
+    // EXPORT
     // ============================================================
     function exportReps() {
         const toExport = filteredReps.length > 0
@@ -3274,18 +3234,6 @@
         a.click();
         URL.revokeObjectURL(url);
         showToast(`Exported ${rows.length} representatives`, 'success');
-    }
-
-    function importReps() {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.csv,.xlsx,.xls';
-        input.onchange = async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            showToast(`Import of "${file.name}" is coming soon`, 'info');
-        };
-        input.click();
     }
 
     // ============================================================
@@ -3423,13 +3371,11 @@
         setupHeaderScroll();
         setupButtonRipple();
 
-        // Static wiring
         document.getElementById('logoutBtn').addEventListener('click', () => showModal('logoutModal'));
         document.getElementById('confirmLogout').addEventListener('click', confirmLogout);
         document.getElementById('notificationBtn').addEventListener('click', () => { window.location.href = 'messages.html'; });
         document.getElementById('addRepBtn').addEventListener('click', () => openAddRepModal());
         document.getElementById('exportBtn').addEventListener('click', exportReps);
-        document.getElementById('importBtn').addEventListener('click', importReps);
         document.getElementById('clearFilters').addEventListener('click', clearFilters);
         document.getElementById('confirmRemoveBtn').addEventListener('click', handleRemove);
         document.getElementById('clearSelectedStudent').addEventListener('click', clearStudentSelection);
@@ -3443,7 +3389,6 @@
             }
         });
 
-        // Tab switching
         document.querySelectorAll('.main-tab').forEach(tab => {
             tab.addEventListener('click', () => {
                 currentTab = tab.dataset.panel;
@@ -3454,14 +3399,12 @@
             });
         });
 
-        // Session change
         document.getElementById('sessionSelector').addEventListener('change', (e) => {
             currentSession = e.target.value;
             updateStats();
             renderAll();
         });
 
-        // Rep type selection
         document.querySelectorAll('.rep-type-option').forEach(opt => {
             opt.addEventListener('click', () => {
                 selectedRepType = opt.dataset.type;
@@ -3470,7 +3413,6 @@
             });
         });
 
-        // Student search
         const studentSearch = document.getElementById('studentSearch');
         studentSearch.addEventListener('input', () => openStudentResults(studentSearch.value));
         studentSearch.addEventListener('focus', () => openStudentResults(studentSearch.value));
@@ -3480,19 +3422,16 @@
             }
         });
 
-        // Filters
         ['searchInput', 'filterType', 'filterLevel', 'filterDepartment', 'filterStatus'].forEach(id => {
             document.getElementById(id).addEventListener('input', applyFilters);
         });
 
-        // Form change handlers
         ['rSession', 'rLevel', 'rDepartment'].forEach(id => {
             document.getElementById(id).addEventListener('change', checkDuplicateAssignment);
         });
 
         document.getElementById('repForm').addEventListener('submit', handleRepSubmit);
 
-        // Profile drawer
         document.getElementById('profileOverlay').addEventListener('click', closeProfileDrawer);
         document.getElementById('profileEditBtn').addEventListener('click', () => {
             if (viewingRep) {
@@ -3510,7 +3449,6 @@
             }
         });
 
-        // Escape key
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 ['repModal', 'mediaPickerModal', 'removeModal', 'logoutModal'].forEach(id => {
@@ -3523,7 +3461,6 @@
             }
         });
 
-        // Auth
         const ok = await checkAuth();
         if (!ok) return;
 
