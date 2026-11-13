@@ -41,9 +41,9 @@
         .logo-main{font-size:1.5rem;font-weight:900;color:var(--white);letter-spacing:-.05em;}
         .logo-highlight{font-size:1.5rem;font-weight:900;color:var(--amber-400);letter-spacing:-.05em;}
 
-        /* Flat desktop nav */
-        .nav-menu{display:flex;align-items:center;gap:1.75rem;}
-        .nav-menu>a{font-family:'Roboto Mono',monospace;font-size:.75rem;font-weight:600;letter-spacing:.1em;text-decoration:none;color:rgba(255,255,255,.9);transition:color .2s;position:relative;padding:.5rem 0;white-space:nowrap;}
+        /* Flat desktop nav — 12 items */
+        .nav-menu{display:flex;align-items:center;gap:1.25rem;}
+        .nav-menu>a{font-family:'Roboto Mono',monospace;font-size:.7rem;font-weight:600;letter-spacing:.06em;text-decoration:none;color:rgba(255,255,255,.9);transition:color .2s;position:relative;padding:.5rem 0;white-space:nowrap;}
         .nav-menu>a::after{content:'';position:absolute;bottom:0;left:0;width:0;height:2px;background-color:var(--amber-400);transition:width .3s;}
         .nav-menu>a:hover{color:var(--amber-400);}
         .nav-menu>a:hover::after{width:100%;}
@@ -56,7 +56,7 @@
         .hamburger.active span:nth-child(2){opacity:0;}
         .hamburger.active span:nth-child(3){transform:rotate(-45deg) translate(5px,-6px);background-color:var(--amber-400);}
 
-        /* Flat mobile overlay */
+        /* Flat mobile overlay — 12 items */
         .mobile-nav{position:fixed;top:0;left:0;width:100%;height:100vh;background:linear-gradient(135deg,var(--emerald-900),var(--emerald-800));display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:999;opacity:0;visibility:hidden;transition:opacity .4s,visibility .4s;padding:2rem;overflow-y:auto;}
         .mobile-nav.active{opacity:1;visibility:visible;}
         .mobile-nav>a{font-family:'Roboto Mono',monospace;font-size:1.5rem;font-weight:600;letter-spacing:.1em;text-decoration:none;color:var(--white);transition:color .3s,transform .3s,opacity .4s;display:inline-block;padding:.5rem 1rem;margin:.35rem 0;opacity:0;transform:translateY(20px);}
@@ -70,11 +70,16 @@
         .mobile-nav.active>a:nth-child(7){transition-delay:.35s;}
         .mobile-nav.active>a:nth-child(8){transition-delay:.40s;}
         .mobile-nav.active>a:nth-child(9){transition-delay:.45s;}
+        .mobile-nav.active>a:nth-child(10){transition-delay:.50s;}
+        .mobile-nav.active>a:nth-child(11){transition-delay:.55s;}
+        .mobile-nav.active>a:nth-child(12){transition-delay:.60s;}
         .mobile-nav>a:hover{color:var(--amber-400);transform:translateX(10px);}
         .mobile-nav>a.active{color:var(--amber-400);border-left:4px solid var(--amber-400);}
 
         .main-content{padding-top:80px;min-height:100vh;}
-        @media(max-width:1024px){.nav-menu{display:none;}.hamburger{display:block;}}
+
+        /* Hamburger breakpoint — 12 items need 1280px */
+        @media(max-width:1280px){.nav-menu{display:none;}.hamburger{display:block;}}
 
         /* ===== HERO ===== */
         .hero{position:relative;background:linear-gradient(135deg,var(--emerald-800),var(--emerald-600),var(--teal-500));padding:6rem 0;overflow:hidden;background-size:200% 200%;animation:gradientShift 10s ease infinite;}
@@ -319,7 +324,7 @@
     </style>
 </head>
 <body>
-    <!-- ===== NAVBAR (flat, href-driven) ===== -->
+    <!-- ===== NAVBAR (12 items, flat, href-driven) ===== -->
     <nav class="navbar" id="navbar">
         <div class="nav-container">
             <div class="nav-flex">
@@ -336,6 +341,9 @@
                     <a href="admission.html">ADMISSION</a>
                     <a href="courseReps.html">COURSE REPS</a>
                     <a href="news.html">NEWS</a>
+                    <a href="elections.html">ELECTIONS</a>
+                    <a href="payment.html">PAYMENTS</a>
+                    <a href="gallery.html">GALLERY</a>
                     <a href="contacts.html">CONTACT</a>
                 </div>
                 <button class="hamburger" id="hamburger" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobileNav">
@@ -352,12 +360,14 @@
             <a href="admission.html">ADMISSION</a>
             <a href="courseReps.html">COURSE REPS</a>
             <a href="news.html">NEWS</a>
+            <a href="elections.html">ELECTIONS</a>
+            <a href="payment.html">PAYMENTS</a>
+            <a href="gallery.html">GALLERY</a>
             <a href="contacts.html">CONTACT</a>
         </div>
     </nav>
 
     <div class="main-content">
-        <!-- Hero -->
         <div class="hero">
             <div class="hero-blob-1"></div>
             <div class="hero-blob-2"></div>
@@ -377,7 +387,6 @@
             </div>
         </div>
 
-        <!-- Events -->
         <div class="container py-12">
             <div class="filter-tabs" id="filterTabs" role="group" aria-label="Filter events"></div>
 
@@ -471,11 +480,9 @@
 (function () {
     'use strict';
 
-    // ============ CONFIG ============
     const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
     const FETCH_TIMEOUT_MS = 20000;
 
-    // ============ HELPERS ============
     function escapeHtml(s) {
         if (s === null || s === undefined) return '';
         return String(s)
@@ -489,7 +496,6 @@
         return (last.replace(/\.html$/i, '') || 'index').toLowerCase();
     }
 
-    // ============ NAVBAR ============
     const navbar = document.getElementById('navbar');
     const hamburger = document.getElementById('hamburger');
     const mobileNav = document.getElementById('mobileNav');
@@ -533,7 +539,6 @@
         if (e.key === 'Escape' && mobileNav.classList.contains('active')) closeMobile();
     });
 
-    // ============ EVENTS STATE ============
     let activeFilter = 'All Events';
     let viewMode = 'grid';
     let searchQuery = '';
@@ -549,7 +554,6 @@
     const gridViewBtn = document.getElementById('gridViewBtn');
     const listViewBtn = document.getElementById('listViewBtn');
 
-    // ============ FORMATTERS ============
     function formatDate(d) {
         if (!d) return 'TBA';
         const date = new Date(d);
@@ -600,7 +604,6 @@
         return allEvents.filter(e => normalisedStatus(e) === filter.toLowerCase()).length;
     }
 
-    // ============ RENDER: FILTERS ============
     function renderFilterTabs() {
         const filters = ['All Events', 'Upcoming', 'Ongoing', 'Postponed', 'Past'];
         filterTabs.innerHTML = filters.map(f => {
@@ -619,7 +622,6 @@
         renderEvents();
     });
 
-    // ============ RENDER: EVENTS ============
     function renderEvents() {
         const filtered = filterEvents();
         eventsCount.textContent = `${filtered.length} event${filtered.length !== 1 ? 's' : ''}`;
@@ -700,7 +702,6 @@
         if (ev) openModal(ev);
     });
 
-    // ============ MODAL ============
     let currentModal = null;
     function closeModal() {
         if (currentModal) {
@@ -809,7 +810,6 @@
         window.open(url, '_blank', 'noopener,noreferrer');
     }
 
-    // ============ SEARCH / VIEW ============
     toggleSearchBtn.addEventListener('click', () => {
         const show = searchContainer.classList.contains('hidden');
         searchContainer.classList.toggle('hidden', !show);
@@ -832,7 +832,6 @@
         renderEvents();
     });
 
-    // ============ DATA LOAD ============
     async function apiFetch(path) {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);

@@ -35,7 +35,7 @@
             color: var(--gray-800);
             line-height: 1.5;
             overflow-x: hidden;
-            padding-top: 80px; /* offset for fixed navbar */
+            padding-top: 80px;
         }
 
         body.menu-open { overflow: hidden; }
@@ -102,18 +102,18 @@
             letter-spacing: -0.05em;
         }
 
-        /* Flat desktop nav: direct <a> children of .nav-menu */
+        /* Flat desktop nav — 12 items, tighter gap, smaller font */
         .nav-menu {
             display: flex;
             align-items: center;
-            gap: 1.75rem;
+            gap: 1.25rem;
         }
 
         .nav-menu > a {
             font-family: 'Roboto Mono', monospace;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 600;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.06em;
             text-decoration: none;
             color: rgba(255, 255, 255, 0.9);
             transition: color 0.2s;
@@ -168,7 +168,7 @@
             background-color: var(--amber-400);
         }
 
-        /* Flat mobile overlay: direct <a> children of .mobile-nav */
+        /* Flat mobile overlay */
         .mobile-nav {
             position: fixed;
             top: 0;
@@ -215,6 +215,9 @@
         .mobile-nav.active > a:nth-child(7)  { transition-delay: 0.35s; }
         .mobile-nav.active > a:nth-child(8)  { transition-delay: 0.40s; }
         .mobile-nav.active > a:nth-child(9)  { transition-delay: 0.45s; }
+        .mobile-nav.active > a:nth-child(10) { transition-delay: 0.50s; }
+        .mobile-nav.active > a:nth-child(11) { transition-delay: 0.55s; }
+        .mobile-nav.active > a:nth-child(12) { transition-delay: 0.60s; }
 
         .mobile-nav > a:hover { color: var(--amber-400); transform: translateX(10px); }
         .mobile-nav > a.active {
@@ -222,7 +225,8 @@
             border-left: 4px solid var(--amber-400);
         }
 
-        @media screen and (max-width: 1024px) {
+        /* Hamburger breakpoint — 12 items need 1280px */
+        @media screen and (max-width: 1280px) {
             .nav-menu { display: none; }
             .hamburger { display: block; }
         }
@@ -595,7 +599,7 @@
     </style>
 </head>
 <body>
-    <!-- ===== NAVBAR (flat, href-driven) ===== -->
+    <!-- ===== NAVBAR (12 items, flat, href-driven) ===== -->
     <nav class="navbar" id="navbar">
         <div class="nav-container">
             <div class="nav-flex">
@@ -604,7 +608,7 @@
                     <span class="logo-highlight">BIU</span>
                 </a>
 
-                <!-- Flat desktop nav -->
+                <!-- Flat desktop nav — 12 items -->
                 <div class="nav-menu" id="desktopLinks">
                     <a href="index.html">HOME</a>
                     <a href="about.html">ABOUT</a>
@@ -614,6 +618,9 @@
                     <a href="admission.html">ADMISSION</a>
                     <a href="courseReps.html">COURSE REPS</a>
                     <a href="news.html">NEWS</a>
+                    <a href="elections.html">ELECTIONS</a>
+                    <a href="payment.html">PAYMENTS</a>
+                    <a href="gallery.html">GALLERY</a>
                     <a href="contacts.html">CONTACT</a>
                 </div>
 
@@ -625,7 +632,7 @@
             </div>
         </div>
 
-        <!-- Flat mobile nav -->
+        <!-- Flat mobile nav — 12 items -->
         <div class="mobile-nav" id="mobileNav" aria-hidden="true">
             <a href="index.html">HOME</a>
             <a href="about.html">ABOUT</a>
@@ -635,6 +642,9 @@
             <a href="admission.html">ADMISSION</a>
             <a href="courseReps.html">COURSE REPS</a>
             <a href="news.html">NEWS</a>
+            <a href="elections.html">ELECTIONS</a>
+            <a href="payment.html">PAYMENTS</a>
+            <a href="gallery.html">GALLERY</a>
             <a href="contacts.html">CONTACT</a>
         </div>
     </nav>
@@ -912,7 +922,6 @@
             const desktopLinks = document.querySelectorAll('.nav-menu > a');
             const mobileLinks = document.querySelectorAll('.mobile-nav > a');
 
-            // Derive slug from a URL (handles .html, trailing slashes, /, root)
             function slugFromUrl(url) {
                 let p = url.split('#')[0].split('?')[0];
                 if (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1);
@@ -997,9 +1006,7 @@
                     if (!panel) return;
                     if (key === tabId) {
                         panel.classList.remove('hidden');
-                        // restart fade animation
                         panel.style.animation = 'none';
-                        // eslint-disable-next-line no-unused-expressions
                         panel.offsetHeight;
                         panel.style.animation = 'fadeSlide 0.3s ease-out';
                     } else {
@@ -1012,7 +1019,6 @@
                 btn.addEventListener('click', () => activateTab(btn.dataset.tab));
             });
 
-            // Optional: deep-link via hash (#rules, #timeline, #apply)
             const hash = (window.location.hash || '').replace('#', '');
             if (hash && panels[hash]) activateTab(hash);
             else activateTab('requirements');

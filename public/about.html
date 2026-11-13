@@ -122,26 +122,28 @@
 
         .logo-link:hover .logo-highlight { color: var(--amber-300); }
 
+        /* 12 nav items → switch to hamburger at 1280px so it doesn't crowd */
         .desktop-links { display: none; }
 
-        @media (min-width: 1024px) {
+        @media (min-width: 1280px) {
             .desktop-links {
                 display: flex;
                 align-items: center;
-                gap: 1.5rem;
+                gap: 1.25rem;
             }
         }
 
         .nav-link {
             font-family: 'Roboto Mono', monospace;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 600;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.06em;
             text-decoration: none;
             color: rgba(255, 255, 255, 0.9);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             padding: 0.5rem 0;
             position: relative;
+            white-space: nowrap;
         }
 
         .nav-link::after {
@@ -178,7 +180,7 @@
             transform: rotate(90deg);
         }
 
-        @media (min-width: 1024px) { .mobile-menu-btn { display: none; } }
+        @media (min-width: 1280px) { .mobile-menu-btn { display: none; } }
 
         .mobile-overlay {
             position: fixed;
@@ -1014,7 +1016,7 @@
     </style>
 </head>
 <body>
-    <!-- ===== NAVBAR (flat, href-driven, no data-path) ===== -->
+    <!-- ===== NAVBAR (12 items, flat, href-driven) ===== -->
     <nav class="navbar" id="navbar">
         <div class="nav-container">
             <div class="nav-flex">
@@ -1032,6 +1034,9 @@
                     <a href="./admission.html" class="nav-link">ADMISSION</a>
                     <a href="./courseReps.html" class="nav-link">COURSE REPS</a>
                     <a href="./news.html" class="nav-link">NEWS</a>
+                    <a href="./elections.html" class="nav-link">ELECTIONS</a>
+                    <a href="./payment.html" class="nav-link">PAYMENTS</a>
+                    <a href="./gallery.html" class="nav-link">GALLERY</a>
                     <a href="./contacts.html" class="nav-link">CONTACT</a>
                 </div>
 
@@ -1050,6 +1055,9 @@
             <a href="./admission.html" class="mobile-link">ADMISSION</a>
             <a href="./courseReps.html" class="mobile-link">COURSE REPS</a>
             <a href="./news.html" class="mobile-link">NEWS</a>
+            <a href="./elections.html" class="mobile-link">ELECTIONS</a>
+            <a href="./payment.html" class="mobile-link">PAYMENTS</a>
+            <a href="./gallery.html" class="mobile-link">GALLERY</a>
             <a href="./contacts.html" class="mobile-link">CONTACT</a>
         </div>
     </nav>
@@ -1389,19 +1397,14 @@
             const desktopLinks = document.querySelectorAll('.desktop-links .nav-link');
             const mobileLinks = document.querySelectorAll('.mobile-link');
 
-            // ---- Derive active state from href vs current URL ----
             function getCurrentSlug() {
                 let path = window.location.pathname;
-                // Strip trailing slash except for root
                 if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
-                // Get last segment
                 const last = path.split('/').pop() || 'index';
-                // Strip .html
                 const clean = last.replace(/\.html$/i, '') || 'index';
                 return clean.toLowerCase();
             }
 
-            // Normalise an href to a comparable slug
             function hrefToSlug(href) {
                 if (!href) return '';
                 let h = href.split('#')[0].split('?')[0];
@@ -1419,7 +1422,6 @@
                     Array.from(mobileLinks)
                 ).forEach(link => {
                     const target = hrefToSlug(link.getAttribute('href'));
-                    // Treat "index" and "home" as same
                     const isHome = (current === 'index' || current === '') && target === 'index';
                     if (target === current || isHome) {
                         link.classList.add('active');
@@ -1429,7 +1431,6 @@
                 });
             }
 
-            // ---- Scroll shrink ----
             function handleScroll() {
                 if (window.scrollY > 20) navbar.classList.add('scrolled');
                 else navbar.classList.remove('scrolled');
@@ -1437,7 +1438,6 @@
             window.addEventListener('scroll', handleScroll);
             handleScroll();
 
-            // ---- Mobile overlay ----
             function openMobile() {
                 mobileOverlay.classList.add('open');
                 menuIcon.className = 'fas fa-times fa-2x';
@@ -1462,12 +1462,10 @@
                 toggleMobile();
             });
 
-            // Close mobile overlay when a link inside is clicked (native navigation proceeds)
             mobileLinks.forEach(link => {
                 link.addEventListener('click', () => closeMobile());
             });
 
-            // Click outside closes overlay
             document.addEventListener('click', (e) => {
                 if (mobileOverlay.classList.contains('open')) {
                     if (!mobileOverlay.contains(e.target) && !mobileBtn.contains(e.target)) {
@@ -1476,12 +1474,10 @@
                 }
             });
 
-            // Escape closes
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape' && mobileOverlay.classList.contains('open')) closeMobile();
             });
 
-            // Init
             setActiveFromHref();
         })();
     </script>

@@ -38,18 +38,23 @@
         .logo-link:hover{transform:scale(1.05);}
         .logo-main{font-size:1.5rem;font-weight:900;color:var(--white);letter-spacing:-.05em;}
         .logo-highlight{font-size:1.5rem;font-weight:900;color:var(--amber-400);letter-spacing:-.05em;}
-        .nav-menu{display:flex;align-items:center;gap:1.75rem;}
-        .nav-menu>a{font-family:'Roboto Mono',monospace;font-size:.75rem;font-weight:600;letter-spacing:.1em;text-decoration:none;color:rgba(255,255,255,.9);transition:color var(--motion-base);position:relative;padding:.5rem 0;white-space:nowrap;}
+
+        /* Flat desktop nav — 12 items */
+        .nav-menu{display:flex;align-items:center;gap:1.25rem;}
+        .nav-menu>a{font-family:'Roboto Mono',monospace;font-size:.7rem;font-weight:600;letter-spacing:.06em;text-decoration:none;color:rgba(255,255,255,.9);transition:color var(--motion-base);position:relative;padding:.5rem 0;white-space:nowrap;}
         .nav-menu>a::after{content:'';position:absolute;bottom:0;left:0;width:0;height:2px;background:var(--amber-400);transition:width var(--motion-base) var(--ease-out);}
         .nav-menu>a:hover{color:var(--amber-400);}
         .nav-menu>a:hover::after{width:100%;}
         .nav-menu>a.active{color:var(--amber-400);}
         .nav-menu>a.active::after{width:100%;}
+
         .hamburger{display:none;cursor:pointer;z-index:1001;background:none;border:none;padding:.5rem;}
         .hamburger span{display:block;width:25px;height:3px;background:var(--white);margin:5px 0;transition:all .3s;border-radius:3px;}
         .hamburger.active span:nth-child(1){transform:rotate(45deg) translate(5px,6px);background:var(--amber-400);}
         .hamburger.active span:nth-child(2){opacity:0;}
         .hamburger.active span:nth-child(3){transform:rotate(-45deg) translate(5px,-6px);background:var(--amber-400);}
+
+        /* Flat mobile overlay — 12 items */
         .mobile-nav{position:fixed;top:0;left:0;width:100%;height:100vh;background:linear-gradient(135deg,var(--emerald-900),var(--emerald-800));display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:999;opacity:0;visibility:hidden;transition:opacity .4s,visibility .4s;padding:2rem;overflow-y:auto;}
         .mobile-nav.active{opacity:1;visibility:visible;}
         .mobile-nav>a{font-family:'Roboto Mono',monospace;font-size:1.5rem;font-weight:600;letter-spacing:.1em;text-decoration:none;color:var(--white);transition:color .3s,transform .3s,opacity .4s;display:inline-block;padding:.5rem 1rem;margin:.35rem 0;opacity:0;transform:translateY(20px);}
@@ -64,9 +69,13 @@
         .mobile-nav.active>a:nth-child(8){transition-delay:.40s;}
         .mobile-nav.active>a:nth-child(9){transition-delay:.45s;}
         .mobile-nav.active>a:nth-child(10){transition-delay:.50s;}
+        .mobile-nav.active>a:nth-child(11){transition-delay:.55s;}
+        .mobile-nav.active>a:nth-child(12){transition-delay:.60s;}
         .mobile-nav>a:hover{color:var(--amber-400);transform:translateX(10px);}
         .mobile-nav>a.active{color:var(--amber-400);border-left:4px solid var(--amber-400);}
-        @media(max-width:1024px){.nav-menu{display:none;}.hamburger{display:block;}}
+
+        /* Hamburger breakpoint — 12 items need 1280px */
+        @media(max-width:1280px){.nav-menu{display:none;}.hamburger{display:block;}}
         .main-content{padding-top:80px;}
 
         .hero{min-height:min(690px,76vh);display:flex;align-items:center;justify-content:center;background:linear-gradient(125deg,#047857 0%,#059669 42%,#0f766e 100%);overflow:hidden;position:relative;padding:3rem 1rem;isolation:isolate;}
@@ -84,7 +93,7 @@
         .container{width:100%;max-width:1200px;margin:0 auto;padding:0 1rem;}
         .election-wrap{max-width:56rem;margin:2rem auto 4rem;}
 
-        .election-tabs{position:sticky;top:76px;z-index:20;backdrop-filter:blur(16px);background:rgba(255,255,255,.9);box-shadow:0 12px 35px rgba(15,23,42,.07);border:1px solid var(--slate-100);padding:.375rem;display:flex;gap:.25rem;margin-bottom:2rem;overflow-x:auto;border-radius:.75rem;}
+        .election-tabs{position:sticky;top:80px;z-index:20;backdrop-filter:blur(16px);background:rgba(255,255,255,.9);box-shadow:0 12px 35px rgba(15,23,42,.07);border:1px solid var(--slate-100);padding:.375rem;display:flex;gap:.25rem;margin-bottom:2rem;overflow-x:auto;border-radius:.75rem;}
         .election-tab{flex:1;display:flex;align-items:center;justify-content:center;gap:.5rem;padding:.75rem 1rem;border-radius:.5rem;font-size:.875rem;font-weight:600;transition:all .2s;white-space:nowrap;border:none;background:transparent;cursor:pointer;color:var(--slate-500);font-family:inherit;}
         .election-tab:hover{color:var(--slate-700);background:var(--slate-50);}
         .election-tab.active{color:var(--white);background:var(--emerald-600);box-shadow:0 5px 14px rgba(5,150,105,.2);}
@@ -193,10 +202,11 @@
         button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--amber-400);outline-offset:3px;}
         button,a,input,select{-webkit-tap-highlight-color:transparent;}
         @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;}}
-        @media(max-width:767px){.main-content{padding-top:72px;}.hero{min-height:520px;}.election-tabs{top:68px;gap:.2rem;}.election-tab{padding:.8rem .55rem;font-size:.75rem;}.container{padding-left:1rem;padding-right:1rem;}}
+        @media(max-width:767px){.main-content{padding-top:72px;}.hero{min-height:520px;}.election-tabs{top:72px;gap:.2rem;}.election-tab{padding:.8rem .55rem;font-size:.75rem;}.container{padding-left:1rem;padding-right:1rem;}}
     </style>
 </head>
 <body>
+    <!-- ===== NAVBAR (12 items, flat, href-driven) ===== -->
     <nav class="navbar" id="navbar">
         <div class="nav-container">
             <div class="nav-flex">
@@ -214,6 +224,8 @@
                     <a href="courseReps.html">COURSE REPS</a>
                     <a href="news.html">NEWS</a>
                     <a href="elections.html">ELECTIONS</a>
+                    <a href="payment.html">PAYMENTS</a>
+                    <a href="gallery.html">GALLERY</a>
                     <a href="contacts.html">CONTACT</a>
                 </div>
                 <button class="hamburger" id="hamburger" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobileNav">
@@ -231,6 +243,8 @@
             <a href="courseReps.html">COURSE REPS</a>
             <a href="news.html">NEWS</a>
             <a href="elections.html">ELECTIONS</a>
+            <a href="payment.html">PAYMENTS</a>
+            <a href="gallery.html">GALLERY</a>
             <a href="contacts.html">CONTACT</a>
         </div>
     </nav>
@@ -339,15 +353,9 @@
     (function () {
         'use strict';
 
-        // ================================================================
-        // CONFIG
-        // ================================================================
         const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
         const FETCH_TIMEOUT_MS = 20000;
 
-        // ================================================================
-        // HELPERS
-        // ================================================================
         function escapeHtml(str) {
             if (str === null || str === undefined) return '';
             return String(str)
@@ -365,7 +373,6 @@
                 .map(n => n[0]).join('').toUpperCase().slice(0, 2);
         }
 
-        // Fetch with timeout + consistent error shape
         async function apiFetch(path, options = {}) {
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -394,9 +401,7 @@
             }
         }
 
-        // ================================================================
-        // NAVBAR
-        // ================================================================
+        // ===== NAVBAR =====
         const navbar = document.getElementById('navbar');
         const hamburger = document.getElementById('hamburger');
         const mobileNav = document.getElementById('mobileNav');
@@ -440,22 +445,17 @@
             if (e.key === 'Escape' && mobileNav.classList.contains('active')) closeMobile();
         });
 
-        // ================================================================
-        // STATE
-        // ================================================================
+        // ===== STATE =====
         const state = {
-            positions: [],        // [{id, title}]
-            candidates: [],       // [{id, name, positionId, department, level, manifesto}]
-            registeredVoter: null,// {voterId, fullName, matricNumber, ...} from server
-            votes: {},            // {positionId: candidateId}
-            hasVoted: false,      // set true only after server confirms
+            positions: [],
+            candidates: [],
+            registeredVoter: null,
+            votes: {},
+            hasVoted: false,
             loading: { positions: false, candidates: false, results: false },
             errors: { positions: null, candidates: null, results: null }
         };
 
-        // ================================================================
-        // DOM
-        // ================================================================
         const panels = {
             register: document.getElementById('panel-register'),
             candidates: document.getElementById('panel-candidates'),
@@ -464,9 +464,6 @@
         };
         const tabs = Array.from(document.querySelectorAll('.election-tab'));
 
-        // ================================================================
-        // SHARED RENDERERS
-        // ================================================================
         function renderLoading(msg = 'Loading…') {
             return `<div class="loading-center"><div class="loading"></div><p>${escapeHtml(msg)}</p></div>`;
         }
@@ -496,9 +493,6 @@
                 </div>`;
         }
 
-        // ================================================================
-        // DATA LOADERS
-        // ================================================================
         async function loadPositions(force = false) {
             if (state.positions.length > 0 && !force) return state.positions;
             state.loading.positions = true;
@@ -554,7 +548,7 @@
                 if (!res || res.status !== 'success' || typeof res.data !== 'object' || res.data === null) {
                     throw new Error('Invalid response from server.');
                 }
-                return res.data; // { candidateId: voteCount }
+                return res.data;
             } catch (err) {
                 state.errors.results = err.message;
                 throw err;
@@ -563,9 +557,6 @@
             }
         }
 
-        // ================================================================
-        // REGISTER PANEL
-        // ================================================================
         const DEPARTMENTS = [
             'Electrical/Electronics Engineering',
             'Civil Engineering',
@@ -700,9 +691,6 @@
             });
         }
 
-        // ================================================================
-        // CANDIDATES PANEL
-        // ================================================================
         async function renderCandidates() {
             panels.candidates.innerHTML = renderLoading('Loading candidates…');
 
@@ -747,9 +735,6 @@
             }).join('');
         }
 
-        // ================================================================
-        // VOTE PANEL
-        // ================================================================
         async function renderVote() {
             if (!state.registeredVoter) {
                 panels.vote.innerHTML = `
@@ -880,9 +865,6 @@
             });
         }
 
-        // ================================================================
-        // RESULTS PANEL
-        // ================================================================
         async function renderResults() {
             panels.results.innerHTML = renderLoading('Loading results…');
 
@@ -893,7 +875,6 @@
                 return;
             }
 
-            // Re-fetch tallies via API (we just loaded positions & candidates, tallies come from loadResults caller)
             let tallies;
             try {
                 tallies = await loadResults();
@@ -979,9 +960,6 @@
             panels.results.innerHTML = html;
         }
 
-        // ================================================================
-        // TABS
-        // ================================================================
         function switchTab(tabId) {
             tabs.forEach(tab => {
                 const active = tab.dataset.tab === tabId;
@@ -1017,9 +995,6 @@
             tabs[next].focus(); switchTab(tabs[next].dataset.tab);
         }));
 
-        // ================================================================
-        // ACTION DELEGATION (buttons rendered inside panels)
-        // ================================================================
         document.addEventListener('click', e => {
             const el = e.target.closest('[data-action]');
             if (!el) return;
@@ -1032,9 +1007,6 @@
             else if (action === 'retry-results') renderResults();
         });
 
-        // ================================================================
-        // INIT
-        // ================================================================
         switchTab('register');
     })();
     </script>
