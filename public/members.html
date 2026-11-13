@@ -106,20 +106,22 @@
         .nav-links {
             display: flex;
             align-items: center;
-            gap: 2rem;
+            gap: 1.5rem;
             list-style: none;
+            flex-wrap: wrap;
         }
 
         .nav-links li a {
             font-family: 'Roboto Mono', monospace;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 600;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.08em;
             text-decoration: none;
             color: rgba(255, 255, 255, 0.9);
             transition: color 0.2s;
             position: relative;
             padding: 0.5rem 0;
+            white-space: nowrap;
         }
 
         .nav-links li a::after {
@@ -200,6 +202,7 @@
             visibility: hidden;
             transition: all 0.4s ease;
             padding: 2rem;
+            overflow-y: auto;
         }
 
         .mobile-nav.active {
@@ -213,7 +216,7 @@
         }
 
         .mobile-nav ul li {
-            margin: 1.5rem 0;
+            margin: 0.9rem 0;
             opacity: 0;
             transform: translateY(20px);
             transition: all 0.4s ease;
@@ -224,22 +227,25 @@
             transform: translateY(0);
         }
 
-        .mobile-nav.active ul li:nth-child(1) { transition-delay: 0.1s; }
-        .mobile-nav.active ul li:nth-child(2) { transition-delay: 0.2s; }
-        .mobile-nav.active ul li:nth-child(3) { transition-delay: 0.3s; }
-        .mobile-nav.active ul li:nth-child(4) { transition-delay: 0.4s; }
-        .mobile-nav.active ul li:nth-child(5) { transition-delay: 0.5s; }
-        .mobile-nav.active ul li:nth-child(6) { transition-delay: 0.6s; }
-        .mobile-nav.active ul li:nth-child(7) { transition-delay: 0.7s; }
-        .mobile-nav.active ul li:nth-child(8) { transition-delay: 0.8s; }
-        .mobile-nav.active ul li:nth-child(9) { transition-delay: 0.9s; }
-        .mobile-nav.active ul li:nth-child(10) { transition-delay: 1s; }
+        .mobile-nav.active ul li:nth-child(1) { transition-delay: 0.05s; }
+        .mobile-nav.active ul li:nth-child(2) { transition-delay: 0.1s; }
+        .mobile-nav.active ul li:nth-child(3) { transition-delay: 0.15s; }
+        .mobile-nav.active ul li:nth-child(4) { transition-delay: 0.2s; }
+        .mobile-nav.active ul li:nth-child(5) { transition-delay: 0.25s; }
+        .mobile-nav.active ul li:nth-child(6) { transition-delay: 0.3s; }
+        .mobile-nav.active ul li:nth-child(7) { transition-delay: 0.35s; }
+        .mobile-nav.active ul li:nth-child(8) { transition-delay: 0.4s; }
+        .mobile-nav.active ul li:nth-child(9) { transition-delay: 0.45s; }
+        .mobile-nav.active ul li:nth-child(10) { transition-delay: 0.5s; }
+        .mobile-nav.active ul li:nth-child(11) { transition-delay: 0.55s; }
+        .mobile-nav.active ul li:nth-child(12) { transition-delay: 0.6s; }
+        .mobile-nav.active ul li:nth-child(13) { transition-delay: 0.65s; }
 
         .mobile-nav ul li a {
             font-family: 'Roboto Mono', monospace;
-            font-size: 1.5rem;
+            font-size: 1.25rem;
             font-weight: 600;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.08em;
             text-decoration: none;
             color: var(--white);
             transition: color 0.3s;
@@ -263,7 +269,7 @@
         }
 
         /* Media Queries for Responsive Navbar */
-        @media screen and (max-width: 1024px) {
+        @media screen and (max-width: 1200px) {
             .nav-links {
                 display: none;
             }
@@ -357,7 +363,7 @@
         }
         .btn-primary:hover { background-color: var(--emerald-700); }
 
-        /* ===== EXECUTIVE CARDS STYLES (from second code) ===== */
+        /* ===== EXECUTIVE CARDS STYLES ===== */
         .executives-list {
             display: flex;
             flex-direction: column;
@@ -860,6 +866,9 @@
                         <li><a href="courseReps.html">COURSE REPS</a></li>
                         <li><a href="news.html">NEWS</a></li>
                         <li><a href="contacts.html">CONTACT</a></li>
+                        <li><a href="elections.html">ELECTIONS</a></li>
+                        <li><a href="payment.html">PAYMENTS</a></li>
+                        <li><a href="gallery.html">GALLERY</a></li>
                     </ul>
                 </div>
 
@@ -884,6 +893,9 @@
                 <li><a href="courseReps.html">COURSE REPS</a></li>
                 <li><a href="news.html">NEWS</a></li>
                 <li><a href="contacts.html">CONTACT</a></li>
+                <li><a href="elections.html">ELECTIONS</a></li>
+                <li><a href="payment.html">PAYMENTS</a></li>
+                <li><a href="gallery.html">GALLERY</a></li>
             </ul>
         </div>
     </nav>
@@ -1008,22 +1020,18 @@
         
         document.addEventListener('DOMContentLoaded', function() {
             // ===== CONFIGURATION =====
-            // Your live backend API URL - Supabase is in your server
             const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
             
             // ===== STATE MANAGEMENT =====
-            let membersData = [];              // Raw data from API
-            let filteredMembers = [];           // Filtered by search/session
-            let currentSession = '2025/2026';   // Default session
-            let searchQuery = '';                // Current search query
-            let showSearch = false;               // Search input visibility
-            let expandedId = null;                // Currently expanded card ID
+            let membersData = [];
+            let filteredMembers = [];
+            let currentSession = '2025/2026';
+            let searchQuery = '';
+            let showSearch = false;
+            let expandedId = null;
 
             // ===== DOM ELEMENTS =====
             const navbar = document.getElementById('navbar');
-            const mobileBtn = document.getElementById('mobileMenuBtn');
-            const mobileOverlay = document.getElementById('mobileOverlay');
-            const menuIcon = document.getElementById('menuIcon');
             const sessionSelect = document.getElementById('sessionSelect');
             const searchInput = document.getElementById('searchInput');
             const searchToggleBtn = document.getElementById('searchToggleBtn');
@@ -1131,13 +1139,8 @@
             // API FUNCTIONS - BACKEND INTEGRATION
             // ============================================
             
-            /**
-             * Load executives from backend API
-             * @param {string} session - Session to load (e.g., '2025/2026')
-             */
             async function loadExecutives(session = currentSession) {
                 try {
-                    // Show loading state
                     executivesList.innerHTML = `
                         <div class="empty-state" style="display: block;">
                             <div class="loading-spinner"></div>
@@ -1146,7 +1149,6 @@
                     `;
                     emptyState.classList.add('hidden');
 
-                    // Fetch data from backend API
                     console.log(`🔍 Fetching ${session} executives from: ${API_BASE_URL}/api/members`);
 
                     const response = await fetch(`${API_BASE_URL}/api/members?status=active&session=${session}`, {
@@ -1163,7 +1165,6 @@
                     const data = await response.json();
                     console.log('📊 Data received:', data);
 
-                    // Handle the response format from your backend
                     if (data && data.status === 'success') {
                         membersData = data.data || [];
                     } else if (Array.isArray(data)) {
@@ -1172,12 +1173,11 @@
                         membersData = [];
                     }
 
-                    console.log('✅ Loaded ${membersData.length} members for session ${session}');
+                    console.log(`✅ Loaded ${membersData.length} members for session ${session}`);
              
                     const uniquePositions = [...new Set(membersData.map(m => m.position))];
                     console.log('Unique positions found:', uniquePositions);
 
-                    // Log all members for debugging
                     console.log('===== MEMBERS FROM BACKEND =====');
                     membersData.forEach((member, index) => {
                         console.log(`${index + 1}. ${member.full_name || member.name || 'Unnamed'}:`);
@@ -1186,7 +1186,6 @@
                         console.log(`   Department: ${member.department || 'N/A'}`);
                     });
 
-                    // Filter and render
                     filterAndRenderExecutives();
 
                 } catch (error) {
@@ -1206,11 +1205,7 @@
             // FILTERING FUNCTIONS
             // ============================================
             
-            /**
-             * Filter members based on search query and render
-             */
             function filterAndRenderExecutives() {
-                // Apply search filter
                 filteredMembers = membersData.filter(member => {
                     if (!searchQuery) return true;
                     
@@ -1222,7 +1217,6 @@
                     return fullName.includes(q) || position.includes(q) || department.includes(q);
                 });
 
-                // Check if any members match
                 if (filteredMembers.length === 0) {
                     executivesList.innerHTML = '';
                     emptyState.classList.remove('hidden');
@@ -1237,11 +1231,6 @@
             // HELPER FUNCTIONS
             // ============================================
             
-            /**
-             * Get initials from full name
-             * @param {string} name - Full name
-             * @returns {string} Initials (max 2 characters)
-             */
             function getInitials(name) {
                 if (!name) return '👤';
                 return name.split(' ')
@@ -1251,11 +1240,6 @@
                     .substring(0, 2);
             }
 
-            /**
-             * Parse achievements (handle both string and array)
-             * @param {string|Array} achievements - Achievements data
-             * @returns {Array} Array of achievements
-             */
             function parseAchievements(achievements) {
                 if (!achievements) return [];
                 
@@ -1270,20 +1254,13 @@
                 return achievements;
             }
 
-            /**
-             * Format position title nicely
-             * @param {string} position - Raw position from database
-             * @returns {string} Formatted position
-             */
             function formatPositionTitle(position) {
                 if (!position) return 'Member';
                 
                 const lowerPos = position.toLowerCase().trim();
                 
-                // Log the raw position for debugging
                 console.log('Formatting position:', position);
                 
-                // Common position mappings - check for exact matches first
                 const positionMap = {
                     'president': 'President',
                     'vice president': 'Vice President',
@@ -1299,15 +1276,12 @@
                     'pro': 'Public Relations Officer'
                 };
                 
-                // Check for partial matches
                 for (const [key, value] of Object.entries(positionMap)) {
                     if (lowerPos.includes(key)) {
                         return value;
                     }
                 }
                 
-                // If no match found, try to intelligently format
-                // Handle special cases like "DIRECTOR OF SPORTS" (with S)
                 if (lowerPos.includes('director') && lowerPos.includes('sport')) {
                     return 'Director of Sport';
                 }
@@ -1318,24 +1292,16 @@
                     return 'Director of Social';
                 }
                 
-                // Default: capitalize each word, but handle acronyms
                 return position.split(' ')
                     .map(word => {
-                        // If word is all uppercase, keep it as is (for acronyms like PRO)
                         if (word === word.toUpperCase() && word.length <= 4) {
                             return word;
                         }
-                        // Otherwise capitalize first letter, rest lowercase
                         return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
                     })
                     .join(' ');
             }
 
-            /**
-             * Get image URL from member object
-             * @param {Object} member - Member object
-             * @returns {string|null} Image URL or null
-             */
             function getImageUrl(member) {
                 return member.profile_image || 
                     member.profile_image_url || 
@@ -1349,9 +1315,6 @@
             // RENDERING FUNCTIONS
             // ============================================
             
-            /**
-             * Render executive cards with the modern layout
-             */
             function renderExecutiveCards() {
                 executivesList.innerHTML = filteredMembers.map(member => {
                     const imageUrl = getImageUrl(member);
@@ -1364,7 +1327,6 @@
                     return `
                     <div class="executive-card" data-id="${member.id || member._id || ''}">
                         <div class="card-inner">
-                            <!-- LEFT SIDE - PHOTO & POSITION -->
                             <div class="card-left">
                                 <div class="position-badge">
                                     <span class="badge">
@@ -1388,7 +1350,6 @@
                                 </div>
                             </div>
                             
-                            <!-- RIGHT SIDE - INFO & CONTACT -->
                             <div class="card-right">
                                 <div class="info-grid">
                                     <div class="info-box">
@@ -1429,7 +1390,6 @@
                             </div>
                         </div>
                         
-                        <!-- EXPANDED PROFILE SECTION -->
                         <div class="expanded-profile" id="expanded-${member.id || member._id || ''}">
                             <div class="expanded-content">
                                 <div class="expanded-grid">
@@ -1491,7 +1451,6 @@
                     `;
                 }).join('');
 
-                // Trigger entrance animations
                 setTimeout(() => {
                     document.querySelectorAll('.executive-card').forEach((card, idx) => {
                         setTimeout(() => {
@@ -1505,10 +1464,6 @@
             // EXPAND/COLLAPSE FUNCTION
             // ============================================
             
-            /**
-             * Toggle expanded profile view
-             * @param {string} id - Member ID
-             */
             window.toggleExpand = function(id) {
                 const expanded = document.getElementById(`expanded-${id}`);
                 const btnText = document.getElementById(`btn-text-${id}`);
@@ -1517,13 +1472,11 @@
                 if (!expanded || !btnText || !btnIcon) return;
                 
                 if (expandedId === id) {
-                    // Collapse current
                     expanded.classList.remove('open');
                     btnText.textContent = 'View Full Profile';
                     btnIcon.className = 'fas fa-arrow-right';
                     expandedId = null;
                 } else {
-                    // Collapse previous if any
                     if (expandedId) {
                         const prevExpanded = document.getElementById(`expanded-${expandedId}`);
                         const prevBtnText = document.getElementById(`btn-text-${expandedId}`);
@@ -1536,7 +1489,6 @@
                         }
                     }
                     
-                    // Expand new
                     expanded.classList.add('open');
                     btnText.textContent = 'Hide Profile';
                     btnIcon.className = 'fas fa-chevron-up';
@@ -1548,45 +1500,31 @@
             // EVENT LISTENERS
             // ============================================
             
-            /**
-             * Session select change handler
-             */
             sessionSelect.addEventListener('change', (e) => {
                 currentSession = e.target.value;
                 loadExecutives(currentSession);
             });
 
-            /**
-             * Search toggle button handler
-             */
             searchToggleBtn.addEventListener('click', () => {
                 showSearch = !showSearch;
                 searchWrapper.classList.toggle('hidden', !showSearch);
                 if (showSearch) {
                     searchInput.focus();
                 } else {
-                    // Clear search when hiding
                     searchQuery = '';
                     searchInput.value = '';
                     filterAndRenderExecutives();
                 }
             });
 
-            /**
-             * Search input handler
-             */
             searchInput.addEventListener('input', (e) => {
                 searchQuery = e.target.value;
                 filterAndRenderExecutives();
             });
 
-            /**
-             * View toggle buttons (for future implementation)
-             */
             gridViewBtn.addEventListener('click', () => {
                 gridViewBtn.classList.add('active');
                 listViewBtn.classList.remove('active');
-                // Could implement grid/list toggle here
             });
 
             listViewBtn.addEventListener('click', () => {
@@ -1598,7 +1536,6 @@
             // INITIAL LOAD
             // ============================================
             
-            // Load default session on page load
             loadExecutives('2025/2026');
         });
     </script>
