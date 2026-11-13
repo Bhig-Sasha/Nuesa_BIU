@@ -3,7 +3,7 @@
  * NUESA BIU API SERVER - ORGANIZED VERSION
  * ============================================================
  * @author Sasha Troger
- * @version 1.1.0
+ * @version 1.2.0  (added Media Library)
  * @license MIT
  * @DevSignature ST-BIU-2026
  */
@@ -64,6 +64,7 @@ const BASE_URL = process.env.API_URL || (IS_PRODUCTION
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRE = process.env.JWT_EXPIRE || '7d';
 const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024;
+const MAX_MEDIA_FILE_SIZE = parseInt(process.env.MAX_MEDIA_FILE_SIZE) || 50 * 1024 * 1024; // 50 MB for media
 const MAX_REQUEST_SIZE = process.env.MAX_REQUEST_SIZE || '10mb';
 
 // -------------------- 1.3 DATABASE SETUP -------------------
@@ -89,7 +90,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey, {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
     db: { schema: 'public', pool: { max: 20, idleTimeoutMillis: 30000 } },
-    global: { headers: { 'x-application-name': 'nuesa-biu-api', 'x-version': '1.1.0' } }
+    global: { headers: { 'x-application-name': 'nuesa-biu-api', 'x-version': '1.2.0' } }
 });
 
 // -------------------- 1.4 CUSTOM ERROR CLASSES -------------
@@ -341,6 +342,8 @@ const UPLOAD_DIRS = {
     images: './uploads/images',
     resources: './uploads/resources',
     profiles: './uploads/profiles',
+    mediaImages: './uploads/media/images',
+    mediaVideos: './uploads/media/videos',
     temp: './uploads/temp'
 };
 
@@ -394,6 +397,47 @@ const fileFilter = (req, file, cb) => {
 
 const upload = multer({ storage, limits: { fileSize: MAX_FILE_SIZE, files: 5 }, fileFilter });
 
+// ---------- 1.8b MEDIA-ONLY UPLOAD (pictures + videos) ----------
+const MEDIA_PICTURE_MIMES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+const MEDIA_PICTURE_EXTS  = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+const MEDIA_VIDEO_MIMES   = ['video/mp4', 'video/webm', 'video/quicktime'];
+const MEDIA_VIDEO_EXTS    = ['.mp4', '.webm', '.mov'];
+
+const mediaFileFilter = (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const isPicture = MEDIA_PICTURE_MIMES.includes(file.mimetype) && MEDIA_PICTURE_EXTS.includes(ext);
+    const isVideo   = MEDIA_VIDEO_MIMES.includes(file.mimetype)   && MEDIA_VIDEO_EXTS.includes(ext);
+
+    if (!isPicture && !isVideo) {
+        return cb(new Error(`Media file type ${file.mimetype} (${ext}) is not allowed. Only pictures (JPG/PNG/WEBP/GIF) and videos (MP4/WEBM/MOV).`), false);
+    }
+    cb(null, true);
+};
+
+const mediaStorage = multer.diskStorage({
+    destination: async (req, file, cb) => {
+        try {
+            const isVideo = file.mimetype.startsWith('video/');
+            const baseDir = isVideo ? UPLOAD_DIRS.mediaVideos : UPLOAD_DIRS.mediaImages;
+            const destDir = path.join(baseDir, new Date().toISOString().split('T')[0]);
+            await fs.mkdir(destDir, { recursive: true });
+            cb(null, destDir);
+        } catch (err) { cb(err); }
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+        const ext = path.extname(file.originalname).toLowerCase();
+        const safe = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 50);
+        cb(null, `${safe}-${uniqueSuffix}${ext}`);
+    }
+});
+
+const mediaUpload = multer({
+    storage: mediaStorage,
+    limits: { fileSize: MAX_MEDIA_FILE_SIZE, files: 1 },
+    fileFilter: mediaFileFilter
+});
+
 // -------------------- 1.9 VALIDATION SCHEMAS ---------------
 const schemas = {
     login: Joi.object({ email: Joi.string().email().required(), password: Joi.string().min(8).required(), rememberMe: Joi.boolean() }),
@@ -403,7 +447,13 @@ const schemas = {
     changePassword: Joi.object({ currentPassword: Joi.string().required(), newPassword: Joi.string().min(8).required() }),
     createMember: Joi.object({ full_name: Joi.string().required(), position: Joi.string().required(), department: Joi.string().optional(), level: Joi.string().optional(), email: Joi.string().email().optional(), phone: Joi.string().optional(), bio: Joi.string().optional(), committee: Joi.string().optional(), display_order: Joi.number().integer().default(0), status: Joi.string().valid('active', 'inactive', 'alumni').default('active'), social_links: Joi.object().default({}) }),
     contactForm: Joi.object({ name: Joi.string().min(2).max(100).required(), email: Joi.string().email().required(), message: Joi.string().min(10).max(1000).required(), subject: Joi.string().max(200).optional() }),
-    article: Joi.object({ title: Joi.string().required(), slug: Joi.string().optional(), content: Joi.string().required(), excerpt: Joi.string().optional(), author: Joi.string().optional(), category: Joi.string().optional(), tags: Joi.array().items(Joi.string()).default([]), status: Joi.string().valid('draft', 'published').default('draft'), is_published: Joi.boolean().default(false), published_at: Joi.date().optional() })
+    article: Joi.object({ title: Joi.string().required(), slug: Joi.string().optional(), content: Joi.string().required(), excerpt: Joi.string().optional(), author: Joi.string().optional(), category: Joi.string().optional(), tags: Joi.array().items(Joi.string()).default([]), status: Joi.string().valid('draft', 'published').default('draft'), is_published: Joi.boolean().default(false), published_at: Joi.date().optional() }),
+    updateMedia: Joi.object({
+        title: Joi.string().max(200).optional(),
+        description: Joi.string().allow('', null).optional(),
+        alt_text: Joi.string().allow('', null).optional(),
+        tags: Joi.array().items(Joi.string()).optional()
+    })
 };
 
 const validate = (schema) => (req, res, next) => {
@@ -719,8 +769,6 @@ const cacheMiddleware = (duration = 60, tags = []) => {
 // -------------------- 2.7 AUTH MIDDLEWARE -------------------
 const verifyToken = async (req, res, next) => {
     try {
-        // Support token from Authorization header OR httpOnly cookie
-        // (cookie path needed for Vercel-proxied admin panel)
         let token = null;
         const authHeader = req.headers.authorization;
 
@@ -788,8 +836,6 @@ const requirePermission = (permission) => {
 };
 
 // -------------------- 2.8 COOKIE HELPER ---------------------
-// On Vercel proxy, browser sees one origin; on direct Render access, also same-origin.
-// `SameSite=None` is needed for cross-site iframe/proxy scenarios; `Secure` required for that.
 function buildCookieOptions(rememberMe) {
     return {
         httpOnly: true,
@@ -810,7 +856,7 @@ app.get('/api/health', async (req, res) => {
         const dbStatus = await checkDatabase();
         res.status(200).json({
             status: 'healthy', database: dbStatus,
-            uptime: process.uptime(), timestamp: new Date().toISOString(), version: '1.1.0'
+            uptime: process.uptime(), timestamp: new Date().toISOString(), version: '1.2.0'
         });
     } catch (error) {
         res.status(200).json({ status: 'degraded', message: 'Partial service disruption', timestamp: new Date().toISOString() });
@@ -818,26 +864,26 @@ app.get('/api/health', async (req, res) => {
 });
 
 app.get('/api/ping', (req, res) => {
-    res.json({ status: 'success', message: 'pong', timestamp: new Date().toISOString(), version: '1.1.0', requestId: req.id });
+    res.json({ status: 'success', message: 'pong', timestamp: new Date().toISOString(), version: '1.2.0', requestId: req.id });
 });
 
 app.get('/api', (req, res) => {
     res.json({
-        message: 'NUESA BIU API Server', version: '1.1.0', environment: NODE_ENV, status: 'operational',
+        message: 'NUESA BIU API Server', version: '1.2.0', environment: NODE_ENV, status: 'operational',
         timestamp: new Date().toISOString(),
         documentation: `${req.protocol}://${req.get('host')}/api/docs`,
         endpoints: {
             auth: '/api/auth', users: '/api/users', members: '/api/members', events: '/api/events',
             resources: '/api/resources', articles: '/api/articles', profile: '/api/profile',
             health: '/api/health', 'stats-public': '/api/stats/public',
-            contact: '/api/contact/submit', docs: '/api/docs', 'course-reps': '/api/course-reps'
+            contact: '/api/contact/submit', docs: '/api/docs', 'course-reps': '/api/course-reps',
+            media: '/api/admin/media'
         },
         requestId: req.id
     });
 });
 
 // -------------------- 3.1b PUBLIC STATS ---------------------
-// Fixes "0 Members / 0 Events" on homepage — no auth required
 app.get('/api/stats/public', cacheMiddleware(300, ['stats']), async (req, res) => {
     try {
         const [membersRes, eventsRes, resourcesRes, articlesRes] = await Promise.allSettled([
@@ -868,7 +914,7 @@ app.get('/api/stats/public', cacheMiddleware(300, ['stats']), async (req, res) =
 const swaggerOptions = {
     definition: {
         openapi: '3.0.0',
-        info: { title: 'NUESA BIU API', version: '1.1.0', description: 'API documentation for NUESA BIU application', contact: { name: 'NUESA BIU', email: process.env.ADMIN_EMAIL } },
+        info: { title: 'NUESA BIU API', version: '1.2.0', description: 'API documentation for NUESA BIU application', contact: { name: 'NUESA BIU', email: process.env.ADMIN_EMAIL } },
         servers: [{ url: IS_PRODUCTION ? 'https://nuesa-biu-pjp0.onrender.com' : `http://localhost:${PORT}`, description: IS_PRODUCTION ? 'Production server' : 'Development server' }],
         components: { securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } } }
     },
@@ -1525,12 +1571,13 @@ adminRouter.use(requireRole('admin'));
 // ==================== DASHBOARD STATS ====================
 adminRouter.get('/stats', async (req, res) => {
     try {
-        const [users, members, events, resources, articles] = await Promise.allSettled([
+        const [users, members, events, resources, articles, media] = await Promise.allSettled([
             db.query('select', 'users', { count: true }),
             db.query('select', 'executive_members', { count: true }),
             db.query('select', 'biu_events', { count: true }),
             db.query('select', 'resources', { count: true }),
-            db.query('select', 'articles', { count: true })
+            db.query('select', 'articles', { count: true }),
+            db.query('select', 'media', { count: true })
         ]);
 
         res.json({
@@ -1541,6 +1588,7 @@ adminRouter.get('/stats', async (req, res) => {
                 events: events.status === 'fulfilled' ? events.value.count || 0 : 0,
                 resources: resources.status === 'fulfilled' ? resources.value.count || 0 : 0,
                 articles: articles.status === 'fulfilled' ? articles.value.count || 0 : 0,
+                media: media.status === 'fulfilled' ? media.value.count || 0 : 0,
                 uptime: process.uptime(), environment: NODE_ENV
             }
         });
@@ -1959,6 +2007,249 @@ adminRouter.delete('/resources/:id', async (req, res) => {
     }
 });
 
+// ==================== MEDIA LIBRARY ====================
+// Only pictures (JPG/PNG/WEBP/GIF) and videos (MP4/WEBM/MOV).
+// No documents, no placement management — used by Members, Executives,
+// Course Reps (profile photos), Events (posters/galleries), and Articles (thumbnails).
+
+function inferMediaType(mime) {
+    return mime && mime.startsWith('video/') ? 'video' : 'picture';
+}
+
+// Convert a saved file path → public URL like /uploads/media/images/2026-11-13/foo.jpg
+function buildMediaPublicUrl(absPath) {
+    const rel = path.relative(path.join(__dirname, 'uploads'), absPath).split(path.sep).join('/');
+    return `/uploads/${rel}`;
+}
+
+// Shape a DB row for the frontend
+function shapeMediaRow(m) {
+    return {
+        id: m.id,
+        title: m.title,
+        filename: m.filename,
+        url: m.file_url,
+        thumbnail_url: m.thumbnail_url,
+        file_type: m.file_type,
+        type: m.media_type,                  // 'picture' | 'video'
+        size_bytes: m.size_bytes,
+        dimensions: (m.width && m.height) ? `${m.width} × ${m.height}` : null,
+        width: m.width,
+        height: m.height,
+        duration: m.duration,
+        alt_text: m.alt_text,
+        description: m.description,
+        tags: m.tags || [],
+        usage: m.usage || [],
+        uploader_name: m.uploader_name,
+        created_at: m.created_at,
+        updated_at: m.updated_at
+    };
+}
+
+// GET /api/admin/media — list all pictures + videos
+adminRouter.get('/media', async (req, res) => {
+    try {
+        const { type, search, sort = 'newest' } = req.query;
+        let where = {};
+        if (type && type !== 'all') where.media_type = type;
+        if (search) where.title = { operator: 'ilike', value: `%${search}%` };
+
+        let orderCol = 'created_at';
+        let ascending = false;
+        if (sort === 'oldest')        { ascending = true; }
+        else if (sort === 'size_desc') { orderCol = 'size_bytes'; ascending = false; }
+        else if (sort === 'size_asc')  { orderCol = 'size_bytes'; ascending = true; }
+
+        const result = await db.query('select', 'media', {
+            where,
+            order: { column: orderCol, ascending }
+        });
+
+        const mapped = result.data.map(shapeMediaRow);
+
+        res.json({
+            status: 'success',
+            data: mapped,
+            count: mapped.length,
+            counts: {
+                all: mapped.length,
+                pictures: mapped.filter(m => m.type === 'picture').length,
+                videos: mapped.filter(m => m.type === 'video').length,
+                total_bytes: mapped.reduce((sum, m) => sum + (m.size_bytes || 0), 0)
+            }
+        });
+    } catch (error) {
+        logger.error('Admin media list error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch media' });
+    }
+});
+
+// GET /api/admin/media/:id — single item
+adminRouter.get('/media/:id', async (req, res) => {
+    try {
+        const result = await db.query('select', 'media', { where: { id: req.params.id } });
+        if (result.data.length === 0) return res.status(404).json({ status: 'error', message: 'Media not found' });
+        res.json({ status: 'success', data: shapeMediaRow(result.data[0]) });
+    } catch (error) {
+        logger.error('Admin media fetch error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch media' });
+    }
+});
+
+// POST /api/admin/media — multipart upload (single file per request)
+adminRouter.post('/media', mediaUpload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ status: 'error', message: 'No file uploaded' });
+        }
+
+        const publicUrl = buildMediaPublicUrl(req.file.path);
+        const mediaType = inferMediaType(req.file.mimetype);
+
+        // Parse tags — frontend sends JSON array string; also accept comma list as fallback
+        let tags = [];
+        if (req.body.tags) {
+            try {
+                const parsed = JSON.parse(req.body.tags);
+                tags = Array.isArray(parsed) ? parsed : [parsed];
+            } catch {
+                tags = String(req.body.tags).split(',').map(t => t.trim()).filter(Boolean);
+            }
+        }
+        tags = tags.map(String).map(t => t.trim()).filter(Boolean);
+
+        const title = (req.body.title || req.file.originalname.replace(/\.[^.]+$/, '')).toString().trim();
+
+        const newMedia = {
+            title,
+            filename: req.file.originalname,
+            file_url: publicUrl,
+            file_type: req.file.mimetype,
+            media_type: mediaType,
+            size_bytes: req.file.size,
+            width: req.body.width ? parseInt(req.body.width) : null,
+            height: req.body.height ? parseInt(req.body.height) : null,
+            duration: req.body.duration ? parseFloat(req.body.duration) : null,
+            thumbnail_url: req.body.thumbnail_url || null,
+            description: req.body.description ? String(req.body.description).trim() : null,
+            alt_text: req.body.alt_text ? String(req.body.alt_text).trim() : null,
+            tags,
+            usage: [],
+            uploader_id: req.user.id,
+            uploader_name: req.user.fullName || req.user.email || 'Admin'
+        };
+
+        const result = await db.query('insert', 'media', { data: newMedia });
+        const saved = result.data[0];
+
+        logger.info('Media uploaded', {
+            requestId: req.id, mediaId: saved.id,
+            type: mediaType, sizeBytes: req.file.size, uploader: req.user.id
+        });
+
+        res.status(201).json({
+            status: 'success',
+            data: shapeMediaRow(saved),
+            message: 'Media uploaded successfully'
+        });
+    } catch (error) {
+        // Clean up the file if the DB insert failed
+        if (req.file && req.file.path) {
+            try { await fs.unlink(req.file.path); }
+            catch (cleanupErr) {
+                logger.warn('Could not clean up orphan media file', { path: req.file.path, error: cleanupErr.message });
+            }
+        }
+
+        logger.error('Admin media upload error:', { requestId: req.id, error: error.message });
+
+        if (error instanceof multer.MulterError) {
+            if (error.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({
+                    status: 'error',
+                    message: `File too large. Maximum size is ${Math.round(MAX_MEDIA_FILE_SIZE / 1024 / 1024)}MB.`
+                });
+            }
+            return res.status(400).json({ status: 'error', message: error.message });
+        }
+
+        res.status(500).json({ status: 'error', message: error.message || 'Failed to upload media' });
+    }
+});
+
+// PUT /api/admin/media/:id — edit metadata only
+adminRouter.put('/media/:id', validate(schemas.updateMedia), async (req, res) => {
+    try {
+        const { title, description, alt_text, tags } = req.body;
+        const updateData = { updated_at: new Date().toISOString() };
+
+        if (title !== undefined)       updateData.title = String(title).trim();
+        if (description !== undefined) updateData.description = description ? String(description).trim() : null;
+        if (alt_text !== undefined)    updateData.alt_text = alt_text ? String(alt_text).trim() : null;
+        if (tags !== undefined) {
+            if (Array.isArray(tags)) updateData.tags = tags.map(String).map(t => t.trim()).filter(Boolean);
+            else if (typeof tags === 'string') updateData.tags = tags.split(',').map(t => t.trim()).filter(Boolean);
+            else updateData.tags = [];
+        }
+
+        const result = await db.query('update', 'media', {
+            data: updateData,
+            where: { id: req.params.id }
+        });
+
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Media not found' });
+        }
+
+        logger.info('Media updated', { requestId: req.id, mediaId: req.params.id, updatedBy: req.user.id });
+        res.json({ status: 'success', data: shapeMediaRow(result.data[0]), message: 'Media updated successfully' });
+    } catch (error) {
+        logger.error('Admin media update error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to update media' });
+    }
+});
+
+// DELETE /api/admin/media/:id — remove DB row + file on disk
+adminRouter.delete('/media/:id', async (req, res) => {
+    try {
+        const checkResult = await db.query('select', 'media', {
+            where: { id: req.params.id },
+            select: 'id, file_url, title'
+        });
+
+        if (checkResult.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Media not found' });
+        }
+
+        const { file_url, title } = checkResult.data[0];
+
+        // Delete file from disk (best-effort)
+        if (file_url && file_url.startsWith('/uploads/')) {
+            const relative = file_url.replace(/^\/uploads\//, '');
+            const filePath = path.join(__dirname, 'uploads', relative);
+            try {
+                await fs.unlink(filePath);
+            } catch (fileError) {
+                logger.warn('Could not delete media file from disk', {
+                    requestId: req.id, fileUrl: file_url, error: fileError.message
+                });
+            }
+        }
+
+        await db.query('delete', 'media', { where: { id: req.params.id } });
+
+        logger.info('Media deleted', {
+            requestId: req.id, mediaId: req.params.id, title, deletedBy: req.user.id
+        });
+
+        res.json({ status: 'success', message: 'Media deleted successfully' });
+    } catch (error) {
+        logger.error('Admin media delete error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to delete media' });
+    }
+});
+
 // ==================== MESSAGES MANAGEMENT ====================
 adminRouter.get('/messages', async (req, res) => {
     try {
@@ -2046,6 +2337,48 @@ adminRouter.get('/articles/stats', async (req, res) => {
     } catch (error) {
         logger.error('Admin articles stats error:', error);
         res.status(500).json({ status: 'error', message: 'Failed to fetch article statistics' });
+    }
+});
+
+adminRouter.get('/articles', async (req, res) => {
+    try {
+        const { status, category, search } = req.query;
+        let where = {};
+        if (status && status !== 'all') where.status = status;
+        if (category && category !== 'all') where.category = category;
+        if (search) where.title = { operator: 'ilike', value: `%${search}%` };
+
+        const result = await db.query('select', 'articles', {
+            where, order: { column: 'created_at', ascending: false }
+        });
+        res.json({ status: 'success', data: result.data, count: result.data.length });
+    } catch (error) {
+        logger.error('Admin articles list error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch articles' });
+    }
+});
+
+adminRouter.get('/articles/categories', async (req, res) => {
+    try {
+        const result = await db.query('select', 'articles', {
+            select: 'category', where: { category: { operator: 'isNull', value: false } }
+        });
+        const categories = [...new Set(result.data.map(i => i.category).filter(Boolean))];
+        res.json({ status: 'success', data: categories });
+    } catch (error) {
+        logger.error('Admin article categories error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch categories' });
+    }
+});
+
+adminRouter.get('/articles/:uuid', async (req, res) => {
+    try {
+        const result = await db.query('select', 'articles', { where: { uuid: req.params.uuid } });
+        if (result.data.length === 0) return res.status(404).json({ status: 'error', message: 'Article not found' });
+        res.json({ status: 'success', data: result.data[0] });
+    } catch (error) {
+        logger.error('Admin article fetch error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch article' });
     }
 });
 
@@ -2516,6 +2849,7 @@ app.use('/api/admin', adminRouter);
 app.use('/api/users', userRouter);
 
 console.log('✅ Admin routes registered at /api/admin/*');
+console.log('✅ Media Library routes registered at /api/admin/media');
 console.log('✅ User management routes registered at /api/users/*');
 
 // ============================================================
@@ -2562,7 +2896,7 @@ app.use('/uploads', compression(), express.static(path.join(__dirname, 'uploads'
     setHeaders: (res, filePath) => {
         const ext = path.extname(filePath).toLowerCase();
         const mimeType = mime.lookup(ext) || 'application/octet-stream';
-        if (ext.match(/\.(jpg|jpeg|png|gif|webp|svg)$/)) {
+        if (ext.match(/\.(jpg|jpeg|png|gif|webp|svg|mp4|webm|mov)$/)) {
             res.setHeader('Content-Disposition', 'inline');
             res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
         } else {
@@ -2643,14 +2977,15 @@ app.get('/api/metrics', verifyToken, requireRole('admin'), async (req, res) => {
 
 app.get('/api/stats', verifyToken, requireRole('admin'), async (req, res) => {
     try {
-        const [users, members] = await Promise.all([
+        const [users, members, media] = await Promise.all([
             db.query('select', 'users', { count: true }),
-            db.query('select', 'executive_members', { count: true })
+            db.query('select', 'executive_members', { count: true }),
+            db.query('select', 'media', { count: true })
         ]);
         res.json({
             status: 'success',
             data: {
-                users: users.count || 0, members: members.count || 0,
+                users: users.count || 0, members: members.count || 0, media: media.count || 0,
                 cache: cacheManager.getStats(), uptime: process.uptime(), environment: NODE_ENV
             },
             requestId: req.id
@@ -2722,7 +3057,7 @@ app.use((err, req, res, next) => {
         if (err.code === 'LIMIT_FILE_SIZE') {
             return res.status(400).json({
                 status: 'error', code: 'FILE_TOO_LARGE',
-                message: `File size too large. Maximum size is ${MAX_FILE_SIZE} bytes.`,
+                message: `File size too large. Maximum size is ${formatBytes(MAX_FILE_SIZE)}.`,
                 requestId: req.id
             });
         }

@@ -175,7 +175,7 @@
             position: fixed; top: 0; left: 0; bottom: 0;
             z-index: 40;
             transition: transform var(--dur) var(--ease);
-            overflow: hidden; /* no outer scroll — three pinned zones */
+            overflow: hidden;
         }
         @media (max-width: 900px) {
             .sidebar { transform: translateX(-100%); }
@@ -186,7 +186,7 @@
             padding: 24px 20px 20px;
             display: flex; align-items: center; gap: 12px;
             border-bottom: 1px solid rgba(255,255,255,0.08);
-            flex-shrink: 0; /* pinned top */
+            flex-shrink: 0;
         }
         .sidebar-logo {
             width: 44px; height: 44px;
@@ -215,22 +215,18 @@
             margin-top: 3px;
         }
 
-        /* Independently scrolling nav */
         .nav {
             padding: 16px 12px;
             flex: 1 1 auto;
             overflow-y: auto;
-            min-height: 0; /* crucial for flex scroll */
+            min-height: 0;
             display: flex; flex-direction: column; gap: 3px;
             scrollbar-width: thin;
             scrollbar-color: rgba(255,255,255,0.15) transparent;
         }
         .nav::-webkit-scrollbar { width: 5px; }
         .nav::-webkit-scrollbar-track { background: transparent; }
-        .nav::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.15);
-            border-radius: 5px;
-        }
+        .nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 5px; }
         .nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
 
         .nav-section-label {
@@ -271,24 +267,10 @@
         }
         .nav-item.active i { color: var(--accent); }
 
-        .nav-badge {
-            margin-left: auto;
-            background: var(--accent);
-            color: var(--primary);
-            font-family: var(--font-mono);
-            font-size: 0.625rem;
-            font-weight: 800;
-            padding: 2px 6px;
-            border-radius: 999px;
-            min-width: 18px;
-            text-align: center;
-            line-height: 14px;
-        }
-
         .sidebar-footer {
             padding: 16px 12px 20px;
             border-top: 1px solid rgba(255,255,255,0.08);
-            flex-shrink: 0; /* pinned bottom */
+            flex-shrink: 0;
         }
         .logout-btn {
             width: 100%;
@@ -335,7 +317,7 @@
         @media (max-width: 900px) { .main-content { margin-left: 0; } }
 
         /* ============================================================
-           HEADER — no breadcrumb
+           HEADER
            ============================================================ */
         .header {
             height: var(--header-h);
@@ -363,8 +345,6 @@
         @media (max-width: 900px) {
             .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
         }
-
-        .header-breadcrumb { display: none; } /* breadcrumb removed */
 
         .header-actions { display: flex; align-items: center; gap: 8px; }
 
@@ -484,6 +464,7 @@
         .btn-danger:hover { filter: brightness(0.92); }
         .btn-danger:active { transform: scale(0.97); }
         .btn-sm { padding: 6px 12px; font-size: 0.75rem; }
+        .btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none !important; }
 
         .btn::after {
             content: '';
@@ -537,9 +518,10 @@
         .stat-card:nth-child(1) { animation-delay: 40ms; }
         .stat-card:nth-child(2) { animation-delay: 100ms; }
         .stat-card:nth-child(3) { animation-delay: 160ms; }
-        .stat-card:nth-child(4) { animation-delay: 220ms; }
         .stat-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow-md); }
         .stat-card.active { border-color: var(--accent); background: var(--accent-tint); }
+        .stat-card.no-click { cursor: default; }
+        .stat-card.no-click:hover { border-color: var(--border); transform: none; box-shadow: none; }
         .stat-icon {
             width: 36px; height: 36px;
             border-radius: var(--r);
@@ -547,10 +529,8 @@
             font-size: 0.875rem;
             margin-bottom: 10px;
         }
-        .stat-icon.icon-green  { background: var(--primary-tint); color: var(--primary); }
         .stat-icon.icon-gold   { background: var(--accent-tint);  color: var(--text-gold); }
         .stat-icon.icon-blue   { background: var(--info-tint);    color: var(--info); }
-        .stat-icon.icon-red    { background: var(--danger-tint);  color: var(--danger); }
         .stat-icon.icon-purple { background: var(--purple-tint);  color: var(--purple); }
         .stat-value {
             font-size: 1.625rem; font-weight: 800;
@@ -564,11 +544,11 @@
         }
 
         /* ============================================================
-           MEDIA LIBRARY SHELL
+           MEDIA SHELL
            ============================================================ */
         .media-shell {
             display: grid;
-            grid-template-columns: 1fr 380px;
+            grid-template-columns: 1fr 400px;
             gap: 16px;
             align-items: start;
         }
@@ -642,9 +622,7 @@
             box-shadow: 0 0 0 3px rgba(213, 168, 59, 0.12);
         }
 
-        .media-categories {
-            display: flex; gap: 6px; flex-wrap: wrap;
-        }
+        .media-categories { display: flex; gap: 6px; flex-wrap: wrap; }
         .category-tab {
             padding: 6px 14px;
             background: transparent;
@@ -748,6 +726,25 @@
             font-size: 2.5rem;
             color: var(--text-dim);
         }
+
+        .video-play-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(16, 43, 39, 0.35);
+            pointer-events: none;
+        }
+        .video-play-overlay .play-circle {
+            width: 48px; height: 48px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.95);
+            color: var(--primary);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.125rem;
+            box-shadow: var(--shadow-lg);
+            padding-left: 3px;
+        }
+
         .media-card-badge {
             position: absolute;
             top: 8px; right: 8px;
@@ -759,13 +756,9 @@
             text-transform: uppercase;
             letter-spacing: 0.05em;
             display: inline-flex; align-items: center; gap: 3px;
+            z-index: 2;
         }
         .badge-success  { background: var(--success-tint); color: var(--success); }
-        .badge-warning  { background: var(--warning-tint); color: var(--warning); }
-        .badge-danger   { background: var(--danger-tint);  color: var(--danger); }
-        .badge-info     { background: var(--info-tint);    color: var(--info); }
-        .badge-gold     { background: var(--accent-tint);  color: var(--text-gold); }
-        .badge-purple   { background: var(--purple-tint);  color: var(--purple); }
         .badge-muted    { background: var(--surface-muted); color: var(--text-muted); }
 
         .media-card-body { padding: 12px 14px; }
@@ -784,34 +777,16 @@
             color: var(--text-dim);
             display: flex; gap: 6px; align-items: center;
         }
-
-        .media-checkbox {
-            position: absolute;
-            top: 8px; left: 8px;
-            width: 20px; height: 20px;
-            border-radius: 4px;
-            border: 2px solid var(--surface);
-            background: rgba(16, 43, 39, 0.3);
-            display: flex; align-items: center; justify-content: center;
-            color: var(--text-invert);
-            font-size: 0.625rem;
-            opacity: 0;
-            transition: all var(--dur-fast) var(--ease);
-            z-index: 2;
+        .media-card-type {
+            padding: 1px 6px;
+            border-radius: 999px;
+            font-size: 0.5625rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
-        .media-card:hover .media-checkbox,
-        .media-card.selected .media-checkbox { opacity: 1; }
-        .media-card.selected .media-checkbox {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: var(--primary);
-        }
-        .media-checkbox.checked {
-            opacity: 1;
-            background: var(--accent);
-            border-color: var(--accent);
-            color: var(--primary);
-        }
+        .media-card-type.type-picture { background: var(--accent-tint); color: var(--text-gold); }
+        .media-card-type.type-video   { background: var(--info-tint); color: var(--info); }
 
         /* List mode */
         .media-grid.list-mode { display: flex; flex-direction: column; }
@@ -821,7 +796,7 @@
             padding: 10px 14px;
         }
         .media-grid.list-mode .media-card-thumb {
-            width: 80px; height: 60px;
+            width: 96px; height: 70px;
             aspect-ratio: auto;
             border-radius: var(--r-sm);
             flex-shrink: 0;
@@ -832,47 +807,6 @@
             margin-left: auto;
             flex-shrink: 0;
         }
-        .media-grid.list-mode .media-checkbox {
-            position: static;
-            opacity: 1;
-            background: transparent;
-            border-color: var(--border-strong);
-            color: var(--text-dim);
-        }
-        .media-grid.list-mode .media-card.selected .media-checkbox,
-        .media-grid.list-mode .media-checkbox.checked {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: var(--primary);
-        }
-
-        /* Bulk bar */
-        .bulk-bar {
-            background: var(--primary);
-            color: var(--text-invert);
-            padding: 12px 18px;
-            border-radius: var(--r-lg);
-            display: flex; align-items: center; justify-content: space-between;
-            gap: 12px; flex-wrap: wrap;
-            animation: slideInUp var(--dur) var(--ease);
-        }
-        .bulk-bar .bulk-count { font-weight: 700; font-size: 0.875rem; }
-        .bulk-actions { display: flex; gap: 8px; }
-        .bulk-btn {
-            padding: 6px 14px;
-            border-radius: var(--r-sm);
-            border: 1px solid rgba(255,255,255,0.25);
-            background: transparent;
-            color: var(--text-invert);
-            font-size: 0.75rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all var(--dur-fast) var(--ease);
-            display: inline-flex; align-items: center; gap: 6px;
-        }
-        .bulk-btn:hover { background: rgba(255,255,255,0.1); }
-        .bulk-btn.danger { border-color: var(--danger); background: rgba(183,64,47,0.3); }
-        .bulk-btn.danger:hover { background: var(--danger); }
 
         /* Pagination */
         .pagination {
@@ -897,7 +831,7 @@
         .page-btn.active { background: var(--primary); color: var(--text-invert); border-color: var(--primary); }
         .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-        /* Empty state */
+        /* Empty / error states */
         .media-empty {
             grid-column: 1 / -1;
             padding: 60px 20px;
@@ -908,9 +842,10 @@
         .media-empty i { font-size: 2.5rem; margin-bottom: 12px; opacity: 0.4; }
         .media-empty h3 { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 4px; }
         .media-empty p { font-size: 0.8125rem; }
+        .media-empty .btn { margin-top: 14px; }
 
         /* ============================================================
-           DETAILS PANEL (Right column)
+           DETAILS PANEL
            ============================================================ */
         .details-panel {
             background: var(--surface);
@@ -950,6 +885,7 @@
             position: relative;
         }
         .details-preview img { width: 100%; height: 100%; object-fit: contain; }
+        .details-preview video { width: 100%; height: 100%; object-fit: contain; background: #000; }
         .details-preview .file-icon { font-size: 3.5rem; color: var(--text-dim); }
 
         .details-header {
@@ -1045,53 +981,6 @@
             background: var(--surface-muted);
         }
         .details-actions .btn { flex: 1; justify-content: center; min-width: 80px; }
-
-        /* Placement section */
-        .placement-section {
-            background: var(--surface);
-            border-radius: var(--r-lg);
-            border: 1px solid var(--border);
-            padding: 20px;
-            margin-top: 16px;
-            animation: slideInUp var(--dur) var(--ease);
-        }
-        .placement-section h3 {
-            font-size: 0.9375rem; font-weight: 700;
-            color: var(--text);
-            margin-bottom: 4px;
-            display: flex; align-items: center; gap: 8px;
-        }
-        .placement-section h3 i { color: var(--accent); }
-        .placement-hint {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            margin-bottom: 14px;
-        }
-        .placement-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 10px;
-        }
-        .placement-card {
-            padding: 12px 14px;
-            border: 1px solid var(--border);
-            border-radius: var(--r);
-            cursor: pointer;
-            transition: all var(--dur-fast) var(--ease);
-            background: var(--surface);
-        }
-        .placement-card:hover { border-color: var(--accent); background: var(--accent-tint); }
-        .placement-card.selected { border-color: var(--accent); background: var(--accent-tint); box-shadow: 0 0 0 2px var(--accent); }
-        .placement-card-title {
-            font-size: 0.8125rem; font-weight: 700;
-            color: var(--text);
-            margin-bottom: 2px;
-        }
-        .placement-card-desc {
-            font-size: 0.6875rem;
-            color: var(--text-muted);
-            line-height: 1.4;
-        }
 
         /* ============================================================
            MODAL
@@ -1205,8 +1094,37 @@
             border-radius: var(--r-sm);
             font-size: 0.75rem;
         }
-        .file-list-item .file-name { flex: 1; font-weight: 600; }
-        .file-list-item .file-size { color: var(--text-dim); font-family: var(--font-mono); font-size: 0.6875rem; }
+        .file-list-item.invalid { background: var(--danger-tint); border: 1px solid var(--danger); }
+        .file-list-item .file-name { flex: 1; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .file-list-item .file-size { color: var(--text-dim); font-family: var(--font-mono); font-size: 0.6875rem; flex-shrink: 0; }
+        .file-list-item .file-error { color: var(--danger); font-size: 0.6875rem; font-weight: 600; }
+
+        .upload-progress-wrap {
+            margin-top: 12px;
+            padding: 12px 14px;
+            background: var(--primary-tint);
+            border-radius: var(--r);
+            animation: fadeIn var(--dur) var(--ease);
+        }
+        .upload-progress-label {
+            display: flex; justify-content: space-between;
+            font-size: 0.75rem; font-weight: 600;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+        .upload-progress-bar {
+            height: 6px;
+            border-radius: 999px;
+            background: rgba(16, 43, 39, 0.12);
+            overflow: hidden;
+        }
+        .upload-progress-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 999px;
+            width: 0%;
+            transition: width 200ms var(--ease);
+        }
 
         /* ============================================================
            RESPONSIVE
@@ -1259,7 +1177,7 @@
                 </div>
             </div>
 
-            <nav class="nav" id="nav">
+            <nav class="nav">
                 <div class="nav-section-label">Main</div>
                 <a href="dashboard.html" class="nav-item"><i class="fas fa-th-large"></i><span>Dashboard</span></a>
                 <a href="members.html" class="nav-item"><i class="fas fa-users"></i><span>Members</span></a>
@@ -1287,14 +1205,9 @@
 
         <div class="main-content">
             <header class="header" id="mainHeader">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <button class="mobile-menu-btn" id="mobileMenuToggle" type="button" aria-label="Toggle menu">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    <div class="header-breadcrumb" id="headerBreadcrumb" style="display: none;">
-                        <!-- Breadcrumb removed -->
-                    </div>
-                </div>
+                <button class="mobile-menu-btn" id="mobileMenuToggle" type="button" aria-label="Toggle menu">
+                    <i class="fas fa-bars"></i>
+                </button>
                 <div class="header-actions">
                     <button class="notification-btn" id="notificationBtn" type="button" aria-label="Notifications">
                         <i class="far fa-bell"></i>
@@ -1315,7 +1228,7 @@
                 <div class="page-header">
                     <div>
                         <h1 class="page-title">Media Library</h1>
-                        <p class="page-subtitle">Manage all website images, videos and files.</p>
+                        <p class="page-subtitle">Manage all NUESA pictures and videos.</p>
                     </div>
                     <div class="page-header-actions">
                         <button class="btn btn-secondary" id="exportMediaBtn">
@@ -1329,25 +1242,20 @@
 
                 <!-- Stats -->
                 <div class="stats-grid">
-                    <div class="stat-card" data-filter="all">
-                        <div class="stat-icon icon-green"><i class="fas fa-photo-film"></i></div>
-                        <div class="stat-value" id="statTotal">0</div>
-                        <div class="stat-label">Total Files</div>
-                    </div>
-                    <div class="stat-card" data-filter="image">
+                    <div class="stat-card" data-filter="picture">
                         <div class="stat-icon icon-gold"><i class="fas fa-image"></i></div>
-                        <div class="stat-value" id="statImages">0</div>
-                        <div class="stat-label">Images</div>
+                        <div class="stat-value" id="statPictures">—</div>
+                        <div class="stat-label">Pictures</div>
                     </div>
                     <div class="stat-card" data-filter="video">
                         <div class="stat-icon icon-blue"><i class="fas fa-video"></i></div>
-                        <div class="stat-value" id="statVideos">0</div>
+                        <div class="stat-value" id="statVideos">—</div>
                         <div class="stat-label">Videos</div>
                     </div>
-                    <div class="stat-card" data-filter="document">
-                        <div class="stat-icon icon-purple"><i class="fas fa-file-lines"></i></div>
-                        <div class="stat-value" id="statDocuments">0</div>
-                        <div class="stat-label">Documents</div>
+                    <div class="stat-card no-click">
+                        <div class="stat-icon icon-purple"><i class="fas fa-database"></i></div>
+                        <div class="stat-value" id="statStorage">—</div>
+                        <div class="stat-label">Storage Used</div>
                     </div>
                 </div>
 
@@ -1360,7 +1268,7 @@
                             <div class="media-toolbar-row">
                                 <div class="media-search">
                                     <i class="fas fa-search"></i>
-                                    <input type="text" id="mediaSearchInput" placeholder="Search media by filename, title or tag…">
+                                    <input type="text" id="mediaSearchInput" placeholder="Search pictures and videos...">
                                 </div>
                                 <div class="view-toggle">
                                     <button class="view-btn active" id="gridViewBtn" title="Grid view"><i class="fas fa-th-large"></i></button>
@@ -1372,20 +1280,11 @@
                                     <button class="category-tab active" data-category="all">
                                         All <span class="cat-count" id="catAll">0</span>
                                     </button>
-                                    <button class="category-tab" data-category="image">
-                                        Images <span class="cat-count" id="catImages">0</span>
+                                    <button class="category-tab" data-category="picture">
+                                        Pictures <span class="cat-count" id="catPictures">0</span>
                                     </button>
                                     <button class="category-tab" data-category="video">
                                         Videos <span class="cat-count" id="catVideos">0</span>
-                                    </button>
-                                    <button class="category-tab" data-category="document">
-                                        Documents <span class="cat-count" id="catDocuments">0</span>
-                                    </button>
-                                    <button class="category-tab" data-category="poster">
-                                        Posters <span class="cat-count" id="catPosters">0</span>
-                                    </button>
-                                    <button class="category-tab" data-category="banner">
-                                        Banners <span class="cat-count" id="catBanners">0</span>
                                     </button>
                                 </div>
                                 <select class="filter-select" id="filterSort" style="margin-left: auto;">
@@ -1394,93 +1293,29 @@
                                     <option value="size_desc">Largest first</option>
                                     <option value="size_asc">Smallest first</option>
                                 </select>
-                                <select class="filter-select" id="filterUsage">
-                                    <option value="all">All media</option>
-                                    <option value="used">Used</option>
-                                    <option value="unused">Unused</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <!-- Bulk bar (hidden by default) -->
-                        <div class="bulk-bar" id="bulkBar" style="display: none;">
-                            <span class="bulk-count" id="bulkCount">0 selected</span>
-                            <div class="bulk-actions">
-                                <button class="bulk-btn" id="bulkDownloadBtn"><i class="fas fa-download"></i> Download</button>
-                                <button class="bulk-btn danger" id="bulkDeleteBtn"><i class="fas fa-trash"></i> Delete</button>
-                                <button class="bulk-btn" id="bulkClearBtn"><i class="fas fa-times"></i> Clear</button>
                             </div>
                         </div>
 
                         <!-- Media grid -->
-                        <div class="media-grid" id="mediaGrid"></div>
+                        <div class="media-grid" id="mediaGrid">
+                            <div class="media-empty">
+                                <i class="fas fa-circle-notch fa-spin" style="opacity: 1;"></i>
+                                <h3>Loading media…</h3>
+                            </div>
+                        </div>
 
                         <!-- Pagination -->
                         <div class="pagination" id="pagination"></div>
                     </div>
 
-                    <!-- Right: details / placement -->
-                    <div>
-                        <div class="details-panel" id="detailsPanel">
-                            <div class="details-empty">
-                                <div class="details-empty-icon">
-                                    <i class="far fa-image"></i>
-                                </div>
-                                <h3>No file selected</h3>
-                                <p>Select a media file to view details, edit, or manage its placement.</p>
+                    <!-- Right: details drawer -->
+                    <div class="details-panel" id="detailsPanel">
+                        <div class="details-empty">
+                            <div class="details-empty-icon">
+                                <i class="far fa-image"></i>
                             </div>
-                        </div>
-
-                        <!-- Placement section -->
-                        <div class="placement-section" id="placementSection" style="display: none;">
-                            <h3><i class="fas fa-map-pin"></i> Assign to website location</h3>
-                            <p class="placement-hint">Choose where this media should appear on the public NUESA website.</p>
-                            <div class="placement-grid" id="placementGrid">
-                                <div class="placement-card" data-placement="homepage_hero">
-                                    <div class="placement-card-title">Homepage Hero</div>
-                                    <div class="placement-card-desc">Main hero banner at the top of the homepage</div>
-                                </div>
-                                <div class="placement-card" data-placement="homepage_highlights">
-                                    <div class="placement-card-title">Homepage Highlights</div>
-                                    <div class="placement-card-desc">Featured highlights section on the homepage</div>
-                                </div>
-                                <div class="placement-card" data-placement="about_intro">
-                                    <div class="placement-card-title">About Us — Introduction</div>
-                                    <div class="placement-card-desc">Association introduction and history section</div>
-                                </div>
-                                <div class="placement-card" data-placement="events_gallery">
-                                    <div class="placement-card-title">Events — Gallery</div>
-                                    <div class="placement-card-desc">Event posters and photo galleries</div>
-                                </div>
-                                <div class="placement-card" data-placement="news_thumbnail">
-                                    <div class="placement-card-title">News — Thumbnail</div>
-                                    <div class="placement-card-desc">Featured image / thumbnail for articles</div>
-                                </div>
-                                <div class="placement-card" data-placement="executives_profile">
-                                    <div class="placement-card-title">Executives — Profile Photo</div>
-                                    <div class="placement-card-desc">Executive profile photographs</div>
-                                </div>
-                                <div class="placement-card" data-placement="coursereps_profile">
-                                    <div class="placement-card-title">Course Reps — Profile Photo</div>
-                                    <div class="placement-card-desc">Representative profile photographs</div>
-                                </div>
-                                <div class="placement-card" data-placement="admissions_banner">
-                                    <div class="placement-card-title">Admissions — Banner</div>
-                                    <div class="placement-card-desc">Admission banners and information visuals</div>
-                                </div>
-                                <div class="placement-card" data-placement="resources_thumb">
-                                    <div class="placement-card-title">Resources — Thumbnail</div>
-                                    <div class="placement-card-desc">Resource thumbnails and illustrations</div>
-                                </div>
-                            </div>
-                            <div style="margin-top: 12px; display: flex; gap: 8px;">
-                                <button class="btn btn-primary btn-sm" id="savePlacementBtn" style="flex: 1; justify-content: center;">
-                                    <i class="fas fa-check"></i> Save Placement
-                                </button>
-                                <button class="btn btn-secondary btn-sm" id="clearPlacementBtn" style="justify-content: center;">
-                                    <i class="fas fa-undo"></i> Clear
-                                </button>
-                            </div>
+                            <h3>No file selected</h3>
+                            <p>Select a picture or video to view its details, edit metadata, or manage its usage.</p>
                         </div>
                     </div>
                 </div>
@@ -1498,13 +1333,23 @@
             <div class="modal-body">
                 <div class="dropzone" id="dropzone">
                     <i class="fas fa-cloud-upload-alt"></i>
-                    <div class="dz-title">Drag &amp; drop files here</div>
+                    <div class="dz-title">Drag &amp; drop pictures and videos here</div>
                     <div class="dz-hint">or click to browse from your computer</div>
-                    <div class="dz-formats">Supports JPG, PNG, GIF, SVG, MP4, WEBM, PDF, DOCX (max 50MB each)</div>
+                    <div class="dz-formats">Pictures: JPG, PNG, WEBP, GIF · Videos: MP4, WebM, MOV (max 50MB each)</div>
                 </div>
-                <input type="file" id="fileInput" multiple accept="image/*,video/*,.pdf,.doc,.docx" style="display: none;">
+                <input type="file" id="fileInput" multiple accept="image/jpeg,image/jpg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime" style="display: none;">
 
                 <div class="file-list" id="fileList"></div>
+
+                <div class="upload-progress-wrap" id="uploadProgressWrap" style="display: none;">
+                    <div class="upload-progress-label">
+                        <span id="uploadProgressText">Uploading…</span>
+                        <span id="uploadProgressPct">0%</span>
+                    </div>
+                    <div class="upload-progress-bar">
+                        <div class="upload-progress-fill" id="uploadProgressFill"></div>
+                    </div>
+                </div>
 
                 <div style="margin-top: 20px;">
                     <div class="form-row">
@@ -1513,13 +1358,10 @@
                             <input type="text" class="form-input" id="uploadTitle" placeholder="e.g. Engineering Week Poster 2026">
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="uploadCategory">Media category</label>
+                            <label class="form-label" for="uploadCategory">Media type</label>
                             <select class="form-select" id="uploadCategory">
-                                <option value="image">Image</option>
+                                <option value="picture">Picture</option>
                                 <option value="video">Video</option>
-                                <option value="poster">Poster</option>
-                                <option value="banner">Banner</option>
-                                <option value="document">Document</option>
                             </select>
                         </div>
                     </div>
@@ -1527,16 +1369,14 @@
                         <label class="form-label" for="uploadDescription">Description</label>
                         <textarea class="form-textarea" id="uploadDescription" placeholder="Briefly describe this media…"></textarea>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label" for="uploadAltText">Alt text</label>
-                            <input type="text" class="form-input" id="uploadAltText" placeholder="Describe the image for accessibility and SEO">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="uploadTags">Tags</label>
-                            <input type="text" class="form-input" id="uploadTags" placeholder="e.g. engineering, week, 2026">
-                            <div class="form-hint">Comma-separated</div>
-                        </div>
+                    <div class="form-group">
+                        <label class="form-label" for="uploadAltText">Alt text</label>
+                        <input type="text" class="form-input" id="uploadAltText" placeholder="Describe the image for accessibility and SEO">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="uploadTags">Tags</label>
+                        <input type="text" class="form-input" id="uploadTags" placeholder="e.g. engineering, week, 2026">
+                        <div class="form-hint">Comma-separated</div>
                     </div>
                 </div>
             </div>
@@ -1544,6 +1384,41 @@
                 <button class="btn btn-secondary" onclick="hideModal('uploadModal')" type="button">Cancel</button>
                 <button class="btn btn-gold" id="confirmUploadBtn" type="button">
                     <i class="fas fa-upload"></i> Upload
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ EDIT MODAL ============ -->
+    <div class="modal" id="editMediaModal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fas fa-pen"></i> Edit Media Details</h3>
+                <button class="modal-close" onclick="hideModal('editMediaModal')" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" for="editTitle">Media title</label>
+                    <input type="text" class="form-input" id="editTitle">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="editDescription">Description</label>
+                    <textarea class="form-textarea" id="editDescription"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="editAltText">Alt text</label>
+                    <input type="text" class="form-input" id="editAltText">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="editTags">Tags</label>
+                    <input type="text" class="form-input" id="editTags">
+                    <div class="form-hint">Comma-separated</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('editMediaModal')" type="button">Cancel</button>
+                <button class="btn btn-primary" id="saveEditBtn" type="button">
+                    <i class="fas fa-check"></i> Save Changes
                 </button>
             </div>
         </div>
@@ -1563,6 +1438,19 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="hideModal('deleteMediaModal')" type="button">Cancel</button>
                 <button class="btn btn-danger" id="confirmDeleteMediaBtn" type="button">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ VIDEO PLAYER MODAL ============ -->
+    <div class="modal" id="videoPlayerModal">
+        <div class="modal-content modal-lg" style="background: #000; padding: 0;">
+            <div class="modal-header" style="background: var(--primary); color: var(--text-invert); border-bottom: none;">
+                <h3 class="modal-title" style="color: var(--text-invert);"><i class="fas fa-play-circle" style="color: var(--accent);"></i> <span id="videoPlayerTitle">Video</span></h3>
+                <button class="modal-close" onclick="closeVideoPlayer()" aria-label="Close" style="color: var(--text-invert);">&times;</button>
+            </div>
+            <div style="background: #000; display: flex; align-items: center; justify-content: center; min-height: 320px;">
+                <video id="videoPlayerElement" controls style="max-width: 100%; max-height: 70vh; display: block;" playsinline></video>
             </div>
         </div>
     </div>
@@ -1587,6 +1475,11 @@
     // CONFIG
     // ============================================================
     const API_BASE_URL = '';
+    const PAGE_SIZE = 12;
+    const MAX_FILE_SIZE_MB = 50;
+
+    const ALLOWED_PICTURE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 
     let currentUser = null;
     let inactivityTimeout = null;
@@ -1597,29 +1490,12 @@
     let currentCategory = 'all';
     let searchQuery = '';
     let selectedMediaId = null;
-    let selectedMediaIds = new Set();
     let currentView = 'grid';
     let currentSort = 'newest';
-    let currentUsageFilter = 'all';
     let currentPage = 1;
-    const PAGE_SIZE = 12;
     let deletingMediaId = null;
+    let editingMediaId = null;
     let pendingUploadFiles = [];
-    let selectedPlacement = null;
-
-    // ============================================================
-    // MOCK DATA
-    // ============================================================
-    const MOCK_MEDIA = [
-        { id: 'm1', title: 'Students Group Photo', filename: 'students-group.jpg', type: 'image', size: '2.4 MB', dimensions: '1920 × 1280', url: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&q=80', thumb: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=400&q=80', alt: 'Students group photo at engineering faculty', description: 'Group photo of engineering students during orientation.', tags: ['students','group','orientation'], category: 'image', uploaded_at: '2026-02-10T10:30:00Z', uploader: 'Admin', usage: [{ page: 'Homepage', location: 'Highlights' }], used: true, is_spam: false },
-        { id: 'm2', title: 'Engineering Week Poster', filename: 'engineering-week-poster.png', type: 'image', size: '1.8 MB', dimensions: '1080 × 1350', url: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&q=80', thumb: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&q=80', alt: 'Engineering week poster design', description: 'Official poster for NUESA Engineering Week 2026.', tags: ['poster','engineering','week'], category: 'poster', uploaded_at: '2026-02-08T14:15:00Z', uploader: 'Admin', usage: [{ page: 'Events', location: 'Gallery' }], used: true, is_spam: false },
-        { id: 'm3', title: 'Engineering Faculty', filename: 'engineering-faculty.jpg', type: 'image', size: '3.1 MB', dimensions: '2400 × 1600', url: 'https://images.unsplash.com/photo-1562774053-701939374585?w=800&q=80', thumb: 'https://images.unsplash.com/photo-1562774053-701939374585?w=400&q=80', alt: 'Engineering faculty building', description: 'Photo of the engineering faculty building.', tags: ['faculty','building','campus'], category: 'image', uploaded_at: '2026-02-05T09:00:00Z', uploader: 'Admin', usage: [], used: false, is_spam: false },
-        { id: 'm4', title: 'Graduation Ceremony', filename: 'graduation-ceremony.jpg', type: 'image', size: '2.0 MB', dimensions: '1920 × 1280', url: 'https://images.unsplash.com/photo-1523580494863-6f3031224c94?w=800&q=80', thumb: 'https://images.unsplash.com/photo-1523580494863-6f3031224c94?w=400&q=80', alt: 'Graduation ceremony celebration', description: 'Students celebrating at the graduation ceremony.', tags: ['graduation','ceremony','students'], category: 'image', uploaded_at: '2026-02-01T16:20:00Z', uploader: 'Admin', usage: [{ page: 'News & Articles', location: 'Thumbnail' }], used: true, is_spam: false },
-        { id: 'm5', title: 'NUESA Banner 2026', filename: 'nuesa-banner-2026.png', type: 'image', size: '1.2 MB', dimensions: '1500 × 500', url: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800&q=80', thumb: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=400&q=80', alt: 'NUESA banner', description: 'Main banner for the NUESA website homepage.', tags: ['banner','nuesa','homepage'], category: 'banner', uploaded_at: '2026-01-28T11:00:00Z', uploader: 'Admin', usage: [{ page: 'Homepage', location: 'Hero' }], used: true, is_spam: false },
-        { id: 'm6', title: 'Lab Session Video', filename: 'lab-session.mp4', type: 'video', size: '12.5 MB', dimensions: '1920 × 1080', url: '', thumb: '', alt: 'Students in engineering lab session', description: 'Video recording of a lab session.', tags: ['lab','video','engineering'], category: 'video', uploaded_at: '2026-01-25T13:45:00Z', uploader: 'Admin', usage: [], used: false, is_spam: false },
-        { id: 'm7', title: 'Course Outline PDF', filename: 'course-outline.pdf', type: 'document', size: '450 KB', dimensions: '—', url: '', thumb: '', alt: 'Course outline document', description: 'PDF document containing course outlines.', tags: ['course','pdf','outline'], category: 'document', uploaded_at: '2026-01-20T08:30:00Z', uploader: 'Admin', usage: [{ page: 'Resources', location: 'Thumbnail' }], used: true, is_spam: false },
-        { id: 'm8', title: 'Executive Team Photo', filename: 'executive-team.jpg', type: 'image', size: '2.8 MB', dimensions: '2000 × 1333', url: 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=800&q=80', thumb: 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=400&q=80', alt: 'Executive team group photo', description: 'NUESA executive team group photograph.', tags: ['executive','team','photo'], category: 'image', uploaded_at: '2026-01-15T10:00:00Z', uploader: 'Admin', usage: [{ page: 'Executives', location: 'Profile Photo' }], used: true, is_spam: false },
-    ];
 
     // ============================================================
     // AUTH
@@ -1627,10 +1503,23 @@
     async function checkAuth() {
         try {
             showLoading();
-            currentUser = { fullName: 'Administrator', role: 'admin' };
-            updateUserInfo();
+            const res = await fetch(`${API_BASE_URL}/api/admin/session`, {
+                method: 'GET', credentials: 'include',
+                headers: { 'Accept': 'application/json' }
+            });
+            if (res.status === 200) {
+                const data = await res.json();
+                if (data.status === 'success' && data.data) {
+                    currentUser = data.data;
+                    updateUserInfo();
+                    hideLoading();
+                    return true;
+                }
+            }
+            showToast('Please login to continue', 'info');
+            setTimeout(() => window.location.replace('adlog.html'), 1200);
             hideLoading();
-            return true;
+            return false;
         } catch (err) {
             console.error('Auth error:', err);
             showToast('Connection error', 'error');
@@ -1641,7 +1530,7 @@
 
     function updateUserInfo() {
         if (!currentUser) return;
-        const name = currentUser.fullName || 'Administrator';
+        const name = currentUser.fullName || currentUser.full_name || 'Administrator';
         const role = currentUser.role || 'admin';
         const initial = name.charAt(0).toUpperCase();
         const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
@@ -1651,13 +1540,734 @@
     }
 
     async function confirmLogout() {
+        try {
+            showLoading();
+            await fetch(`${API_BASE_URL}/api/admin/logout`, { method: 'POST', credentials: 'include' });
+        } catch (err) { console.warn('Logout failed:', err); }
         hideModal('logoutModal');
         showToast('Logged out', 'success');
         setTimeout(() => window.location.replace('adlog.html'), 700);
     }
 
     // ============================================================
-    // HELPERS
+    // API HELPERS
+    // ============================================================
+    function handle401(res) {
+        if (res.status === 401) {
+            showToast('Session expired', 'warning');
+            setTimeout(() => window.location.replace('adlog.html'), 1200);
+            throw new Error('Unauthorized');
+        }
+    }
+
+    async function apiGet(endpoint) {
+        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'GET', credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+        });
+        handle401(res);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+    }
+    async function apiPostJSON(endpoint, body) {
+        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        handle401(res);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+        return data;
+    }
+    async function apiPostForm(endpoint, formData, onProgress) {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', `${API_BASE_URL}${endpoint}`, true);
+            xhr.withCredentials = true;
+            xhr.setRequestHeader('Accept', 'application/json');
+            xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable && typeof onProgress === 'function') {
+                    onProgress(Math.round((e.loaded / e.total) * 100));
+                }
+            };
+            xhr.onload = () => {
+                if (xhr.status === 401) {
+                    showToast('Session expired', 'warning');
+                    setTimeout(() => window.location.replace('adlog.html'), 1200);
+                    reject(new Error('Unauthorized'));
+                    return;
+                }
+                let data = {};
+                try { data = JSON.parse(xhr.responseText || '{}'); } catch {}
+                if (xhr.status >= 200 && xhr.status < 300) resolve(data);
+                else reject(new Error(data.message || `HTTP ${xhr.status}`));
+            };
+            xhr.onerror = () => reject(new Error('Network error during upload'));
+            xhr.send(formData);
+        });
+    }
+    async function apiPut(endpoint, body) {
+        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'PUT', credentials: 'include',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        handle401(res);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+        return data;
+    }
+    async function apiDelete(endpoint) {
+        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'DELETE', credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+        });
+        handle401(res);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+        return data;
+    }
+
+    // ============================================================
+    // DATA LOADING
+    // ============================================================
+    async function loadMedia() {
+        try {
+            const res = await apiGet('/api/admin/media');
+            const list = Array.isArray(res.data) ? res.data : (res.data?.media || []);
+            allMedia = list.map(normalizeMedia);
+            updateStats();
+            updateCategoryCounts();
+            applyFilters();
+            if (selectedMediaId) {
+                const stillExists = allMedia.find(m => String(m.id) === String(selectedMediaId));
+                if (stillExists) renderDetails(stillExists);
+                else { selectedMediaId = null; renderEmptyDetails(); }
+            }
+        } catch (err) {
+            console.error('Load media error:', err);
+            document.getElementById('mediaGrid').innerHTML = `
+                <div class="media-empty">
+                    <i class="fas fa-exclamation-triangle" style="color: var(--warning);"></i>
+                    <h3>Couldn't load media</h3>
+                    <p>${escapeHtml(err.message)}</p>
+                    <button class="btn btn-secondary btn-sm" onclick="loadMedia()">
+                        <i class="fas fa-sync-alt"></i> Retry
+                    </button>
+                </div>`;
+        }
+    }
+
+    function normalizeMedia(m) {
+        // Detect media type robustly from API
+        const mime = m.mime_type || m.mime || m.file_type || '';
+        let type = (m.type || '').toLowerCase();
+        if (!type) {
+            if (mime.startsWith('image/')) type = 'picture';
+            else if (mime.startsWith('video/')) type = 'video';
+            else if (m.category === 'picture' || m.category === 'image') type = 'picture';
+            else if (m.category === 'video') type = 'video';
+        }
+        if (type === 'image') type = 'picture';
+
+        // Extract file extension label
+        const filename = m.filename || m.file_name || '';
+        const extMatch = filename.match(/\.([a-z0-9]+)$/i);
+        const extLabel = extMatch ? extMatch[1].toUpperCase() : (type === 'video' ? 'VIDEO' : 'IMG');
+
+        return {
+            id: m.id || m.uuid,
+            title: m.title || m.name || filename || 'Untitled',
+            filename: filename,
+            type: type === 'video' ? 'video' : 'picture',
+            mime: mime,
+            extLabel: extLabel,
+            size: m.size_human || m.size_formatted || formatBytes(m.size_bytes || m.file_size || 0),
+            sizeBytes: Number(m.size_bytes || m.file_size || 0),
+            dimensions: m.dimensions || (m.width && m.height ? `${m.width} × ${m.height}` : ''),
+            duration: m.duration || null,
+            url: m.url || m.file_url || '',
+            thumb: m.thumbnail_url || m.thumb_url || m.thumb || m.url || m.file_url || '',
+            alt: m.alt_text || m.alt || '',
+            description: m.description || '',
+            tags: Array.isArray(m.tags) ? m.tags : (typeof m.tags === 'string' ? m.tags.split(',').map(t => t.trim()).filter(Boolean) : []),
+            uploaded_at: m.created_at || m.uploaded_at || m.uploaded_on || null,
+            uploader: m.uploader_name || m.uploaded_by_name || m.uploaded_by || 'Admin',
+            usage: Array.isArray(m.usage) ? m.usage : [],
+            used: Array.isArray(m.usage) && m.usage.length > 0
+        };
+    }
+
+    function formatBytes(bytes) {
+        if (!bytes) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    // ============================================================
+    // STATS
+    // ============================================================
+    function animateNumber(el, target, duration = 500, suffix = '') {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            el.textContent = target + suffix;
+            return;
+        }
+        const start = performance.now();
+        function step(now) {
+            const elapsed = now - start;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            el.textContent = Math.round(target * eased) + suffix;
+            if (progress < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+    }
+
+    function updateStats() {
+        const pictures = allMedia.filter(m => m.type === 'picture').length;
+        const videos = allMedia.filter(m => m.type === 'video').length;
+        const totalBytes = allMedia.reduce((sum, m) => sum + (m.sizeBytes || 0), 0);
+
+        animateNumber(document.getElementById('statPictures'), pictures);
+        animateNumber(document.getElementById('statVideos'), videos);
+        document.getElementById('statStorage').textContent = formatBytes(totalBytes);
+    }
+
+    function updateCategoryCounts() {
+        const pictures = allMedia.filter(m => m.type === 'picture').length;
+        const videos = allMedia.filter(m => m.type === 'video').length;
+        document.getElementById('catAll').textContent = allMedia.length;
+        document.getElementById('catPictures').textContent = pictures;
+        document.getElementById('catVideos').textContent = videos;
+    }
+
+    // ============================================================
+    // FILTER & SORT
+    // ============================================================
+    function applyFilters() {
+        let list = allMedia.slice();
+
+        if (currentCategory === 'picture') list = list.filter(m => m.type === 'picture');
+        else if (currentCategory === 'video') list = list.filter(m => m.type === 'video');
+
+        if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            list = list.filter(m =>
+                (m.title || '').toLowerCase().includes(q) ||
+                (m.filename || '').toLowerCase().includes(q) ||
+                (m.tags || []).some(t => String(t).toLowerCase().includes(q))
+            );
+        }
+
+        if (currentSort === 'newest') list.sort((a, b) => new Date(b.uploaded_at || 0) - new Date(a.uploaded_at || 0));
+        else if (currentSort === 'oldest') list.sort((a, b) => new Date(a.uploaded_at || 0) - new Date(b.uploaded_at || 0));
+        else if (currentSort === 'size_desc') list.sort((a, b) => (b.sizeBytes || 0) - (a.sizeBytes || 0));
+        else if (currentSort === 'size_asc') list.sort((a, b) => (a.sizeBytes || 0) - (b.sizeBytes || 0));
+
+        filteredMedia = list;
+        currentPage = 1;
+        renderMediaGrid();
+        renderPagination();
+    }
+
+    // ============================================================
+    // RENDER MEDIA GRID
+    // ============================================================
+    function renderMediaGrid() {
+        const grid = document.getElementById('mediaGrid');
+        grid.classList.toggle('list-mode', currentView === 'list');
+        const start = (currentPage - 1) * PAGE_SIZE;
+        const pageItems = filteredMedia.slice(start, start + PAGE_SIZE);
+
+        if (pageItems.length === 0) {
+            grid.innerHTML = `
+                <div class="media-empty">
+                    <i class="far fa-folder-open"></i>
+                    <h3>No media found</h3>
+                    <p>${searchQuery ? 'Try adjusting your search or filters.' : 'Upload your first picture or video to get started.'}</p>
+                </div>`;
+            return;
+        }
+
+        grid.innerHTML = pageItems.map((m, idx) => {
+            const isSelected = String(selectedMediaId) === String(m.id) ? 'selected' : '';
+            const thumbContent = m.thumb
+                ? `<img src="${escapeHtml(m.thumb)}" alt="${escapeHtml(m.alt || m.title)}" loading="lazy" onerror="this.style.display='none';this.parentNode.querySelector('.file-icon')?.style.setProperty('display','')"><i class="fas ${m.type === 'video' ? 'fa-video' : 'fa-image'} file-icon" style="display:none;"></i>`
+                : `<i class="fas ${m.type === 'video' ? 'fa-video' : 'fa-image'} file-icon"></i>`;
+            const isVideo = m.type === 'video';
+            const playOverlay = isVideo ? `
+                <div class="video-play-overlay">
+                    <div class="play-circle"><i class="fas fa-play"></i></div>
+                </div>` : '';
+            const usageBadge = m.used
+                ? `<span class="media-card-badge badge-success"><i class="fas fa-check" style="font-size:0.5rem;"></i> In use</span>`
+                : '';
+            const typeLabel = isVideo ? 'video' : 'picture';
+            const typeClass = isVideo ? 'type-video' : 'type-picture';
+            const typeDisplay = isVideo ? 'Video' : 'Picture';
+
+            return `
+                <div class="media-card ${isSelected}" data-id="${escapeHtml(m.id)}" style="animation-delay: ${idx * 30}ms;">
+                    ${usageBadge}
+                    <div class="media-card-thumb">
+                        ${thumbContent}
+                        ${playOverlay}
+                    </div>
+                    <div class="media-card-body">
+                        <div class="media-card-title">${escapeHtml(m.title)}</div>
+                        <div class="media-card-meta">
+                            <span class="media-card-type ${typeClass}">${typeDisplay}</span>
+                            <span>·</span>
+                            <span>${escapeHtml(m.extLabel || '—')}</span>
+                            <span>·</span>
+                            <span>${escapeHtml(m.size)}</span>
+                        </div>
+                    </div>
+                </div>`;
+        }).join('');
+
+        grid.querySelectorAll('.media-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const id = card.dataset.id;
+                selectedMediaId = id;
+                const media = allMedia.find(m => String(m.id) === String(id));
+                if (media) {
+                    if (media.type === 'video') openVideoPlayer(media);
+                    else renderDetails(media);
+                }
+                renderMediaGrid();
+            });
+        });
+    }
+
+    // ============================================================
+    // PAGINATION
+    // ============================================================
+    function renderPagination() {
+        const pagination = document.getElementById('pagination');
+        const totalPages = Math.ceil(filteredMedia.length / PAGE_SIZE);
+        if (totalPages <= 1) { pagination.innerHTML = ''; return; }
+
+        let html = '';
+        html += `<button class="page-btn" data-page="prev" ${currentPage === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i></button>`;
+        for (let i = 1; i <= totalPages; i++) {
+            if (totalPages > 7 && i !== 1 && i !== totalPages && Math.abs(i - currentPage) > 1) {
+                if (i === 2 || i === totalPages - 1) html += `<span class="page-btn" style="border:none;background:none;cursor:default;">…</span>`;
+                continue;
+            }
+            html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
+        }
+        html += `<button class="page-btn" data-page="next" ${currentPage === totalPages ? 'disabled' : ''}><i class="fas fa-chevron-right"></i></button>`;
+        pagination.innerHTML = html;
+
+        pagination.querySelectorAll('.page-btn[data-page]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const page = btn.dataset.page;
+                if (page === 'prev') currentPage = Math.max(1, currentPage - 1);
+                else if (page === 'next') currentPage = Math.min(totalPages, currentPage + 1);
+                else currentPage = parseInt(page);
+                renderMediaGrid();
+                renderPagination();
+            });
+        });
+    }
+
+    // ============================================================
+    // DETAILS PANEL
+    // ============================================================
+    function renderEmptyDetails() {
+        document.getElementById('detailsPanel').innerHTML = `
+            <div class="details-empty">
+                <div class="details-empty-icon"><i class="far fa-image"></i></div>
+                <h3>No file selected</h3>
+                <p>Select a picture or video to view its details, edit metadata, or manage its usage.</p>
+            </div>`;
+    }
+
+    function renderDetails(m) {
+        const panel = document.getElementById('detailsPanel');
+        let previewHtml;
+        if (m.type === 'picture') {
+            previewHtml = m.url
+                ? `<img src="${escapeHtml(m.url)}" alt="${escapeHtml(m.alt || m.title)}" onerror="this.parentNode.innerHTML='<i class=\\'fas fa-image file-icon\\'></i>'">`
+                : `<i class="fas fa-image file-icon"></i>`;
+        } else {
+            previewHtml = m.url
+                ? `<video src="${escapeHtml(m.url)}" controls preload="metadata" poster="${escapeHtml(m.thumb || '')}"></video>`
+                : `<i class="fas fa-video file-icon"></i>`;
+        }
+
+        const usageHtml = (m.usage && m.usage.length > 0)
+            ? m.usage.map(u => `
+                <div class="usage-item">
+                    <i class="fas fa-map-pin"></i>
+                    <span class="usage-page">${escapeHtml(u.page || u.location || '—')}</span>
+                    ${u.section ? `<span class="usage-location">— ${escapeHtml(u.section)}</span>` : ''}
+                </div>`).join('')
+            : '<div class="usage-item" style="color: var(--text-dim);"><i class="fas fa-info-circle"></i> Not used anywhere yet</div>';
+
+        const tagsHtml = (m.tags && m.tags.length > 0)
+            ? m.tags.map(t => `<span class="tag-pill"><i class="fas fa-hashtag" style="font-size:0.5rem;"></i>${escapeHtml(t)}</span>`).join('')
+            : '<span style="color: var(--text-dim); font-size: 0.75rem;">No tags</span>';
+
+        const typeLabel = m.type === 'video' ? 'Video' : 'Picture';
+        const dimensionLabel = m.type === 'video' ? 'Duration' : 'Dimensions';
+        const dimensionValue = m.type === 'video' ? (m.duration || '—') : (m.dimensions || '—');
+
+        panel.innerHTML = `
+            <div class="details-preview">${previewHtml}</div>
+            <div class="details-header">
+                <div class="details-title">${escapeHtml(m.title)}</div>
+                <div class="details-filename">${escapeHtml(m.filename)}</div>
+            </div>
+            <div class="details-body">
+                <div class="detail-section">
+                    <div class="detail-label">File info</div>
+                    <div class="detail-grid">
+                        <div>
+                            <div class="detail-value"><strong>Type:</strong> ${typeLabel}</div>
+                            <div class="detail-value"><strong>Size:</strong> ${escapeHtml(m.size)}</div>
+                        </div>
+                        <div>
+                            <div class="detail-value"><strong>${dimensionLabel}:</strong> ${escapeHtml(dimensionValue)}</div>
+                            <div class="detail-value"><strong>Uploaded:</strong> ${formatRelativeTime(m.uploaded_at)}</div>
+                        </div>
+                    </div>
+                    <div class="detail-value" style="margin-top: 4px;"><strong>Uploaded by:</strong> ${escapeHtml(m.uploader || 'Admin')}</div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-label">Description</div>
+                    <div class="detail-value">${escapeHtml(m.description || 'No description.')}</div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-label">Alt text</div>
+                    <div class="detail-value">${escapeHtml(m.alt || '—')}</div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-label">Tags</div>
+                    <div class="detail-tags">${tagsHtml}</div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-label">Public URL</div>
+                    <div class="url-copy-row">
+                        <input type="text" readonly value="${escapeHtml(m.url || '')}" id="publicUrlInput">
+                        <button class="icon-btn" id="copyUrlBtn" title="Copy URL"><i class="fas fa-copy"></i></button>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-label">Used on website</div>
+                    <div class="usage-list">${usageHtml}</div>
+                </div>
+            </div>
+            <div class="details-actions">
+                <button class="btn btn-secondary btn-sm" id="editMediaBtn"><i class="fas fa-pen"></i> Edit</button>
+                <button class="btn btn-secondary btn-sm" id="downloadMediaBtn"><i class="fas fa-download"></i> Download</button>
+                <button class="btn btn-danger btn-sm" id="deleteMediaBtn"><i class="fas fa-trash"></i> Delete</button>
+            </div>`;
+
+        document.getElementById('copyUrlBtn').addEventListener('click', () => {
+            const input = document.getElementById('publicUrlInput');
+            input.select();
+            document.execCommand('copy');
+            showToast('URL copied to clipboard', 'success');
+        });
+        document.getElementById('editMediaBtn').addEventListener('click', () => openEditModal(m));
+        document.getElementById('downloadMediaBtn').addEventListener('click', () => {
+            if (!m.url) { showToast('No file URL available', 'warning'); return; }
+            window.open(m.url, '_blank');
+        });
+        document.getElementById('deleteMediaBtn').addEventListener('click', () => openDeleteMediaModal(m));
+    }
+
+    // ============================================================
+    // VIDEO PLAYER
+    // ============================================================
+    function openVideoPlayer(m) {
+        if (!m.url) { showToast('No video URL available', 'warning'); return; }
+        document.getElementById('videoPlayerTitle').textContent = m.title;
+        const video = document.getElementById('videoPlayerElement');
+        video.src = m.url;
+        video.poster = m.thumb || '';
+        showModal('videoPlayerModal');
+        setTimeout(() => { try { video.play(); } catch {} }, 200);
+
+        // Also update details panel so it stays in sync
+        renderDetails(m);
+    }
+
+    function closeVideoPlayer() {
+        const video = document.getElementById('videoPlayerElement');
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+        hideModal('videoPlayerModal');
+    }
+
+    // ============================================================
+    // EDIT
+    // ============================================================
+    function openEditModal(m) {
+        editingMediaId = m.id;
+        document.getElementById('editTitle').value = m.title || '';
+        document.getElementById('editDescription').value = m.description || '';
+        document.getElementById('editAltText').value = m.alt || '';
+        document.getElementById('editTags').value = (m.tags || []).join(', ');
+        showModal('editMediaModal');
+    }
+
+    async function handleEditSave() {
+        if (!editingMediaId) return;
+        const btn = document.getElementById('saveEditBtn');
+        const original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Saving…';
+
+        const payload = {
+            title: document.getElementById('editTitle').value.trim(),
+            description: document.getElementById('editDescription').value.trim(),
+            alt_text: document.getElementById('editAltText').value.trim(),
+            tags: document.getElementById('editTags').value.split(',').map(t => t.trim()).filter(Boolean)
+        };
+
+        try {
+            await apiPut(`/api/admin/media/${editingMediaId}`, payload);
+            showToast('Media details updated', 'success');
+            hideModal('editMediaModal');
+            await loadMedia();
+        } catch (err) {
+            showToast(err.message || 'Failed to update', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = original;
+            editingMediaId = null;
+        }
+    }
+
+    // ============================================================
+    // DELETE
+    // ============================================================
+    function openDeleteMediaModal(m) {
+        if (!m) return;
+        deletingMediaId = m.id;
+        document.getElementById('deleteMediaName').textContent = m.title;
+        const warning = document.getElementById('deleteMediaWarning');
+        if (m.used && m.usage && m.usage.length > 0) {
+            const pages = m.usage.map(u => u.page || u.location).filter(Boolean).join(', ');
+            warning.textContent = `⚠️ This file is currently used on: ${pages}. Deleting it will break those references.`;
+        } else {
+            warning.textContent = '';
+        }
+        showModal('deleteMediaModal');
+    }
+
+    async function handleDeleteMedia() {
+        if (!deletingMediaId) return;
+        const btn = document.getElementById('confirmDeleteMediaBtn');
+        const original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Deleting…';
+        try {
+            await apiDelete(`/api/admin/media/${deletingMediaId}`);
+            showToast('Media deleted', 'success');
+            hideModal('deleteMediaModal');
+            if (String(selectedMediaId) === String(deletingMediaId)) {
+                selectedMediaId = null;
+                renderEmptyDetails();
+            }
+            deletingMediaId = null;
+            await loadMedia();
+        } catch (err) {
+            showToast(err.message || 'Failed to delete', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = original;
+        }
+    }
+
+    // ============================================================
+    // UPLOAD
+    // ============================================================
+    function validateFile(file) {
+        const isPicture = ALLOWED_PICTURE_TYPES.includes(file.type);
+        const isVideo = ALLOWED_VIDEO_TYPES.includes(file.type);
+        if (!isPicture && !isVideo) {
+            return 'Unsupported format';
+        }
+        if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+            return `Exceeds ${MAX_FILE_SIZE_MB}MB limit`;
+        }
+        return null;
+    }
+
+    function setupUpload() {
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
+
+        dropzone.addEventListener('click', () => fileInput.click());
+        dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+        dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+        fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+        function handleFiles(files) {
+            const incoming = Array.from(files);
+            for (const f of incoming) {
+                const error = validateFile(f);
+                pendingUploadFiles.push({ file: f, error });
+            }
+            // Auto-pick category from first valid file
+            const firstValid = pendingUploadFiles.find(p => !p.error);
+            if (firstValid) {
+                const cat = document.getElementById('uploadCategory');
+                if (firstValid.file.type.startsWith('video/')) cat.value = 'video';
+                else cat.value = 'picture';
+            }
+            renderFileList();
+        }
+
+        function renderFileList() {
+            if (pendingUploadFiles.length === 0) { fileList.innerHTML = ''; return; }
+            fileList.innerHTML = pendingUploadFiles.map((p, i) => {
+                const isVideo = p.file.type.startsWith('video/');
+                const icon = isVideo ? 'fa-video' : 'fa-image';
+                const invalidClass = p.error ? 'invalid' : '';
+                return `
+                <div class="file-list-item ${invalidClass}">
+                    <i class="fas ${icon}" style="color: ${p.error ? 'var(--danger)' : 'var(--accent)'};"></i>
+                    <span class="file-name">${escapeHtml(p.file.name)}</span>
+                    <span class="file-size">${formatBytes(p.file.size)}</span>
+                    ${p.error ? `<span class="file-error">${escapeHtml(p.error)}</span>` : ''}
+                    <button class="icon-btn danger" data-remove-file="${i}" title="Remove"><i class="fas fa-times"></i></button>
+                </div>`;
+            }).join('');
+
+            fileList.querySelectorAll('[data-remove-file]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    pendingUploadFiles.splice(parseInt(btn.dataset.removeFile), 1);
+                    renderFileList();
+                });
+            });
+        }
+
+        document.getElementById('confirmUploadBtn').addEventListener('click', async () => {
+            const validFiles = pendingUploadFiles.filter(p => !p.error);
+            if (validFiles.length === 0) {
+                showToast('Please select valid picture or video files', 'warning');
+                return;
+            }
+
+            const title = document.getElementById('uploadTitle').value.trim();
+            const category = document.getElementById('uploadCategory').value;
+            const description = document.getElementById('uploadDescription').value.trim();
+            const altText = document.getElementById('uploadAltText').value.trim();
+            const tags = document.getElementById('uploadTags').value.split(',').map(t => t.trim()).filter(Boolean);
+
+            const btn = document.getElementById('confirmUploadBtn');
+            const original = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Uploading…';
+
+            const progressWrap = document.getElementById('uploadProgressWrap');
+            const progressFill = document.getElementById('uploadProgressFill');
+            const progressText = document.getElementById('uploadProgressText');
+            const progressPct = document.getElementById('uploadProgressPct');
+            progressWrap.style.display = 'block';
+            progressFill.style.width = '0%';
+            progressPct.textContent = '0%';
+
+            let successCount = 0;
+            let failCount = 0;
+
+            for (let i = 0; i < validFiles.length; i++) {
+                const p = validFiles[i];
+                progressText.textContent = `Uploading ${i + 1} of ${validFiles.length} — ${p.file.name}`;
+
+                const formData = new FormData();
+                formData.append('file', p.file);
+                formData.append('title', validFiles.length > 1
+                    ? (title ? `${title} ${i + 1}` : p.file.name.replace(/\.[^.]+$/, ''))
+                    : (title || p.file.name.replace(/\.[^.]+$/, '')));
+                formData.append('type', category);
+                formData.append('description', description);
+                formData.append('alt_text', altText);
+                formData.append('tags', JSON.stringify(tags));
+
+                try {
+                    await apiPostForm('/api/admin/media', formData, (pct) => {
+                        progressFill.style.width = pct + '%';
+                        progressPct.textContent = pct + '%';
+                    });
+                    successCount++;
+                } catch (err) {
+                    console.error('Upload failed:', err);
+                    failCount++;
+                }
+            }
+
+            progressFill.style.width = '100%';
+            progressPct.textContent = '100%';
+
+            btn.disabled = false;
+            btn.innerHTML = original;
+
+            if (successCount > 0) {
+                showToast(`${successCount} file(s) uploaded${failCount ? `, ${failCount} failed` : ''}`, successCount === validFiles.length ? 'success' : 'warning');
+                pendingUploadFiles = [];
+                document.getElementById('fileList').innerHTML = '';
+                document.getElementById('uploadTitle').value = '';
+                document.getElementById('uploadDescription').value = '';
+                document.getElementById('uploadAltText').value = '';
+                document.getElementById('uploadTags').value = '';
+                hideModal('uploadModal');
+                setTimeout(() => {
+                    progressWrap.style.display = 'none';
+                    progressFill.style.width = '0%';
+                }, 800);
+                await loadMedia();
+            } else {
+                showToast('All uploads failed', 'error');
+            }
+        });
+    }
+
+    // ============================================================
+    // EXPORT
+    // ============================================================
+    function exportMedia() {
+        if (filteredMedia.length === 0) { showToast('Nothing to export', 'warning'); return; }
+        const headers = ['Title', 'Filename', 'Type', 'Size', 'Dimensions/Duration', 'Uploaded', 'Uploader', 'URL'];
+        const rows = filteredMedia.map(m => [
+            m.title, m.filename, m.type, m.size,
+            m.type === 'video' ? (m.duration || '') : (m.dimensions || ''),
+            m.uploaded_at || '', m.uploader || '', m.url || ''
+        ]);
+        const csv = [headers, ...rows].map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `nuesa-media-${new Date().toISOString().slice(0,10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast(`Exported ${rows.length} media records`, 'success');
+    }
+
+    // ============================================================
+    // UI HELPERS
     // ============================================================
     function showLoading() { document.getElementById('loadingOverlay').classList.add('active'); }
     function hideLoading() { document.getElementById('loadingOverlay').classList.remove('active'); }
@@ -1701,535 +2311,6 @@
             if (diffDay < 7) return `${diffDay}d ago`;
             return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         } catch { return s; }
-    }
-
-    function getFileIcon(type) {
-        if (type === 'image' || type === 'poster' || type === 'banner') return 'fa-image';
-        if (type === 'video') return 'fa-video';
-        if (type === 'document') return 'fa-file-lines';
-        return 'fa-file';
-    }
-
-    function animateNumber(el, target, duration = 500) {
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = target; return; }
-        const start = performance.now();
-        function step(now) {
-            const elapsed = now - start;
-            const progress = Math.min(elapsed / duration, 1);
-            const eased = 1 - Math.pow(1 - progress, 3);
-            el.textContent = Math.round(target * eased);
-            if (progress < 1) requestAnimationFrame(step);
-        }
-        requestAnimationFrame(step);
-    }
-
-    // ============================================================
-    // DATA
-    // ============================================================
-    async function loadMedia() {
-        try {
-            allMedia = MOCK_MEDIA.map(m => ({ ...m }));
-            updateStats();
-            updateCategoryCounts();
-            filterAndRenderMedia();
-            if (selectedMediaId) {
-                const stillExists = allMedia.find(m => m.id === selectedMediaId);
-                if (stillExists) renderDetails(stillExists);
-                else { selectedMediaId = null; renderEmptyDetails(); }
-            }
-        } catch (err) {
-            console.error('Load media error:', err);
-            showToast('Failed to load media', 'error');
-        }
-    }
-
-    function updateStats() {
-        const total = allMedia.length;
-        const images = allMedia.filter(m => m.type === 'image' || m.category === 'poster' || m.category === 'banner').length;
-        const videos = allMedia.filter(m => m.type === 'video').length;
-        const docs = allMedia.filter(m => m.type === 'document').length;
-        animateNumber(document.getElementById('statTotal'), total);
-        animateNumber(document.getElementById('statImages'), images);
-        animateNumber(document.getElementById('statVideos'), videos);
-        animateNumber(document.getElementById('statDocuments'), docs);
-    }
-
-    function updateCategoryCounts() {
-        const total = allMedia.length;
-        const images = allMedia.filter(m => m.type === 'image').length;
-        const videos = allMedia.filter(m => m.type === 'video').length;
-        const docs = allMedia.filter(m => m.type === 'document').length;
-        const posters = allMedia.filter(m => m.category === 'poster').length;
-        const banners = allMedia.filter(m => m.category === 'banner').length;
-        document.getElementById('catAll').textContent = total;
-        document.getElementById('catImages').textContent = images;
-        document.getElementById('catVideos').textContent = videos;
-        document.getElementById('catDocuments').textContent = docs;
-        document.getElementById('catPosters').textContent = posters;
-        document.getElementById('catBanners').textContent = banners;
-    }
-
-    // ============================================================
-    // FILTER & SORT
-    // ============================================================
-    function filterAndRenderMedia() {
-        let list = allMedia.slice();
-
-        if (currentCategory !== 'all') {
-            if (currentCategory === 'image') list = list.filter(m => m.type === 'image');
-            else if (currentCategory === 'video') list = list.filter(m => m.type === 'video');
-            else if (currentCategory === 'document') list = list.filter(m => m.type === 'document');
-            else if (currentCategory === 'poster') list = list.filter(m => m.category === 'poster');
-            else if (currentCategory === 'banner') list = list.filter(m => m.category === 'banner');
-        }
-
-        if (currentUsageFilter === 'used') list = list.filter(m => m.used);
-        else if (currentUsageFilter === 'unused') list = list.filter(m => !m.used);
-
-        if (searchQuery) {
-            const q = searchQuery.toLowerCase();
-            list = list.filter(m =>
-                (m.title || '').toLowerCase().includes(q) ||
-                (m.filename || '').toLowerCase().includes(q) ||
-                (m.tags || []).some(t => t.toLowerCase().includes(q))
-            );
-        }
-
-        if (currentSort === 'newest') list.sort((a, b) => new Date(b.uploaded_at) - new Date(a.uploaded_at));
-        else if (currentSort === 'oldest') list.sort((a, b) => new Date(a.uploaded_at) - new Date(b.uploaded_at));
-        else if (currentSort === 'size_desc') list.sort((a, b) => parseFloat(b.size) - parseFloat(a.size));
-        else if (currentSort === 'size_asc') list.sort((a, b) => parseFloat(a.size) - parseFloat(b.size));
-
-        filteredMedia = list;
-        currentPage = 1;
-        renderMediaGrid();
-        renderPagination();
-    }
-
-    // ============================================================
-    // RENDER MEDIA GRID
-    // ============================================================
-    function renderMediaGrid() {
-        const grid = document.getElementById('mediaGrid');
-        grid.classList.toggle('list-mode', currentView === 'list');
-        const start = (currentPage - 1) * PAGE_SIZE;
-        const pageItems = filteredMedia.slice(start, start + PAGE_SIZE);
-
-        if (pageItems.length === 0) {
-            grid.innerHTML = `
-                <div class="media-empty">
-                    <i class="far fa-folder-open"></i>
-                    <h3>No media found</h3>
-                    <p>${searchQuery ? 'Try adjusting your search or filters.' : 'Upload your first media file to get started.'}</p>
-                </div>`;
-            return;
-        }
-
-        grid.innerHTML = pageItems.map((m, idx) => {
-            const isSelected = selectedMediaId === m.id ? 'selected' : '';
-            const isChecked = selectedMediaIds.has(m.id);
-            const thumbContent = m.thumb
-                ? `<img src="${escapeHtml(m.thumb)}" alt="${escapeHtml(m.alt || m.title)}" loading="lazy">`
-                : `<i class="fas ${getFileIcon(m.type)} file-icon"></i>`;
-            const usageBadge = m.used
-                ? `<span class="media-card-badge badge-success"><i class="fas fa-check" style="font-size:0.5rem;"></i> In use</span>`
-                : `<span class="media-card-badge badge-muted">Unused</span>`;
-
-            return `
-                <div class="media-card ${isSelected}" data-id="${m.id}" style="animation-delay: ${idx * 40}ms;">
-                    <div class="media-checkbox ${isChecked ? 'checked' : ''}" data-checkbox="${m.id}">
-                        ${isChecked ? '<i class="fas fa-check"></i>' : ''}
-                    </div>
-                    <div class="media-card-thumb">
-                        ${thumbContent}
-                        ${usageBadge}
-                    </div>
-                    <div class="media-card-body">
-                        <div class="media-card-title">${escapeHtml(m.title)}</div>
-                        <div class="media-card-meta">
-                            <span>${(m.type || 'file').toUpperCase()}</span>
-                            <span>·</span>
-                            <span>${escapeHtml(m.size)}</span>
-                        </div>
-                    </div>
-                </div>`;
-        }).join('');
-
-        grid.querySelectorAll('.media-card').forEach(card => {
-            card.addEventListener('click', (e) => {
-                const id = card.dataset.id;
-                const checkbox = e.target.closest('[data-checkbox]');
-                if (checkbox) {
-                    e.stopPropagation();
-                    toggleMediaCheckbox(id);
-                    return;
-                }
-                selectedMediaId = id;
-                const media = allMedia.find(m => m.id === id);
-                if (media) renderDetails(media);
-                renderMediaGrid();
-                renderPlacementSection(media);
-            });
-        });
-    }
-
-    function toggleMediaCheckbox(id) {
-        if (selectedMediaIds.has(id)) selectedMediaIds.delete(id);
-        else selectedMediaIds.add(id);
-        updateBulkBar();
-        renderMediaGrid();
-    }
-
-    function updateBulkBar() {
-        const bar = document.getElementById('bulkBar');
-        const count = selectedMediaIds.size;
-        if (count > 0) {
-            bar.style.display = 'flex';
-            document.getElementById('bulkCount').textContent = `${count} selected`;
-        } else {
-            bar.style.display = 'none';
-        }
-    }
-
-    // ============================================================
-    // PAGINATION
-    // ============================================================
-    function renderPagination() {
-        const pagination = document.getElementById('pagination');
-        const totalPages = Math.ceil(filteredMedia.length / PAGE_SIZE);
-        if (totalPages <= 1) { pagination.innerHTML = ''; return; }
-
-        let html = '';
-        html += `<button class="page-btn" data-page="prev" ${currentPage === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i></button>`;
-        for (let i = 1; i <= totalPages; i++) {
-            html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
-        }
-        html += `<button class="page-btn" data-page="next" ${currentPage === totalPages ? 'disabled' : ''}><i class="fas fa-chevron-right"></i></button>`;
-        pagination.innerHTML = html;
-
-        pagination.querySelectorAll('.page-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const page = btn.dataset.page;
-                if (page === 'prev') currentPage = Math.max(1, currentPage - 1);
-                else if (page === 'next') currentPage = Math.min(totalPages, currentPage + 1);
-                else currentPage = parseInt(page);
-                renderMediaGrid();
-                renderPagination();
-            });
-        });
-    }
-
-    // ============================================================
-    // DETAILS PANEL
-    // ============================================================
-    function renderEmptyDetails() {
-        document.getElementById('detailsPanel').innerHTML = `
-            <div class="details-empty">
-                <div class="details-empty-icon"><i class="far fa-image"></i></div>
-                <h3>No file selected</h3>
-                <p>Select a media file to view details, edit, or manage its placement.</p>
-            </div>`;
-        document.getElementById('placementSection').style.display = 'none';
-    }
-
-    function renderDetails(m) {
-        const panel = document.getElementById('detailsPanel');
-        const thumbContent = m.thumb
-            ? `<img src="${escapeHtml(m.thumb)}" alt="${escapeHtml(m.alt || m.title)}">`
-            : `<i class="fas ${getFileIcon(m.type)} file-icon"></i>`;
-
-        const usageHtml = (m.usage && m.usage.length > 0)
-            ? m.usage.map(u => `
-                <div class="usage-item">
-                    <i class="fas fa-map-pin"></i>
-                    <span class="usage-page">${escapeHtml(u.page)}</span>
-                    <span class="usage-location">— ${escapeHtml(u.location)}</span>
-                </div>`).join('')
-            : '<div class="usage-item" style="color: var(--text-dim);"><i class="fas fa-info-circle"></i> Not used anywhere yet</div>';
-
-        const tagsHtml = (m.tags && m.tags.length > 0)
-            ? m.tags.map(t => `<span class="tag-pill"><i class="fas fa-hashtag" style="font-size:0.5rem;"></i>${escapeHtml(t)}</span>`).join('')
-            : '<span style="color: var(--text-dim); font-size: 0.75rem;">No tags</span>';
-
-        panel.innerHTML = `
-            <div class="details-preview">${thumbContent}</div>
-            <div class="details-header">
-                <div class="details-title">${escapeHtml(m.title)}</div>
-                <div class="details-filename">${escapeHtml(m.filename)}</div>
-            </div>
-            <div class="details-body">
-                <div class="detail-section">
-                    <div class="detail-label">File info</div>
-                    <div class="detail-grid">
-                        <div>
-                            <div class="detail-value"><strong>Type:</strong> ${escapeHtml((m.type || 'file').toUpperCase())}</div>
-                            <div class="detail-value"><strong>Size:</strong> ${escapeHtml(m.size)}</div>
-                        </div>
-                        <div>
-                            <div class="detail-value"><strong>Dimensions:</strong> ${escapeHtml(m.dimensions || '—')}</div>
-                            <div class="detail-value"><strong>Uploaded:</strong> ${formatRelativeTime(m.uploaded_at)}</div>
-                        </div>
-                    </div>
-                    <div class="detail-value" style="margin-top: 4px;"><strong>Uploader:</strong> ${escapeHtml(m.uploader || 'Admin')}</div>
-                </div>
-
-                <div class="detail-section">
-                    <div class="detail-label">Description</div>
-                    <div class="detail-value">${escapeHtml(m.description || 'No description.')}</div>
-                </div>
-
-                <div class="detail-section">
-                    <div class="detail-label">Alt text</div>
-                    <div class="detail-value">${escapeHtml(m.alt || '—')}</div>
-                </div>
-
-                <div class="detail-section">
-                    <div class="detail-label">Tags</div>
-                    <div class="detail-tags">${tagsHtml}</div>
-                </div>
-
-                <div class="detail-section">
-                    <div class="detail-label">Public URL</div>
-                    <div class="url-copy-row">
-                        <input type="text" readonly value="${escapeHtml(m.url || 'https://nuesa.biu.edu/media/' + m.filename)}" id="publicUrlInput">
-                        <button class="icon-btn" id="copyUrlBtn" title="Copy URL"><i class="fas fa-copy"></i></button>
-                    </div>
-                </div>
-
-                <div class="detail-section">
-                    <div class="detail-label">Used on website</div>
-                    <div class="usage-list">${usageHtml}</div>
-                </div>
-            </div>
-            <div class="details-actions">
-                <button class="btn btn-secondary btn-sm" id="editMediaBtn"><i class="fas fa-pen"></i> Edit</button>
-                <button class="btn btn-secondary btn-sm" id="replaceMediaBtn"><i class="fas fa-rotate"></i> Replace</button>
-                <button class="btn btn-secondary btn-sm" id="downloadMediaBtn"><i class="fas fa-download"></i> Download</button>
-                <button class="btn btn-danger btn-sm" id="deleteMediaBtn"><i class="fas fa-trash"></i> Delete</button>
-            </div>`;
-
-        document.getElementById('copyUrlBtn').addEventListener('click', () => {
-            const input = document.getElementById('publicUrlInput');
-            input.select();
-            document.execCommand('copy');
-            showToast('URL copied to clipboard', 'success');
-        });
-        document.getElementById('editMediaBtn').addEventListener('click', () => showToast('Edit media details (coming soon)', 'info'));
-        document.getElementById('replaceMediaBtn').addEventListener('click', () => showToast('Replace file (coming soon)', 'info'));
-        document.getElementById('downloadMediaBtn').addEventListener('click', () => showToast('Download started', 'success'));
-        document.getElementById('deleteMediaBtn').addEventListener('click', () => openDeleteMediaModal(m.id));
-    }
-
-    // ============================================================
-    // PLACEMENT
-    // ============================================================
-    function renderPlacementSection(m) {
-        const section = document.getElementById('placementSection');
-        if (!m) { section.style.display = 'none'; return; }
-        section.style.display = 'block';
-        selectedPlacement = null;
-
-        document.querySelectorAll('.placement-card').forEach(c => c.classList.remove('selected'));
-
-        if (m.usage && m.usage.length > 0) {
-            const firstUsage = m.usage[0];
-            const cards = document.querySelectorAll('.placement-card');
-            cards.forEach(c => {
-                const page = c.querySelector('.placement-card-title').textContent;
-                if (page.includes(firstUsage.page) || (page.includes('Homepage') && firstUsage.page === 'Homepage')) {
-                    c.classList.add('selected');
-                    selectedPlacement = c.dataset.placement;
-                }
-            });
-        }
-    }
-
-    function setupPlacementCards() {
-        document.querySelectorAll('.placement-card').forEach(card => {
-            card.addEventListener('click', () => {
-                document.querySelectorAll('.placement-card').forEach(c => c.classList.remove('selected'));
-                card.classList.add('selected');
-                selectedPlacement = card.dataset.placement;
-            });
-        });
-
-        document.getElementById('savePlacementBtn').addEventListener('click', () => {
-            if (!selectedMediaId) return;
-            if (!selectedPlacement) { showToast('Please select a placement location', 'warning'); return; }
-            const media = allMedia.find(m => m.id === selectedMediaId);
-            if (media) {
-                const card = document.querySelector(`.placement-card[data-placement="${selectedPlacement}"]`);
-                const pageName = card.querySelector('.placement-card-title').textContent.split('—')[0].trim();
-                media.usage = [{ page: pageName, location: card.querySelector('.placement-card-title').textContent }];
-                media.used = true;
-                showToast('Placement saved', 'success');
-                renderDetails(media);
-                filterAndRenderMedia();
-            }
-        });
-
-        document.getElementById('clearPlacementBtn').addEventListener('click', () => {
-            if (!selectedMediaId) return;
-            const media = allMedia.find(m => m.id === selectedMediaId);
-            if (media) {
-                media.usage = [];
-                media.used = false;
-                selectedPlacement = null;
-                document.querySelectorAll('.placement-card').forEach(c => c.classList.remove('selected'));
-                showToast('Placement cleared', 'info');
-                renderDetails(media);
-                filterAndRenderMedia();
-            }
-        });
-    }
-
-    // ============================================================
-    // DELETE
-    // ============================================================
-    function openDeleteMediaModal(id) {
-        const media = allMedia.find(m => m.id === id);
-        if (!media) return;
-        deletingMediaId = id;
-        document.getElementById('deleteMediaName').textContent = media.title;
-        const warning = document.getElementById('deleteMediaWarning');
-        if (media.used && media.usage && media.usage.length > 0) {
-            const pages = media.usage.map(u => u.page).join(', ');
-            warning.textContent = `⚠️ This file is currently used on: ${pages}. Deleting it will break those references.`;
-        } else {
-            warning.textContent = '';
-        }
-        showModal('deleteMediaModal');
-    }
-
-    async function handleDeleteMedia() {
-        if (!deletingMediaId) return;
-        const btn = document.getElementById('confirmDeleteMediaBtn');
-        const original = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Deleting…';
-        try {
-            allMedia = allMedia.filter(m => m.id !== deletingMediaId);
-            if (selectedMediaId === deletingMediaId) { selectedMediaId = null; renderEmptyDetails(); }
-            selectedMediaIds.delete(deletingMediaId);
-            updateBulkBar();
-            hideModal('deleteMediaModal');
-            showToast('Media deleted', 'success');
-            updateStats();
-            updateCategoryCounts();
-            filterAndRenderMedia();
-        } catch (err) {
-            showToast(err.message || 'Failed to delete', 'error');
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = original;
-            deletingMediaId = null;
-        }
-    }
-
-    // ============================================================
-    // UPLOAD
-    // ============================================================
-    function setupUpload() {
-        const dropzone = document.getElementById('dropzone');
-        const fileInput = document.getElementById('fileInput');
-        const fileList = document.getElementById('fileList');
-
-        dropzone.addEventListener('click', () => fileInput.click());
-        dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
-        dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
-        dropzone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropzone.classList.remove('dragover');
-            handleFiles(e.dataTransfer.files);
-        });
-        fileInput.addEventListener('change', () => handleFiles(fileInput.files));
-
-        function handleFiles(files) {
-            pendingUploadFiles = Array.from(files);
-            renderFileList();
-        }
-
-        function renderFileList() {
-            if (pendingUploadFiles.length === 0) { fileList.innerHTML = ''; return; }
-            fileList.innerHTML = pendingUploadFiles.map((f, i) => `
-                <div class="file-list-item">
-                    <i class="fas ${f.type.startsWith('image') ? 'fa-image' : f.type.startsWith('video') ? 'fa-video' : 'fa-file-lines'}" style="color: var(--accent);"></i>
-                    <span class="file-name">${escapeHtml(f.name)}</span>
-                    <span class="file-size">${(f.size / 1024 / 1024).toFixed(2)} MB</span>
-                    <button class="icon-btn danger" data-remove-file="${i}" title="Remove"><i class="fas fa-times"></i></button>
-                </div>`).join('');
-
-            fileList.querySelectorAll('[data-remove-file]').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    pendingUploadFiles.splice(parseInt(btn.dataset.removeFile), 1);
-                    renderFileList();
-                });
-            });
-        }
-
-        document.getElementById('confirmUploadBtn').addEventListener('click', async () => {
-            if (pendingUploadFiles.length === 0) { showToast('Please select at least one file', 'warning'); return; }
-            const title = document.getElementById('uploadTitle').value.trim() || pendingUploadFiles[0].name;
-            const category = document.getElementById('uploadCategory').value;
-            const description = document.getElementById('uploadDescription').value.trim();
-            const altText = document.getElementById('uploadAltText').value.trim();
-            const tags = document.getElementById('uploadTags').value.split(',').map(t => t.trim()).filter(Boolean);
-
-            pendingUploadFiles.forEach((f, i) => {
-                const type = f.type.startsWith('image') ? (category === 'poster' ? 'poster' : category === 'banner' ? 'banner' : 'image') : f.type.startsWith('video') ? 'video' : 'document';
-                const newMedia = {
-                    id: 'm' + Date.now() + i,
-                    title: pendingUploadFiles.length > 1 ? `${title} ${i + 1}` : title,
-                    filename: f.name,
-                    type: type,
-                    size: (f.size / 1024 / 1024).toFixed(1) + ' MB',
-                    dimensions: '—',
-                    url: '',
-                    thumb: '',
-                    alt: altText,
-                    description: description,
-                    tags: tags,
-                    category: category,
-                    uploaded_at: new Date().toISOString(),
-                    uploader: currentUser?.fullName || 'Admin',
-                    usage: [],
-                    used: false,
-                    is_spam: false
-                };
-                allMedia.unshift(newMedia);
-            });
-
-            hideModal('uploadModal');
-            showToast(`${pendingUploadFiles.length} file(s) uploaded`, 'success');
-            pendingUploadFiles = [];
-            document.getElementById('fileList').innerHTML = '';
-            document.getElementById('uploadTitle').value = '';
-            document.getElementById('uploadDescription').value = '';
-            document.getElementById('uploadAltText').value = '';
-            document.getElementById('uploadTags').value = '';
-            updateStats();
-            updateCategoryCounts();
-            filterAndRenderMedia();
-        });
-    }
-
-    // ============================================================
-    // EXPORT
-    // ============================================================
-    function exportMedia() {
-        if (filteredMedia.length === 0) { showToast('Nothing to export', 'warning'); return; }
-        const headers = ['Title','Filename','Type','Size','Dimensions','Uploaded','Uploader','Used'];
-        const rows = filteredMedia.map(m => [m.title, m.filename, m.type, m.size, m.dimensions, m.uploaded_at, m.uploader, m.used ? 'Yes' : 'No']);
-        const csv = [headers, ...rows].map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `nuesa-media-${new Date().toISOString().slice(0,10)}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-        showToast(`Exported ${rows.length} media records`, 'success');
     }
 
     // ============================================================
@@ -2296,15 +2377,17 @@
     async function init() {
         setupSidebar();
         setupHeaderScroll();
-        setupPlacementCards();
 
         // Static wiring
         document.getElementById('logoutBtn').addEventListener('click', () => showModal('logoutModal'));
         document.getElementById('confirmLogout').addEventListener('click', confirmLogout);
-        document.getElementById('notificationBtn').addEventListener('click', () => showToast('No new notifications', 'info'));
+        document.getElementById('notificationBtn').addEventListener('click', () => {
+            window.location.href = 'messages.html';
+        });
         document.getElementById('exportMediaBtn').addEventListener('click', exportMedia);
         document.getElementById('uploadMediaBtn').addEventListener('click', () => showModal('uploadModal'));
         document.getElementById('confirmDeleteMediaBtn').addEventListener('click', handleDeleteMedia);
+        document.getElementById('saveEditBtn').addEventListener('click', handleEditSave);
 
         // View toggle
         document.getElementById('gridViewBtn').addEventListener('click', () => {
@@ -2323,7 +2406,7 @@
         // Search
         document.getElementById('mediaSearchInput').addEventListener('input', (e) => {
             searchQuery = e.target.value.trim();
-            filterAndRenderMedia();
+            applyFilters();
         });
 
         // Category tabs
@@ -2332,18 +2415,14 @@
                 currentCategory = tab.dataset.category;
                 document.querySelectorAll('#mediaCategoryTabs .category-tab').forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
-                filterAndRenderMedia();
+                applyFilters();
             });
         });
 
-        // Sort & usage filters
+        // Sort
         document.getElementById('filterSort').addEventListener('change', (e) => {
             currentSort = e.target.value;
-            filterAndRenderMedia();
-        });
-        document.getElementById('filterUsage').addEventListener('change', (e) => {
-            currentUsageFilter = e.target.value;
-            filterAndRenderMedia();
+            applyFilters();
         });
 
         // Stat cards as filters
@@ -2355,22 +2434,10 @@
                     if (t.dataset.category === filter) t.classList.add('active');
                     else t.classList.remove('active');
                 });
-                filterAndRenderMedia();
+                document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active'));
+                card.classList.add('active');
+                applyFilters();
             });
-        });
-
-        // Bulk actions
-        document.getElementById('bulkClearBtn').addEventListener('click', () => {
-            selectedMediaIds.clear();
-            updateBulkBar();
-            renderMediaGrid();
-        });
-        document.getElementById('bulkDeleteBtn').addEventListener('click', () => {
-            if (selectedMediaIds.size === 0) return;
-            showToast(`Bulk delete of ${selectedMediaIds.size} files (coming soon)`, 'info');
-        });
-        document.getElementById('bulkDownloadBtn').addEventListener('click', () => {
-            showToast(`Downloading ${selectedMediaIds.size} files (coming soon)`, 'info');
         });
 
         setupUpload();
@@ -2378,9 +2445,12 @@
         // Escape
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                ['uploadModal','deleteMediaModal','logoutModal'].forEach(id => {
+                ['uploadModal','editMediaModal','deleteMediaModal','logoutModal','videoPlayerModal'].forEach(id => {
                     const el = document.getElementById(id);
-                    if (el && el.classList.contains('active')) hideModal(id);
+                    if (el && el.classList.contains('active')) {
+                        if (id === 'videoPlayerModal') closeVideoPlayer();
+                        else hideModal(id);
+                    }
                 });
             }
         });
@@ -2399,6 +2469,7 @@
     window.showModal = showModal;
     window.hideModal = hideModal;
     window.confirmLogout = confirmLogout;
+    window.loadMedia = loadMedia;
     </script>
 </body>
 </html>
