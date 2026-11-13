@@ -45,7 +45,7 @@
         .z-20 { z-index: 20; }
         .hidden { display: none !important; }
 
-        /* ===== NAVBAR ===== */
+        /* ===== NAVBAR (unified with members & about pages) ===== */
         .navbar {
             position: fixed;
             top: 0;
@@ -78,6 +78,7 @@
             align-items: center;
         }
 
+        /* Logo */
         .logo-link {
             display: flex;
             align-items: center;
@@ -102,18 +103,25 @@
             letter-spacing: -0.05em;
         }
 
-        /* Flat desktop nav — 12 items, tighter gap, smaller font */
+        /* Desktop Navigation (list style like members page) */
         .nav-menu {
             display: flex;
             align-items: center;
-            gap: 1.25rem;
         }
 
-        .nav-menu > a {
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            list-style: none;
+            flex-wrap: wrap;
+        }
+
+        .nav-links li a {
             font-family: 'Roboto Mono', monospace;
             font-size: 0.7rem;
             font-weight: 600;
-            letter-spacing: 0.06em;
+            letter-spacing: 0.08em;
             text-decoration: none;
             color: rgba(255, 255, 255, 0.9);
             transition: color 0.2s;
@@ -122,7 +130,7 @@
             white-space: nowrap;
         }
 
-        .nav-menu > a::after {
+        .nav-links li a::after {
             content: '';
             position: absolute;
             bottom: 0;
@@ -133,10 +141,10 @@
             transition: width 0.3s;
         }
 
-        .nav-menu > a:hover { color: var(--amber-400); }
-        .nav-menu > a:hover::after { width: 100%; }
-        .nav-menu > a.active { color: var(--amber-400); }
-        .nav-menu > a.active::after { width: 100%; }
+        .nav-links li a:hover { color: var(--amber-400); }
+        .nav-links li a:hover::after { width: 100%; }
+        .nav-links li a.active { color: var(--amber-400); }
+        .nav-links li a.active::after { width: 100%; }
 
         /* Hamburger */
         .hamburger {
@@ -168,7 +176,7 @@
             background-color: var(--amber-400);
         }
 
-        /* Flat mobile overlay */
+        /* Mobile Navigation (list style like members page) */
         .mobile-nav {
             position: fixed;
             top: 0;
@@ -190,44 +198,57 @@
 
         .mobile-nav.active { opacity: 1; visibility: visible; }
 
-        .mobile-nav > a {
-            font-family: 'Roboto Mono', monospace;
-            font-size: 1.5rem;
-            font-weight: 600;
-            letter-spacing: 0.1em;
-            text-decoration: none;
-            color: var(--white);
-            transition: color 0.3s, transform 0.3s, opacity 0.4s;
-            display: inline-block;
-            padding: 0.5rem 1rem;
-            margin: 0.35rem 0;
-            opacity: 0;
-            transform: translateY(20px);
+        .mobile-nav ul {
+            list-style: none;
+            text-align: center;
         }
 
-        .mobile-nav.active > a { opacity: 1; transform: translateY(0); }
-        .mobile-nav.active > a:nth-child(1)  { transition-delay: 0.05s; }
-        .mobile-nav.active > a:nth-child(2)  { transition-delay: 0.10s; }
-        .mobile-nav.active > a:nth-child(3)  { transition-delay: 0.15s; }
-        .mobile-nav.active > a:nth-child(4)  { transition-delay: 0.20s; }
-        .mobile-nav.active > a:nth-child(5)  { transition-delay: 0.25s; }
-        .mobile-nav.active > a:nth-child(6)  { transition-delay: 0.30s; }
-        .mobile-nav.active > a:nth-child(7)  { transition-delay: 0.35s; }
-        .mobile-nav.active > a:nth-child(8)  { transition-delay: 0.40s; }
-        .mobile-nav.active > a:nth-child(9)  { transition-delay: 0.45s; }
-        .mobile-nav.active > a:nth-child(10) { transition-delay: 0.50s; }
-        .mobile-nav.active > a:nth-child(11) { transition-delay: 0.55s; }
-        .mobile-nav.active > a:nth-child(12) { transition-delay: 0.60s; }
+        .mobile-nav ul li {
+            margin: 0.9rem 0;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.4s ease;
+        }
 
-        .mobile-nav > a:hover { color: var(--amber-400); transform: translateX(10px); }
-        .mobile-nav > a.active {
+        .mobile-nav.active ul li { opacity: 1; transform: translateY(0); }
+        .mobile-nav.active ul li:nth-child(1)  { transition-delay: 0.05s; }
+        .mobile-nav.active ul li:nth-child(2)  { transition-delay: 0.10s; }
+        .mobile-nav.active ul li:nth-child(3)  { transition-delay: 0.15s; }
+        .mobile-nav.active ul li:nth-child(4)  { transition-delay: 0.20s; }
+        .mobile-nav.active ul li:nth-child(5)  { transition-delay: 0.25s; }
+        .mobile-nav.active ul li:nth-child(6)  { transition-delay: 0.30s; }
+        .mobile-nav.active ul li:nth-child(7)  { transition-delay: 0.35s; }
+        .mobile-nav.active ul li:nth-child(8)  { transition-delay: 0.40s; }
+        .mobile-nav.active ul li:nth-child(9)  { transition-delay: 0.45s; }
+        .mobile-nav.active ul li:nth-child(10) { transition-delay: 0.50s; }
+        .mobile-nav.active ul li:nth-child(11) { transition-delay: 0.55s; }
+        .mobile-nav.active ul li:nth-child(12) { transition-delay: 0.60s; }
+
+        .mobile-nav ul li a {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 1.25rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-decoration: none;
+            color: var(--white);
+            transition: color 0.3s;
+            display: inline-block;
+            padding: 0.5rem 1rem;
+        }
+
+        .mobile-nav ul li a:hover {
+            color: var(--amber-400);
+            transform: translateX(10px);
+        }
+
+        .mobile-nav ul li a.active {
             color: var(--amber-400);
             border-left: 4px solid var(--amber-400);
         }
 
         /* Hamburger breakpoint — 12 items need 1280px */
-        @media screen and (max-width: 1280px) {
-            .nav-menu { display: none; }
+        @media screen and (max-width: 1200px) {
+            .nav-links { display: none; }
             .hamburger { display: block; }
         }
 
@@ -599,32 +620,35 @@
     </style>
 </head>
 <body>
-    <!-- ===== NAVBAR (12 items, flat, href-driven) ===== -->
+    <!-- ===== UNIFIED NAVBAR (12 items) ===== -->
     <nav class="navbar" id="navbar">
         <div class="nav-container">
             <div class="nav-flex">
-                <a href="index.html" class="logo-link" aria-label="NUESA BIU Home">
+                <a href="/" class="logo-link">
                     <span class="logo-main">N.U.E.S.A</span>
                     <span class="logo-highlight">BIU</span>
                 </a>
 
-                <!-- Flat desktop nav — 12 items -->
-                <div class="nav-menu" id="desktopLinks">
-                    <a href="index.html">HOME</a>
-                    <a href="about.html">ABOUT</a>
-                    <a href="members.html">MEMBERS</a>
-                    <a href="events.html">EVENTS</a>
-                    <a href="resources.html">RESOURCES</a>
-                    <a href="admission.html">ADMISSION</a>
-                    <a href="courseReps.html">COURSE REPS</a>
-                    <a href="news.html">NEWS</a>
-                    <a href="elections.html">ELECTIONS</a>
-                    <a href="payment.html">PAYMENTS</a>
-                    <a href="gallery.html">GALLERY</a>
-                    <a href="contacts.html">CONTACT</a>
+                <!-- Desktop Navigation -->
+                <div class="nav-menu">
+                    <ul class="nav-links">
+                        <li><a href="index.html" class="active">HOME</a></li>
+                        <li><a href="about.html">ABOUT</a></li>
+                        <li><a href="members.html">MEMBERS</a></li>
+                        <li><a href="events.html">EVENTS</a></li>
+                        <li><a href="resources.html">RESOURCES</a></li>
+                        <li><a href="admission.html">ADMISSION</a></li>
+                        <li><a href="courseReps.html">COURSE REPS</a></li>
+                        <li><a href="news.html">NEWS</a></li>
+                        <li><a href="contacts.html">CONTACT</a></li>
+                        <li><a href="elections.html">ELECTIONS</a></li>
+                        <li><a href="payment.html">PAYMENTS</a></li>
+                        <li><a href="gallery.html">GALLERY</a></li>
+                    </ul>
                 </div>
 
-                <button class="hamburger" id="hamburger" aria-label="Toggle navigation" aria-expanded="false" aria-controls="mobileNav">
+                <!-- Hamburger Menu Button -->
+                <button class="hamburger" id="hamburger">
                     <span></span>
                     <span></span>
                     <span></span>
@@ -632,20 +656,22 @@
             </div>
         </div>
 
-        <!-- Flat mobile nav — 12 items -->
-        <div class="mobile-nav" id="mobileNav" aria-hidden="true">
-            <a href="index.html">HOME</a>
-            <a href="about.html">ABOUT</a>
-            <a href="members.html">MEMBERS</a>
-            <a href="events.html">EVENTS</a>
-            <a href="resources.html">RESOURCES</a>
-            <a href="admission.html">ADMISSION</a>
-            <a href="courseReps.html">COURSE REPS</a>
-            <a href="news.html">NEWS</a>
-            <a href="elections.html">ELECTIONS</a>
-            <a href="payment.html">PAYMENTS</a>
-            <a href="gallery.html">GALLERY</a>
-            <a href="contacts.html">CONTACT</a>
+        <!-- Mobile Navigation -->
+        <div class="mobile-nav" id="mobileNav">
+            <ul>
+                <li><a href="index.html" class="active">HOME</a></li>
+                <li><a href="about.html">ABOUT</a></li>
+                <li><a href="members.html">MEMBERS</a></li>
+                <li><a href="events.html">EVENTS</a></li>
+                <li><a href="resources.html">RESOURCES</a></li>
+                <li><a href="admission.html">ADMISSION</a></li>
+                <li><a href="courseReps.html">COURSE REPS</a></li>
+                <li><a href="news.html">NEWS</a></li>
+                <li><a href="contacts.html">CONTACT</a></li>
+                <li><a href="elections.html">ELECTIONS</a></li>
+                <li><a href="payment.html">PAYMENTS</a></li>
+                <li><a href="gallery.html">GALLERY</a></li>
+            </ul>
         </div>
     </nav>
 
@@ -919,34 +945,51 @@
             const navbar = document.getElementById('navbar');
             const hamburger = document.getElementById('hamburger');
             const mobileNav = document.getElementById('mobileNav');
-            const desktopLinks = document.querySelectorAll('.nav-menu > a');
-            const mobileLinks = document.querySelectorAll('.mobile-nav > a');
+            const mobileLinks = document.querySelectorAll('.mobile-nav ul li a');
+            const desktopLinks = document.querySelectorAll('.nav-links li a');
 
-            function slugFromUrl(url) {
-                let p = url.split('#')[0].split('?')[0];
-                if (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1);
-                const last = p.split('/').pop() || 'index';
-                return (last.replace(/\.html$/i, '') || 'index').toLowerCase();
+            // Get current path for active link highlighting
+            let currentPath = window.location.pathname;
+            if (currentPath.endsWith('.html')) {
+                currentPath = currentPath.replace('.html', '');
+            }
+            if (currentPath === '/' || currentPath === '/index') {
+                currentPath = '/';
             }
 
-            const currentSlug = slugFromUrl(window.location.pathname);
-
+            // Update active links
             function updateActiveLinks() {
-                [].concat(Array.from(desktopLinks), Array.from(mobileLinks)).forEach(link => {
-                    const target = slugFromUrl(link.getAttribute('href') || '');
-                    const isHome = (currentSlug === 'index' || currentSlug === '') && target === 'index';
-                    if (target === currentSlug || isHome) link.classList.add('active');
-                    else link.classList.remove('active');
+                desktopLinks.forEach(link => {
+                    const href = link.getAttribute('href').replace('.html', '');
+                    if (href === currentPath || (currentPath === '/' && href === 'index')) {
+                        link.classList.add('active');
+                    } else {
+                        link.classList.remove('active');
+                    }
+                });
+
+                mobileLinks.forEach(link => {
+                    const href = link.getAttribute('href').replace('.html', '');
+                    if (href === currentPath || (currentPath === '/' && href === 'index')) {
+                        link.classList.add('active');
+                    } else {
+                        link.classList.remove('active');
+                    }
                 });
             }
 
+            // Navbar scroll effect
             function handleScroll() {
-                if (window.scrollY > 20) navbar.classList.add('scrolled');
-                else navbar.classList.remove('scrolled');
+                if (window.scrollY > 20) {
+                    navbar.classList.add('scrolled');
+                } else {
+                    navbar.classList.remove('scrolled');
+                }
             }
             window.addEventListener('scroll', handleScroll);
             handleScroll();
 
+            // Toggle mobile menu
             function toggleMobileMenu(open) {
                 if (open) {
                     hamburger.classList.add('active');

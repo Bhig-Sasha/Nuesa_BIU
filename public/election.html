@@ -60,7 +60,7 @@
         }
         body.menu-open { overflow: hidden; }
 
-        /* ===== MODERN RESPONSIVE NAVBAR (from provided page) ===== */
+        /* ===== UNIFIED NAVBAR (12 items) ===== */
         .navbar {
             position: fixed;
             top: 0; left: 0; right: 0;
@@ -87,11 +87,11 @@
         .logo-main { font-size: 1.5rem; font-weight: 900; color: var(--white); letter-spacing: -0.05em; }
         .logo-highlight { font-size: 1.5rem; font-weight: 900; color: var(--amber-400); letter-spacing: -0.05em; }
         .nav-menu { display: flex; align-items: center; }
-        .nav-links { display: flex; align-items: center; gap: 2rem; list-style: none; }
+        .nav-links { display: flex; align-items: center; gap: 1.5rem; list-style: none; flex-wrap: wrap; }
         .nav-links li a {
-            font-family: 'Roboto Mono', monospace; font-size: 0.75rem; font-weight: 600;
-            letter-spacing: 0.1em; text-decoration: none; color: rgba(255, 255, 255, 0.9);
-            transition: color 0.2s; position: relative; padding: 0.5rem 0;
+            font-family: 'Roboto Mono', monospace; font-size: 0.7rem; font-weight: 600;
+            letter-spacing: 0.08em; text-decoration: none; color: rgba(255, 255, 255, 0.9);
+            transition: color 0.2s; position: relative; padding: 0.5rem 0; white-space: nowrap;
         }
         .nav-links li a::after {
             content: ''; position: absolute; bottom: 0; left: 0; width: 0; height: 2px;
@@ -117,28 +117,37 @@
             background: linear-gradient(135deg, var(--emerald-900), var(--emerald-800));
             display: flex; flex-direction: column; justify-content: center; align-items: center;
             z-index: 999; opacity: 0; visibility: hidden; transition: all 0.4s ease; padding: 2rem;
+            overflow-y: auto;
         }
         .mobile-nav.active { opacity: 1; visibility: visible; }
         .mobile-nav ul { list-style: none; text-align: center; }
-        .mobile-nav ul li { margin: 1.5rem 0; opacity: 0; transform: translateY(20px); transition: all 0.4s ease; }
+        .mobile-nav ul li { margin: 0.9rem 0; opacity: 0; transform: translateY(20px); transition: all 0.4s ease; }
         .mobile-nav.active ul li { opacity: 1; transform: translateY(0); }
-        .mobile-nav.active ul li:nth-child(1) { transition-delay: 0.1s; }
-        .mobile-nav.active ul li:nth-child(2) { transition-delay: 0.2s; }
-        .mobile-nav.active ul li:nth-child(3) { transition-delay: 0.3s; }
-        .mobile-nav.active ul li:nth-child(4) { transition-delay: 0.4s; }
-        .mobile-nav.active ul li:nth-child(5) { transition-delay: 0.5s; }
-        .mobile-nav.active ul li:nth-child(6) { transition-delay: 0.6s; }
-        .mobile-nav.active ul li:nth-child(7) { transition-delay: 0.7s; }
-        .mobile-nav.active ul li:nth-child(8) { transition-delay: 0.8s; }
-        .mobile-nav.active ul li:nth-child(9) { transition-delay: 0.9s; }
-        .mobile-nav.active ul li:nth-child(10) { transition-delay: 1s; }
+        .mobile-nav.active ul li:nth-child(1)  { transition-delay: 0.05s; }
+        .mobile-nav.active ul li:nth-child(2)  { transition-delay: 0.10s; }
+        .mobile-nav.active ul li:nth-child(3)  { transition-delay: 0.15s; }
+        .mobile-nav.active ul li:nth-child(4)  { transition-delay: 0.20s; }
+        .mobile-nav.active ul li:nth-child(5)  { transition-delay: 0.25s; }
+        .mobile-nav.active ul li:nth-child(6)  { transition-delay: 0.30s; }
+        .mobile-nav.active ul li:nth-child(7)  { transition-delay: 0.35s; }
+        .mobile-nav.active ul li:nth-child(8)  { transition-delay: 0.40s; }
+        .mobile-nav.active ul li:nth-child(9)  { transition-delay: 0.45s; }
+        .mobile-nav.active ul li:nth-child(10) { transition-delay: 0.50s; }
+        .mobile-nav.active ul li:nth-child(11) { transition-delay: 0.55s; }
+        .mobile-nav.active ul li:nth-child(12) { transition-delay: 0.60s; }
         .mobile-nav ul li a {
-            font-family: 'Roboto Mono', monospace; font-size: 1.5rem; font-weight: 600;
-            letter-spacing: 0.1em; text-decoration: none; color: var(--white);
+            font-family: 'Roboto Mono', monospace; font-size: 1.25rem; font-weight: 600;
+            letter-spacing: 0.08em; text-decoration: none; color: var(--white);
             transition: color 0.3s; display: inline-block; padding: 0.5rem 1rem;
         }
         .mobile-nav ul li a:hover { color: var(--amber-400); transform: translateX(10px); }
         .mobile-nav ul li a.active { color: var(--amber-400); border-left: 4px solid var(--amber-400); }
+
+        /* Hamburger breakpoint */
+        @media screen and (max-width: 1200px) {
+            .nav-links { display: none; }
+            .hamburger { display: block; }
+        }
 
         /* Main content offset */
         .main-content { padding-top: 80px; }
@@ -385,7 +394,7 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Footer (from provided page) */
+        /* Footer */
         .footer {
             background: linear-gradient(135deg, var(--slate-800) 0%, var(--slate-900) 100%);
             border-top: 4px solid var(--emerald-500);
@@ -455,10 +464,6 @@
             .footer-grid { grid-template-columns: repeat(4, 1fr); }
             .footer-bottom { flex-direction: row; }
             .footer-bottom p { margin-bottom: 0; }
-        }
-        @media screen and (max-width: 1024px) {
-            .nav-links { display: none; }
-            .hamburger { display: block; }
         }
 
         /* Election page specific tweaks */
@@ -594,165 +599,164 @@
             flex-shrink: 0;
         }
 
-    /* ===== POLISHED PAGE REFINEMENTS & MOTION ===== */
-    :root {
-      --ease-out: cubic-bezier(.22, 1, .36, 1);
-      --motion-fast: 180ms;
-      --motion-base: 320ms;
-      --motion-slow: 650ms;
-    }
-    body { scroll-padding-top: 90px; }
-    button, a, input, select { -webkit-tap-highlight-color: transparent; }
-    button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
-      outline: 3px solid var(--amber-400); outline-offset: 3px;
-    }
-    .navbar { box-shadow: 0 8px 30px rgba(2, 35, 27, .08); }
-    .logo-link { transition: transform var(--motion-base) var(--ease-out), opacity var(--motion-base); }
-    .nav-links li a { transition: color var(--motion-base), opacity var(--motion-base); }
-    .nav-links li a::after { transition: width var(--motion-base) var(--ease-out); }
-    .hero-election {
-      min-height: min(690px, 76vh);
-      isolation: isolate;
-      background: linear-gradient(125deg, #047857 0%, #059669 42%, #0f766e 100%);
-    }
-    .hero-election::before, .hero-election::after {
-      content: ""; position: absolute; z-index: -1; border-radius: 50%;
-      pointer-events: none; filter: blur(2px);
-    }
-    .hero-election::before {
-      width: 440px; height: 440px; top: -190px; right: -100px;
-      background: radial-gradient(circle, rgba(252,211,77,.23), transparent 68%);
-      animation: heroFloat 12s ease-in-out infinite alternate;
-    }
-    .hero-election::after {
-      width: 520px; height: 520px; bottom: -300px; left: -120px;
-      background: radial-gradient(circle, rgba(255,255,255,.16), transparent 68%);
-      animation: heroFloat 15s ease-in-out infinite alternate-reverse;
-    }
-    .hero-pattern { pointer-events: none; }
-    .hero-pattern > div { animation: orbit 24s linear infinite; }
-    .hero-pattern > div:nth-child(2) { animation-duration: 34s; animation-direction: reverse; }
-    .hero-content > * { animation: heroEnter .8s var(--ease-out) both; }
-    .hero-content > *:nth-child(2) { animation-delay: .12s; }
-    .hero-content > *:nth-child(3) { animation-delay: .24s; }
-    .hero-content > *:nth-child(4) { animation-delay: .34s; }
-    .hero-content h1 { text-wrap: balance; }
-    .hero-content p { color: rgba(236,253,245,.94); }
-    .election-tabs {
-      position: sticky; top: 76px; z-index: 20;
-      backdrop-filter: blur(16px); background: rgba(255,255,255,.9);
-      box-shadow: 0 12px 35px rgba(15,23,42,.07);
-    }
-    .election-tab { transition: color var(--motion-base), background var(--motion-base), transform var(--motion-base) var(--ease-out); }
-    .election-tab:active { transform: scale(.96); }
-    .election-tab.active { box-shadow: 0 5px 14px rgba(5,150,105,.2); }
-    .tab-panel { animation: panelEnter .42s var(--ease-out) both; }
-    .event-card, .candidate-card, #candidatesList > div, #voteContent > div,
-    #resultsContent > div, #panel-register > div {
-      transition: transform var(--motion-base) var(--ease-out), box-shadow var(--motion-base), border-color var(--motion-base);
-    }
-    #candidatesList .border, .vote-option {
-      transition: transform var(--motion-base) var(--ease-out), box-shadow var(--motion-base), border-color var(--motion-base), background var(--motion-base);
-    }
-    #candidatesList .border:hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); border-color: var(--emerald-300); }
-    .vote-option:hover { transform: translateX(4px); box-shadow: 0 8px 22px rgba(15,23,42,.06); }
-    .vote-option.selected { box-shadow: 0 0 0 3px rgba(16,185,129,.08); }
-    .btn, button[type="submit"], #castVoteBtn, #proceedToVoteBtn, #viewResultsBtn, #goToRegisterBtn {
-      transition: transform var(--motion-base) var(--ease-out), box-shadow var(--motion-base), background var(--motion-base);
-    }
-    .btn:active, button[type="submit"]:active, #castVoteBtn:active { transform: scale(.985); }
-    input, select {
-      min-height: 46px; width: 100%; border: 1px solid var(--slate-200);
-      border-radius: 10px; background: #fff; color: var(--slate-800);
-      transition: border-color var(--motion-base), box-shadow var(--motion-base);
-    }
-    input:focus, select:focus {
-      outline: none; border-color: var(--emerald-500);
-      box-shadow: 0 0 0 4px rgba(16,185,129,.12);
-    }
-    label { display: inline-block; }
-    .footer a { transition: color var(--motion-base), transform var(--motion-base); }
-    .footer-links a:hover { display: inline-block; transform: translateX(4px); }
-    .reveal { opacity: 0; transform: translateY(24px); transition: opacity .7s var(--ease-out), transform .7s var(--ease-out); }
-    .reveal.is-visible { opacity: 1; transform: translateY(0); }
-    .loading-spinner { animation: spin .8s linear infinite; }
-    @keyframes heroEnter { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes panelEnter { from { opacity: 0; transform: translateY(12px) scale(.995); } to { opacity: 1; transform: translateY(0) scale(1); } }
-    @keyframes heroFloat { from { transform: translate3d(-12px, 0, 0) scale(.96); } to { transform: translate3d(22px, 28px, 0) scale(1.08); } }
-    @keyframes orbit { from { rotate: 0deg; } to { rotate: 360deg; } }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @media (max-width: 767px) {
-      .main-content { padding-top: 72px; }
-      .hero-election { min-height: 520px; }
-      .hero-content { padding: 2rem .75rem; }
-      .election-tabs { top: 68px; gap: .2rem; }
-      .election-tab { padding: .8rem .55rem; font-size: .75rem; }
-      .election-tab i { width: auto; }
-      .container { padding-left: 1rem; padding-right: 1rem; }
-      .footer-grid { gap: 2rem; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        scroll-behavior: auto !important; animation-duration: .01ms !important;
-        animation-iteration-count: 1 !important; transition-duration: .01ms !important;
-      }
-      .reveal { opacity: 1; transform: none; }
-    }
-    /* Utility classes used by the page's rendered templates */
-    .font-mono { font-family: 'Roboto Mono', monospace; }
-    .font-sans { font-family: 'Inter', sans-serif; }
-    .font-bold { font-weight: 700; } .font-black { font-weight: 900; }
-    .text-xs { font-size: .75rem; } .text-sm { font-size: .875rem; }
-    .text-lg { font-size: 1.125rem; } .text-xl { font-size: 1.25rem; }
-    .text-2xl { font-size: 1.5rem; } .text-3xl { font-size: 1.875rem; }
-    .text-gray-400 { color: #9ca3af; } .text-gray-500 { color: #6b7280; }
-    .text-gray-600 { color: #4b5563; } .text-gray-700 { color: #374151; }
-    .text-gray-900 { color: #111827; }
-    .bg-gray-50 { background: #f9fafb; } .bg-emerald-50 { background: #ecfdf5; }
-    .bg-emerald-100 { background: #d1fae5; } .bg-amber-100 { background: #fef3c7; }
-    .text-amber-600 { color: #d97706; } .text-emerald-700 { color: #047857; }
-    .text-emerald-800 { color: #065f46; } .text-emerald-50 { color: #ecfdf5; }
-    .border { border: 1px solid #e5e7eb; } .border-gray-100 { border-color: #f3f4f6; }
-    .border-gray-200 { border-color: #e5e7eb; } .border-emerald-100 { border-color: #d1fae5; }
-    .w-full { width: 100%; } .h-20 { height: 5rem; } .h-16 { height: 4rem; }
-    .flex-1 { flex: 1; } .shrink-0 { flex-shrink: 0; }
-    .text-right { text-align: right; } .text-left { text-align: left; }
-    .mx-auto { margin-left: auto; margin-right: auto; }
-    .space-y-2 > * + * { margin-top: .5rem; } .space-y-5 > * + * { margin-top: 1.25rem; }
-    .space-y-6 > * + * { margin-top: 1.5rem; }
-    .pl-10 { padding-left: 2.5rem; } .pr-4 { padding-right: 1rem; }
-    .py-2\.5 { padding-top: .625rem; padding-bottom: .625rem; }
-    .py-3 { padding-top: .75rem; padding-bottom: .75rem; }
-    .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
-    .px-8 { padding-left: 2rem; padding-right: 2rem; }
-    .mt-1 { margin-top: .25rem; } .mt-2 { margin-top: .5rem; }
-    .mt-6 { margin-top: 1.5rem; } .mt-8 { margin-top: 2rem; }
-    .mb-1 { margin-bottom: .25rem; } .mb-5 { margin-bottom: 1.25rem; }
-    .mb-6 { margin-bottom: 1.5rem; }
-    .rounded-xl { border-radius: .75rem; } .rounded-2xl { border-radius: 1rem; }
-    .rounded-full { border-radius: 9999px; }
-    .shadow-sm { box-shadow: var(--shadow-sm); }
-    .overflow-hidden { overflow: hidden; }
-    .gap-2 { gap: .5rem; } .gap-3 { gap: .75rem; }
-    .items-start { align-items: flex-start; } .justify-start { justify-content: flex-start; }
-    .border-b { border-bottom: 1px solid #e5e7eb; }
-    .border-t { border-top: 1px solid #e5e7eb; }
-    .uppercase { text-transform: uppercase; } .italic { font-style: italic; }
-    .tracking-wider { letter-spacing: .05em; }
-    .max-w-sm { max-width: 24rem; }
-    @media (min-width: 640px) {
-      .sm\\:grid-cols-2 { grid-template-columns: repeat(2,minmax(0,1fr)); }
-      .sm\\:inline { display: inline; }
-    }
-    @media (min-width: 768px) {
-      .md\\:grid-cols-2 { grid-template-columns: repeat(2,minmax(0,1fr)); }
-      .md\\:flex-row { flex-direction: row; }
-    }
-
+        /* ===== POLISHED PAGE REFINEMENTS & MOTION ===== */
+        :root {
+            --ease-out: cubic-bezier(.22, 1, .36, 1);
+            --motion-fast: 180ms;
+            --motion-base: 320ms;
+            --motion-slow: 650ms;
+        }
+        body { scroll-padding-top: 90px; }
+        button, a, input, select { -webkit-tap-highlight-color: transparent; }
+        button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
+            outline: 3px solid var(--amber-400); outline-offset: 3px;
+        }
+        .navbar { box-shadow: 0 8px 30px rgba(2, 35, 27, .08); }
+        .logo-link { transition: transform var(--motion-base) var(--ease-out), opacity var(--motion-base); }
+        .nav-links li a { transition: color var(--motion-base), opacity var(--motion-base); }
+        .nav-links li a::after { transition: width var(--motion-base) var(--ease-out); }
+        .hero-election {
+            min-height: min(690px, 76vh);
+            isolation: isolate;
+            background: linear-gradient(125deg, #047857 0%, #059669 42%, #0f766e 100%);
+        }
+        .hero-election::before, .hero-election::after {
+            content: ""; position: absolute; z-index: -1; border-radius: 50%;
+            pointer-events: none; filter: blur(2px);
+        }
+        .hero-election::before {
+            width: 440px; height: 440px; top: -190px; right: -100px;
+            background: radial-gradient(circle, rgba(252,211,77,.23), transparent 68%);
+            animation: heroFloat 12s ease-in-out infinite alternate;
+        }
+        .hero-election::after {
+            width: 520px; height: 520px; bottom: -300px; left: -120px;
+            background: radial-gradient(circle, rgba(255,255,255,.16), transparent 68%);
+            animation: heroFloat 15s ease-in-out infinite alternate-reverse;
+        }
+        .hero-pattern { pointer-events: none; }
+        .hero-pattern > div { animation: orbit 24s linear infinite; }
+        .hero-pattern > div:nth-child(2) { animation-duration: 34s; animation-direction: reverse; }
+        .hero-content > * { animation: heroEnter .8s var(--ease-out) both; }
+        .hero-content > *:nth-child(2) { animation-delay: .12s; }
+        .hero-content > *:nth-child(3) { animation-delay: .24s; }
+        .hero-content > *:nth-child(4) { animation-delay: .34s; }
+        .hero-content h1 { text-wrap: balance; }
+        .hero-content p { color: rgba(236,253,245,.94); }
+        .election-tabs {
+            position: sticky; top: 76px; z-index: 20;
+            backdrop-filter: blur(16px); background: rgba(255,255,255,.9);
+            box-shadow: 0 12px 35px rgba(15,23,42,.07);
+        }
+        .election-tab { transition: color var(--motion-base), background var(--motion-base), transform var(--motion-base) var(--ease-out); }
+        .election-tab:active { transform: scale(.96); }
+        .election-tab.active { box-shadow: 0 5px 14px rgba(5,150,105,.2); }
+        .tab-panel { animation: panelEnter .42s var(--ease-out) both; }
+        .event-card, .candidate-card, #candidatesList > div, #voteContent > div,
+        #resultsContent > div, #panel-register > div {
+            transition: transform var(--motion-base) var(--ease-out), box-shadow var(--motion-base), border-color var(--motion-base);
+        }
+        #candidatesList .border, .vote-option {
+            transition: transform var(--motion-base) var(--ease-out), box-shadow var(--motion-base), border-color var(--motion-base), background var(--motion-base);
+        }
+        #candidatesList .border:hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); border-color: var(--emerald-300); }
+        .vote-option:hover { transform: translateX(4px); box-shadow: 0 8px 22px rgba(15,23,42,.06); }
+        .vote-option.selected { box-shadow: 0 0 0 3px rgba(16,185,129,.08); }
+        .btn, button[type="submit"], #castVoteBtn, #proceedToVoteBtn, #viewResultsBtn, #goToRegisterBtn {
+            transition: transform var(--motion-base) var(--ease-out), box-shadow var(--motion-base), background var(--motion-base);
+        }
+        .btn:active, button[type="submit"]:active, #castVoteBtn:active { transform: scale(.985); }
+        input, select {
+            min-height: 46px; width: 100%; border: 1px solid var(--slate-200);
+            border-radius: 10px; background: #fff; color: var(--slate-800);
+            transition: border-color var(--motion-base), box-shadow var(--motion-base);
+        }
+        input:focus, select:focus {
+            outline: none; border-color: var(--emerald-500);
+            box-shadow: 0 0 0 4px rgba(16,185,129,.12);
+        }
+        label { display: inline-block; }
+        .footer a { transition: color var(--motion-base), transform var(--motion-base); }
+        .footer-links a:hover { display: inline-block; transform: translateX(4px); }
+        .reveal { opacity: 0; transform: translateY(24px); transition: opacity .7s var(--ease-out), transform .7s var(--ease-out); }
+        .reveal.is-visible { opacity: 1; transform: translateY(0); }
+        .loading-spinner { animation: spin .8s linear infinite; }
+        @keyframes heroEnter { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes panelEnter { from { opacity: 0; transform: translateY(12px) scale(.995); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes heroFloat { from { transform: translate3d(-12px, 0, 0) scale(.96); } to { transform: translate3d(22px, 28px, 0) scale(1.08); } }
+        @keyframes orbit { from { rotate: 0deg; } to { rotate: 360deg; } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 767px) {
+            .main-content { padding-top: 72px; }
+            .hero-election { min-height: 520px; }
+            .hero-content { padding: 2rem .75rem; }
+            .election-tabs { top: 68px; gap: .2rem; }
+            .election-tab { padding: .8rem .55rem; font-size: .75rem; }
+            .election-tab i { width: auto; }
+            .container { padding-left: 1rem; padding-right: 1rem; }
+            .footer-grid { gap: 2rem; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                scroll-behavior: auto !important; animation-duration: .01ms !important;
+                animation-iteration-count: 1 !important; transition-duration: .01ms !important;
+            }
+            .reveal { opacity: 1; transform: none; }
+        }
+        /* Utility classes used by the page's rendered templates */
+        .font-mono { font-family: 'Roboto Mono', monospace; }
+        .font-sans { font-family: 'Inter', sans-serif; }
+        .font-bold { font-weight: 700; } .font-black { font-weight: 900; }
+        .text-xs { font-size: .75rem; } .text-sm { font-size: .875rem; }
+        .text-lg { font-size: 1.125rem; } .text-xl { font-size: 1.25rem; }
+        .text-2xl { font-size: 1.5rem; } .text-3xl { font-size: 1.875rem; }
+        .text-gray-400 { color: #9ca3af; } .text-gray-500 { color: #6b7280; }
+        .text-gray-600 { color: #4b5563; } .text-gray-700 { color: #374151; }
+        .text-gray-900 { color: #111827; }
+        .bg-gray-50 { background: #f9fafb; } .bg-emerald-50 { background: #ecfdf5; }
+        .bg-emerald-100 { background: #d1fae5; } .bg-amber-100 { background: #fef3c7; }
+        .text-amber-600 { color: #d97706; } .text-emerald-700 { color: #047857; }
+        .text-emerald-800 { color: #065f46; } .text-emerald-50 { color: #ecfdf5; }
+        .border { border: 1px solid #e5e7eb; } .border-gray-100 { border-color: #f3f4f6; }
+        .border-gray-200 { border-color: #e5e7eb; } .border-emerald-100 { border-color: #d1fae5; }
+        .w-full { width: 100%; } .h-20 { height: 5rem; } .h-16 { height: 4rem; }
+        .flex-1 { flex: 1; } .shrink-0 { flex-shrink: 0; }
+        .text-right { text-align: right; } .text-left { text-align: left; }
+        .mx-auto { margin-left: auto; margin-right: auto; }
+        .space-y-2 > * + * { margin-top: .5rem; } .space-y-5 > * + * { margin-top: 1.25rem; }
+        .space-y-6 > * + * { margin-top: 1.5rem; }
+        .pl-10 { padding-left: 2.5rem; } .pr-4 { padding-right: 1rem; }
+        .py-2\.5 { padding-top: .625rem; padding-bottom: .625rem; }
+        .py-3 { padding-top: .75rem; padding-bottom: .75rem; }
+        .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
+        .px-8 { padding-left: 2rem; padding-right: 2rem; }
+        .mt-1 { margin-top: .25rem; } .mt-2 { margin-top: .5rem; }
+        .mt-6 { margin-top: 1.5rem; } .mt-8 { margin-top: 2rem; }
+        .mb-1 { margin-bottom: .25rem; } .mb-5 { margin-bottom: 1.25rem; }
+        .mb-6 { margin-bottom: 1.5rem; }
+        .rounded-xl { border-radius: .75rem; } .rounded-2xl { border-radius: 1rem; }
+        .rounded-full { border-radius: 9999px; }
+        .shadow-sm { box-shadow: var(--shadow-sm); }
+        .overflow-hidden { overflow: hidden; }
+        .gap-2 { gap: .5rem; } .gap-3 { gap: .75rem; }
+        .items-start { align-items: flex-start; } .justify-start { justify-content: flex-start; }
+        .border-b { border-bottom: 1px solid #e5e7eb; }
+        .border-t { border-top: 1px solid #e5e7eb; }
+        .uppercase { text-transform: uppercase; } .italic { font-style: italic; }
+        .tracking-wider { letter-spacing: .05em; }
+        .max-w-sm { max-width: 24rem; }
+        @media (min-width: 640px) {
+            .sm\:grid-cols-2 { grid-template-columns: repeat(2,minmax(0,1fr)); }
+            .sm\:inline { display: inline; }
+        }
+        @media (min-width: 768px) {
+            .md\:grid-cols-2 { grid-template-columns: repeat(2,minmax(0,1fr)); }
+            .md\:flex-row { flex-direction: row; }
+        }
     </style>
 </head>
 <body>
-    <!-- ===== MODERN RESPONSIVE NAVBAR (exactly from provided page) ===== -->
+    <!-- ===== UNIFIED NAVBAR (12 items) ===== -->
     <nav class="navbar" id="navbar">
         <div class="nav-container">
             <div class="nav-flex">
@@ -764,7 +768,7 @@
                 <!-- Desktop Navigation -->
                 <div class="nav-menu">
                     <ul class="nav-links">
-                        <li><a href="index.html">HOME</a></li>
+                        <li><a href="index.html" class="active">HOME</a></li>
                         <li><a href="about.html">ABOUT</a></li>
                         <li><a href="members.html">MEMBERS</a></li>
                         <li><a href="events.html">EVENTS</a></li>
@@ -773,6 +777,9 @@
                         <li><a href="courseReps.html">COURSE REPS</a></li>
                         <li><a href="news.html">NEWS</a></li>
                         <li><a href="contacts.html">CONTACT</a></li>
+                        <li><a href="elections.html">ELECTIONS</a></li>
+                        <li><a href="payment.html">PAYMENTS</a></li>
+                        <li><a href="gallery.html">GALLERY</a></li>
                     </ul>
                 </div>
 
@@ -788,7 +795,7 @@
         <!-- Mobile Navigation -->
         <div class="mobile-nav" id="mobileNav" aria-hidden="true">
             <ul>
-                <li><a href="index.html">HOME</a></li>
+                <li><a href="index.html" class="active">HOME</a></li>
                 <li><a href="about.html">ABOUT</a></li>
                 <li><a href="members.html">MEMBERS</a></li>
                 <li><a href="events.html">EVENTS</a></li>
@@ -797,6 +804,9 @@
                 <li><a href="courseReps.html">COURSE REPS</a></li>
                 <li><a href="news.html">NEWS</a></li>
                 <li><a href="contacts.html">CONTACT</a></li>
+                <li><a href="elections.html">ELECTIONS</a></li>
+                <li><a href="payment.html">PAYMENTS</a></li>
+                <li><a href="gallery.html">GALLERY</a></li>
             </ul>
         </div>
     </nav>
@@ -869,36 +879,20 @@
         </div>
     </div>
 
-    <!-- ===== FOOTER (exactly from provided page) ===== -->
+    <!-- ===== FOOTER ===== -->
     <footer class="footer">
         <div class="footer-container">
             <div class="footer-grid">
-                <!-- Brand -->
                 <div class="footer-section">
-                    <h3>
-                        N.U.E.S.A <span class="text-emerald-400">BIU</span>
-                    </h3>
-                    <p class="footer-text">
-                        Empowering the next generation of engineers through innovation,
-                        unity, and excellence.
-                    </p>
+                    <h3>N.U.E.S.A <span class="text-emerald-400">BIU</span></h3>
+                    <p class="footer-text">Empowering the next generation of engineers through innovation, unity, and excellence.</p>
                     <div class="social-icons">
-                        <a href="#" class="social-icon">
-                            <i class="fab fa-facebook-f text-xl"></i>
-                        </a>
-                        <a href="#" class="social-icon">
-                            <i class="fab fa-twitter text-xl"></i>
-                        </a>
-                        <a href="#" class="social-icon">
-                            <i class="fab fa-instagram text-xl"></i>
-                        </a>
-                        <a href="#" class="social-icon">
-                            <i class="fab fa-linkedin-in text-xl"></i>
-                        </a>
+                        <a href="#" class="social-icon"><i class="fab fa-facebook-f text-xl"></i></a>
+                        <a href="#" class="social-icon"><i class="fab fa-twitter text-xl"></i></a>
+                        <a href="#" class="social-icon"><i class="fab fa-instagram text-xl"></i></a>
+                        <a href="#" class="social-icon"><i class="fab fa-linkedin-in text-xl"></i></a>
                     </div>
                 </div>
-
-                <!-- Quick Links -->
                 <div class="footer-section">
                     <h4>Quick Links</h4>
                     <ul class="footer-links">
@@ -908,8 +902,6 @@
                         <li><a href="news.html">News</a></li>
                     </ul>
                 </div>
-
-                <!-- Departments -->
                 <div class="footer-section">
                     <h4>Departments</h4>
                     <ul class="footer-links">
@@ -918,17 +910,12 @@
                         <li><span>Civil Engineering</span></li>
                     </ul>
                 </div>
-
-                <!-- Contact -->
                 <div class="footer-section">
                     <h4>Contact</h4>
                     <div class="footer-links">
                         <div class="footer-contact-item">
                             <i class="fas fa-map-marker-alt footer-contact-icon"></i>
-                            <span>
-                                Benson Idahosa University,<br>
-                                Benin City, Nigeria
-                            </span>
+                            <span>Benson Idahosa University,<br>Benin City, Nigeria</span>
                         </div>
                         <div class="footer-contact-item">
                             <i class="fas fa-envelope footer-contact-icon"></i>
@@ -941,11 +928,8 @@
                     </div>
                 </div>
             </div>
-
             <div class="footer-bottom">
-                <p class="font-mono text-xs text-slate-400">
-                    © 2026 NUESA BIU. All rights reserved.
-                </p>
+                <p class="font-mono text-xs text-slate-400">© 2026 NUESA BIU. All rights reserved.</p>
                 <div class="footer-bottom-links">
                     <a href="#">Privacy Policy</a>
                     <a href="#">Terms of Service</a>
@@ -957,7 +941,7 @@
     <!-- ===== JAVASCRIPT ===== -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // ==================== NAVBAR FUNCTIONALITY (from provided page) ====================
+            // ==================== NAVBAR FUNCTIONALITY ====================
             const navbar = document.getElementById('navbar');
             const hamburger = document.getElementById('hamburger');
             const mobileNav = document.getElementById('mobileNav');
@@ -1056,7 +1040,6 @@
                 c1: 145, c2: 132, c3: 89, c4: 210, c5: 156, c6: 188, c7: 178, c8: 195, c9: 171, c10: 205, c11: 161
             };
 
-            // State
             let registeredVoter = null;
             let hasVoted = false;
             let votes = {};
@@ -1070,7 +1053,6 @@
                 level: LEVELS[0]
             };
 
-            // ==================== UTILITY FUNCTIONS ====================
             function getInitials(name) {
                 return name.split(' ').map(n => n[0]).join('').toUpperCase();
             }
@@ -1085,7 +1067,6 @@
                 return candidates.reduce((sum, c) => sum + (tallies[c.id] || 0), 0);
             }
 
-            // ==================== RENDERING FUNCTIONS ====================
             const registerPanel = document.getElementById('panel-register');
             const candidatesPanel = document.getElementById('panel-candidates');
             const votePanel = document.getElementById('panel-vote');
@@ -1215,7 +1196,6 @@
                             voterId: `VOTER-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
                         };
                         renderRegister();
-                        // Switch to vote tab automatically? We'll stay, user can click Proceed.
                     });
                 }
             }
@@ -1324,13 +1304,12 @@
 
                 voteContent.innerHTML = html;
 
-                // Attach event listeners to vote options
                 document.querySelectorAll('.vote-option').forEach(btn => {
                     btn.addEventListener('click', function() {
                         const positionId = this.dataset.position;
                         const candidateId = this.dataset.candidate;
                         votes[positionId] = candidateId;
-                        renderVote(); // re-render to update selected state
+                        renderVote();
                     });
                 });
 
@@ -1339,14 +1318,11 @@
                         alert('Please select a candidate for all positions before casting your vote.');
                         return;
                     }
-                    // Update tallies
                     Object.values(votes).forEach(candidateId => {
                         tallies[candidateId] = (tallies[candidateId] || 0) + 1;
                     });
                     hasVoted = true;
                     renderVote();
-                    // Optionally switch to results
-                    // switchTab('results');
                 });
             }
 
@@ -1366,7 +1342,6 @@
                     const maxVotes = getMaxVotes(position.id);
                     const leaderId = positionCandidates.reduce((a, b) => (tallies[a.id] || 0) >= (tallies[b.id] || 0) ? a : b).id;
 
-                    // Sort candidates by votes descending
                     const sortedCandidates = [...positionCandidates].sort((a, b) => (tallies[b.id] || 0) - (tallies[a.id] || 0));
 
                     html += `
@@ -1414,7 +1389,6 @@
                 resultsContent.innerHTML = html;
             }
 
-            // ==================== TAB SWITCHING ====================
             function switchTab(tabId) {
                 document.querySelectorAll('.election-tab').forEach(tab => {
                     const active = tab.dataset.tab === tabId;
@@ -1444,32 +1418,13 @@
                 else if (tabId === 'results') renderResults();
             }
 
-            // Attach tab click handlers
             document.querySelectorAll('.election-tab').forEach(tab => {
                 tab.addEventListener('click', () => switchTab(tab.dataset.tab));
             });
 
-            // Initialize first tab
             switchTab('register');
 
-            // ==================== API INTEGRATION (optional stats, kept as per theme) ====================
-            const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
-            async function fetchAPI(endpoint) {
-                try {
-                    const response = await fetch(`${API_BASE_URL}${endpoint}`, { headers: { 'Content-Type': 'application/json' } });
-                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                    return await response.json();
-                } catch (error) {
-                    console.warn(`API Error (${endpoint}):`, error);
-                    throw error;
-                }
-            }
-
-            // Attempt to load stats if there were elements to update (none on this page), but we keep the function for theme consistency.
-            // Not used further.
-
-
-            // Progressive reveal for major content blocks.
+            // Progressive reveal for major content blocks
             const revealTargets = document.querySelectorAll('.hero-content, .election-tabs, #tabContent, .footer-section');
             revealTargets.forEach(el => el.classList.add('reveal'));
             if ('IntersectionObserver' in window) {
@@ -1486,7 +1441,7 @@
                 revealTargets.forEach(el => el.classList.add('is-visible'));
             }
 
-            // Arrow-key navigation between election tabs.
+            // Arrow-key navigation between election tabs
             const tabButtons = Array.from(document.querySelectorAll('.election-tab'));
             tabButtons.forEach((tab, index) => {
                 tab.setAttribute('role', 'tab');
