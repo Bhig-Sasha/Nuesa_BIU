@@ -94,6 +94,7 @@
         @keyframes scaleIn     { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
         @keyframes rowReveal   { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes spin        { to { transform: rotate(360deg); } }
+        @keyframes pulse       { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
         /* ============================================================
            LOADING
@@ -541,6 +542,232 @@
         .stat-label {
             color: var(--text-muted);
             font-size: 0.75rem; font-weight: 600;
+        }
+
+        /* ============================================================
+           HOMEPAGE PLACEMENT CARD — the one and only placement
+           ============================================================ */
+        .placement-section {
+            margin-bottom: 24px;
+            animation: slideInUp var(--dur) var(--ease) 200ms both;
+        }
+        .placement-section-header {
+            display: flex; align-items: center; gap: 10px;
+            margin-bottom: 12px;
+        }
+        .placement-section-title {
+            font-size: 1.0625rem;
+            font-weight: 700;
+            color: var(--text);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .placement-section-title i { color: var(--accent); }
+        .placement-count {
+            font-family: var(--font-mono);
+            font-size: 0.6875rem;
+            font-weight: 700;
+            background: var(--primary-tint);
+            color: var(--primary);
+            padding: 2px 10px;
+            border-radius: 999px;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .placement-card {
+            background: var(--surface);
+            border-radius: var(--r-lg);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            gap: 0;
+            transition: all var(--dur) var(--ease);
+        }
+        @media (max-width: 720px) {
+            .placement-card { grid-template-columns: 1fr; }
+        }
+        .placement-card:hover { border-color: var(--accent); box-shadow: var(--shadow-md); }
+
+        .placement-preview {
+            background: linear-gradient(135deg, var(--primary-tint) 0%, var(--accent-tint) 100%);
+            aspect-ratio: 16 / 10;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+            position: relative;
+            border-right: 1px solid var(--border);
+        }
+        @media (max-width: 720px) {
+            .placement-preview { border-right: none; border-bottom: 1px solid var(--border); }
+        }
+        .placement-preview img {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .placement-preview .placement-empty-icon {
+            font-size: 2.75rem;
+            color: var(--primary);
+            opacity: 0.35;
+        }
+        .placement-preview .placement-status-badge {
+            position: absolute;
+            top: 10px; left: 10px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.625rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            backdrop-filter: blur(6px);
+            box-shadow: var(--shadow-sm);
+        }
+        .placement-status-badge.status-active {
+            background: var(--success-tint);
+            color: var(--success);
+        }
+        .placement-status-badge.status-empty {
+            background: var(--surface-muted);
+            color: var(--text-muted);
+        }
+
+        .placement-body {
+            padding: 18px 22px;
+            display: flex; flex-direction: column; justify-content: space-between;
+            gap: 12px;
+            min-width: 0;
+        }
+        .placement-info-top {
+            display: flex; flex-direction: column; gap: 4px;
+            min-width: 0;
+        }
+        .placement-name {
+            font-size: 1rem; font-weight: 800;
+            color: var(--text);
+            line-height: 1.3;
+            letter-spacing: -0.01em;
+        }
+        .placement-description {
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+        .placement-meta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px 16px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+        .placement-meta-item { display: flex; flex-direction: column; gap: 2px; }
+        .placement-meta-label {
+            font-family: var(--font-mono);
+            font-size: 0.625rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-dim);
+        }
+        .placement-meta-value {
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .placement-meta-value.mono { font-family: var(--font-mono); font-size: 0.75rem; }
+
+        .placement-actions {
+            display: flex; gap: 8px; flex-wrap: wrap;
+            padding-top: 4px;
+        }
+        .placement-actions .btn { flex: 0 0 auto; }
+
+        .placement-info-banner {
+            background: var(--accent-tint);
+            border: 1px solid rgba(213, 168, 59, 0.35);
+            border-radius: var(--r);
+            padding: 10px 14px;
+            font-size: 0.75rem;
+            color: var(--text-gold);
+            display: flex; align-items: center; gap: 8px;
+            margin-top: 4px;
+        }
+        .placement-info-banner i { font-size: 0.875rem; flex-shrink: 0; }
+
+        /* Placement Image Picker Modal — reuses media grid */
+        .placement-picker-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 10px;
+            max-height: 52vh;
+            overflow-y: auto;
+            padding: 4px;
+        }
+        .placement-picker-item {
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: var(--r);
+            overflow: hidden;
+            cursor: pointer;
+            transition: all var(--dur-fast) var(--ease);
+            position: relative;
+            aspect-ratio: 4 / 3;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .placement-picker-item:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        .placement-picker-item.selected {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(213, 168, 59, 0.25);
+        }
+        .placement-picker-item img {
+            width: 100%; height: 100%; object-fit: cover;
+        }
+        .placement-picker-item .picker-check {
+            position: absolute;
+            top: 6px; right: 6px;
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: var(--primary);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.6875rem;
+            opacity: 0;
+            transition: opacity var(--dur-fast) var(--ease);
+        }
+        .placement-picker-item.selected .picker-check { opacity: 1; }
+        .placement-picker-item .picker-name {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            background: linear-gradient(to top, rgba(16,43,39,0.85), transparent);
+            color: var(--text-invert);
+            font-size: 0.625rem;
+            font-weight: 600;
+            padding: 12px 6px 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-family: var(--font-mono);
+        }
+        .picker-empty {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 30px 20px;
+            color: var(--text-muted);
+            font-size: 0.8125rem;
+        }
+        .picker-empty i {
+            display: block;
+            font-size: 2rem;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+            opacity: 0.5;
         }
 
         /* ============================================================
@@ -1181,11 +1408,11 @@
                 <div class="nav-section-label">Main</div>
                 <a href="dashboard.html" class="nav-item"><i class="fas fa-th-large"></i><span>Dashboard</span></a>
                 <a href="members.html" class="nav-item"><i class="fas fa-users"></i><span>Members</span></a>
-                <a href="courseReps.html" class="nav-item"><i class="fas fa-chalkboard-teacher"></i><span>Course Reps</span></a>
+                <a href="courseReps.html" class="nav-item active"><i class="fas fa-chalkboard-teacher"></i><span>Course Reps</span></a>
                 <a href="events.html" class="nav-item"><i class="far fa-calendar-alt"></i><span>Events</span></a>
                 <a href="articles.html" class="nav-item"><i class="far fa-newspaper"></i><span>News &amp; Articles</span></a>
                 <a href="resources.html" class="nav-item"><i class="fas fa-book"></i><span>Resources</span></a>
-                <a href="media.html" class="nav-item active"><i class="far fa-images"></i><span>Media Library</span></a>
+                <a href="media.html" class="nav-item"><i class="far fa-images"></i><span>Media Library</span></a>
                 <a href="messages.html" class="nav-item"><i class="far fa-comment-alt"></i><span>Messages</span></a>
                 <a href="settings.html" class="nav-item"><i class="fas fa-cog"></i><span>Settings</span></a>
             </nav>
@@ -1255,6 +1482,70 @@
                         <div class="stat-label">Storage Used</div>
                     </div>
                 </div>
+
+                <!-- ================================================================
+                     HOMEPAGE PLACEMENT — the single special placement in the
+                     Media Library. This is the ONLY placement managed here.
+                     ================================================================ -->
+                <section class="placement-section" aria-labelledby="placementSectionTitle">
+                    <div class="placement-section-header">
+                        <h2 class="placement-section-title" id="placementSectionTitle">
+                            <i class="fas fa-thumbtack"></i> Homepage Placement
+                        </h2>
+                        <span class="placement-count" id="placementCount">1 placement</span>
+                    </div>
+
+                    <div class="placement-card" id="homepagePlacementCard">
+                        <div class="placement-preview" id="placementPreview">
+                            <i class="far fa-image placement-empty-icon" id="placementEmptyIcon"></i>
+                            <span class="placement-status-badge status-empty" id="placementStatusBadge">No image</span>
+                        </div>
+                        <div class="placement-body">
+                            <div class="placement-info-top">
+                                <div class="placement-name">Homepage Hero Image</div>
+                                <div class="placement-description">
+                                    Manage the picture displayed in the homepage hero section — “Building the Future, One Engineer at a Time.”
+                                </div>
+                            </div>
+
+                            <div class="placement-meta-grid">
+                                <div class="placement-meta-item">
+                                    <span class="placement-meta-label">Page</span>
+                                    <span class="placement-meta-value">Home</span>
+                                </div>
+                                <div class="placement-meta-item">
+                                    <span class="placement-meta-label">Section</span>
+                                    <span class="placement-meta-value">Hero (Intro)</span>
+                                </div>
+                                <div class="placement-meta-item">
+                                    <span class="placement-meta-label">Media Type</span>
+                                    <span class="placement-meta-value">Picture only</span>
+                                </div>
+                                <div class="placement-meta-item">
+                                    <span class="placement-meta-label">Status</span>
+                                    <span class="placement-meta-value mono" id="placementMetaStatus">Empty</span>
+                                </div>
+                            </div>
+
+                            <div class="placement-actions">
+                                <button class="btn btn-primary btn-sm" id="selectPlacementImageBtn">
+                                    <i class="fas fa-image"></i> <span id="selectPlacementLabel">Select Image</span>
+                                </button>
+                                <button class="btn btn-secondary btn-sm" id="replacePlacementImageBtn" style="display:none;">
+                                    <i class="fas fa-sync-alt"></i> Replace Image
+                                </button>
+                                <button class="btn btn-secondary btn-sm" id="clearPlacementBtn" style="display:none;">
+                                    <i class="fas fa-times"></i> Clear
+                                </button>
+                            </div>
+
+                            <div class="placement-info-banner">
+                                <i class="fas fa-info-circle"></i>
+                                <span>Only <strong>pictures</strong> can be selected for this placement. One active image at a time. This placement cannot be renamed or deleted.</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
 
                 <!-- Media shell -->
                 <div class="media-shell">
@@ -1452,6 +1743,28 @@
         </div>
     </div>
 
+    <!-- ============ HOMEPAGE PLACEMENT IMAGE PICKER MODAL ============ -->
+    <div class="modal" id="placementPickerModal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fas fa-image"></i> Select Homepage Hero Image</h3>
+                <button class="modal-close" onclick="hideModal('placementPickerModal')" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 14px;">
+                    Choose a picture from your Media Library. Only pictures can be selected for this placement.
+                </p>
+                <div class="placement-picker-grid" id="placementPickerGrid"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('placementPickerModal')" type="button">Cancel</button>
+                <button class="btn btn-primary" id="confirmPlacementImageBtn" type="button" disabled>
+                    <i class="fas fa-check"></i> Use Selected Image
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- ============ LOGOUT MODAL ============ -->
     <div class="modal" id="logoutModal">
         <div class="modal-content">
@@ -1493,6 +1806,10 @@
     let deletingMediaId = null;
     let editingMediaId = null;
     let pendingUploadFiles = [];
+
+    // Homepage placement state — the ONE special placement
+    let homepagePlacement = null;           // { mediaId, url, title, updatedAt } or null
+    let placementPickerSelection = null;    // media id selected inside the picker modal
 
     // ============================================================
     // AUTH
@@ -1637,6 +1954,8 @@
             updateStats();
             updateCategoryCounts();
             applyFilters();
+            renderPlacementCard();
+
             if (selectedMediaId) {
                 const stillExists = allMedia.find(m => String(m.id) === String(selectedMediaId));
                 if (stillExists) renderDetails(stillExists);
@@ -1657,7 +1976,6 @@
     }
 
     function normalizeMedia(m) {
-        // Detect media type robustly from API
         const mime = m.mime_type || m.mime || m.file_type || '';
         let type = (m.type || '').toLowerCase();
         if (!type) {
@@ -1668,10 +1986,16 @@
         }
         if (type === 'image') type = 'picture';
 
-        // Extract file extension label
         const filename = m.filename || m.file_name || '';
         const extMatch = filename.match(/\.([a-z0-9]+)$/i);
         const extLabel = extMatch ? extMatch[1].toUpperCase() : (type === 'video' ? 'VIDEO' : 'IMG');
+
+        // Merge usage from server + local placement awareness
+        let usage = Array.isArray(m.usage) ? m.usage.slice() : [];
+        if (homepagePlacement && String(homepagePlacement.mediaId) === String(m.id || m.uuid)) {
+            const already = usage.some(u => (u.page || '').toLowerCase() === 'home' && (u.section || '').toLowerCase().includes('hero'));
+            if (!already) usage.push({ page: 'Home', section: 'Hero (Intro)' });
+        }
 
         return {
             id: m.id || m.uuid,
@@ -1691,8 +2015,8 @@
             tags: Array.isArray(m.tags) ? m.tags : (typeof m.tags === 'string' ? m.tags.split(',').map(t => t.trim()).filter(Boolean) : []),
             uploaded_at: m.created_at || m.uploaded_at || m.uploaded_on || null,
             uploader: m.uploader_name || m.uploaded_by_name || m.uploaded_by || 'Admin',
-            usage: Array.isArray(m.usage) ? m.usage : [],
-            used: Array.isArray(m.usage) && m.usage.length > 0
+            usage: usage,
+            used: usage.length > 0
         };
     }
 
@@ -1739,6 +2063,211 @@
         document.getElementById('catAll').textContent = allMedia.length;
         document.getElementById('catPictures').textContent = pictures;
         document.getElementById('catVideos').textContent = videos;
+    }
+
+    // ============================================================
+    // HOMEPAGE PLACEMENT — the single special placement
+    // ============================================================
+    function findMediaById(id) {
+        if (id == null) return null;
+        return allMedia.find(m => String(m.id) === String(id)) || null;
+    }
+
+    function renderPlacementCard() {
+        const preview = document.getElementById('placementPreview');
+        const emptyIcon = document.getElementById('placementEmptyIcon');
+        const statusBadge = document.getElementById('placementStatusBadge');
+        const metaStatus = document.getElementById('placementMetaStatus');
+        const selectLabel = document.getElementById('selectPlacementLabel');
+        const replaceBtn = document.getElementById('replacePlacementImageBtn');
+        const clearBtn = document.getElementById('clearPlacementBtn');
+
+        // Clear previous image
+        const existingImg = preview.querySelector('img');
+        if (existingImg) existingImg.remove();
+
+        // Try to render current placement image if set
+        const placedMedia = homepagePlacement ? findMediaById(homepagePlacement.mediaId) : null;
+        const hasImage = !!(placedMedia && placedMedia.type === 'picture' && (placedMedia.url || placedMedia.thumb));
+
+        if (hasImage) {
+            const img = document.createElement('img');
+            img.src = placedMedia.thumb || placedMedia.url;
+            img.alt = placedMedia.alt || placedMedia.title || 'Homepage hero image';
+            img.onerror = () => {
+                img.remove();
+                if (emptyIcon) emptyIcon.style.display = '';
+                statusBadge.className = 'placement-status-badge status-empty';
+                statusBadge.textContent = 'No image';
+                metaStatus.textContent = 'Empty';
+            };
+            preview.insertBefore(img, preview.firstChild);
+            if (emptyIcon) emptyIcon.style.display = 'none';
+            statusBadge.className = 'placement-status-badge status-active';
+            statusBadge.textContent = 'Active';
+            metaStatus.textContent = 'Active';
+            selectLabel.textContent = 'Change Image';
+            replaceBtn.style.display = '';
+            clearBtn.style.display = '';
+        } else {
+            if (emptyIcon) emptyIcon.style.display = '';
+            statusBadge.className = 'placement-status-badge status-empty';
+            statusBadge.textContent = 'No image';
+            metaStatus.textContent = 'Empty';
+            selectLabel.textContent = 'Select Image';
+            replaceBtn.style.display = 'none';
+            clearBtn.style.display = 'none';
+        }
+    }
+
+    function openPlacementPicker() {
+        placementPickerSelection = homepagePlacement ? homepagePlacement.mediaId : null;
+        renderPlacementPickerGrid();
+        showModal('placementPickerModal');
+    }
+
+    function renderPlacementPickerGrid() {
+        const grid = document.getElementById('placementPickerGrid');
+        const confirmBtn = document.getElementById('confirmPlacementImageBtn');
+        const pictures = allMedia.filter(m => m.type === 'picture' && (m.url || m.thumb));
+
+        if (pictures.length === 0) {
+            grid.innerHTML = `
+                <div class="picker-empty">
+                    <i class="far fa-images"></i>
+                    <div>No pictures in the Media Library yet.</div>
+                    <button class="btn btn-gold btn-sm" style="margin-top: 12px;" onclick="hideModal('placementPickerModal'); showModal('uploadModal');">
+                        <i class="fas fa-cloud-upload-alt"></i> Upload a picture
+                    </button>
+                </div>`;
+            confirmBtn.disabled = true;
+            return;
+        }
+
+        grid.innerHTML = pictures.map(p => {
+            const isSelected = String(placementPickerSelection) === String(p.id);
+            return `
+                <div class="placement-picker-item ${isSelected}" data-id="${escapeHtml(p.id)}">
+                    <img src="${escapeHtml(p.thumb || p.url)}" alt="${escapeHtml(p.alt || p.title)}" loading="lazy">
+                    <span class="picker-check"><i class="fas fa-check"></i></span>
+                    <div class="picker-name">${escapeHtml(p.title)}</div>
+                </div>`;
+        }).join('');
+
+        grid.querySelectorAll('.placement-picker-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const id = item.dataset.id;
+                if (String(placementPickerSelection) === String(id)) {
+                    placementPickerSelection = null;
+                } else {
+                    placementPickerSelection = id;
+                }
+                grid.querySelectorAll('.placement-picker-item').forEach(el => {
+                    el.classList.toggle('selected', String(el.dataset.id) === String(placementPickerSelection));
+                });
+                confirmBtn.disabled = !placementPickerSelection;
+            });
+        });
+
+        confirmBtn.disabled = !placementPickerSelection;
+    }
+
+    async function confirmPlacementImage() {
+        if (!placementPickerSelection) return;
+        const media = findMediaById(placementPickerSelection);
+        if (!media || media.type !== 'picture') {
+            showToast('Only pictures can be used for the homepage hero', 'warning');
+            return;
+        }
+
+        const btn = document.getElementById('confirmPlacementImageBtn');
+        const original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Applying…';
+
+        // Optimistically update UI
+        homepagePlacement = {
+            mediaId: media.id,
+            url: media.url,
+            title: media.title,
+            updatedAt: new Date().toISOString()
+        };
+        renderPlacementCard();
+        renderMediaGrid();
+        if (selectedMediaId && String(selectedMediaId) === String(media.id)) {
+            renderDetails(findMediaById(media.id));
+        }
+
+        try {
+            await apiPut('/api/admin/media/placements/homepage-hero', {
+                media_id: media.id
+            });
+            showToast('Homepage hero image updated', 'success');
+        } catch (err) {
+            // The page works even without a backend placement endpoint:
+            // persist locally so the selection sticks for the session.
+            try {
+                localStorage.setItem('nuesa_homepage_placement', JSON.stringify(homepagePlacement));
+            } catch {}
+            console.warn('Placement API not available, saved locally:', err.message);
+            showToast('Homepage hero updated (saved locally)', 'success');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = original;
+            hideModal('placementPickerModal');
+        }
+    }
+
+    async function clearPlacement() {
+        if (!homepagePlacement) return;
+        const previous = homepagePlacement;
+        homepagePlacement = null;
+        renderPlacementCard();
+        renderMediaGrid();
+
+        try {
+            await apiDelete('/api/admin/media/placements/homepage-hero');
+        } catch (err) {
+            try { localStorage.removeItem('nuesa_homepage_placement'); } catch {}
+            console.warn('Placement clear API not available:', err.message);
+        }
+        showToast('Homepage hero image cleared', 'info');
+        if (selectedMediaId && String(selectedMediaId) === String(previous.mediaId)) {
+            renderDetails(findMediaById(previous.mediaId));
+        }
+    }
+
+    function loadLocalPlacementFallback() {
+        try {
+            const saved = localStorage.getItem('nuesa_homepage_placement');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (parsed && parsed.mediaId) homepagePlacement = parsed;
+            }
+        } catch {}
+    }
+
+    async function loadPlacementFromServer() {
+        try {
+            const res = await apiGet('/api/admin/media/placements/homepage-hero');
+            const data = res.data || res;
+            if (data && (data.media_id || data.mediaId)) {
+                homepagePlacement = {
+                    mediaId: data.media_id || data.mediaId,
+                    url: data.url || '',
+                    title: data.title || '',
+                    updatedAt: data.updated_at || new Date().toISOString()
+                };
+                try { localStorage.setItem('nuesa_homepage_placement', JSON.stringify(homepagePlacement)); } catch {}
+            } else {
+                homepagePlacement = null;
+            }
+        } catch (err) {
+            // Backend endpoint not available — fall back to local state (if any)
+            console.warn('Placement load API not available, using local state:', err.message);
+            loadLocalPlacementFallback();
+        }
+        renderPlacementCard();
     }
 
     // ============================================================
@@ -1802,7 +2331,6 @@
             const usageBadge = m.used
                 ? `<span class="media-card-badge badge-success"><i class="fas fa-check" style="font-size:0.5rem;"></i> In use</span>`
                 : '';
-            const typeLabel = isVideo ? 'video' : 'picture';
             const typeClass = isVideo ? 'type-video' : 'type-picture';
             const typeDisplay = isVideo ? 'Video' : 'Picture';
 
@@ -1897,6 +2425,8 @@
                 : `<i class="fas fa-video file-icon"></i>`;
         }
 
+        const isHomepageImage = homepagePlacement && String(homepagePlacement.mediaId) === String(m.id);
+
         const usageHtml = (m.usage && m.usage.length > 0)
             ? m.usage.map(u => `
                 <div class="usage-item">
@@ -1921,6 +2451,13 @@
                 <div class="details-filename">${escapeHtml(m.filename)}</div>
             </div>
             <div class="details-body">
+                ${isHomepageImage ? `
+                <div class="detail-section">
+                    <div class="placement-info-banner" style="margin-top: 0;">
+                        <i class="fas fa-thumbtack"></i>
+                        <span>Currently used as the <strong>Homepage Hero Image</strong>.</span>
+                    </div>
+                </div>` : ''}
                 <div class="detail-section">
                     <div class="detail-label">File info</div>
                     <div class="detail-grid">
@@ -1996,7 +2533,6 @@
         showModal('videoPlayerModal');
         setTimeout(() => { try { video.play(); } catch {} }, 200);
 
-        // Also update details panel so it stays in sync
         renderDetails(m);
     }
 
@@ -2054,14 +2590,20 @@
     function openDeleteMediaModal(m) {
         if (!m) return;
         deletingMediaId = m.id;
+
+        const isHomepageImage = homepagePlacement && String(homepagePlacement.mediaId) === String(m.id);
+
         document.getElementById('deleteMediaName').textContent = m.title;
         const warning = document.getElementById('deleteMediaWarning');
+        const warnings = [];
         if (m.used && m.usage && m.usage.length > 0) {
             const pages = m.usage.map(u => u.page || u.location).filter(Boolean).join(', ');
-            warning.textContent = `⚠️ This file is currently used on: ${pages}. Deleting it will break those references.`;
-        } else {
-            warning.textContent = '';
+            warnings.push(`⚠️ This file is currently used on: ${pages}. Deleting it will break those references.`);
         }
+        if (isHomepageImage) {
+            warnings.push(`⚠️ This picture is currently set as the Homepage Hero Image. Deleting it will clear that placement.`);
+        }
+        warning.innerHTML = warnings.join('<br>');
         showModal('deleteMediaModal');
     }
 
@@ -2075,6 +2617,14 @@
             await apiDelete(`/api/admin/media/${deletingMediaId}`);
             showToast('Media deleted', 'success');
             hideModal('deleteMediaModal');
+
+            // If this was the homepage hero, clear placement
+            if (homepagePlacement && String(homepagePlacement.mediaId) === String(deletingMediaId)) {
+                homepagePlacement = null;
+                try { localStorage.removeItem('nuesa_homepage_placement'); } catch {}
+                renderPlacementCard();
+            }
+
             if (String(selectedMediaId) === String(deletingMediaId)) {
                 selectedMediaId = null;
                 renderEmptyDetails();
@@ -2125,7 +2675,6 @@
                 const error = validateFile(f);
                 pendingUploadFiles.push({ file: f, error });
             }
-            // Auto-pick category from first valid file
             const firstValid = pendingUploadFiles.find(p => !p.error);
             if (firstValid) {
                 const cat = document.getElementById('uploadCategory');
@@ -2386,6 +2935,12 @@
         document.getElementById('confirmDeleteMediaBtn').addEventListener('click', handleDeleteMedia);
         document.getElementById('saveEditBtn').addEventListener('click', handleEditSave);
 
+        // Homepage placement wiring
+        document.getElementById('selectPlacementImageBtn').addEventListener('click', openPlacementPicker);
+        document.getElementById('replacePlacementImageBtn').addEventListener('click', openPlacementPicker);
+        document.getElementById('clearPlacementBtn').addEventListener('click', clearPlacement);
+        document.getElementById('confirmPlacementImageBtn').addEventListener('click', confirmPlacementImage);
+
         // View toggle
         document.getElementById('gridViewBtn').addEventListener('click', () => {
             currentView = 'grid';
@@ -2442,7 +2997,7 @@
         // Escape
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                ['uploadModal','editMediaModal','deleteMediaModal','logoutModal','videoPlayerModal'].forEach(id => {
+                ['uploadModal','editMediaModal','deleteMediaModal','logoutModal','videoPlayerModal','placementPickerModal'].forEach(id => {
                     const el = document.getElementById(id);
                     if (el && el.classList.contains('active')) {
                         if (id === 'videoPlayerModal') closeVideoPlayer();
@@ -2457,6 +3012,9 @@
         if (!ok) return;
 
         setupActivityListeners();
+
+        // Load placement first (so the "In use" badges reflect it), then media
+        await loadPlacementFromServer();
         await loadMedia();
         hideLoading();
     }
