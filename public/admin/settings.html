@@ -1,0 +1,2515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - NUESA BIU Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* ============================================================
+           NUESA BIU ADMIN — ENGINEERING GREEN + GOLD THEME
+           ============================================================ */
+        :root {
+            --primary:        #102B27;
+            --primary-soft:   #1A3A34;
+            --primary-tint:   #E6EEEB;
+            --accent:         #D5A83B;
+            --accent-soft:    #E8C46A;
+            --accent-tint:    #FBF3DE;
+
+            --bg:             #F4F6F3;
+            --surface:        #FFFFFF;
+            --surface-muted:  #FAFAF8;
+            --border:         #E5E9E4;
+            --border-strong:  #D0D7D2;
+
+            --text:           #102B27;
+            --text-muted:     #5A6B67;
+            --text-dim:       #8A9894;
+            --text-invert:    #FFFFFF;
+            --text-gold:      #8B6E22;
+
+            --success:        #1E8E5A;
+            --success-tint:   #E4F3EB;
+            --warning:        #B8761E;
+            --warning-tint:   #FBF0DC;
+            --danger:         #B7402F;
+            --danger-tint:    #FBE6E2;
+            --info:           #2C6FA8;
+            --info-tint:      #E3EEF7;
+            --purple:         #6B3FA0;
+            --purple-tint:    #F0E9F8;
+
+            --r-sm: 6px;
+            --r:    10px;
+            --r-lg: 14px;
+            --r-xl: 18px;
+
+            --shadow-sm: 0 1px 2px rgba(16, 43, 39, 0.05);
+            --shadow:    0 2px 6px rgba(16, 43, 39, 0.06), 0 1px 2px rgba(16, 43, 39, 0.04);
+            --shadow-md: 0 6px 16px rgba(16, 43, 39, 0.08), 0 2px 4px rgba(16, 43, 39, 0.04);
+            --shadow-lg: 0 12px 28px rgba(16, 43, 39, 0.10), 0 4px 8px rgba(16, 43, 39, 0.05);
+            --shadow-xl: 0 24px 48px rgba(16, 43, 39, 0.14), 0 8px 16px rgba(16, 43, 39, 0.06);
+
+            --ease: cubic-bezier(0.22, 1, 0.36, 1);
+            --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+            --dur-fast: 160ms;
+            --dur:      240ms;
+            --dur-slow: 420ms;
+
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --font-mono: 'Roboto Mono', 'SF Mono', Monaco, monospace;
+
+            --sidebar-w: 272px;
+            --header-h:  76px;
+        }
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 15px;
+            line-height: 1.55;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        a { color: inherit; text-decoration: none; }
+        button { font-family: inherit; }
+
+        /* ============================================================
+           ANIMATIONS
+           ============================================================ */
+        @keyframes pageFadeIn  { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes fadeIn      { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideInUp   { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes scaleIn     { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+        @keyframes spin        { to { transform: rotate(360deg); } }
+
+        /* ============================================================
+           LOADING
+           ============================================================ */
+        .loading-overlay {
+            position: fixed; inset: 0;
+            background: rgba(244, 246, 243, 0.92);
+            backdrop-filter: blur(6px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999;
+            opacity: 0; visibility: hidden;
+            transition: opacity var(--dur) var(--ease), visibility var(--dur);
+        }
+        .loading-overlay.active { opacity: 1; visibility: visible; }
+        .loading-content { text-align: center; animation: scaleIn var(--dur) var(--ease); }
+        .loading-spinner {
+            width: 52px; height: 52px;
+            border: 3px solid var(--primary-tint);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 800ms linear infinite;
+            margin: 0 auto 16px;
+        }
+        .loading-text {
+            font-family: var(--font-mono);
+            font-size: 11px; font-weight: 600;
+            letter-spacing: 0.15em; text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        /* ============================================================
+           TOASTS
+           ============================================================ */
+        .toast {
+            position: fixed; top: 24px; right: 24px;
+            background: var(--surface);
+            padding: 14px 18px;
+            border-radius: var(--r-lg);
+            box-shadow: var(--shadow-xl);
+            display: flex; align-items: center; gap: 12px;
+            max-width: 380px; z-index: 9998;
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--info);
+            transform: translateX(calc(100% + 40px));
+            transition: transform var(--dur-slow) var(--ease-out);
+        }
+        .toast.show { transform: translateX(0); }
+        .toast-success { border-left-color: var(--success); }
+        .toast-error   { border-left-color: var(--danger); }
+        .toast-warning { border-left-color: var(--warning); }
+        .toast-info    { border-left-color: var(--info); }
+        .toast-icon { font-size: 1.1rem; flex-shrink: 0; }
+        .toast-success .toast-icon { color: var(--success); }
+        .toast-error   .toast-icon { color: var(--danger); }
+        .toast-warning .toast-icon { color: var(--warning); }
+        .toast-info    .toast-icon { color: var(--info); }
+        .toast-content { flex: 1; font-size: 0.875rem; font-weight: 500; }
+        .toast-close {
+            background: none; border: none;
+            color: var(--text-dim); cursor: pointer;
+            padding: 4px; font-size: 1.1rem; line-height: 1;
+            border-radius: var(--r-sm);
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .toast-close:hover { color: var(--text); background: var(--surface-muted); }
+
+        /* ============================================================
+           SHELL
+           ============================================================ */
+        .dashboard-container { display: flex; min-height: 100vh; animation: pageFadeIn 500ms var(--ease); }
+
+        /* ============================================================
+           SIDEBAR
+           ============================================================ */
+        .sidebar {
+            width: var(--sidebar-w);
+            background: var(--primary);
+            display: flex; flex-direction: column;
+            position: fixed; top: 0; left: 0; bottom: 0;
+            z-index: 40;
+            transition: transform var(--dur) var(--ease);
+            overflow: hidden;
+        }
+        @media (max-width: 900px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); box-shadow: var(--shadow-xl); }
+        }
+
+        .sidebar-header {
+            padding: 24px 20px 20px;
+            display: flex; align-items: center; gap: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            flex-shrink: 0;
+        }
+        .sidebar-logo {
+            width: 44px; height: 44px;
+            background: var(--accent);
+            border-radius: var(--r);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--primary);
+            font-weight: 900; font-size: 1.25rem;
+            box-shadow: 0 4px 12px rgba(213, 168, 59, 0.35);
+            flex-shrink: 0;
+            transition: transform var(--dur-fast) var(--ease);
+        }
+        .sidebar-header:hover .sidebar-logo { transform: rotate(-8deg) scale(1.05); }
+        .sidebar-title {
+            font-size: 0.9375rem; font-weight: 800;
+            color: var(--text-invert);
+            line-height: 1.2;
+        }
+        .sidebar-title span {
+            display: block;
+            font-family: var(--font-mono);
+            font-size: 0.6875rem; font-weight: 600;
+            color: var(--accent);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-top: 3px;
+        }
+
+        .nav {
+            padding: 16px 12px;
+            flex: 1 1 auto;
+            overflow-y: auto;
+            min-height: 0;
+            display: flex; flex-direction: column; gap: 3px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.15) transparent;
+        }
+        .nav::-webkit-scrollbar { width: 5px; }
+        .nav::-webkit-scrollbar-track { background: transparent; }
+        .nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 5px; }
+        .nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
+
+        .nav-section-label {
+            font-family: var(--font-mono);
+            font-size: 0.625rem; font-weight: 700;
+            color: rgba(255,255,255,0.35);
+            letter-spacing: 0.15em; text-transform: uppercase;
+            padding: 16px 12px 6px;
+        }
+        .nav-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 12px;
+            border-radius: var(--r);
+            color: rgba(255,255,255,0.72);
+            cursor: pointer;
+            font-size: 0.875rem; font-weight: 500;
+            transition: all var(--dur-fast) var(--ease);
+            position: relative;
+            flex-shrink: 0;
+        }
+        .nav-item i {
+            width: 18px; font-size: 0.9375rem;
+            color: rgba(255,255,255,0.55);
+            transition: color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+            flex-shrink: 0;
+        }
+        .nav-item:hover { background: rgba(255,255,255,0.06); color: var(--text-invert); transform: translateX(2px); }
+        .nav-item:hover i { color: var(--accent); transform: scale(1.08); }
+        .nav-item.active { background: var(--primary-soft); color: var(--text-invert); font-weight: 600; }
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: -12px; top: 50%;
+            transform: translateY(-50%);
+            width: 3px; height: 20px;
+            background: var(--accent);
+            border-radius: 0 3px 3px 0;
+        }
+        .nav-item.active i { color: var(--accent); }
+
+        .nav-badge {
+            margin-left: auto;
+            background: var(--accent);
+            color: var(--primary);
+            font-family: var(--font-mono);
+            font-size: 0.625rem;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 999px;
+            min-width: 18px;
+            text-align: center;
+            line-height: 14px;
+        }
+
+        .sidebar-footer {
+            padding: 16px 12px 20px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            flex-shrink: 0;
+        }
+        .logout-btn {
+            width: 100%;
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 12px;
+            background: transparent;
+            color: rgba(255,255,255,0.7);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: var(--r);
+            cursor: pointer;
+            font-weight: 500; font-size: 0.875rem;
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .logout-btn:hover {
+            background: var(--danger);
+            color: var(--text-invert);
+            border-color: var(--danger);
+            transform: translateY(-1px);
+        }
+
+        /* ============================================================
+           MOBILE OVERLAY
+           ============================================================ */
+        .mobile-overlay {
+            position: fixed; inset: 0;
+            background: rgba(16, 43, 39, 0.45);
+            backdrop-filter: blur(3px);
+            z-index: 35;
+            opacity: 0; visibility: hidden;
+            transition: opacity var(--dur) var(--ease), visibility var(--dur);
+        }
+        .mobile-overlay.active { opacity: 1; visibility: visible; }
+
+        /* ============================================================
+           MAIN CONTENT
+           ============================================================ */
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-w);
+            min-height: 100vh;
+            transition: margin var(--dur) var(--ease);
+            display: flex; flex-direction: column;
+        }
+        @media (max-width: 900px) { .main-content { margin-left: 0; } }
+
+        /* ============================================================
+           HEADER
+           ============================================================ */
+        .header {
+            height: var(--header-h);
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 28px;
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; z-index: 30;
+            flex-shrink: 0;
+            transition: box-shadow var(--dur) var(--ease);
+        }
+        .header.scrolled { box-shadow: var(--shadow-md); }
+
+        .mobile-menu-btn {
+            display: none;
+            background: none; border: none;
+            font-size: 1.25rem; color: var(--text-muted);
+            cursor: pointer; padding: 8px 10px;
+            border-radius: var(--r);
+            transition: all var(--dur-fast) var(--ease);
+            position: relative; z-index: 50;
+        }
+        .mobile-menu-btn:hover { background: var(--primary-tint); color: var(--primary); }
+        @media (max-width: 900px) {
+            .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+        }
+
+        .header-actions { display: flex; align-items: center; gap: 8px; }
+
+        .notification-btn {
+            position: relative;
+            background: none; border: none;
+            color: var(--text-muted); cursor: pointer;
+            width: 40px; height: 40px;
+            border-radius: var(--r);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem;
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .notification-btn:hover { background: var(--primary-tint); color: var(--primary); }
+
+        .notification-badge {
+            position: absolute; top: 8px; right: 8px;
+            background: var(--accent);
+            color: var(--primary);
+            font-size: 0.625rem; font-weight: 800;
+            padding: 1px 5px;
+            border-radius: 999px;
+            min-width: 16px; text-align: center;
+            line-height: 14px;
+        }
+
+        .user-info {
+            display: flex; align-items: center; gap: 10px;
+            padding: 6px 10px 6px 6px;
+            border-radius: var(--r);
+            transition: background var(--dur-fast) var(--ease);
+            cursor: pointer;
+            margin-left: 8px;
+        }
+        .user-info:hover { background: var(--surface-muted); }
+        .user-avatar {
+            width: 36px; height: 36px;
+            background: var(--primary);
+            color: var(--accent);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 0.875rem;
+            flex-shrink: 0;
+            border: 2px solid var(--accent);
+            transition: transform var(--dur-fast) var(--ease);
+        }
+        .user-info:hover .user-avatar { transform: scale(1.06); }
+        .user-details { line-height: 1.25; }
+        .user-details .user-name { font-weight: 700; color: var(--text); font-size: 0.8125rem; }
+        .user-details .user-role {
+            font-family: var(--font-mono);
+            font-size: 0.625rem; font-weight: 600;
+            color: var(--text-dim);
+            text-transform: uppercase; letter-spacing: 0.08em;
+        }
+
+        /* ============================================================
+           MAIN AREA
+           ============================================================ */
+        .main-area {
+            padding: 28px;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+            flex: 1;
+        }
+        @media (max-width: 640px) { .main-area { padding: 20px 16px; } }
+
+        .page-header {
+            margin-bottom: 24px;
+            display: flex; justify-content: space-between;
+            align-items: flex-end; flex-wrap: wrap; gap: 16px;
+        }
+        .page-title {
+            font-size: 1.75rem; font-weight: 800;
+            color: var(--text);
+            letter-spacing: -0.02em; line-height: 1.2;
+            margin-bottom: 6px;
+        }
+        .page-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        /* ============================================================
+           BUTTONS
+           ============================================================ */
+        .btn {
+            padding: 9px 16px;
+            border-radius: var(--r);
+            border: none; cursor: pointer;
+            font-weight: 600; font-size: 0.8125rem;
+            display: inline-flex; align-items: center; gap: 8px;
+            transition: all var(--dur-fast) var(--ease);
+            line-height: 1.4;
+            white-space: nowrap;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn i { font-size: 0.75rem; }
+        .btn-primary { background: var(--primary); color: var(--text-invert); }
+        .btn-primary:hover { background: var(--primary-soft); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+        .btn-primary:active { transform: translateY(0) scale(0.97); }
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border-strong);
+        }
+        .btn-secondary:hover { background: var(--surface-muted); }
+        .btn-secondary:active { transform: scale(0.97); }
+        .btn-gold { background: var(--accent); color: var(--primary); }
+        .btn-gold:hover { background: var(--accent-soft); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(213,168,59,0.3); }
+        .btn-gold:active { transform: translateY(0) scale(0.97); }
+        .btn-danger { background: var(--danger); color: var(--text-invert); }
+        .btn-danger:hover { filter: brightness(0.92); }
+        .btn-danger:active { transform: scale(0.97); }
+        .btn-sm { padding: 6px 12px; font-size: 0.75rem; }
+        .btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none !important; }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            transform: scale(0);
+            opacity: 0;
+            pointer-events: none;
+            transition: transform 400ms var(--ease-out), opacity 400ms var(--ease-out);
+        }
+        .btn:active::after {
+            transform: scale(2.5);
+            opacity: 1;
+            transition: transform 0ms, opacity 0ms;
+        }
+
+        .icon-btn {
+            width: 32px; height: 32px;
+            border-radius: var(--r-sm);
+            border: 1px solid transparent;
+            background: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 0.8125rem;
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .icon-btn:hover { background: var(--primary-tint); color: var(--primary); border-color: var(--border); transform: translateY(-1px); }
+        .icon-btn:active { transform: translateY(0) scale(0.94); }
+        .icon-btn.danger:hover { background: var(--danger-tint); color: var(--danger); border-color: var(--danger); }
+
+        /* ============================================================
+           SETTINGS LAYOUT
+           ============================================================ */
+        .settings-layout {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+        @media (max-width: 900px) {
+            .settings-layout { grid-template-columns: 1fr; }
+        }
+
+        /* Settings nav */
+        .settings-nav {
+            background: var(--surface);
+            border-radius: var(--r-lg);
+            border: 1px solid var(--border);
+            padding: 10px;
+            position: sticky;
+            top: calc(var(--header-h) + 28px);
+            animation: slideInUp var(--dur) var(--ease) both;
+        }
+        @media (max-width: 900px) {
+            .settings-nav { position: static; }
+        }
+
+        .settings-nav-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 14px;
+            border-radius: var(--r);
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 0.875rem; font-weight: 500;
+            transition: all var(--dur-fast) var(--ease);
+            position: relative;
+        }
+        .settings-nav-item i {
+            width: 18px; font-size: 0.9375rem;
+            text-align: center;
+            transition: color var(--dur-fast) var(--ease);
+            flex-shrink: 0;
+        }
+        .settings-nav-item:hover { background: var(--surface-muted); color: var(--text); }
+        .settings-nav-item.active {
+            background: var(--primary-tint);
+            color: var(--primary);
+            font-weight: 600;
+        }
+        .settings-nav-item.active i { color: var(--accent); }
+        .settings-nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: -10px; top: 50%;
+            transform: translateY(-50%);
+            width: 3px; height: 22px;
+            background: var(--accent);
+            border-radius: 0 3px 3px 0;
+        }
+
+        /* Settings panels */
+        .settings-panels { min-width: 0; }
+
+        .settings-panel {
+            display: none;
+            animation: slideInUp var(--dur) var(--ease) both;
+        }
+        .settings-panel.active { display: block; }
+
+        .panel-header {
+            margin-bottom: 20px;
+        }
+        .panel-title {
+            font-size: 1.25rem; font-weight: 800;
+            color: var(--text);
+            letter-spacing: -0.01em;
+            margin-bottom: 4px;
+        }
+        .panel-subtitle {
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+        }
+
+        /* Content cards */
+        .settings-card {
+            background: var(--surface);
+            border-radius: var(--r-lg);
+            border: 1px solid var(--border);
+            margin-bottom: 16px;
+            overflow: hidden;
+            animation: slideInUp var(--dur) var(--ease) both;
+        }
+        .settings-card:last-child { margin-bottom: 0; }
+
+        .settings-card-header {
+            padding: 18px 22px;
+            border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between;
+            align-items: center; gap: 12px;
+            flex-wrap: wrap;
+            background: var(--surface-muted);
+        }
+        .settings-card-title {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 0.9375rem; font-weight: 700;
+            color: var(--text);
+        }
+        .settings-card-title i { color: var(--accent); }
+        .settings-card-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            margin-top: 2px;
+        }
+
+        .settings-card-body {
+            padding: 22px;
+        }
+
+        /* Form styling */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        @media (max-width: 640px) {
+            .form-grid { grid-template-columns: 1fr; }
+        }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group.full { grid-column: 1 / -1; }
+
+        .form-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-family: var(--font-mono);
+            margin-bottom: 6px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .form-label .required { color: var(--danger); font-size: 0.875rem; }
+        .form-label-hint {
+            font-size: 0.6875rem;
+            color: var(--text-dim);
+            text-transform: none;
+            letter-spacing: 0;
+            font-family: var(--font-sans);
+            font-weight: 500;
+            margin-left: auto;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            font-size: 0.875rem;
+            font-family: inherit;
+            background: var(--surface);
+            color: var(--text);
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(213, 168, 59, 0.12);
+        }
+        .form-textarea { resize: vertical; min-height: 80px; }
+        .form-select { cursor: pointer; }
+
+        .form-hint {
+            font-size: 0.6875rem;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+        .form-error {
+            font-size: 0.75rem;
+            color: var(--danger);
+            margin-top: 4px;
+            font-weight: 600;
+            display: none;
+        }
+        .form-error.show { display: block; }
+
+        .form-actions {
+            display: flex; gap: 10px; justify-content: flex-end;
+            padding-top: 16px;
+            margin-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* ============================================================
+           ACADEMIC SESSIONS SPECIFIC
+           ============================================================ */
+
+        /* Active session banner */
+        .active-session-banner {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-soft) 100%);
+            color: var(--text-invert);
+            border-radius: var(--r-lg);
+            padding: 20px 24px;
+            margin-bottom: 20px;
+            display: flex; align-items: center; gap: 16px;
+            position: relative;
+            overflow: hidden;
+            animation: slideInUp var(--dur) var(--ease) both;
+        }
+        .active-session-banner::before {
+            content: '';
+            position: absolute;
+            top: -50%; right: -20%;
+            width: 300px; height: 300px;
+            background: radial-gradient(circle, rgba(213, 168, 59, 0.2), transparent 70%);
+            pointer-events: none;
+        }
+        .active-session-icon {
+            width: 52px; height: 52px;
+            border-radius: var(--r-lg);
+            background: var(--accent);
+            color: var(--primary);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+            box-shadow: 0 6px 16px rgba(213, 168, 59, 0.35);
+        }
+        .active-session-info { flex: 1; min-width: 0; }
+        .active-session-label {
+            font-family: var(--font-mono);
+            font-size: 0.6875rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 2px;
+        }
+        .active-session-name {
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+        }
+        .active-session-meta {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.7);
+            margin-top: 2px;
+        }
+
+        /* Sessions list */
+        .sessions-toolbar {
+            display: flex; justify-content: space-between;
+            align-items: center; gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .sessions-count {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            font-weight: 600;
+        }
+
+        .sessions-list {
+            display: flex; flex-direction: column;
+            gap: 12px;
+        }
+
+        .session-card {
+            background: var(--surface);
+            border-radius: var(--r-lg);
+            border: 1px solid var(--border);
+            padding: 18px 20px;
+            display: flex; align-items: center;
+            gap: 16px;
+            transition: all var(--dur) var(--ease);
+            animation: slideInUp var(--dur) var(--ease) both;
+            position: relative;
+        }
+        .session-card:hover {
+            border-color: var(--accent);
+            box-shadow: var(--shadow-md);
+        }
+        .session-card.is-active {
+            border-color: var(--accent);
+            background: linear-gradient(135deg, var(--surface) 0%, var(--accent-tint) 100%);
+            box-shadow: 0 0 0 2px rgba(213, 168, 59, 0.2), var(--shadow-md);
+        }
+        .session-card.is-active::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 4px;
+            background: var(--accent);
+            border-radius: var(--r-lg) 0 0 var(--r-lg);
+        }
+
+        .session-status-icon {
+            width: 44px; height: 44px;
+            border-radius: var(--r);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+        .session-status-icon.active-icon {
+            background: var(--accent-tint);
+            color: var(--text-gold);
+        }
+        .session-status-icon.inactive-icon {
+            background: var(--surface-muted);
+            color: var(--text-dim);
+        }
+
+        .session-info { flex: 1; min-width: 0; }
+        .session-name-row {
+            display: flex; align-items: center;
+            gap: 10px; margin-bottom: 4px;
+            flex-wrap: wrap;
+        }
+        .session-name {
+            font-size: 1.0625rem;
+            font-weight: 800;
+            color: var(--text);
+            letter-spacing: -0.01em;
+        }
+        .session-badge {
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 0.625rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: inline-flex; align-items: center; gap: 4px;
+        }
+        .session-badge.active-badge {
+            background: var(--success-tint);
+            color: var(--success);
+        }
+        .session-badge.inactive-badge {
+            background: var(--surface-muted);
+            color: var(--text-muted);
+        }
+        .session-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+            display: flex; gap: 12px;
+            flex-wrap: wrap;
+        }
+        .session-meta span { display: inline-flex; align-items: center; gap: 4px; }
+        .session-meta i { font-size: 0.6875rem; color: var(--text-dim); }
+
+        .session-actions {
+            display: flex; gap: 6px;
+            flex-shrink: 0;
+        }
+        @media (max-width: 640px) {
+            .session-card { flex-wrap: wrap; }
+            .session-actions { width: 100%; }
+            .session-actions .btn { flex: 1; justify-content: center; }
+        }
+
+        /* Session flow (rules reminder) */
+        .session-rules {
+            background: var(--info-tint);
+            border: 1px solid rgba(44, 111, 168, 0.2);
+            border-radius: var(--r);
+            padding: 16px 18px;
+            margin-bottom: 20px;
+        }
+        .session-rules-title {
+            font-size: 0.8125rem;
+            font-weight: 700;
+            color: var(--info);
+            margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .session-rules ol {
+            padding-left: 20px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            line-height: 1.7;
+        }
+        .session-rules li { margin-bottom: 2px; }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 48px 20px;
+            color: var(--text-muted);
+        }
+        .empty-state-icon {
+            width: 64px; height: 64px;
+            background: var(--primary-tint);
+            color: var(--primary);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem;
+            margin: 0 auto 16px;
+        }
+        .empty-state h3 {
+            font-size: 1rem; font-weight: 700;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+        .empty-state p {
+            font-size: 0.8125rem;
+            margin-bottom: 16px;
+        }
+
+        /* ============================================================
+           TOGGLE SWITCH
+           ============================================================ */
+        .toggle-row {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 16px;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .toggle-row:last-child { border-bottom: none; }
+        .toggle-info { flex: 1; min-width: 0; }
+        .toggle-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 2px;
+        }
+        .toggle-desc {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px; height: 24px;
+            flex-shrink: 0;
+        }
+        .toggle-switch input {
+            opacity: 0; width: 0; height: 0;
+        }
+        .toggle-slider {
+            position: absolute; cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: var(--border-strong);
+            transition: var(--dur-fast);
+            border-radius: 999px;
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px; width: 18px;
+            left: 3px; bottom: 3px;
+            background-color: white;
+            transition: var(--dur-fast);
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        .toggle-switch input:checked + .toggle-slider {
+            background-color: var(--accent);
+        }
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(20px);
+        }
+        .toggle-switch input:focus + .toggle-slider {
+            box-shadow: 0 0 0 3px rgba(213, 168, 59, 0.2);
+        }
+
+        /* ============================================================
+           MODAL
+           ============================================================ */
+        .modal {
+            position: fixed; inset: 0;
+            background: rgba(16, 43, 39, 0.5);
+            backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999;
+            padding: 16px;
+            opacity: 0; visibility: hidden;
+            transition: opacity var(--dur) var(--ease), visibility var(--dur);
+        }
+        .modal.active { opacity: 1; visibility: visible; }
+
+        .modal-content {
+            background: var(--surface);
+            border-radius: var(--r-lg);
+            width: 100%; max-width: 560px;
+            max-height: 92vh; overflow-y: auto;
+            transform: translateY(-12px) scale(0.96);
+            transition: transform var(--dur) var(--ease-out);
+            box-shadow: var(--shadow-xl);
+        }
+        .modal.active .modal-content { transform: translateY(0) scale(1); }
+
+        .modal-header {
+            padding: 18px 22px;
+            border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+            position: sticky; top: 0;
+            background: var(--surface);
+            z-index: 1;
+        }
+        .modal-title {
+            font-size: 1rem; font-weight: 700;
+            color: var(--text);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .modal-title i { color: var(--accent); }
+        .modal-close {
+            background: none; border: none;
+            font-size: 1.5rem; line-height: 1;
+            color: var(--text-dim); cursor: pointer;
+            padding: 4px 8px; border-radius: var(--r-sm);
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .modal-close:hover { color: var(--text); background: var(--surface-muted); }
+        .modal-body { padding: 22px; }
+        .modal-footer {
+            padding: 14px 22px;
+            border-top: 1px solid var(--border);
+            display: flex; gap: 10px; justify-content: flex-end;
+            position: sticky; bottom: 0;
+            background: var(--surface);
+        }
+
+        .modal-info-box {
+            padding: 12px 14px;
+            background: var(--info-tint);
+            border-radius: var(--r);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: flex; align-items: flex-start; gap: 8px;
+            margin-bottom: 16px;
+        }
+        .modal-info-box i { color: var(--info); margin-top: 2px; }
+
+        .modal-warning-box {
+            padding: 12px 14px;
+            background: var(--warning-tint);
+            border-radius: var(--r);
+            font-size: 0.75rem;
+            color: var(--text);
+            display: flex; align-items: flex-start; gap: 8px;
+            margin-bottom: 16px;
+            border-left: 3px solid var(--warning);
+        }
+        .modal-warning-box i { color: var(--warning); margin-top: 2px; }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 640px) {
+            .page-title { font-size: 1.5rem; }
+            .user-details { display: none; }
+            .header { padding: 0 16px; }
+            .form-actions { flex-direction: column-reverse; }
+            .form-actions .btn { width: 100%; justify-content: center; }
+        }
+        @media (max-width: 480px) {
+            .modal-footer { flex-direction: column-reverse; }
+            .modal-footer .btn { width: 100%; justify-content: center; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Loading</div>
+        </div>
+    </div>
+
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">N</div>
+                <div class="sidebar-title">
+                    NUESA BIU
+                    <span>Admin Panel</span>
+                </div>
+            </div>
+
+            <nav class="nav">
+                <div class="nav-section-label">Main</div>
+                <a href="dashboard.html" class="nav-item"><i class="fas fa-th-large"></i><span>Dashboard</span></a>
+                <a href="members.html" class="nav-item"><i class="fas fa-users"></i><span>Members</span></a>
+                <a href="executives.html" class="nav-item"><i class="fas fa-user-tie"></i><span>Executives</span></a>
+                <a href="events.html" class="nav-item"><i class="far fa-calendar-alt"></i><span>Events</span></a>
+                <a href="resources.html" class="nav-item"><i class="fas fa-book"></i><span>Resources</span></a>
+                <a href="admissions.html" class="nav-item"><i class="fas fa-user-graduate"></i><span>Admissions</span></a>
+                <a href="courseReps.html" class="nav-item"><i class="fas fa-chalkboard-teacher"></i><span>Course Reps</span></a>
+                <a href="articles.html" class="nav-item"><i class="far fa-newspaper"></i><span>News &amp; Articles</span></a>
+                <a href="media.html" class="nav-item"><i class="far fa-images"></i><span>Media Library</span></a>
+                <a href="messages.html" class="nav-item"><i class="far fa-comment-alt"></i><span>Messages</span></a>
+
+                <div class="nav-section-label">System</div>
+                <a href="analytics.html" class="nav-item"><i class="fas fa-chart-line"></i><span>Analytics</span></a>
+                <a href="admin-users.html" class="nav-item"><i class="fas fa-user-shield"></i><span>Admin Users</span></a>
+                <a href="settings.html" class="nav-item active"><i class="fas fa-cog"></i><span>Settings</span></a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="logout-btn" id="logoutBtn" type="button">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <div class="mobile-overlay" id="mobileOverlay"></div>
+
+        <div class="main-content">
+            <header class="header" id="mainHeader">
+                <button class="mobile-menu-btn" id="mobileMenuToggle" type="button" aria-label="Toggle menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="header-actions">
+                    <button class="notification-btn" id="notificationBtn" type="button" aria-label="Notifications">
+                        <i class="far fa-bell"></i>
+                        <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                    </button>
+                    <div class="user-info" id="headerProfile" role="button" tabindex="0">
+                        <div class="user-avatar" id="userAvatar">A</div>
+                        <div class="user-details">
+                            <div class="user-name" id="userName">Loading</div>
+                            <div class="user-role" id="userRole">Administrator</div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <main class="main-area">
+                <!-- Page header -->
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Settings</h1>
+                        <p class="page-subtitle">Configure and manage your NUESA administration system.</p>
+                    </div>
+                </div>
+
+                <!-- Settings layout -->
+                <div class="settings-layout">
+                    <!-- Settings navigation -->
+                    <aside class="settings-nav" id="settingsNav">
+                        <div class="settings-nav-item active" data-panel="general">
+                            <i class="fas fa-globe"></i>
+                            <span>General</span>
+                        </div>
+                        <div class="settings-nav-item" data-panel="sessions">
+                            <i class="fas fa-calendar-check"></i>
+                            <span>Academic Sessions</span>
+                        </div>
+                        <div class="settings-nav-item" data-panel="structure">
+                            <i class="fas fa-sitemap"></i>
+                            <span>Academic Structure</span>
+                        </div>
+                        <div class="settings-nav-item" data-panel="notifications">
+                            <i class="fas fa-bell"></i>
+                            <span>Notifications</span>
+                        </div>
+                        <div class="settings-nav-item" data-panel="security">
+                            <i class="fas fa-shield-alt"></i>
+                            <span>Security &amp; Access</span>
+                        </div>
+                        <div class="settings-nav-item" data-panel="email">
+                            <i class="fas fa-envelope"></i>
+                            <span>Email Configuration</span>
+                        </div>
+                        <div class="settings-nav-item" data-panel="system">
+                            <i class="fas fa-server"></i>
+                            <span>System</span>
+                        </div>
+                    </aside>
+
+                    <!-- Settings panels -->
+                    <div class="settings-panels">
+                        <!-- ========================================================
+                             GENERAL SETTINGS
+                             ======================================================== -->
+                        <div class="settings-panel active" id="panel-general">
+                            <div class="panel-header">
+                                <h2 class="panel-title">General Settings</h2>
+                                <p class="panel-subtitle">Website name, logo, contact information and identity.</p>
+                            </div>
+
+                            <div class="settings-card">
+                                <div class="settings-card-header">
+                                    <div>
+                                        <div class="settings-card-title"><i class="fas fa-id-card"></i> Association Identity</div>
+                                        <div class="settings-card-subtitle">Basic information about your association</div>
+                                    </div>
+                                </div>
+                                <div class="settings-card-body">
+                                    <div class="form-grid">
+                                        <div class="form-group">
+                                            <label class="form-label">Website Name</label>
+                                            <input type="text" class="form-input" id="settingSiteName" value="NUESA BIU" placeholder="e.g. NUESA BIU">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Short Name</label>
+                                            <input type="text" class="form-input" id="settingShortName" value="N.U.E.S.A" placeholder="e.g. N.U.E.S.A">
+                                        </div>
+                                        <div class="form-group full">
+                                            <label class="form-label">Association Logo</label>
+                                            <div style="display: flex; align-items: center; gap: 12px;">
+                                                <div style="width: 60px; height: 60px; border-radius: 10px; background: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.5rem; color: var(--primary); flex-shrink: 0;">N</div>
+                                                <button class="btn btn-secondary btn-sm"><i class="fas fa-upload"></i> Upload Logo</button>
+                                                <button class="btn btn-secondary btn-sm"><i class="fas fa-times"></i> Remove</button>
+                                            </div>
+                                            <div class="form-hint">Recommended: 512×512px PNG with transparent background</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="settings-card">
+                                <div class="settings-card-header">
+                                    <div>
+                                        <div class="settings-card-title"><i class="fas fa-address-book"></i> Contact Information</div>
+                                        <div class="settings-card-subtitle">How students and visitors can reach NUESA</div>
+                                    </div>
+                                </div>
+                                <div class="settings-card-body">
+                                    <div class="form-grid">
+                                        <div class="form-group">
+                                            <label class="form-label">Contact Email</label>
+                                            <input type="email" class="form-input" id="settingEmail" value="info@nuesabiu.org" placeholder="contact@example.org">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Phone Number</label>
+                                            <input type="tel" class="form-input" id="settingPhone" value="+234 800 123 4567" placeholder="+234 800 000 0000">
+                                        </div>
+                                        <div class="form-group full">
+                                            <label class="form-label">Address</label>
+                                            <textarea class="form-textarea" id="settingAddress" placeholder="Benson Idahosa University, Benin City, Nigeria">Benson Idahosa University, Benin City, Nigeria</textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="settings-card">
+                                <div class="settings-card-header">
+                                    <div>
+                                        <div class="settings-card-title"><i class="fas fa-share-alt"></i> Social Links</div>
+                                        <div class="settings-card-subtitle">Social media profiles for the association</div>
+                                    </div>
+                                </div>
+                                <div class="settings-card-body">
+                                    <div class="form-grid">
+                                        <div class="form-group">
+                                            <label class="form-label"><i class="fab fa-facebook" style="color: #1877f2;"></i> Facebook</label>
+                                            <input type="url" class="form-input" id="settingFacebook" placeholder="https://facebook.com/...">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label"><i class="fab fa-twitter" style="color: #1da1f2;"></i> Twitter / X</label>
+                                            <input type="url" class="form-input" id="settingTwitter" placeholder="https://twitter.com/...">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label"><i class="fab fa-instagram" style="color: #e4405f;"></i> Instagram</label>
+                                            <input type="url" class="form-input" id="settingInstagram" placeholder="https://instagram.com/...">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label"><i class="fab fa-linkedin" style="color: #0a66c2;"></i> LinkedIn</label>
+                                            <input type="url" class="form-input" id="settingLinkedin" placeholder="https://linkedin.com/...">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="settings-card">
+                                <div class="settings-card-body">
+                                    <div class="form-actions">
+                                        <button class="btn btn-secondary" type="button">Reset</button>
+                                        <button class="btn btn-primary" type="button" onclick="saveGeneralSettings()">
+                                            <i class="fas fa-check"></i> Save Changes
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ========================================================
+                             ACADEMIC SESSIONS — MAIN FEATURE
+                             ======================================================== -->
+                        <div class="settings-panel" id="panel-sessions">
+                            <div class="panel-header">
+                                <h2 class="panel-title">Academic Sessions</h2>
+                                <p class="panel-subtitle">Create and manage academic sessions. Only one session can be active at a time.</p>
+                            </div>
+
+                            <!-- Active session banner -->
+                            <div class="active-session-banner" id="activeSessionBanner">
+                                <div class="active-session-icon">
+                                    <i class="fas fa-calendar-check"></i>
+                                </div>
+                                <div class="active-session-info">
+                                    <div class="active-session-label">Current Active Session</div>
+                                    <div class="active-session-name" id="activeSessionName">—</div>
+                                    <div class="active-session-meta" id="activeSessionMeta">No active session</div>
+                                </div>
+                            </div>
+
+                            <!-- Session rules reminder -->
+                            <div class="session-rules">
+                                <div class="session-rules-title">
+                                    <i class="fas fa-info-circle"></i> Session Management Rules
+                                </div>
+                                <ol>
+                                    <li>Only one academic session can be active at a time.</li>
+                                    <li>New sessions are created as <strong>inactive</strong> until explicitly activated.</li>
+                                    <li>Activating a new session requires confirmation and automatically deactivates the current one.</li>
+                                    <li>Previous sessions remain available for historical records — deactivating does not delete.</li>
+                                    <li>Session names must be unique (format: <strong>YYYY/YYYY</strong>).</li>
+                                </ol>
+                            </div>
+
+                            <!-- Sessions toolbar -->
+                            <div class="sessions-toolbar">
+                                <div>
+                                    <div class="settings-card-title" style="margin-bottom: 2px;"><i class="fas fa-list-check"></i> All Sessions</div>
+                                    <div class="sessions-count" id="sessionsCount">0 records</div>
+                                </div>
+                                <button class="btn btn-gold" id="addSessionBtn">
+                                    <i class="fas fa-plus"></i> Add New Session
+                                </button>
+                            </div>
+
+                            <!-- Sessions list -->
+                            <div class="sessions-list" id="sessionsList">
+                                <div class="empty-state">
+                                    <div class="empty-state-icon"><i class="fas fa-circle-notch fa-spin"></i></div>
+                                    <h3>Loading sessions…</h3>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ========================================================
+                             ACADEMIC STRUCTURE
+                             ======================================================== -->
+                        <div class="settings-panel" id="panel-structure">
+                            <div class="panel-header">
+                                <h2 class="panel-title">Academic Structure</h2>
+                                <p class="panel-subtitle">Departments, academic levels and semesters used across the system.</p>
+                            </div>
+
+                            <div class="settings-card">
+                                <div class="settings-card-header">
+                                    <div>
+                                        <div class="settings-card-title"><i class="fas fa-building"></i> Departments</div>
+                                        <div class="settings-card-subtitle">Academic departments in the faculty of engineering</div>
+                                    </div>
+                                </div>
+                                <div class="settings-card-body">
+                                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                                        <div style="padding: 12px 14px; background: var(--surface-muted); border-radius: var(--r); display: flex; justify-content: space-between; align-items: center;">
+                                            <div><strong>Electrical/Electronics Engineering</strong><div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 2px;">3 levels · 2 semesters</div></div>
+                                            <button class="icon-btn"><i class="fas fa-pen"></i></button>
+                                        </div>
+                                        <div style="padding: 12px 14px; background: var(--surface-muted); border-radius: var(--r); display: flex; justify-content: space-between; align-items: center;">
+                                            <div><strong>Mechanical Engineering</strong><div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 2px;">3 levels · 2 semesters</div></div>
+                                            <button class="icon-btn"><i class="fas fa-pen"></i></button>
+                                        </div>
+                                        <div style="padding: 12px 14px; background: var(--surface-muted); border-radius: var(--r); display: flex; justify-content: space-between; align-items: center;">
+                                            <div><strong>Civil Engineering</strong><div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 2px;">3 levels · 2 semesters</div></div>
+                                            <button class="icon-btn"><i class="fas fa-pen"></i></button>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-secondary btn-sm" style="margin-top: 14px;"><i class="fas fa-plus"></i> Add Department</button>
+                                </div>
+                            </div>
+
+                            <div class="settings-card">
+                                <div class="settings-card-header">
+                                    <div>
+                                        <div class="settings-card-title"><i class="fas fa-layer-group"></i> Academic Levels</div>
+                                        <div class="settings-card-subtitle">Levels available across all departments</div>
+                                    </div>
+                                </div>
+                                <div class="settings-card-body">
+                                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                        <span class="session-badge active-badge" style="padding: 6px 12px; font-size: 0.75rem;">100L</span>
+                                        <span class="session-badge active-badge" style="padding: 6px 12px; font-size: 0.75rem;">200L</span>
+                                        <span class="session-badge active-badge" style="padding: 6px 12px; font-size: 0.75rem;">300L</span>
+                                        <span class="session-badge active-badge" style="padding: 6px 12px; font-size: 0.75rem;">400L</span>
+                                        <span class="session-badge active-badge" style="padding: 6px 12px; font-size: 0.75rem;">500L</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="settings-card">
+                                <div class="settings-card-header">
+                                    <div>
+                                        <div class="settings-card-title"><i class="fas fa-calendar-alt"></i> Semesters</div>
+                                        <div class="settings-card-subtitle">Semester structure for academic sessions</div>
+                                    </div>
+                                </div>
+                                <div class="settings-card-body">
+                                    <div class="form-grid">
+                                        <div class="form-group">
+                                            <label class="form-label">First Semester Duration</label>
+                                            <input type="text" class="form-input" value="September — January">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Second Semester Duration</label>
+                                            <input type="text" class="form-input" value="February — June">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ========================================================
+                             NOTIFICATIONS
+                             ======================================================== -->
+                        <div class="settings-panel" id="panel-notifications">
+                            <div class="panel-header">
+                                <h2 class="panel-title">Notifications</h2>
+                                <p class="panel-subtitle">Control which notifications are sent and to whom.</p>
+                            </div>
+
+                            <div class="settings-card">
+                                <div class="settings-card-header">
+                                    <div>
+                                        <div class="settings-card-title"><i class="fas fa-envelope-open-text"></i> Email Notifications</div>
+                                        <div class="settings-card-subtitle">Notifications sent to admin email addresses</div>
+                                    </div>
+                                </div>
+                                <div class="settings-card-body" style="padding: 0 22px;">
+                                    <div class="toggle-row">
+                                        <div class="toggle-info">
+                                            <div class="toggle-label">New Contact Messages</div>
+                                            <div class="toggle-desc">Get notified when a new message is submitted through the contact form.</div>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="toggle-row">
+                                        <div class="toggle-info">
+                                            <div class="toggle-label">Event Registrations</div>
+                                            <div class="toggle-desc">Get notified when someone registers for an event.</div>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="toggle-row">
+                                        <div class="toggle-info">
+                                            <div class="toggle-label">Membership Updates</div>
+                                            <div class="toggle-desc">Notify me when a new member is added or a member's status changes.</div>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox">
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="toggle-row">
+                                        <div class="toggle-info">
+                                            <div class="toggle-label">System Alerts</div>
+                                            <div class="toggle-desc">Critical system alerts, security events and errors.</div>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="toggle-row">
+                                        <div class="toggle-info">
+                                            <div class="toggle-label">Weekly Digest</div>
+                                            <div class="toggle-desc">Receive a weekly summary of admin activity.</div>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="settings-card">
+                                <div class="settings-card-body">
+                                    <div class="form-actions">
+                                        <button class="btn btn-primary" type="button" onclick="showToast('Notification preferences saved', 'success')">
+                                            <i class="fas fa-check"></i> Save Preferences
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ========================================================
+                             SECURITY & ACCESS
+                             ======================================================== -->
+                        <div class="settings-panel" id="panel-security">
+                            <div class="panel-header">
+                                <h2 class="panel-title">Security &amp; Access</h2>
+                                <p class="panel-subtitle">Password policies, session management and login security.</p>
+                            </div>
+
+                            <div class="settings-card">
+                                <div class="settings-card-header">
+                                    <div>
+                                        <div class="settings-card-title"><i class="fas fa-key"></i> Password Policy</div>
+                                        <div class="settings-card-subtitle">Rules enforced for admin passwords</div>
+                                    </div>
+                                </div>
+                                <div class="settings-card-body">
+                                    <div class="form-grid">
+                                        <div class="form-group">
+                                            <label class="form-label">Minimum Password Length</label>
+                                            <input type="number" class="form-input" value="8" min="6" max="32">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Session Expiry (hours)</label>
+                                            <input type="number" class="form-input" value="24" min="1">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Max Login Attempts</label>
+                                            <input type="number" class="form-input" value="5" min="3">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Lockout Duration (minutes)</label>
+                                            <input type="number" class="form-input" value="15" min="5">
+                                        </div>
+                                    </div>
+                                    <div style="margin-top: 16px;">
+                                        <div class="toggle-row">
+                                            <div class="toggle-info">
+                                                <div class="toggle-label">Require Special Characters</div>
+                                                <div class="toggle-desc">Passwords must include a special character (!@#$%...)</div>
+                                            </div>
+                                            <label class="toggle-switch">
+                                                <input type="checkbox" checked>
+                                                <span class="toggle-slider"></span>
+                                            </label>
+                                        </div>
+                                        <div class="toggle-row">
+                                            <div class="toggle-info">
+                                                <div class="toggle-label">Require Numbers</div>
+                                                <div class="toggle-desc">Passwords must include at least one number</div>
+                                            </div>
+                                            <label class="toggle-switch">
+                                                <input type="checkbox" checked>
+                                                <span class="toggle-slider"></span>
+                                            </label>
+                                        </div>
+                                        <div class="toggle-row">
+                                            <div class="toggle-info">
+                                                <div class="toggle-label">Force HTTPS Only</div>
+                                                <div class="toggle-desc">Reject all HTTP requests to the admin panel</div>
+                                            </div>
+                                            <label class="toggle-switch">
+                                                <input type="checkbox" checked>
+                                                <span class="toggle-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="settings-card">
+                                <div class="settings-card-body">
+                                    <div class="form-actions">
+                                        <button class="btn btn-primary" type="button" onclick="showToast('Security settings saved', 'success')">
+                                            <i class="fas fa-check"></i> Save Security Settings
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ========================================================
+                             EMAIL CONFIGURATION
+                             ======================================================== -->
+                        <div class="settings-panel" id="panel-email">
+                            <div class="panel-header">
+                                <h2 class="panel-title">Email Configuration</h2>
+                                <p class="panel-subtitle">SMTP settings and sender identity for system emails.</p>
+                            </div>
+
+                            <div class="settings-card">
+                                <div class="settings-card-header">
+                                    <div>
+                                        <div class="settings-card-title"><i class="fas fa-server"></i> SMTP Server</div>
+                                        <div class="settings-card-subtitle">Outgoing mail server used for sending notifications</div>
+                                    </div>
+                                </div>
+                                <div class="settings-card-body">
+                                    <div class="form-grid">
+                                        <div class="form-group">
+                                            <label class="form-label">SMTP Host</label>
+                                            <input type="text" class="form-input" placeholder="smtp.example.com">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">SMTP Port</label>
+                                            <input type="number" class="form-input" value="587" placeholder="587">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">SMTP Username</label>
+                                            <input type="text" class="form-input" placeholder="user@example.com">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">SMTP Password</label>
+                                            <input type="password" class="form-input" placeholder="••••••••">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Encryption</label>
+                                            <select class="form-select">
+                                                <option value="tls">TLS</option>
+                                                <option value="ssl">SSL</option>
+                                                <option value="none">None</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Sender Name</label>
+                                            <input type="text" class="form-input" value="NUESA BIU" placeholder="NUESA BIU">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="settings-card">
+                                <div class="settings-card-body">
+                                    <div class="form-actions">
+                                        <button class="btn btn-secondary" type="button"><i class="fas fa-paper-plane"></i> Send Test Email</button>
+                                        <button class="btn btn-primary" type="button" onclick="showToast('Email configuration saved', 'success')">
+                                            <i class="fas fa-check"></i> Save Configuration
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ========================================================
+                             SYSTEM SETTINGS
+                             ======================================================== -->
+                        <div class="settings-panel" id="panel-system">
+                            <div class="panel-header">
+                                <h2 class="panel-title">System</h2>
+                                <p class="panel-subtitle">Storage, backups, maintenance mode and API status.</p>
+                            </div>
+
+                            <div class="settings-card">
+                                <div class="settings-card-header">
+                                    <div>
+                                        <div class="settings-card-title"><i class="fas fa-database"></i> Storage &amp; Backups</div>
+                                        <div class="settings-card-subtitle">Disk usage and backup status</div>
+                                    </div>
+                                </div>
+                                <div class="settings-card-body">
+                                    <div style="margin-bottom: 16px;">
+                                        <div style="display: flex; justify-content: space-between; font-size: 0.8125rem; margin-bottom: 8px;">
+                                            <span style="color: var(--text-muted);">Storage Used</span>
+                                            <span style="font-weight: 700; color: var(--text);">2.3 GB / 10 GB</span>
+                                        </div>
+                                        <div style="height: 8px; background: var(--surface-muted); border-radius: 999px; overflow: hidden;">
+                                            <div style="width: 23%; height: 100%; background: var(--accent); border-radius: 999px;"></div>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                                        <div style="padding: 10px 12px; background: var(--surface-muted); border-radius: var(--r); display: flex; justify-content: space-between; align-items: center;">
+                                            <div style="font-size: 0.8125rem;"><strong>Database Backup</strong><div style="font-size: 0.6875rem; color: var(--text-dim);">Last run: 2 hours ago</div></div>
+                                            <span class="session-badge active-badge">Healthy</span>
+                                        </div>
+                                        <div style="padding: 10px 12px; background: var(--surface-muted); border-radius: var(--r); display: flex; justify-content: space-between; align-items: center;">
+                                            <div style="font-size: 0.8125rem;"><strong>Media Backup</strong><div style="font-size: 0.6875rem; color: var(--text-dim);">Last run: 6 hours ago</div></div>
+                                            <span class="session-badge active-badge">Healthy</span>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-secondary btn-sm" style="margin-top: 14px;"><i class="fas fa-download"></i> Download Latest Backup</button>
+                                </div>
+                            </div>
+
+                            <div class="settings-card">
+                                <div class="settings-card-header">
+                                    <div>
+                                        <div class="settings-card-title"><i class="fas fa-tools"></i> Maintenance Mode</div>
+                                        <div class="settings-card-subtitle">Put the public site into maintenance mode</div>
+                                    </div>
+                                </div>
+                                <div class="settings-card-body" style="padding: 0 22px;">
+                                    <div class="toggle-row">
+                                        <div class="toggle-info">
+                                            <div class="toggle-label">Enable Maintenance Mode</div>
+                                            <div class="toggle-desc">Visitors will see a maintenance message. Admins can still access the admin panel.</div>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox">
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="settings-card">
+                                <div class="settings-card-header">
+                                    <div>
+                                        <div class="settings-card-title"><i class="fas fa-heartbeat"></i> API &amp; System Status</div>
+                                        <div class="settings-card-subtitle">Real-time status of the backend service</div>
+                                    </div>
+                                </div>
+                                <div class="settings-card-body">
+                                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                                        <div style="padding: 10px 12px; background: var(--surface-muted); border-radius: var(--r); display: flex; justify-content: space-between; align-items: center;">
+                                            <div style="font-size: 0.8125rem;"><strong>API Server</strong><div style="font-size: 0.6875rem; color: var(--text-dim);" id="apiStatusText">Checking…</div></div>
+                                            <span class="session-badge active-badge" id="apiStatusBadge">—</span>
+                                        </div>
+                                        <div style="padding: 10px 12px; background: var(--surface-muted); border-radius: var(--r); display: flex; justify-content: space-between; align-items: center;">
+                                            <div style="font-size: 0.8125rem;"><strong>Database</strong><div style="font-size: 0.6875rem; color: var(--text-dim);">Supabase</div></div>
+                                            <span class="session-badge active-badge">Connected</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- ============ ADD / EDIT SESSION MODAL ============ -->
+    <div class="modal" id="sessionModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="sessionModalTitle"><i class="fas fa-calendar-plus"></i> Create Academic Session</h3>
+                <button class="modal-close" onclick="hideModal('sessionModal')" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-info-box">
+                    <i class="fas fa-info-circle"></i>
+                    <span>New sessions are created as <strong>inactive</strong>. You can activate them later from the sessions list.</span>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Session Name <span class="required">*</span></label>
+                    <input type="text" class="form-input" id="sessionName" placeholder="e.g. 2026/2027" maxlength="9">
+                    <div class="form-hint">Format: YYYY/YYYY (e.g. 2026/2027). Must be unique.</div>
+                    <div class="form-error" id="sessionNameError"></div>
+                </div>
+
+                <div class="form-grid" style="margin-top: 16px;">
+                    <div class="form-group">
+                        <label class="form-label">Start Date</label>
+                        <input type="date" class="form-input" id="sessionStartDate">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">End Date</label>
+                        <input type="date" class="form-input" id="sessionEndDate">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 16px;">
+                    <label class="form-label">Description (optional)</label>
+                    <textarea class="form-textarea" id="sessionDescription" placeholder="Optional notes about this academic session…" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('sessionModal')" type="button">Cancel</button>
+                <button class="btn btn-primary" id="saveSessionBtn" type="button">
+                    <i class="fas fa-check"></i> Create Session
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ ACTIVATE SESSION CONFIRMATION MODAL ============ -->
+    <div class="modal" id="activateSessionModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fas fa-exclamation-triangle" style="color: var(--warning);"></i> Activate Session</h3>
+                <button class="modal-close" onclick="hideModal('activateSessionModal')" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.875rem; color: var(--text); margin-bottom: 14px;">
+                    You are about to activate <strong id="activateSessionName">—</strong> as the current academic session.
+                </p>
+                <div class="modal-warning-box">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>This will deactivate the currently active session. Historical records will NOT be affected — all previous data remains tied to their original session.</span>
+                </div>
+                <p style="font-size: 0.8125rem; color: var(--text-muted);">
+                    The active session is displayed on the admin dashboard and used as the default for new members, events, and course reps.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('activateSessionModal')" type="button">Cancel</button>
+                <button class="btn btn-gold" id="confirmActivateBtn" type="button">
+                    <i class="fas fa-check"></i> Activate Session
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ DELETE SESSION MODAL ============ -->
+    <div class="modal" id="deleteSessionModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i> Delete Session</h3>
+                <button class="modal-close" onclick="hideModal('deleteSessionModal')" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.875rem; color: var(--text); margin-bottom: 14px;">
+                    Permanently delete <strong id="deleteSessionName">—</strong>?
+                </p>
+                <div class="modal-warning-box" style="background: var(--danger-tint); border-left-color: var(--danger);">
+                    <i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i>
+                    <span><strong>Warning:</strong> This action cannot be undone. Historical records tied to this session may become orphaned. If you only want to retire the session, deactivate it instead.</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('deleteSessionModal')" type="button">Cancel</button>
+                <button class="btn btn-danger" id="confirmDeleteSessionBtn" type="button">
+                    <i class="fas fa-trash"></i> Delete Permanently
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ LOGOUT MODAL ============ -->
+    <div class="modal" id="logoutModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirm Logout</h3>
+                <button class="modal-close" onclick="hideModal('logoutModal')" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body"><p>Are you sure you want to end your admin session?</p></div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('logoutModal')" type="button">Cancel</button>
+                <button class="btn btn-primary" id="confirmLogout" type="button">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ============================================================
+    // CONFIG
+    // ============================================================
+    const API_BASE_URL = '';
+
+    let currentUser = null;
+    let inactivityTimeout = null;
+    let allSessions = [];
+    let editingSessionId = null;
+    let activatingSessionId = null;
+    let deletingSessionId = null;
+    let currentPanel = 'general';
+
+    // ============================================================
+    // AUTH
+    // ============================================================
+    async function checkAuth() {
+        try {
+            showLoading();
+            const res = await fetch(`${API_BASE_URL}/api/admin/session`, {
+                method: 'GET', credentials: 'include',
+                headers: { 'Accept': 'application/json' }
+            });
+            if (res.status === 200) {
+                const data = await res.json();
+                if (data.status === 'success' && data.data) {
+                    currentUser = data.data;
+                    updateUserInfo();
+                    hideLoading();
+                    return true;
+                }
+            }
+            showToast('Please login to continue', 'info');
+            setTimeout(() => window.location.replace('adlog.html'), 1200);
+            hideLoading();
+            return false;
+        } catch (err) {
+            console.error('Auth error:', err);
+            showToast('Connection error', 'error');
+            hideLoading();
+            return false;
+        }
+    }
+
+    function updateUserInfo() {
+        if (!currentUser) return;
+        const name = currentUser.fullName || currentUser.full_name || 'Administrator';
+        const role = currentUser.role || 'admin';
+        const initial = name.charAt(0).toUpperCase();
+        const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
+        document.getElementById('userName').textContent = name;
+        document.getElementById('userRole').textContent = roleLabel;
+        document.getElementById('userAvatar').textContent = initial;
+    }
+
+    async function confirmLogout() {
+        try {
+            showLoading();
+            await fetch(`${API_BASE_URL}/api/admin/logout`, { method: 'POST', credentials: 'include' });
+        } catch (err) { console.warn('Logout failed:', err); }
+        hideModal('logoutModal');
+        showToast('Logged out', 'success');
+        setTimeout(() => window.location.replace('adlog.html'), 700);
+    }
+
+    // ============================================================
+    // API HELPERS
+    // ============================================================
+    function handle401(res) {
+        if (res.status === 401) {
+            showToast('Session expired', 'warning');
+            setTimeout(() => window.location.replace('adlog.html'), 1200);
+            throw new Error('Unauthorized');
+        }
+    }
+
+    async function apiGet(endpoint) {
+        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'GET', credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+        });
+        handle401(res);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+    }
+    async function apiPost(endpoint, body) {
+        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        handle401(res);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+        return data;
+    }
+    async function apiPut(endpoint, body) {
+        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'PUT', credentials: 'include',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        handle401(res);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+        return data;
+    }
+    async function apiPatch(endpoint, body) {
+        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'PATCH', credentials: 'include',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        handle401(res);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+        return data;
+    }
+    async function apiDelete(endpoint) {
+        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'DELETE', credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+        });
+        handle401(res);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+        return data;
+    }
+
+    // ============================================================
+    // SETTINGS NAVIGATION
+    // ============================================================
+    function setupSettingsNav() {
+        document.querySelectorAll('.settings-nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const panel = item.dataset.panel;
+                currentPanel = panel;
+
+                document.querySelectorAll('.settings-nav-item').forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+
+                document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
+                document.getElementById(`panel-${panel}`).classList.add('active');
+
+                if (panel === 'sessions') loadSessions();
+                if (panel === 'system') checkApiStatus();
+            });
+        });
+    }
+
+    // ============================================================
+    // ACADEMIC SESSIONS
+    // ============================================================
+    async function loadSessions() {
+        const list = document.getElementById('sessionsList');
+        list.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><i class="fas fa-circle-notch fa-spin"></i></div><h3>Loading sessions…</h3></div>`;
+
+        try {
+            const res = await apiGet('/api/admin/sessions');
+            allSessions = Array.isArray(res.data) ? res.data : (res.data?.sessions || []);
+            renderSessions();
+        } catch (err) {
+            console.error('Load sessions error:', err);
+            list.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon" style="background: var(--warning-tint); color: var(--warning);">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h3>Couldn't load sessions</h3>
+                    <p>${escapeHtml(err.message || 'Please try again')}</p>
+                    <button class="btn btn-secondary btn-sm" onclick="loadSessions()">
+                        <i class="fas fa-sync-alt"></i> Retry
+                    </button>
+                </div>`;
+        }
+    }
+
+    function renderSessions() {
+        const list = document.getElementById('sessionsList');
+        const countEl = document.getElementById('sessionsCount');
+
+        countEl.textContent = `${allSessions.length} record${allSessions.length === 1 ? '' : 's'}`;
+
+        // Update active session banner
+        const active = allSessions.find(s => s.is_active);
+        const bannerName = document.getElementById('activeSessionName');
+        const bannerMeta = document.getElementById('activeSessionMeta');
+        if (active) {
+            bannerName.textContent = active.name || active.session_name;
+            const parts = [];
+            if (active.start_date) parts.push(`Starts ${formatShortDate(active.start_date)}`);
+            if (active.end_date) parts.push(`Ends ${formatShortDate(active.end_date)}`);
+            bannerMeta.textContent = parts.join(' · ') || 'Active session';
+        } else {
+            bannerName.textContent = 'No Active Session';
+            bannerMeta.textContent = 'Create and activate a session to get started';
+        }
+
+        if (allSessions.length === 0) {
+            list.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon"><i class="fas fa-calendar-plus"></i></div>
+                    <h3>No academic sessions yet</h3>
+                    <p>Create your first academic session to get started.</p>
+                    <button class="btn btn-gold" onclick="document.getElementById('addSessionBtn').click()">
+                        <i class="fas fa-plus"></i> Create First Session
+                    </button>
+                </div>`;
+            return;
+        }
+
+        // Sort: active first, then by name descending
+        const sorted = [...allSessions].sort((a, b) => {
+            if (a.is_active && !b.is_active) return -1;
+            if (!a.is_active && b.is_active) return 1;
+            return (b.name || '').localeCompare(a.name || '');
+        });
+
+        list.innerHTML = sorted.map((s, i) => {
+            const name = s.name || s.session_name || 'Unnamed';
+            const isActive = !!s.is_active;
+            const cardClass = isActive ? 'is-active' : '';
+            const iconClass = isActive ? 'active-icon' : 'inactive-icon';
+            const badgeClass = isActive ? 'active-badge' : 'inactive-badge';
+            const badgeLabel = isActive ? 'Active' : 'Inactive';
+
+            const metaParts = [];
+            if (s.start_date) metaParts.push(`<span><i class="fas fa-play"></i> ${formatShortDate(s.start_date)}</span>`);
+            if (s.end_date) metaParts.push(`<span><i class="fas fa-flag-checkered"></i> ${formatShortDate(s.end_date)}</span>`);
+            if (s.description) metaParts.push(`<span><i class="fas fa-info-circle"></i> ${escapeHtml(truncate(s.description, 60))}</span>`);
+
+            return `
+                <div class="session-card ${cardClass}" style="animation-delay: ${i * 40}ms;">
+                    <div class="session-status-icon ${iconClass}">
+                        <i class="fas ${isActive ? 'fa-calendar-check' : 'fa-calendar'}"></i>
+                    </div>
+                    <div class="session-info">
+                        <div class="session-name-row">
+                            <div class="session-name">${escapeHtml(name)}</div>
+                            <span class="session-badge ${badgeClass}">${badgeLabel}</span>
+                        </div>
+                        <div class="session-meta">${metaParts.join('')}</div>
+                    </div>
+                    <div class="session-actions">
+                        ${!isActive ? `
+                            <button class="btn btn-gold btn-sm" onclick="openActivateSession('${escapeHtml(s.id)}')">
+                                <i class="fas fa-power-off"></i> Activate
+                            </button>
+                        ` : ''}
+                        <button class="btn btn-secondary btn-sm" onclick="openEditSession('${escapeHtml(s.id)}')">
+                            <i class="fas fa-pen"></i> Edit
+                        </button>
+                        <button class="icon-btn danger" onclick="openDeleteSession('${escapeHtml(s.id)}')" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>`;
+        }).join('');
+    }
+
+    function openAddSession() {
+        editingSessionId = null;
+        document.getElementById('sessionModalTitle').innerHTML = '<i class="fas fa-calendar-plus"></i> Create Academic Session';
+        document.getElementById('sessionName').value = '';
+        document.getElementById('sessionStartDate').value = '';
+        document.getElementById('sessionEndDate').value = '';
+        document.getElementById('sessionDescription').value = '';
+        document.getElementById('sessionNameError').classList.remove('show');
+        document.getElementById('saveSessionBtn').innerHTML = '<i class="fas fa-check"></i> Create Session';
+        showModal('sessionModal');
+        setTimeout(() => document.getElementById('sessionName').focus(), 150);
+    }
+
+    function openEditSession(id) {
+        const session = allSessions.find(s => String(s.id) === String(id));
+        if (!session) return;
+
+        editingSessionId = id;
+        document.getElementById('sessionModalTitle').innerHTML = '<i class="fas fa-pen"></i> Edit Academic Session';
+        document.getElementById('sessionName').value = session.name || session.session_name || '';
+        document.getElementById('sessionStartDate').value = toDateInput(session.start_date);
+        document.getElementById('sessionEndDate').value = toDateInput(session.end_date);
+        document.getElementById('sessionDescription').value = session.description || '';
+        document.getElementById('sessionNameError').classList.remove('show');
+        document.getElementById('saveSessionBtn').innerHTML = '<i class="fas fa-check"></i> Save Changes';
+        showModal('sessionModal');
+    }
+
+    async function handleSaveSession() {
+        const nameInput = document.getElementById('sessionName');
+        const name = nameInput.value.trim();
+        const startDate = document.getElementById('sessionStartDate').value;
+        const endDate = document.getElementById('sessionEndDate').value;
+        const description = document.getElementById('sessionDescription').value.trim();
+        const errorEl = document.getElementById('sessionNameError');
+
+        errorEl.classList.remove('show');
+
+        // Validation
+        if (!name) {
+            errorEl.textContent = 'Session name is required';
+            errorEl.classList.add('show');
+            nameInput.focus();
+            return;
+        }
+
+        // Format validation: YYYY/YYYY
+        if (!/^\d{4}\/\d{4}$/.test(name)) {
+            errorEl.textContent = 'Session name must be in the format YYYY/YYYY (e.g. 2026/2027)';
+            errorEl.classList.add('show');
+            nameInput.focus();
+            return;
+        }
+
+        // Duplicate check
+        const duplicate = allSessions.find(s => 
+            String(s.id) !== String(editingSessionId) &&
+            (s.name || s.session_name || '').toLowerCase() === name.toLowerCase()
+        );
+        if (duplicate) {
+            errorEl.textContent = 'A session with this name already exists';
+            errorEl.classList.add('show');
+            nameInput.focus();
+            return;
+        }
+
+        if (startDate && endDate && new Date(endDate) <= new Date(startDate)) {
+            showToast('End date must be after start date', 'warning');
+            return;
+        }
+
+        const btn = document.getElementById('saveSessionBtn');
+        const original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Saving…';
+
+        const payload = {
+            name,
+            session_name: name,
+            start_date: startDate || null,
+            end_date: endDate || null,
+            description: description || null
+        };
+
+        try {
+            if (editingSessionId) {
+                await apiPut(`/api/admin/sessions/${editingSessionId}`, payload);
+                showToast('Session updated', 'success');
+            } else {
+                await apiPost('/api/admin/sessions', payload);
+                showToast('Session created. Activate it when ready.', 'success');
+            }
+            hideModal('sessionModal');
+            await loadSessions();
+        } catch (err) {
+            console.error('Save session error:', err);
+            showToast(err.message || 'Failed to save session', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = original;
+        }
+    }
+
+    function openActivateSession(id) {
+        const session = allSessions.find(s => String(s.id) === String(id));
+        if (!session) return;
+        activatingSessionId = id;
+        document.getElementById('activateSessionName').textContent = session.name || session.session_name;
+        showModal('activateSessionModal');
+    }
+
+    async function handleActivateSession() {
+        if (!activatingSessionId) return;
+        const btn = document.getElementById('confirmActivateBtn');
+        const original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Activating…';
+
+        try {
+            await apiPatch(`/api/admin/sessions/${activatingSessionId}/activate`, { is_active: true });
+            showToast('Session activated', 'success');
+            hideModal('activateSessionModal');
+            activatingSessionId = null;
+            await loadSessions();
+        } catch (err) {
+            console.error('Activate error:', err);
+            showToast(err.message || 'Failed to activate session', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = original;
+        }
+    }
+
+    function openDeleteSession(id) {
+        const session = allSessions.find(s => String(s.id) === String(id));
+        if (!session) return;
+
+        if (session.is_active) {
+            showToast('Cannot delete an active session. Deactivate it first.', 'warning');
+            return;
+        }
+
+        deletingSessionId = id;
+        document.getElementById('deleteSessionName').textContent = session.name || session.session_name;
+        showModal('deleteSessionModal');
+    }
+
+    async function handleDeleteSession() {
+        if (!deletingSessionId) return;
+        const btn = document.getElementById('confirmDeleteSessionBtn');
+        const original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Deleting…';
+
+        try {
+            await apiDelete(`/api/admin/sessions/${deletingSessionId}`);
+            showToast('Session deleted', 'success');
+            hideModal('deleteSessionModal');
+            deletingSessionId = null;
+            await loadSessions();
+        } catch (err) {
+            console.error('Delete error:', err);
+            showToast(err.message || 'Failed to delete session', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = original;
+        }
+    }
+
+    // ============================================================
+    // GENERAL SETTINGS
+    // ============================================================
+    async function saveGeneralSettings() {
+        const payload = {
+            site_name: document.getElementById('settingSiteName').value.trim(),
+            short_name: document.getElementById('settingShortName').value.trim(),
+            contact_email: document.getElementById('settingEmail').value.trim(),
+            contact_phone: document.getElementById('settingPhone').value.trim(),
+            address: document.getElementById('settingAddress').value.trim(),
+            social_facebook: document.getElementById('settingFacebook').value.trim(),
+            social_twitter: document.getElementById('settingTwitter').value.trim(),
+            social_instagram: document.getElementById('settingInstagram').value.trim(),
+            social_linkedin: document.getElementById('settingLinkedin').value.trim()
+        };
+
+        try {
+            await apiPut('/api/admin/settings', { settings: payload });
+            showToast('General settings saved', 'success');
+        } catch (err) {
+            showToast(err.message || 'Failed to save settings', 'error');
+        }
+    }
+
+    // ============================================================
+    // SYSTEM — API STATUS CHECK
+    // ============================================================
+    async function checkApiStatus() {
+        const text = document.getElementById('apiStatusText');
+        const badge = document.getElementById('apiStatusBadge');
+        if (!text || !badge) return;
+
+        text.textContent = 'Checking…';
+        badge.textContent = '—';
+
+        try {
+            const start = Date.now();
+            const res = await fetch(`${API_BASE_URL}/api/health`, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' }
+            });
+            const ms = Date.now() - start;
+            if (res.ok) {
+                text.textContent = `Responding in ${ms}ms`;
+                badge.textContent = 'Online';
+                badge.className = 'session-badge active-badge';
+            } else {
+                text.textContent = `HTTP ${res.status}`;
+                badge.textContent = 'Degraded';
+                badge.className = 'session-badge inactive-badge';
+            }
+        } catch (err) {
+            text.textContent = 'Unreachable';
+            badge.textContent = 'Offline';
+            badge.className = 'session-badge inactive-badge';
+            badge.style.background = 'var(--danger-tint)';
+            badge.style.color = 'var(--danger)';
+        }
+    }
+
+    // ============================================================
+    // HELPERS
+    // ============================================================
+    function showLoading() { document.getElementById('loadingOverlay').classList.add('active'); }
+    function hideLoading() { document.getElementById('loadingOverlay').classList.remove('active'); }
+    function showModal(id) { const el = document.getElementById(id); if (el) { el.classList.add('active'); document.body.style.overflow = 'hidden'; } }
+    function hideModal(id) { const el = document.getElementById(id); if (el) { el.classList.remove('active'); document.body.style.overflow = ''; } }
+
+    function showToast(message, type = 'info', duration = 4000) {
+        document.querySelectorAll('.toast').forEach(t => t.remove());
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        const icons = { success:'check-circle', error:'exclamation-circle', warning:'exclamation-triangle', info:'info-circle' };
+        toast.innerHTML = `
+            <div class="toast-icon"><i class="fas fa-${icons[type] || 'info-circle'}"></i></div>
+            <div class="toast-content">${escapeHtml(message)}</div>
+            <button class="toast-close" aria-label="Close">&times;</button>`;
+        document.body.appendChild(toast);
+        requestAnimationFrame(() => toast.classList.add('show'));
+        toast.querySelector('.toast-close').onclick = () => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); };
+        setTimeout(() => { if (toast.parentElement) { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); } }, duration);
+    }
+
+    function escapeHtml(str) {
+        if (str == null) return '';
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
+    function formatShortDate(s) {
+        if (!s) return '—';
+        try {
+            const d = new Date(s);
+            if (isNaN(d.getTime())) return s;
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        } catch { return s; }
+    }
+
+    function toDateInput(s) {
+        if (!s) return '';
+        try {
+            const d = new Date(s);
+            if (isNaN(d.getTime())) return '';
+            const pad = n => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        } catch { return ''; }
+    }
+
+    function truncate(str, len) {
+        if (!str) return '';
+        return str.length > len ? str.substring(0, len) + '…' : str;
+    }
+
+    // ============================================================
+    // SIDEBAR
+    // ============================================================
+    function setupSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const mobileOverlay = document.getElementById('mobileOverlay');
+        const mobileToggle = document.getElementById('mobileMenuToggle');
+        if (!sidebar || !mobileOverlay || !mobileToggle) return;
+        const closeSidebar = () => {
+            sidebar.classList.remove('open');
+            mobileOverlay.classList.remove('active');
+            document.body.style.overflow = '';
+        };
+        mobileToggle.addEventListener('click', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            if (sidebar.classList.contains('open')) closeSidebar();
+            else {
+                sidebar.classList.add('open');
+                mobileOverlay.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        }, true);
+        mobileOverlay.addEventListener('click', closeSidebar);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && sidebar.classList.contains('open')) closeSidebar();
+        });
+        document.querySelectorAll('.nav-item').forEach(link => {
+            link.addEventListener('click', () => { if (window.innerWidth <= 900) closeSidebar(); });
+        });
+    }
+
+    // ============================================================
+    // HEADER SCROLL
+    // ============================================================
+    function setupHeaderScroll() {
+        const header = document.getElementById('mainHeader');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 8) header.classList.add('scrolled');
+            else header.classList.remove('scrolled');
+        }, { passive: true });
+    }
+
+    // ============================================================
+    // INACTIVITY
+    // ============================================================
+    function resetInactivityTimer() {
+        clearTimeout(inactivityTimeout);
+        inactivityTimeout = setTimeout(() => {
+            showToast('Session expiring soon', 'warning');
+            setTimeout(() => window.location.replace('adlog.html'), 60000);
+        }, 29 * 60 * 1000);
+    }
+    function setupActivityListeners() {
+        ['mousedown','keypress','scroll','touchstart'].forEach(ev =>
+            document.addEventListener(ev, resetInactivityTimer, { passive: true }));
+        resetInactivityTimer();
+    }
+
+    // ============================================================
+    // INIT
+    // ============================================================
+    async function init() {
+        setupSidebar();
+        setupHeaderScroll();
+        setupSettingsNav();
+
+        // Static wiring
+        document.getElementById('logoutBtn').addEventListener('click', () => showModal('logoutModal'));
+        document.getElementById('confirmLogout').addEventListener('click', confirmLogout);
+        document.getElementById('notificationBtn').addEventListener('click', () => {
+            window.location.href = 'messages.html';
+        });
+
+        // Session actions
+        document.getElementById('addSessionBtn').addEventListener('click', openAddSession);
+        document.getElementById('saveSessionBtn').addEventListener('click', handleSaveSession);
+        document.getElementById('confirmActivateBtn').addEventListener('click', handleActivateSession);
+        document.getElementById('confirmDeleteSessionBtn').addEventListener('click', handleDeleteSession);
+
+        // Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                ['sessionModal','activateSessionModal','deleteSessionModal','logoutModal'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el && el.classList.contains('active')) hideModal(id);
+                });
+            }
+        });
+
+        // Auth
+        const ok = await checkAuth();
+        if (!ok) return;
+
+        setupActivityListeners();
+
+        // Load sessions eagerly so the banner is populated
+        loadSessions();
+
+        hideLoading();
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+
+    window.showModal = showModal;
+    window.hideModal = hideModal;
+    window.confirmLogout = confirmLogout;
+    window.loadSessions = loadSessions;
+    window.openActivateSession = openActivateSession;
+    window.openEditSession = openEditSession;
+    window.openDeleteSession = openDeleteSession;
+    window.saveGeneralSettings = saveGeneralSettings;
+    window.showToast = showToast;
+    </script>
+</body>
+</html>

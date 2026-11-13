@@ -981,32 +981,106 @@ authRouter.post('/forgot-password', validate(Joi.object({ email: Joi.string().em
 
 app.use('/api/auth', authRouter);
 
-// -------------------- 3.4 PUBLIC MEMBERS ROUTES -------------
+// -------------------- 3.4 ACTIVE ACADEMIC SESSION (PUBLIC) -------------
+app.get('/api/sessions/active', cacheMiddleware(60, ['sessions']), async (req, res) => {
+    try {
+        const result = await db.query('select', 'academic_sessions', {
+            where: { is_active: true }, select: '*'
+        });
+        const active = result.data[0] || null;
+        res.json({
+            status: 'success',
+            data: active,
+            count: active ? 1 : 0
+        });
+    } catch (error) {
+        logger.error('Active session fetch error:', { requestId: req.id, error: error.message });
+        // If table doesn't exist yet, return null gracefully rather than 500
+        if (error.message && error.message.includes('relation') && error.message.includes('does not exist')) {
+            return res.json({ status: 'success', data: null, count: 0 });
+        }
+        res.status(500).json({ status: 'error', message: 'Failed to fetch active session' });
+    }
+});
+
+// -------------------- 3.4b PUBLIC MEMBERS ROUTES -------------
 const memberRouter = express.Router();
 
 memberRouter.get('/', cacheMiddleware(120, ['members']), async (req, res) => {
     try {
-        const { committee, status = 'active', session, sort = 'display_order', order = 'asc' } = req.query;
+        const {
+            committee,
+            status = 'active',
+            session,
+            sort = 'display_order',
+            order = 'asc',
+            limit = 100
+        } = req.query;
+
         let where = { status };
         if (committee && committee !== 'all') where.committee = committee;
-        if (session) where.session = session;
 
-        const result = await db.query('select', 'executive_members', { where, order: { column: sort, ascending: order === 'asc' } });
-        res.json({ status: 'success', data: result.data, count: result.data.length });
+        // Session filtering
+        if (session === 'all') {
+            // No session filter — return everything
+        } else if (session) {
+            // Explicit session name provided (e.g. ?session=2025/2026)
+            where.session = session;
+        } else {
+            // Default: filter by currently active session
+            try {
+                const activeSessionRes = await db.query('select', 'academic_sessions', {
+                    where: { is_active: true },
+                    select: 'id, name'
+                });
+                const activeSession = activeSessionRes.data[0];
+                if (activeSession) {
+                    // Try session_id first (new schema), fall back to session name (legacy)
+                    where.session = activeSession.name;
+                }
+                // If no active session exists, don't filter — show all members
+            } catch (sessionErr) {
+                // If academic_sessions table doesn't exist, skip session filtering entirely
+                logger.warn('Could not resolve active session for member filter:', {
+                    requestId: req.id,
+                    error: sessionErr.message
+                });
+            }
+        }
+
+        const result = await db.query('select', 'executive_members', {
+            where,
+            order: { column: sort, ascending: order === 'asc' },
+            limit: parseInt(limit) || 100
+        });
+
+        res.json({
+            status: 'success',
+            data: result.data,
+            count: result.data.length
+        });
     } catch (error) {
         logger.error('Error fetching members:', { requestId: req.id, error: error.message });
         res.status(500).json({ status: 'error', message: 'Failed to fetch members' });
     }
 });
 
+/**
+ * GET /api/members/:id
+ * Returns a single member by ID
+ */
 memberRouter.get('/:id', cacheMiddleware(300, ['members']), async (req, res) => {
     try {
-        const result = await db.query('select', 'executive_members', { where: { id: req.params.id } });
+        const result = await db.query('select', 'executive_members', {
+            where: { id: req.params.id }
+        });
         if (result.data.length === 0) throw new NotFoundError('Member');
         res.json({ status: 'success', data: result.data[0] });
     } catch (error) {
         logger.error('Error fetching member:', { requestId: req.id, error: error.message });
-        if (error instanceof NotFoundError) return res.status(404).json({ status: 'error', message: error.message });
+        if (error instanceof NotFoundError) {
+            return res.status(404).json({ status: 'error', message: error.message });
+        }
         res.status(500).json({ status: 'error', message: 'Failed to fetch member' });
     }
 });
@@ -1324,10 +1398,10 @@ articleRouter.get('/', cacheMiddleware(120, ['articles']), async (req, res) => {
 articleRouter.get('/meta/categories', async (req, res) => {
     try {
         const result = await db.query('select', 'articles', {
-            select: 'DISTINCT category',
+            select: 'category',
             where: { category: { operator: 'isNull', value: false }, status: 'published', is_published: true }
         });
-        const categories = result.data.map(i => i.category).filter(Boolean);
+        const categories = [...new Set(result.data.map(i => i.category).filter(Boolean))].sort();
         res.json({ status: 'success', data: categories });
     } catch (error) {
         logger.error('Error fetching categories:', { requestId: req.id, error: error.message });
@@ -2321,6 +2395,208 @@ adminRouter.delete('/media/:id', async (req, res) => {
     } catch (error) {
         logger.error('Admin media delete error:', { requestId: req.id, error: error.message });
         res.status(500).json({ status: 'error', message: 'Failed to delete media' });
+    }
+});
+
+// ==================== ACADEMIC SESSIONS MANAGEMENT ====================
+
+// GET /api/admin/sessions — list all sessions
+adminRouter.get('/sessions', async (req, res) => {
+    try {
+        const result = await db.query('select', 'academic_sessions', {
+            order: { column: 'name', ascending: false }
+        });
+        res.json({ status: 'success', data: result.data, count: result.data.length });
+    } catch (error) {
+        logger.error('Sessions list error:', { requestId: req.id, error: error.message });
+        if (error.message && error.message.includes('relation') && error.message.includes('does not exist')) {
+            return res.json({ status: 'success', data: [], count: 0 });
+        }
+        res.status(500).json({ status: 'error', message: 'Failed to fetch sessions' });
+    }
+});
+
+// POST /api/admin/sessions — create (inactive by default)
+adminRouter.post('/sessions', async (req, res) => {
+    try {
+        const { name, session_name, start_date, end_date, description } = req.body;
+        const finalName = (name || session_name || '').trim();
+
+        if (!finalName) {
+            return res.status(400).json({ status: 'error', message: 'Session name is required' });
+        }
+        if (!/^\d{4}\/\d{4}$/.test(finalName)) {
+            return res.status(400).json({ status: 'error', message: 'Session name must be in the format YYYY/YYYY' });
+        }
+
+        // Duplicate check
+        const existing = await db.query('select', 'academic_sessions', { where: { name: finalName }, select: 'id' });
+        if (existing.data.length > 0) {
+            return res.status(409).json({ status: 'error', message: 'A session with this name already exists' });
+        }
+
+        const newSession = {
+            name: finalName,
+            start_date: start_date || null,
+            end_date: end_date || null,
+            description: description || null,
+            is_active: false,  // NEVER auto-activate
+            created_by: req.user.id
+        };
+
+        const result = await db.query('insert', 'academic_sessions', { data: newSession });
+        logger.info('Academic session created', { requestId: req.id, sessionId: result.data[0].id, name: finalName });
+        res.status(201).json({ status: 'success', data: result.data[0], message: 'Session created successfully' });
+    } catch (error) {
+        logger.error('Session create error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to create session' });
+    }
+});
+
+// PUT /api/admin/sessions/:id — edit
+adminRouter.put('/sessions/:id', async (req, res) => {
+    try {
+        const { name, session_name, start_date, end_date, description } = req.body;
+        const finalName = (name || session_name || '').trim();
+        const updateData = { updated_at: new Date().toISOString() };
+
+        if (finalName) {
+            if (!/^\d{4}\/\d{4}$/.test(finalName)) {
+                return res.status(400).json({ status: 'error', message: 'Session name must be in the format YYYY/YYYY' });
+            }
+            const existing = await db.query('select', 'academic_sessions', {
+                where: { name: finalName, id: { operator: 'neq', value: req.params.id } },
+                select: 'id'
+            });
+            if (existing.data.length > 0) {
+                return res.status(409).json({ status: 'error', message: 'Another session with this name already exists' });
+            }
+            updateData.name = finalName;
+        }
+        if (start_date !== undefined) updateData.start_date = start_date || null;
+        if (end_date !== undefined) updateData.end_date = end_date || null;
+        if (description !== undefined) updateData.description = description || null;
+
+        const result = await db.query('update', 'academic_sessions', {
+            data: updateData, where: { id: req.params.id }
+        });
+        if (result.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Session not found' });
+        }
+
+        logger.info('Academic session updated', { requestId: req.id, sessionId: req.params.id });
+        res.json({ status: 'success', data: result.data[0], message: 'Session updated successfully' });
+    } catch (error) {
+        logger.error('Session update error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to update session' });
+    }
+});
+
+// PATCH /api/admin/sessions/:id/activate — atomically activate one, deactivate all others
+adminRouter.patch('/sessions/:id/activate', async (req, res) => {
+    try {
+        const sessionId = req.params.id;
+
+        // Check target exists
+        const target = await db.query('select', 'academic_sessions', { where: { id: sessionId } });
+        if (target.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Session not found' });
+        }
+
+        // Deactivate all others first
+        await db.query('update', 'academic_sessions', {
+            data: { is_active: false, updated_at: new Date().toISOString() },
+            where: { is_active: true }
+        });
+
+        // Activate target
+        const result = await db.query('update', 'academic_sessions', {
+            data: { is_active: true, updated_at: new Date().toISOString() },
+            where: { id: sessionId }
+        });
+
+        logger.info('Academic session activated', {
+            requestId: req.id, sessionId, sessionName: target.data[0].name,
+            activatedBy: req.user.id
+        });
+
+        res.json({ status: 'success', data: result.data[0], message: 'Session activated successfully' });
+    } catch (error) {
+        logger.error('Session activate error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to activate session' });
+    }
+});
+
+// DELETE /api/admin/sessions/:id — delete (reject if active)
+adminRouter.delete('/sessions/:id', async (req, res) => {
+    try {
+        const check = await db.query('select', 'academic_sessions', {
+            where: { id: req.params.id }, select: 'id, name, is_active'
+        });
+        if (check.data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Session not found' });
+        }
+
+        if (check.data[0].is_active) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Cannot delete the active session. Activate a different session first.'
+            });
+        }
+
+        await db.query('delete', 'academic_sessions', { where: { id: req.params.id } });
+        logger.info('Academic session deleted', { requestId: req.id, sessionId: req.params.id, deletedBy: req.user.id });
+        res.json({ status: 'success', message: 'Session deleted successfully' });
+    } catch (error) {
+        logger.error('Session delete error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to delete session' });
+    }
+});
+
+// ==================== SETTINGS MANAGEMENT ====================
+
+// GET /api/admin/settings — fetch all settings as a single object
+adminRouter.get('/settings', async (req, res) => {
+    try {
+        const result = await db.query('select', 'settings', {});
+        const settings = {};
+        for (const row of result.data) {
+            settings[row.key] = row.value;
+        }
+        res.json({ status: 'success', data: settings });
+    } catch (error) {
+        // If table doesn't exist, return empty settings so frontend still works
+        if (error.message && error.message.includes('relation') && error.message.includes('does not exist')) {
+            return res.json({ status: 'success', data: {}, note: 'settings table not created yet' });
+        }
+        logger.error('Settings fetch error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch settings' });
+    }
+});
+
+// PUT /api/admin/settings — upsert settings (accepts { settings: { key: value, ... } })
+adminRouter.put('/settings', async (req, res) => {
+    try {
+        const { settings } = req.body;
+        if (!settings || typeof settings !== 'object') {
+            return res.status(400).json({ status: 'error', message: 'settings object is required' });
+        }
+
+        const rows = Object.entries(settings).map(([key, value]) => ({
+            key,
+            value: typeof value === 'object' ? value : String(value ?? ''),
+            updated_at: new Date().toISOString()
+        }));
+
+        if (rows.length > 0) {
+            await db.query('upsert', 'settings', { data: rows });
+        }
+
+        logger.info('Settings saved', { requestId: req.id, keys: Object.keys(settings), updatedBy: req.user.id });
+        res.json({ status: 'success', message: 'Settings saved successfully' });
+    } catch (error) {
+        logger.error('Settings save error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to save settings' });
     }
 });
 
