@@ -3073,12 +3073,18 @@ userRouter.delete('/:id', async (req, res) => {
 });
 
 // ==================== COURSE REPS MANAGEMENT ====================
+
+// GET /api/admin/course-reps — list all representatives
 adminRouter.get('/course-reps', async (req, res) => {
     try {
-        const { session, level } = req.query;
+        const { session, level, rep_type, status, department } = req.query;
         let query = supabase.from('course_representatives').select('*');
-        if (session) query = query.eq('session', session);
+
+        if (session)    query = query.eq('session', session);
         if (level && level !== 'all') query = query.eq('level', level);
+        if (rep_type && rep_type !== 'all') query = query.eq('rep_type', rep_type);
+        if (status && status !== 'all') query = query.eq('status', status);
+        if (department && department !== 'all') query = query.eq('department_name', department);
 
         const { data, error } = await query.order('level');
         if (error) throw error;
@@ -3094,73 +3100,338 @@ adminRouter.get('/course-reps', async (req, res) => {
             return { ...rep, departments };
         }));
 
-        res.json({ status: 'success', data: enrichedData, pagination: { total: enrichedData.length, filtered: enrichedData.length } });
+        res.json({
+            status: 'success',
+            data: enrichedData,
+            pagination: { total: enrichedData.length, filtered: enrichedData.length }
+        });
     } catch (error) {
         logger.error('Error fetching course reps:', { requestId: req.id, error: error.message });
         res.status(500).json({ status: 'error', message: 'Failed to fetch course representatives' });
     }
 });
 
+// POST /api/admin/course-reps — create a representative
 adminRouter.post('/course-reps', async (req, res) => {
     try {
-        const { session, level, gen_rep, asst_gen_rep, departments } = req.body;
-        if (!session || !level) return res.status(400).json({ status: 'error', message: 'Session and level are required' });
+        const {
+            full_name, matric_no, email, phone, department, level,
+            session, rep_type, representative_type, status,
+            appointment_date, notes, profile_picture,
+            // Legacy fields (still supported for backwards compat)
+            gen_rep, asst_gen_rep, departments
+        } = req.body;
 
-        const { data: existing, error: checkError } = await supabase
-            .from('course_representatives').select('id').eq('session', session).eq('level', level);
-        if (checkError) throw checkError;
-        if (existing && existing.length > 0) {
-            return res.status(409).json({ status: 'error', message: 'Course representatives for this session and level already exist' });
+        if (!session || !level) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Session and level are required'
+            });
         }
+
+        const finalType = (rep_type || representative_type || 'general').toLowerCase();
+        const finalName = (full_name || gen_rep || '').trim();
+
+        if (!finalName) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Full name is required'
+            });
+        }
+
+        if (finalType === 'departmental' && !department) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Department is required for departmental reps'
+            });
+        }
+
+        // Duplicate matric check for the same session
+        if (matric_no) {
+            const { data: dupMatric, error: dupErr } = await supabase
+                .from('course_representatives')
+                .select('id, full_name')
+                .eq('session', session)
+                .ilike('matric_no', matric_no)
+                .maybeSingle();
+
+            if (dupErr && dupErr.code !== 'PGRST116') throw dupErr;
+            if (dupMatric) {
+                return res.status(409).json({
+                    status: 'error',
+                    message: `A representative with matric ${matric_no} already exists for ${session}`
+                });
+            }
+        }
+
+        // Duplicate active position check
+        if ((status || 'active') === 'active') {
+            let dupQuery = supabase
+                .from('course_representatives')
+                .select('id, full_name')
+                .eq('status', 'active')
+                .eq('session', session)
+                .eq('level', level)
+                .eq('rep_type', finalType);
+
+            if (finalType === 'departmental') {
+                dupQuery = dupQuery.eq('department_name', department);
+            }
+
+            const { data: dupPosition, error: dupPosErr } = await dupQuery.maybeSingle();
+            if (dupPosErr && dupPosErr.code !== 'PGRST116') throw dupPosErr;
+
+            if (dupPosition) {
+                const scope = finalType === 'general'
+                    ? `${level} general rep`
+                    : `${department} ${level} departmental rep`;
+                return res.status(409).json({
+                    status: 'error',
+                    message: `An active ${scope} already exists for ${session} (${dupPosition.full_name}). Only one active rep per position.`
+                });
+            }
+        }
+
+        const insertData = {
+            // Core identity
+            full_name: finalName,
+            matric_no: matric_no ? String(matric_no).trim() : null,
+            email: email ? String(email).trim() : null,
+            phone: phone ? String(phone).trim() : null,
+
+            // Academic assignment
+            department_name: department || null,
+            level,
+            session,
+            rep_type: finalType,
+
+            // Appointment
+            status: status || 'active',
+            appointment_date: appointment_date || null,
+            notes: notes ? String(notes).trim() : null,
+            profile_picture: profile_picture || null,
+
+            // Legacy fields (kept for backward compatibility with old UI)
+            gen_rep: finalType === 'general' ? finalName : (gen_rep || 'Not Assigned'),
+            asst_gen_rep: asst_gen_rep || 'Not Assigned',
+
+            // Audit
+            created_by: req.user.id,
+            updated_by: req.user.id,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
 
         const { data: courseRep, error: insertError } = await supabase
             .from('course_representatives')
-            .insert([{
-                session, level,
-                gen_rep: gen_rep || 'Not Assigned',
-                asst_gen_rep: asst_gen_rep || 'Not Assigned',
-                created_by: req.user.id, updated_by: req.user.id,
-                created_at: new Date().toISOString(), updated_at: new Date().toISOString()
-            }])
-            .select().single();
+            .insert([insertData])
+            .select()
+            .single();
+
         if (insertError) throw insertError;
 
-        if (departments && departments.length > 0) {
+        // Handle legacy nested departments array if provided
+        if (departments && Array.isArray(departments) && departments.length > 0) {
             const deptRepsData = departments.map(dept => ({
-                course_rep_id: courseRep.id, department_name: dept.name,
-                session, level, representative_name: dept.rep || 'Pending',
-                status: 'active', created_at: new Date().toISOString(), updated_at: new Date().toISOString()
+                course_rep_id: courseRep.id,
+                department_name: dept.name,
+                session,
+                level,
+                representative_name: dept.rep || 'Pending',
+                status: 'active',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
             }));
             const { error: deptError } = await supabase.from('department_reps').insert(deptRepsData);
             if (deptError) throw deptError;
         }
 
-        res.status(201).json({ status: 'success', data: courseRep, message: 'Course representatives created successfully' });
+        logger.info('Course rep created', {
+            requestId: req.id,
+            repId: courseRep.id,
+            type: finalType,
+            createdBy: req.user.id
+        });
+
+        res.status(201).json({
+            status: 'success',
+            data: courseRep,
+            message: 'Representative created successfully'
+        });
     } catch (error) {
-        logger.error('Error creating course reps:', { requestId: req.id, error: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to create course representatives' });
+        logger.error('Error creating course reps:', {
+            requestId: req.id,
+            error: error.message,
+            code: error.code
+        });
+        res.status(500).json({
+            status: 'error',
+            message: error.message || 'Failed to create course representative'
+        });
     }
 });
 
+// PUT /api/admin/course-reps/:id — update a representative
+adminRouter.put('/course-reps/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const {
+            full_name, matric_no, email, phone, department, level,
+            session, rep_type, representative_type, status,
+            appointment_date, notes, profile_picture
+        } = req.body;
+
+        // Confirm record exists
+        const { data: existing, error: existErr } = await supabase
+            .from('course_representatives')
+            .select('id')
+            .eq('id', id)
+            .maybeSingle();
+
+        if (existErr) throw existErr;
+        if (!existing) {
+            return res.status(404).json({ status: 'error', message: 'Representative not found' });
+        }
+
+        // Build update payload (only include provided fields)
+        const updateData = { updated_at: new Date().toISOString(), updated_by: req.user.id };
+
+        if (full_name !== undefined) {
+            const trimmed = String(full_name).trim();
+            updateData.full_name = trimmed;
+            updateData.gen_rep = trimmed; // keep legacy column in sync
+        }
+        if (matric_no !== undefined)        updateData.matric_no = matric_no ? String(matric_no).trim() : null;
+        if (email !== undefined)            updateData.email = email ? String(email).trim() : null;
+        if (phone !== undefined)            updateData.phone = phone ? String(phone).trim() : null;
+        if (department !== undefined)       updateData.department_name = department || null;
+        if (level !== undefined)            updateData.level = level || null;
+        if (session !== undefined)          updateData.session = session || null;
+        if (rep_type !== undefined || representative_type !== undefined) {
+            updateData.rep_type = (rep_type || representative_type || 'general').toLowerCase();
+        }
+        if (status !== undefined)           updateData.status = status || 'active';
+        if (appointment_date !== undefined) updateData.appointment_date = appointment_date || null;
+        if (notes !== undefined)            updateData.notes = notes ? String(notes).trim() : null;
+        if (profile_picture !== undefined)  updateData.profile_picture = profile_picture || null;
+
+        // Duplicate active position check (only if becoming active)
+        const newStatus = updateData.status || 'active';
+        if (newStatus === 'active') {
+            const newType = updateData.rep_type
+                || (await supabase.from('course_representatives').select('rep_type').eq('id', id).single()).data?.rep_type
+                || 'general';
+            const newSession = updateData.session
+                || (await supabase.from('course_representatives').select('session').eq('id', id).single()).data?.session;
+            const newLevel = updateData.level
+                || (await supabase.from('course_representatives').select('level').eq('id', id).single()).data?.level;
+            const newDept = updateData.department_name !== undefined
+                ? updateData.department_name
+                : (await supabase.from('course_representatives').select('department_name').eq('id', id).single()).data?.department_name;
+
+            let dupQuery = supabase
+                .from('course_representatives')
+                .select('id, full_name')
+                .neq('id', id)
+                .eq('status', 'active');
+
+            if (newSession) dupQuery = dupQuery.eq('session', newSession);
+            if (newLevel)   dupQuery = dupQuery.eq('level', newLevel);
+            if (newType)    dupQuery = dupQuery.eq('rep_type', newType);
+            if (newType === 'departmental' && newDept) {
+                dupQuery = dupQuery.eq('department_name', newDept);
+            }
+
+            const { data: dup, error: dupErr } = await dupQuery.maybeSingle();
+            if (dupErr && dupErr.code !== 'PGRST116') throw dupErr;
+
+            if (dup) {
+                const scope = newType === 'general'
+                    ? `${newLevel} general rep`
+                    : `${newDept} ${newLevel} departmental rep`;
+                return res.status(409).json({
+                    status: 'error',
+                    message: `An active ${scope} already exists for ${newSession} (${dup.full_name}). Deactivate them first.`
+                });
+            }
+        }
+
+        // Duplicate matric check (if matric is changing)
+        if (updateData.matric_no) {
+            const { data: dupMatric, error: dupMatErr } = await supabase
+                .from('course_representatives')
+                .select('id, full_name')
+                .neq('id', id)
+                .eq('session', updateData.session || (await supabase.from('course_representatives').select('session').eq('id', id).single()).data?.session)
+                .ilike('matric_no', updateData.matric_no)
+                .maybeSingle();
+
+            if (dupMatErr && dupMatErr.code !== 'PGRST116') throw dupMatErr;
+            if (dupMatric) {
+                return res.status(409).json({
+                    status: 'error',
+                    message: `Another representative (${dupMatric.full_name}) already uses this matric number in the same session`
+                });
+            }
+        }
+
+        const { data: updated, error: updateErr } = await supabase
+            .from('course_representatives')
+            .update(updateData)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (updateErr) throw updateErr;
+
+        logger.info('Course rep updated', {
+            requestId: req.id,
+            repId: id,
+            updatedBy: req.user.id,
+            fields: Object.keys(updateData)
+        });
+
+        res.json({
+            status: 'success',
+            data: updated,
+            message: 'Representative updated successfully'
+        });
+    } catch (error) {
+        logger.error('Error updating course rep:', {
+            requestId: req.id,
+            repId: req.params.id,
+            error: error.message,
+            code: error.code
+        });
+        res.status(500).json({
+            status: 'error',
+            message: error.message || 'Failed to update representative'
+        });
+    }
+});
+
+// DELETE /api/admin/course-reps/:id
 adminRouter.delete('/course-reps/:id', async (req, res) => {
     try {
         const { id } = req.params;
         await supabase.from('department_reps').delete().eq('course_rep_id', id);
         const { error } = await supabase.from('course_representatives').delete().eq('id', id);
         if (error) throw error;
-        res.json({ status: 'success', message: 'Course representatives deleted successfully' });
+        logger.info('Course rep deleted', { requestId: req.id, repId: id, deletedBy: req.user.id });
+        res.json({ status: 'success', message: 'Representative deleted successfully' });
     } catch (error) {
         logger.error('Error deleting course reps:', { requestId: req.id, error: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to delete course representatives' });
+        res.status(500).json({ status: 'error', message: 'Failed to delete representative' });
     }
 });
 
+// Meta endpoints
 adminRouter.get('/course-reps/meta/sessions', async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('course_representatives').select('session').order('session', { ascending: false });
         if (error) throw error;
-        res.json({ status: 'success', data: [...new Set(data.map(i => i.session))] });
+        res.json({ status: 'success', data: [...new Set(data.map(i => i.session).filter(Boolean))] });
     } catch (error) {
         logger.error('Error fetching sessions:', { requestId: req.id, error: error.message });
         res.status(500).json({ status: 'error', message: 'Failed to fetch sessions' });
@@ -3171,7 +3442,10 @@ adminRouter.get('/course-reps/meta/levels', async (req, res) => {
     try {
         const { data, error } = await supabase.from('course_representatives').select('level').order('level');
         if (error) throw error;
-        res.json({ status: 'success', data: [...new Set(data.map(i => i.level))].sort((a, b) => parseInt(a) - parseInt(b)) });
+        res.json({
+            status: 'success',
+            data: [...new Set(data.map(i => i.level).filter(Boolean))].sort((a, b) => parseInt(a) - parseInt(b))
+        });
     } catch (error) {
         logger.error('Error fetching levels:', { requestId: req.id, error: error.message });
         res.status(500).json({ status: 'error', message: 'Failed to fetch levels' });
