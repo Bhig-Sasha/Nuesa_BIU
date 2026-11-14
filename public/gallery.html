@@ -102,7 +102,9 @@
         .nav-links li a:hover::after, .nav-links li a.active::after { width: 100%; }
 
         .hamburger {
-            display: none; cursor: pointer; z-index: 1001;
+            display: none; cursor: pointer;
+            z-index: 1200;
+            position: relative;
             background: none; border: none; padding: 0.5rem;
             min-width: 44px; min-height: 44px;
             align-items: center; justify-content: center; flex-direction: column;
@@ -117,16 +119,23 @@
         .hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(5px, -6px); background-color: var(--amber-400); }
 
         .mobile-nav {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
             background: linear-gradient(135deg, var(--emerald-900), var(--emerald-800));
             display: flex; flex-direction: column;
             justify-content: center; align-items: center;
-            z-index: 999; opacity: 0; visibility: hidden;
+            z-index: 1100;
+            opacity: 0; visibility: hidden;
             transition: opacity 0.3s ease, visibility 0.3s ease;
-            padding: 2rem 1rem;
-            padding-top: max(2rem, env(safe-area-inset-top));
+            padding-left: 1rem;
+            padding-right: 1rem;
+            padding-top: max(96px, calc(env(safe-area-inset-top) + 80px));
             padding-bottom: max(2rem, env(safe-area-inset-bottom));
-            overflow-y: auto; -webkit-overflow-scrolling: touch;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
             overscroll-behavior: contain;
         }
         .mobile-nav.active { opacity: 1; visibility: visible; }
@@ -266,9 +275,15 @@
         @media (min-width: 1024px) { .media-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.5rem; padding-bottom: 4rem; } }
 
         .media-tile {
-            position: relative; border-radius: 0.75rem; overflow: hidden;
-            background-color: var(--slate-200); box-shadow: var(--shadow-sm);
-            cursor: pointer; aspect-ratio: 1 / 1; min-height: 120px;
+            position: relative;
+            width: 100%;
+            height: 0;
+            padding-bottom: 100%;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            background-color: var(--slate-200);
+            box-shadow: var(--shadow-sm);
+            cursor: pointer;
             transition: transform 220ms ease, box-shadow 220ms ease;
             isolation: isolate;
         }
@@ -278,11 +293,16 @@
         }
 
         .media-tile .media-visual {
-            position: absolute; inset: 0;
+            position: absolute;
+            top: 0; left: 0;
             width: 100%; height: 100%;
-            object-fit: cover; object-position: center;
-            display: block; background-color: var(--slate-300);
+            object-fit: cover;
+            object-position: center;
+            display: block;
+            background-color: var(--slate-300);
             transition: transform 0.5s ease;
+            -webkit-user-select: none;
+            user-select: none;
         }
         @media (min-width: 640px) {
             .media-tile:hover .media-visual { transform: scale(1.04); }
@@ -371,9 +391,7 @@
             background-color: var(--emerald-300);
         }
 
-        /* ============================================================
-           MODAL (replaces the old fullscreen black lightbox)
-           ============================================================ */
+        /* ===== MODAL ===== */
         .modal-backdrop {
             position: fixed; inset: 0;
             z-index: 2000;
@@ -420,7 +438,6 @@
             .media-modal { max-height: calc(100vh - 4rem); max-height: calc(100dvh - 4rem); }
         }
 
-        /* Close button — pinned top-right of the card */
         .media-modal .modal-close {
             position: absolute;
             top: 0.75rem; right: 0.75rem;
@@ -444,7 +461,6 @@
             .media-modal .modal-close { top: 1rem; right: 1rem; width: 44px; height: 44px; font-size: 1.125rem; }
         }
 
-        /* Image / video stage */
         .media-modal .modal-stage {
             position: relative;
             background: #0f172a;
@@ -472,7 +488,6 @@
             .media-modal .modal-stage video { max-height: 65vh; }
         }
 
-        /* Prev / next arrows — anchored to the stage */
         .media-modal .modal-nav {
             position: absolute;
             top: 50%;
@@ -498,7 +513,6 @@
             .media-modal .modal-nav.next { right: 1rem; }
         }
 
-        /* Body — title + meta + description */
         .media-modal .modal-body {
             padding: 1.25rem 1.25rem 1.5rem;
             overflow-y: auto;
@@ -855,6 +869,12 @@
     <script>
     /* ============================================================
        CONFIG
+       ============================================================
+       Option A: The gallery page is served from Render (same origin
+       as the API). So relative paths work directly:
+         - fetch('/api/gallery')   → https://nuesa-biu-pjp0.onrender.com/api/gallery
+         - <img src="/uploads/..."> → https://nuesa-biu-pjp0.onrender.com/uploads/...
+       No absolute origin needed anywhere.
        ============================================================ */
     const API_BASE_URL = '';
 
@@ -917,11 +937,6 @@
         });
 
         mobileLinks.forEach(link => link.addEventListener('click', () => toggleMobileMenu(false)));
-        document.addEventListener('click', (e) => {
-            if (mobileNav.classList.contains('active') && !mobileNav.contains(e.target) && !hamburger.contains(e.target)) {
-                toggleMobileMenu(false);
-            }
-        });
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && mobileNav.classList.contains('active')) toggleMobileMenu(false);
         });
@@ -943,20 +958,32 @@
         });
     }
 
+    /**
+     * Resolve a media URL. Because the gallery page is served from the same
+     * origin as the API (Render), all we have to do is:
+     *   - pass absolute URLs through (upgrading http: → https: if needed)
+     *   - convert relative paths to root-relative paths ('/uploads/...')
+     * so the browser resolves them against the current origin automatically.
+     */
     function resolveMediaUrl(raw) {
         if (!raw) return '';
         try {
             let u = String(raw).trim();
+
+            // Protocol-relative → use page protocol
             if (u.startsWith('//')) u = window.location.protocol + u;
+
+            // Absolute URL — upgrade http → https if page is HTTPS
             if (/^https?:\/\//i.test(u)) {
                 if (window.location.protocol === 'https:' && u.startsWith('http:')) {
                     u = 'https:' + u.slice(5);
                 }
                 return u;
             }
-            const origin = window.location.origin;
-            if (u.startsWith('/')) return origin + u;
-            return origin + '/' + u.replace(/^\.?\//, '');
+
+            // Relative → normalise to root-relative so it resolves against current origin
+            if (u.startsWith('/')) return u;
+            return '/' + u.replace(/^\.?\//, '');
         } catch {
             return String(raw);
         }
@@ -1043,6 +1070,9 @@
             renderHero();
             renderCategories();
             renderGrid();
+
+            console.log('[Gallery] Loaded', mediaItems.length, 'item(s)');
+            mediaItems.forEach(i => console.log('  •', i.type, i.title, '→', i.src));
         } catch (err) {
             console.error('Failed to load gallery:', err);
             mediaItems = [];
@@ -1254,14 +1284,13 @@
     }
 
     /* ============================================================
-       MEDIA MODAL (replaces the old fullscreen lightbox)
+       MEDIA MODAL
        ============================================================ */
     function openMediaModal() {
         const list = getFiltered();
         if (selectedIndex === null || !list[selectedIndex]) return;
         const item = list[selectedIndex];
 
-        // Prevent body scroll
         document.body.style.overflow = 'hidden';
         document.body.classList.add('modal-open');
 
@@ -1275,7 +1304,6 @@
                     alt="${escapeHtml(item.title)}"
                     onerror="this.style.display='none'" />`;
 
-        // Build modal
         modalBackdrop = document.createElement('div');
         modalBackdrop.className = 'modal-backdrop';
         modalBackdrop.setAttribute('role', 'dialog');
@@ -1318,7 +1346,6 @@
         `;
         document.body.appendChild(modalBackdrop);
 
-        // Wire events
         modalBackdrop.addEventListener('click', (e) => {
             if (e.target === modalBackdrop) closeMediaModal();
         });
@@ -1329,7 +1356,6 @@
         if (prevBtn) prevBtn.addEventListener('click', (e) => { e.stopPropagation(); prevModalItem(); });
         if (nextBtn) nextBtn.addEventListener('click', (e) => { e.stopPropagation(); nextModalItem(); });
 
-        // Focus the close button for keyboard users
         setTimeout(() => modalBackdrop.querySelector('.modal-close').focus(), 50);
     }
 
