@@ -2299,6 +2299,7 @@
             description: p.description || ''
         }));
 
+        // Flatten candidates out of positions FIRST
         CANDIDATES = [];
         (raw.positions || []).forEach(p => {
             (p.candidates || []).forEach(c => {
@@ -2307,19 +2308,32 @@
                     name: c.name,
                     positionId: p.id,
                     department: c.department || '',
-                    level: c.level || '',
-                    manifesto: c.manifesto || ''
+                    level: c.level || ''
                 });
             });
         });
 
-        DEPARTMENTS = raw.departments && raw.departments.length
-            ? raw.departments
-            : [...new Set(CANDIDATES.map(c => c.department).filter(Boolean))];
+        // NOW derive departments & levels — CANDIDATES is populated
+        const derivedDepartments = [...new Set(CANDIDATES.map(c => c.department).filter(Boolean))].sort();
+        const derivedLevels = [...new Set(CANDIDATES.map(c => c.level).filter(Boolean))]
+            .sort((a, b) => parseInt(a) - parseInt(b));
 
-        LEVELS = raw.levels && raw.levels.length
-            ? raw.levels
-            : [...new Set(CANDIDATES.map(c => c.level).filter(Boolean))];
+        // Prefer server-supplied lists if present, otherwise use derived ones
+        DEPARTMENTS = (raw.departments && raw.departments.length) ? raw.departments : derivedDepartments;
+        LEVELS = (raw.levels && raw.levels.length) ? raw.levels : derivedLevels;
+
+        // Ensure the three standard BIU engineering departments are always available
+        // (in case the server doesn't send them but candidates use short names)
+        if (!DEPARTMENTS.length) {
+            DEPARTMENTS = [
+                'Electrical/Electronics Engineering',
+                'Mechanical Engineering',
+                'Civil Engineering'
+            ];
+        }
+        if (!LEVELS.length) {
+            LEVELS = ['100L', '200L', '300L', '400L', '500L'];
+        }
 
         electionPhase = raw.phase || 'closed';
         resultsPublished = !!raw.results_published;
