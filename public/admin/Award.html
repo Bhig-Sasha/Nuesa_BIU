@@ -966,7 +966,7 @@
                 <!-- Current Edition -->
                 <div id="currentEditionWrap"></div>
 
-                <!-- Stats -->
+                <!-- Stats (now includes voting participation) -->
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-icon icon-green"><i class="fas fa-trophy"></i></div>
@@ -987,6 +987,17 @@
                         <div class="stat-icon icon-purple"><i class="fas fa-crown"></i></div>
                         <div class="stat-value" id="statWinners">0</div>
                         <div class="stat-label">Winners Announced</div>
+                    </div>
+                    <!-- New cards: Votes & Participation -->
+                    <div class="stat-card">
+                        <div class="stat-icon icon-green"><i class="fas fa-check-circle"></i></div>
+                        <div class="stat-value" id="votesCastStat">0</div>
+                        <div class="stat-label">Votes / Scores</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-purple"><i class="fas fa-percentage"></i></div>
+                        <div class="stat-value" id="participationStat">0%</div>
+                        <div class="stat-label">Participation</div>
                     </div>
                 </div>
 
@@ -1094,50 +1105,6 @@
                                     <tr class="empty-row"><td colspan="6">No approved nominees yet</td></tr>
                                 </tbody>
                             </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Voting / Judging -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title"><i class="fas fa-gavel"></i> Voting / Judging Management</h3>
-                        <button class="btn btn-secondary btn-sm" id="configSelectionBtn">
-                            <i class="fas fa-cog"></i> Configure Method
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        <div class="info-box">
-                            <i class="fas fa-info-circle"></i>
-                            <div>
-                                <strong>Selection method:</strong> Each award category can use a different selection method (public voting, judges only, or combined). Configure methods per category in the Award Categories section.
-                            </div>
-                        </div>
-
-                        <div class="stats-grid" style="grid-template-columns: repeat(2, 1fr); max-width: 500px;">
-                            <div class="stat-card">
-                                <div class="stat-icon icon-green"><i class="fas fa-check-circle"></i></div>
-                                <div class="stat-value" id="votesCastStat">0</div>
-                                <div class="stat-label">Votes / Scores Submitted</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon icon-purple"><i class="fas fa-percentage"></i></div>
-                                <div class="stat-value" id="participationStat">0%</div>
-                                <div class="stat-label">Participation</div>
-                            </div>
-                        </div>
-
-                        <div class="warning-box">
-                            <i class="fas fa-shield-alt"></i>
-                            <div>
-                                <strong>Ballot privacy:</strong> Individual votes, judge scores, and candidate totals are never exposed while voting/judging is active. Results appear only after verification is complete.
-                            </div>
-                        </div>
-
-                        <div style="text-align:right;margin-top:12px;">
-                            <button class="btn btn-primary btn-sm" onclick="openVotingWindowModal()">
-                                <i class="fas fa-clock"></i> Configure Voting Window
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -1442,35 +1409,6 @@ Sportsperson of the Year</textarea>
                 <button class="btn btn-primary" id="saveScheduleBtn" type="button">
                     <i class="fas fa-save"></i> Save Timeline
                 </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Voting Window Modal -->
-    <div class="modal" id="votingWindowModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">Configure Voting Window</h3>
-                <button class="modal-close" onclick="hideModal('votingWindowModal')" aria-label="Close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p style="font-size:0.8125rem;color:var(--text-muted);margin-bottom:16px;">
-                    Use the schedule section to configure exact voting start and end. This modal is for quick toggles only.
-                </p>
-                <div style="display:flex;flex-direction:column;gap:10px;">
-                    <button class="btn btn-primary" onclick="quickAction('open_voting')">
-                        <i class="fas fa-play"></i> Open Voting Now
-                    </button>
-                    <button class="btn btn-danger" onclick="quickAction('close_voting')">
-                        <i class="fas fa-stop"></i> Close Voting Now
-                    </button>
-                    <button class="btn btn-secondary" onclick="quickAction('pause_voting')">
-                        <i class="fas fa-pause"></i> Pause Voting
-                    </button>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="hideModal('votingWindowModal')" type="button">Close</button>
             </div>
         </div>
     </div>
@@ -2138,42 +2076,6 @@ window.openScheduleModal = function() {
     showModal('scheduleModal');
 };
 
-window.openVotingWindowModal = function() {
-    showModal('votingWindowModal');
-};
-
-window.quickAction = async function(action) {
-    if (!currentEdition) return showToast('No active edition', 'warning');
-
-    try {
-        showLoading();
-        const now = new Date().toISOString();
-        let payload = {};
-
-        if (action === 'open_voting') {
-            payload = {
-                nomination_end: currentEdition.nomination_end || now,
-                voting_start: now,
-                voting_end: new Date(Date.now() + 7 * 864e5).toISOString()
-            };
-        } else if (action === 'close_voting' || action === 'pause_voting') {
-            payload = { voting_end: now };
-        }
-
-        await apiCall(`/api/admin/awards/editions/${currentEdition.id}`, {
-            method: 'PUT', body: JSON.stringify(payload)
-        });
-
-        hideLoading();
-        hideModal('votingWindowModal');
-        showToast(`Voting ${action.replace('_', ' ')} — public page updated`, 'success');
-        await loadCurrentEdition();
-    } catch (err) {
-        hideLoading();
-        showToast(err.message || 'Failed to update voting window', 'error');
-    }
-};
-
 window.editCategory = function(id) {
     const c = categoriesData.find(x => x.id === id);
     if (!c) return;
@@ -2315,12 +2217,6 @@ document.getElementById('publishWinnersBtn').addEventListener('click', async () 
         showToast(err.message, 'error');
     }
 });
-
-// Reports (kept for future use, but no DOM elements reference them now)
-// document.querySelectorAll('[data-report]').forEach(btn => {
-//     btn.addEventListener('click', () => exportReport(btn.dataset.report));
-// });
-// document.getElementById('exportAllBtn')?.addEventListener('click', () => exportReport('full'));
 
 // Filters
 document.getElementById('nominationSearch').addEventListener('input', renderNominations);
