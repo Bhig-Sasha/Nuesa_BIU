@@ -1700,8 +1700,8 @@
         </div>
     </div>
 
-    <script>
-    // ============================================================
+<script>
+        // ============================================================
     // CONFIG
     // ============================================================
     const API_BASE_URL = '';
@@ -1803,8 +1803,9 @@
             headers: { 'Accept': 'application/json' }
         });
         handle401(res);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+        return data;
     }
     async function apiPostJSON(endpoint, body) {
         const res = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -1878,28 +1879,11 @@
     }
 
     // ============================================================
-    // LOCAL STORAGE (fallback for gallery + placement)
-    // ============================================================
-    const LS_KEYS = {
-        gallery: 'nuesa_gallery_items_v1',
-        placement: 'nuesa_homepage_placement'
-    };
-    function lsRead(key, fallback) {
-        try {
-            const raw = localStorage.getItem(key);
-            return raw ? JSON.parse(raw) : fallback;
-        } catch { return fallback; }
-    }
-    function lsWrite(key, value) {
-        try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
-    }
-
-    // ============================================================
     // NORMALIZE / FORMAT
     // ============================================================
     function normalizeMedia(m) {
         const mime = m.mime_type || m.mime || m.file_type || '';
-        let type = (m.type || '').toLowerCase();
+        let type = (m.type || m.media_type || '').toLowerCase();
         if (!type) {
             if (mime.startsWith('image/')) type = 'picture';
             else if (mime.startsWith('video/')) type = 'video';
@@ -1923,7 +1907,6 @@
             if (!already) usage.push({ page: 'Gallery', section: galleryEntry.published ? 'Public gallery (published)' : 'Gallery (draft)' });
         }
 
-        // If the backend doesn't send a title, derive from filename
         const derivedTitle = (m.title || m.name || '').trim() || humanizeFilename(filename);
 
         return {
@@ -2039,11 +2022,14 @@
             const res = await apiGet('/api/admin/media/gallery');
             const list = Array.isArray(res.data) ? res.data : (res.data?.gallery || []);
             galleryItems = list.map(normalizeGalleryItem);
-            lsWrite(LS_KEYS.gallery, galleryItems);
+            console.log('[Gallery] Loaded from server:', galleryItems.length, 'items');
         } catch (err) {
-            galleryItems = lsRead(LS_KEYS.gallery, []).map(normalizeGalleryItem);
+            console.error('[Gallery] Failed to load from server:', err);
+            galleryItems = [];
+            showToast('Could not load gallery from server: ' + (err.message || 'unknown error'), 'error');
         }
         updateGalleryStats();
+        renderGalleryTable();
     }
 
     // ============================================================
@@ -2229,40 +2215,31 @@
             display_order: order
         };
 
-        let newItem = null;
         try {
             const res = await apiPostJSON('/api/admin/media/gallery', payload);
             const raw = res.data || res;
-            newItem = normalizeGalleryItem(raw);
+            const newItem = normalizeGalleryItem(raw);
+            galleryItems.push(newItem);
+
+            updateStats();
+            updateGalleryStats();
+            renderGalleryTable();
+            await refreshMediaGalleryBadges();
+            renderMediaGrid();
+            if (selectedMediaId && String(selectedMediaId) === String(gallerySendMediaId)) {
+                renderDetails(findMediaById(selectedMediaId));
+            }
+
+            hideModal('gallerySendModal');
+            gallerySendMediaId = null;
+            showToast(`Sent to Gallery (${status})`, 'success');
         } catch (err) {
-            console.warn('Gallery send API not available, saving locally:', err.message);
-            newItem = {
-                id: 'gal_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
-                media_id: gallerySendMediaId,
-                title, description, category, status,
-                published: status === 'published',
-                order,
-                created_at: new Date().toISOString()
-            };
+            console.error('[Gallery] Send failed:', err);
+            showToast(err.message || 'Failed to send to gallery', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = original;
         }
-
-        galleryItems.push(newItem);
-        lsWrite(LS_KEYS.gallery, galleryItems);
-
-        updateStats();
-        updateGalleryStats();
-        renderGalleryTable();
-        await refreshMediaGalleryBadges();
-        renderMediaGrid();
-        if (selectedMediaId && String(selectedMediaId) === String(gallerySendMediaId)) {
-            renderDetails(findMediaById(selectedMediaId));
-        }
-
-        btn.disabled = false;
-        btn.innerHTML = original;
-        hideModal('gallerySendModal');
-        gallerySendMediaId = null;
-        showToast(`Sent to Gallery (${status})`, 'success');
     }
 
     async function refreshMediaGalleryBadges() {
@@ -2321,26 +2298,25 @@
 
         try {
             await apiPut(`/api/admin/media/gallery/${encodeURIComponent(item.id)}`, payload);
+            Object.assign(item, {
+                title, description, category, status,
+                published: status === 'published',
+                order
+            });
+            updateGalleryStats();
+            renderGalleryTable();
+            await refreshMediaGalleryBadges();
+            renderMediaGrid();
+            hideModal('galleryEditModal');
+            galleryEditItemId = null;
+            showToast('Gallery item updated', 'success');
         } catch (err) {
-            console.warn('Gallery update API not available, saving locally:', err.message);
+            console.error('[Gallery] Update failed:', err);
+            showToast(err.message || 'Failed to update gallery item', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = original;
         }
-
-        Object.assign(item, {
-            title, description, category, status,
-            published: status === 'published',
-            order
-        });
-        lsWrite(LS_KEYS.gallery, galleryItems);
-        updateGalleryStats();
-        renderGalleryTable();
-        await refreshMediaGalleryBadges();
-        renderMediaGrid();
-
-        btn.disabled = false;
-        btn.innerHTML = original;
-        hideModal('galleryEditModal');
-        galleryEditItemId = null;
-        showToast('Gallery item updated', 'success');
     }
 
     async function toggleGalleryPublish(itemId) {
@@ -2349,17 +2325,17 @@
         const newStatus = item.status === 'published' ? 'draft' : 'published';
         try {
             await apiPatch(`/api/admin/media/gallery/${encodeURIComponent(item.id)}`, { status: newStatus });
+            item.status = newStatus;
+            item.published = newStatus === 'published';
+            updateGalleryStats();
+            renderGalleryTable();
+            await refreshMediaGalleryBadges();
+            renderMediaGrid();
+            showToast(`Gallery item ${newStatus === 'published' ? 'published' : 'unpublished'}`, 'success');
         } catch (err) {
-            console.warn('Gallery toggle API not available, saving locally:', err.message);
+            console.error('[Gallery] Toggle failed:', err);
+            showToast(err.message || 'Failed to update status', 'error');
         }
-        item.status = newStatus;
-        item.published = newStatus === 'published';
-        lsWrite(LS_KEYS.gallery, galleryItems);
-        updateGalleryStats();
-        renderGalleryTable();
-        await refreshMediaGalleryBadges();
-        renderMediaGrid();
-        showToast(`Gallery item ${newStatus === 'published' ? 'published' : 'unpublished'}`, 'success');
     }
 
     function openGalleryRemoveModal(itemId) {
@@ -2382,24 +2358,23 @@
 
         try {
             await apiDelete(`/api/admin/media/gallery/${encodeURIComponent(item.id)}`);
+            galleryItems = galleryItems.filter(g => String(g.id) !== String(item.id));
+            updateStats();
+            updateGalleryStats();
+            renderGalleryTable();
+            await refreshMediaGalleryBadges();
+            renderMediaGrid();
+            if (selectedMediaId) renderDetails(findMediaById(selectedMediaId));
+            hideModal('galleryRemoveModal');
+            showToast('Removed from Gallery (file kept in Media Library)', 'info');
+            galleryRemoveItemId = null;
         } catch (err) {
-            console.warn('Gallery remove API not available, saving locally:', err.message);
+            console.error('[Gallery] Remove failed:', err);
+            showToast(err.message || 'Failed to remove from gallery', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = original;
         }
-
-        galleryItems = galleryItems.filter(g => String(g.id) !== String(item.id));
-        lsWrite(LS_KEYS.gallery, galleryItems);
-        updateStats();
-        updateGalleryStats();
-        renderGalleryTable();
-        await refreshMediaGalleryBadges();
-        renderMediaGrid();
-        if (selectedMediaId) renderDetails(findMediaById(selectedMediaId));
-
-        btn.disabled = false;
-        btn.innerHTML = original;
-        hideModal('galleryRemoveModal');
-        showToast('Removed from Gallery (file kept in Media Library)', 'info');
-        galleryRemoveItemId = null;
     }
 
     // ============================================================
@@ -2516,49 +2491,48 @@
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Applying…';
 
-        homepagePlacement = {
-            mediaId: media.id,
-            url: media.url,
-            title: media.title,
-            updatedAt: new Date().toISOString()
-        };
-        renderPlacementCard();
-        await refreshMediaGalleryBadges();
-        renderMediaGrid();
-        if (selectedMediaId && String(selectedMediaId) === String(media.id)) {
-            renderDetails(findMediaById(media.id));
-        }
-
         try {
-            await apiPut('/api/admin/media/placements/homepage-hero', { media_id: media.id });
+            const res = await apiPut('/api/admin/media/placements/homepage-hero', { media_id: media.id });
+            const data = res.data || res;
+            homepagePlacement = {
+                mediaId: media.id,
+                url: data.url || media.url,
+                title: data.title || media.title,
+                updatedAt: data.updated_at || new Date().toISOString()
+            };
+            renderPlacementCard();
+            await refreshMediaGalleryBadges();
+            renderMediaGrid();
+            if (selectedMediaId && String(selectedMediaId) === String(media.id)) {
+                renderDetails(findMediaById(media.id));
+            }
+            hideModal('placementPickerModal');
+            showToast('Homepage hero image updated', 'success');
         } catch (err) {
-            console.warn('Placement API not available, saved locally:', err.message);
+            console.error('[Placement] Save failed:', err);
+            showToast(err.message || 'Failed to update homepage hero', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = original;
         }
-        lsWrite(LS_KEYS.placement, homepagePlacement);
-
-        btn.disabled = false;
-        btn.innerHTML = original;
-        hideModal('placementPickerModal');
-        showToast('Homepage hero image updated', 'success');
     }
 
     async function clearPlacement() {
         if (!homepagePlacement) return;
         const previous = homepagePlacement;
-        homepagePlacement = null;
-        renderPlacementCard();
-        await refreshMediaGalleryBadges();
-        renderMediaGrid();
-
         try {
             await apiDelete('/api/admin/media/placements/homepage-hero');
+            homepagePlacement = null;
+            renderPlacementCard();
+            await refreshMediaGalleryBadges();
+            renderMediaGrid();
+            if (selectedMediaId && String(selectedMediaId) === String(previous.mediaId)) {
+                renderDetails(findMediaById(previous.mediaId));
+            }
+            showToast('Homepage hero image cleared', 'info');
         } catch (err) {
-            console.warn('Placement clear API not available:', err.message);
-        }
-        try { localStorage.removeItem(LS_KEYS.placement); } catch {}
-        showToast('Homepage hero image cleared', 'info');
-        if (selectedMediaId && String(selectedMediaId) === String(previous.mediaId)) {
-            renderDetails(findMediaById(previous.mediaId));
+            console.error('[Placement] Clear failed:', err);
+            showToast(err.message || 'Failed to clear homepage hero', 'error');
         }
     }
 
@@ -2576,10 +2550,11 @@
             } else {
                 homepagePlacement = null;
             }
+            console.log('[Placement] Loaded from server:', homepagePlacement);
         } catch (err) {
-            homepagePlacement = lsRead(LS_KEYS.placement, null);
+            console.error('[Placement] Failed to load:', err);
+            homepagePlacement = null;
         }
-        if (homepagePlacement) lsWrite(LS_KEYS.placement, homepagePlacement);
         renderPlacementCard();
     }
 
@@ -2923,7 +2898,6 @@
     // ============================================================
     function openEditModal(m) {
         editingMediaId = m.id;
-        // If the title is just the derived filename, leave it blank so the admin can type a real title
         const isDerived = !m.title || m.title === humanizeFilename(m.filename);
         document.getElementById('editTitle').value = isDerived ? '' : (m.title || '');
         document.getElementById('editDescription').value = m.description || '';
@@ -2986,20 +2960,6 @@
         btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Deleting…';
         try {
             await apiDelete(`/api/admin/media/${deletingMediaId}`);
-
-            if (homepagePlacement && String(homepagePlacement.mediaId) === String(deletingMediaId)) {
-                homepagePlacement = null;
-                try { localStorage.removeItem(LS_KEYS.placement); } catch {}
-                renderPlacementCard();
-            }
-            const galleryEntry = getGalleryItemForMedia(deletingMediaId);
-            if (galleryEntry) {
-                galleryItems = galleryItems.filter(g => String(g.id) !== String(galleryEntry.id));
-                lsWrite(LS_KEYS.gallery, galleryItems);
-                updateGalleryStats();
-                renderGalleryTable();
-            }
-
             showToast('Media deleted', 'success');
             hideModal('deleteMediaModal');
             if (String(selectedMediaId) === String(deletingMediaId)) {
@@ -3007,6 +2967,7 @@
                 renderEmptyDetails();
             }
             deletingMediaId = null;
+            await loadPlacementFromServer();
             await loadMedia();
         } catch (err) {
             showToast(err.message || 'Failed to delete', 'error');
@@ -3085,7 +3046,6 @@
                     renderFileList();
                 });
             });
-            // Enable upload button if at least one valid file and not already uploading
             const hasValid = pendingUploadFiles.some(p => !p.error && p.status !== 'success');
             confirmBtn.disabled = !hasValid;
         }
@@ -3114,7 +3074,7 @@
 
                 const formData = new FormData();
                 formData.append('file', p.file);
-                formData.append('title', '');          // Title can be added later
+                formData.append('title', '');
                 formData.append('description', '');
                 formData.append('alt_text', '');
                 formData.append('tags', JSON.stringify([]));
@@ -3143,7 +3103,6 @@
             if (successCount > 0) {
                 showToast(`${successCount} file${successCount === 1 ? '' : 's'} uploaded${failCount ? `, ${failCount} failed` : ''}`, successCount === validItems.length ? 'success' : 'warning');
                 await loadMedia();
-                // Remove successful items from the list after a short delay
                 setTimeout(() => {
                     pendingUploadFiles = pendingUploadFiles.filter(p => p.status !== 'success');
                     renderFileList();
@@ -3297,7 +3256,7 @@
 
         document.getElementById('openPickerFromGalleryBtn').addEventListener('click', () => {
             document.getElementById('mediaSearchInput').focus();
-            showToast('Choose a media item below and click “Send to Gallery”', 'info');
+            showToast('Choose a media item below and click "Send to Gallery"', 'info');
             document.getElementById('mediaSearchInput').scrollIntoView({ behavior: 'smooth', block: 'center' });
         });
 
@@ -3381,6 +3340,6 @@
     window.hideModal = hideModal;
     window.confirmLogout = confirmLogout;
     window.loadMedia = loadMedia;
-    </script>
+</script>
 </body>
 </html>
