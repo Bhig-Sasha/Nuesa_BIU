@@ -3118,54 +3118,54 @@ adminRouter.post('/course-reps', async (req, res) => {
             full_name, matric_no, email, phone, department, level,
             session, rep_type, representative_type, status,
             appointment_date, notes, profile_picture,
-            // Legacy fields (still supported for backwards compat)
             gen_rep, asst_gen_rep, departments
         } = req.body;
 
         if (!session || !level) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'Session and level are required'
-            });
+            return res.status(400).json({ status: 'error', message: 'Session and level are required' });
         }
 
         const finalType = (rep_type || representative_type || 'general').toLowerCase();
-        const finalName = (full_name || gen_rep || '').trim();
+        if (!['general', 'assistant', 'departmental'].includes(finalType)) {
+            return res.status(400).json({ status: 'error', message: 'Invalid rep_type. Use: general, assistant, or departmental' });
+        }
 
+        const finalName = (full_name || gen_rep || '').trim();
         if (!finalName) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'Full name is required'
-            });
+            return res.status(400).json({ status: 'error', message: 'Full name is required' });
         }
 
         if (finalType === 'departmental' && !department) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'Department is required for departmental reps'
-            });
+            return res.status(400).json({ status: 'error', message: 'Department is required for departmental reps' });
         }
 
-        // Duplicate matric check for the same session
+        const finalStatus = (status || 'active').toLowerCase();
+        if (!['active', 'inactive', 'graduated', 'resigned'].includes(finalStatus)) {
+            return res.status(400).json({ status: 'error', message: 'Invalid status' });
+        }
+
+        // Duplicate matric check — scoped per (session, rep_type) so the same
+        // student can hold both a general and a departmental role.
         if (matric_no) {
             const { data: dupMatric, error: dupErr } = await supabase
                 .from('course_representatives')
-                .select('id, full_name')
+                .select('id, full_name, rep_type')
                 .eq('session', session)
-                .ilike('matric_no', matric_no)
+                .eq('rep_type', finalType)
+                .ilike('matric_no', matric_no.trim())
                 .maybeSingle();
 
             if (dupErr && dupErr.code !== 'PGRST116') throw dupErr;
             if (dupMatric) {
                 return res.status(409).json({
                     status: 'error',
-                    message: `A representative with matric ${matric_no} already exists for ${session}`
+                    message: `${dupMatric.full_name} is already registered as a ${finalType} rep for ${session}`
                 });
             }
         }
 
         // Duplicate active position check
-        if ((status || 'active') === 'active') {
+        if (finalStatus === 'active') {
             let dupQuery = supabase
                 .from('course_representatives')
                 .select('id, full_name')
@@ -3182,40 +3182,31 @@ adminRouter.post('/course-reps', async (req, res) => {
             if (dupPosErr && dupPosErr.code !== 'PGRST116') throw dupPosErr;
 
             if (dupPosition) {
-                const scope = finalType === 'general'
-                    ? `${level} general rep`
-                    : `${department} ${level} departmental rep`;
+                const scope = finalType === 'departmental'
+                    ? `${department} ${level} departmental rep`
+                    : `${level} ${finalType} rep`;
                 return res.status(409).json({
                     status: 'error',
-                    message: `An active ${scope} already exists for ${session} (${dupPosition.full_name}). Only one active rep per position.`
+                    message: `An active ${scope} already exists for ${session} (${dupPosition.full_name}). Deactivate them first.`
                 });
             }
         }
 
         const insertData = {
-            // Core identity
             full_name: finalName,
-            matric_no: matric_no ? String(matric_no).trim() : null,
-            email: email ? String(email).trim() : null,
+            matric_no: matric_no ? String(matric_no).trim().toUpperCase() : null,
+            email: email ? String(email).trim().toLowerCase() : null,
             phone: phone ? String(phone).trim() : null,
-
-            // Academic assignment
             department_name: department || null,
             level,
             session,
             rep_type: finalType,
-
-            // Appointment
-            status: status || 'active',
+            status: finalStatus,
             appointment_date: appointment_date || null,
             notes: notes ? String(notes).trim() : null,
             profile_picture: profile_picture || null,
-
-            // Legacy fields (kept for backward compatibility with old UI)
             gen_rep: finalType === 'general' ? finalName : (gen_rep || 'Not Assigned'),
             asst_gen_rep: asst_gen_rep || 'Not Assigned',
-
-            // Audit
             created_by: req.user.id,
             updated_by: req.user.id,
             created_at: new Date().toISOString(),
@@ -3230,27 +3221,29 @@ adminRouter.post('/course-reps', async (req, res) => {
 
         if (insertError) throw insertError;
 
-        // Handle legacy nested departments array if provided
         if (departments && Array.isArray(departments) && departments.length > 0) {
-            const deptRepsData = departments.map(dept => ({
-                course_rep_id: courseRep.id,
-                department_name: dept.name,
-                session,
-                level,
-                representative_name: dept.rep || 'Pending',
-                status: 'active',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            }));
-            const { error: deptError } = await supabase.from('department_reps').insert(deptRepsData);
-            if (deptError) throw deptError;
+            const deptRepsData = departments
+                .filter(d => d && d.name)
+                .map(dept => ({
+                    course_rep_id: courseRep.id,
+                    department_name: dept.name,
+                    session,
+                    level,
+                    representative_name: dept.rep || 'Pending',
+                    status: 'active',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }));
+            if (deptRepsData.length > 0) {
+                const { error: deptError } = await supabase.from('department_reps').insert(deptRepsData);
+                if (deptError) logger.warn('Failed to insert legacy department reps', { requestId: req.id, error: deptError.message });
+            }
         }
 
+        await cacheManager.invalidateByTags(['course-reps']);
+
         logger.info('Course rep created', {
-            requestId: req.id,
-            repId: courseRep.id,
-            type: finalType,
-            createdBy: req.user.id
+            requestId: req.id, repId: courseRep.id, type: finalType, createdBy: req.user.id
         });
 
         res.status(201).json({
@@ -3260,9 +3253,7 @@ adminRouter.post('/course-reps', async (req, res) => {
         });
     } catch (error) {
         logger.error('Error creating course reps:', {
-            requestId: req.id,
-            error: error.message,
-            code: error.code
+            requestId: req.id, error: error.message, code: error.code
         });
         res.status(500).json({
             status: 'error',
@@ -3281,88 +3272,97 @@ adminRouter.put('/course-reps/:id', async (req, res) => {
             appointment_date, notes, profile_picture
         } = req.body;
 
-        // Confirm record exists
         const { data: existing, error: existErr } = await supabase
             .from('course_representatives')
-            .select('id')
+            .select('*')
             .eq('id', id)
             .maybeSingle();
 
         if (existErr) throw existErr;
-        if (!existing) {
-            return res.status(404).json({ status: 'error', message: 'Representative not found' });
-        }
+        if (!existing) return res.status(404).json({ status: 'error', message: 'Representative not found' });
 
-        // Build update payload (only include provided fields)
         const updateData = { updated_at: new Date().toISOString(), updated_by: req.user.id };
 
         if (full_name !== undefined) {
             const trimmed = String(full_name).trim();
+            if (!trimmed) return res.status(400).json({ status: 'error', message: 'Full name cannot be empty' });
             updateData.full_name = trimmed;
-            updateData.gen_rep = trimmed; // keep legacy column in sync
+            if (existing.rep_type === 'general') updateData.gen_rep = trimmed;
         }
-        if (matric_no !== undefined)        updateData.matric_no = matric_no ? String(matric_no).trim() : null;
-        if (email !== undefined)            updateData.email = email ? String(email).trim() : null;
-        if (phone !== undefined)            updateData.phone = phone ? String(phone).trim() : null;
-        if (department !== undefined)       updateData.department_name = department || null;
-        if (level !== undefined)            updateData.level = level || null;
-        if (session !== undefined)          updateData.session = session || null;
+        if (matric_no !== undefined)       updateData.matric_no = matric_no ? String(matric_no).trim().toUpperCase() : null;
+        if (email !== undefined)           updateData.email = email ? String(email).trim().toLowerCase() : null;
+        if (phone !== undefined)           updateData.phone = phone ? String(phone).trim() : null;
+        if (department !== undefined)      updateData.department_name = department || null;
+        if (level !== undefined)           updateData.level = level || null;
+        if (session !== undefined)         updateData.session = session || null;
         if (rep_type !== undefined || representative_type !== undefined) {
-            updateData.rep_type = (rep_type || representative_type || 'general').toLowerCase();
+            const newType = (rep_type || representative_type || 'general').toLowerCase();
+            if (!['general', 'assistant', 'departmental'].includes(newType)) {
+                return res.status(400).json({ status: 'error', message: 'Invalid rep_type' });
+            }
+            updateData.rep_type = newType;
         }
-        if (status !== undefined)           updateData.status = status || 'active';
+        if (status !== undefined) {
+            const newStatus = String(status).toLowerCase();
+            if (!['active', 'inactive', 'graduated', 'resigned'].includes(newStatus)) {
+                return res.status(400).json({ status: 'error', message: 'Invalid status' });
+            }
+            updateData.status = newStatus;
+        }
         if (appointment_date !== undefined) updateData.appointment_date = appointment_date || null;
         if (notes !== undefined)            updateData.notes = notes ? String(notes).trim() : null;
         if (profile_picture !== undefined)  updateData.profile_picture = profile_picture || null;
 
-        // Duplicate active position check (only if becoming active)
-        const newStatus = updateData.status || 'active';
-        if (newStatus === 'active') {
-            const newType = updateData.rep_type
-                || (await supabase.from('course_representatives').select('rep_type').eq('id', id).single()).data?.rep_type
-                || 'general';
-            const newSession = updateData.session
-                || (await supabase.from('course_representatives').select('session').eq('id', id).single()).data?.session;
-            const newLevel = updateData.level
-                || (await supabase.from('course_representatives').select('level').eq('id', id).single()).data?.level;
-            const newDept = updateData.department_name !== undefined
+        const finalState = {
+            rep_type: updateData.rep_type ?? existing.rep_type,
+            session:  updateData.session  ?? existing.session,
+            level:    updateData.level    ?? existing.level,
+            department_name: updateData.department_name !== undefined
                 ? updateData.department_name
-                : (await supabase.from('course_representatives').select('department_name').eq('id', id).single()).data?.department_name;
+                : existing.department_name,
+            status:   updateData.status ?? existing.status,
+            matric_no: updateData.matric_no !== undefined ? updateData.matric_no : existing.matric_no
+        };
 
+        if (finalState.rep_type === 'departmental' && !finalState.department_name) {
+            return res.status(400).json({ status: 'error', message: 'Department is required for departmental reps' });
+        }
+
+        if (finalState.status === 'active') {
             let dupQuery = supabase
                 .from('course_representatives')
                 .select('id, full_name')
                 .neq('id', id)
-                .eq('status', 'active');
+                .eq('status', 'active')
+                .eq('session', finalState.session)
+                .eq('level', finalState.level)
+                .eq('rep_type', finalState.rep_type);
 
-            if (newSession) dupQuery = dupQuery.eq('session', newSession);
-            if (newLevel)   dupQuery = dupQuery.eq('level', newLevel);
-            if (newType)    dupQuery = dupQuery.eq('rep_type', newType);
-            if (newType === 'departmental' && newDept) {
-                dupQuery = dupQuery.eq('department_name', newDept);
+            if (finalState.rep_type === 'departmental') {
+                dupQuery = dupQuery.eq('department_name', finalState.department_name);
             }
 
             const { data: dup, error: dupErr } = await dupQuery.maybeSingle();
             if (dupErr && dupErr.code !== 'PGRST116') throw dupErr;
 
             if (dup) {
-                const scope = newType === 'general'
-                    ? `${newLevel} general rep`
-                    : `${newDept} ${newLevel} departmental rep`;
+                const scope = finalState.rep_type === 'departmental'
+                    ? `${finalState.department_name} ${finalState.level} departmental rep`
+                    : `${finalState.level} ${finalState.rep_type} rep`;
                 return res.status(409).json({
                     status: 'error',
-                    message: `An active ${scope} already exists for ${newSession} (${dup.full_name}). Deactivate them first.`
+                    message: `An active ${scope} already exists for ${finalState.session} (${dup.full_name}). Deactivate them first.`
                 });
             }
         }
 
-        // Duplicate matric check (if matric is changing)
-        if (updateData.matric_no) {
+        if (updateData.matric_no && updateData.matric_no !== existing.matric_no) {
             const { data: dupMatric, error: dupMatErr } = await supabase
                 .from('course_representatives')
                 .select('id, full_name')
                 .neq('id', id)
-                .eq('session', updateData.session || (await supabase.from('course_representatives').select('session').eq('id', id).single()).data?.session)
+                .eq('session', finalState.session)
+                .eq('rep_type', finalState.rep_type)
                 .ilike('matric_no', updateData.matric_no)
                 .maybeSingle();
 
@@ -3370,7 +3370,7 @@ adminRouter.put('/course-reps/:id', async (req, res) => {
             if (dupMatric) {
                 return res.status(409).json({
                     status: 'error',
-                    message: `Another representative (${dupMatric.full_name}) already uses this matric number in the same session`
+                    message: `Another ${finalState.rep_type} rep (${dupMatric.full_name}) already uses this matric number in the same session`
                 });
             }
         }
@@ -3384,24 +3384,16 @@ adminRouter.put('/course-reps/:id', async (req, res) => {
 
         if (updateErr) throw updateErr;
 
+        await cacheManager.invalidateByTags(['course-reps']);
+
         logger.info('Course rep updated', {
-            requestId: req.id,
-            repId: id,
-            updatedBy: req.user.id,
-            fields: Object.keys(updateData)
+            requestId: req.id, repId: id, updatedBy: req.user.id, fields: Object.keys(updateData)
         });
 
-        res.json({
-            status: 'success',
-            data: updated,
-            message: 'Representative updated successfully'
-        });
+        res.json({ status: 'success', data: updated, message: 'Representative updated successfully' });
     } catch (error) {
         logger.error('Error updating course rep:', {
-            requestId: req.id,
-            repId: req.params.id,
-            error: error.message,
-            code: error.code
+            requestId: req.id, repId: req.params.id, error: error.message, code: error.code
         });
         res.status(500).json({
             status: 'error',
@@ -3410,18 +3402,147 @@ adminRouter.put('/course-reps/:id', async (req, res) => {
     }
 });
 
+// PATCH /api/admin/course-reps/:id/status — quick status toggle
+adminRouter.patch('/course-reps/:id/status', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        if (!status || !['active', 'inactive', 'graduated', 'resigned'].includes(status)) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Valid status required: active, inactive, graduated, resigned'
+            });
+        }
+
+        const { data: existing, error: existErr } = await supabase
+            .from('course_representatives').select('*').eq('id', id).maybeSingle();
+
+        if (existErr) throw existErr;
+        if (!existing) return res.status(404).json({ status: 'error', message: 'Representative not found' });
+
+        if (status === 'active' && existing.status !== 'active') {
+            let dupQuery = supabase
+                .from('course_representatives')
+                .select('id, full_name')
+                .neq('id', id)
+                .eq('status', 'active')
+                .eq('session', existing.session)
+                .eq('level', existing.level)
+                .eq('rep_type', existing.rep_type);
+
+            if (existing.rep_type === 'departmental') {
+                dupQuery = dupQuery.eq('department_name', existing.department_name);
+            }
+
+            const { data: dup } = await dupQuery.maybeSingle();
+            if (dup) {
+                return res.status(409).json({
+                    status: 'error',
+                    message: `Cannot activate: an active rep already exists in this position (${dup.full_name})`
+                });
+            }
+        }
+
+        const { data: updated, error: updateErr } = await supabase
+            .from('course_representatives')
+            .update({ status, updated_at: new Date().toISOString(), updated_by: req.user.id })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (updateErr) throw updateErr;
+
+        await cacheManager.invalidateByTags(['course-reps']);
+
+        logger.info('Course rep status changed', {
+            requestId: req.id, repId: id, newStatus: status, by: req.user.id
+        });
+
+        res.json({ status: 'success', data: updated, message: `Status updated to ${status}` });
+    } catch (error) {
+        logger.error('Course rep status update error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to update status' });
+    }
+});
+
 // DELETE /api/admin/course-reps/:id
 adminRouter.delete('/course-reps/:id', async (req, res) => {
     try {
         const { id } = req.params;
+
+        const { data: existing, error: existErr } = await supabase
+            .from('course_representatives').select('id, full_name').eq('id', id).maybeSingle();
+
+        if (existErr) throw existErr;
+        if (!existing) return res.status(404).json({ status: 'error', message: 'Representative not found' });
+
         await supabase.from('department_reps').delete().eq('course_rep_id', id);
         const { error } = await supabase.from('course_representatives').delete().eq('id', id);
         if (error) throw error;
+
+        await cacheManager.invalidateByTags(['course-reps']);
+
         logger.info('Course rep deleted', { requestId: req.id, repId: id, deletedBy: req.user.id });
         res.json({ status: 'success', message: 'Representative deleted successfully' });
     } catch (error) {
         logger.error('Error deleting course reps:', { requestId: req.id, error: error.message });
         res.status(500).json({ status: 'error', message: 'Failed to delete representative' });
+    }
+});
+
+// GET /api/admin/course-reps/:id — single rep (admin view, with nested dept reps)
+adminRouter.get('/course-reps/:id', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('course_representatives').select('*').eq('id', req.params.id).maybeSingle();
+
+        if (error) throw error;
+        if (!data) return res.status(404).json({ status: 'error', message: 'Representative not found' });
+
+        const { data: deptReps } = await supabase
+            .from('department_reps').select('*').eq('course_rep_id', req.params.id);
+
+        res.json({ status: 'success', data: { ...data, department_reps: deptReps || [] } });
+    } catch (error) {
+        logger.error('Course rep fetch error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch representative' });
+    }
+});
+
+// GET /api/admin/course-reps/stats — dashboard counts
+adminRouter.get('/course-reps/stats', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('course_representatives')
+            .select('rep_type, status, session, level');
+
+        if (error) throw error;
+
+        const stats = {
+            total: data.length,
+            byType: { general: 0, assistant: 0, departmental: 0 },
+            byStatus: { active: 0, inactive: 0, graduated: 0, resigned: 0 },
+            bySession: {},
+            activeSession: null
+        };
+
+        data.forEach(rep => {
+            if (stats.byType[rep.rep_type] !== undefined) stats.byType[rep.rep_type]++;
+            if (stats.byStatus[rep.status] !== undefined) stats.byStatus[rep.status]++;
+            if (rep.session) stats.bySession[rep.session] = (stats.bySession[rep.session] || 0) + 1;
+        });
+
+        const sessionCounts = Object.entries(stats.bySession);
+        if (sessionCounts.length > 0) {
+            sessionCounts.sort((a, b) => b[1] - a[1]);
+            stats.activeSession = sessionCounts[0][0];
+        }
+
+        res.json({ status: 'success', data: stats });
+    } catch (error) {
+        logger.error('Course rep stats error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to load stats' });
     }
 });
 
@@ -3475,6 +3596,745 @@ app.use('/api/users', userRouter);
 console.log('✅ Admin routes registered at /api/admin/*');
 console.log('✅ Media Library routes registered at /api/admin/media');
 console.log('✅ User management routes registered at /api/users/*');
+
+
+// ============================================================
+// ================ SECTION 4.3: ELECTION SYSTEM =============
+// ============================================================
+
+const electionRouter = express.Router();
+
+// ---------- Helper: get the current election with time-derived phase ----------
+async function getActiveElection() {
+    const { data, error } = await supabase
+        .from('elections')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (error && error.code !== 'PGRST116') throw error;
+    if (!data) return null;
+
+    const now        = Date.now();
+    const nomStart   = new Date(data.nomination_start).getTime();
+    const nomEnd     = new Date(data.nomination_end).getTime();
+    const voteStart  = new Date(data.voting_start).getTime();
+    const voteEnd    = new Date(data.voting_end).getTime();
+
+    let phase = 'closed';
+    if (now < nomStart)                        phase = 'pending';
+    else if (now >= nomStart && now < nomEnd)  phase = 'nomination';
+    else if (now >= voteStart && now < voteEnd) phase = 'voting';
+    else                                       phase = 'closed';
+
+    return { ...data, phase };
+}
+
+// ---------- Helper: require a valid voter in the body/params/query ----------
+async function requireVoter(req, res, next) {
+    try {
+        const voterId = (req.body && req.body.voterId)
+                     || (req.params && req.params.voterId)
+                     || (req.query && req.query.voterId);
+
+        if (!voterId) {
+            return res.status(401).json({ status: 'error', message: 'Voter ID required' });
+        }
+
+        const { data, error } = await supabase
+            .from('voters')
+            .select('*')
+            .eq('voter_id', voterId)
+            .maybeSingle();
+
+        if (error) throw error;
+        if (!data) return res.status(404).json({ status: 'error', message: 'Voter not found. Please register.' });
+
+        req.voter = data;
+        next();
+    } catch (err) {
+        logger.error('requireVoter error:', { error: err.message });
+        res.status(500).json({ status: 'error', message: 'Voter verification failed' });
+    }
+}
+
+// =============== PUBLIC: GET ACTIVE ELECTION ===============
+electionRouter.get('/active', async (req, res) => {
+    try {
+        const election = await getActiveElection();
+        if (!election) {
+            return res.json({ status: 'success', data: null, message: 'No active election' });
+        }
+
+        const { data: positions, error: posErr } = await supabase
+            .from('positions').select('*')
+            .eq('election_id', election.id)
+            .order('display_order', { ascending: true });
+
+        if (posErr) throw posErr;
+
+        const { data: nominations, error: nomErr } = await supabase
+            .from('nominations')
+            .select(`
+                id, position_id, nominee_id, manifesto, status,
+                nominee:voters!nominations_nominee_id_fkey (
+                    id, full_name, matric_no, department, level, voter_id
+                )
+            `)
+            .eq('election_id', election.id)
+            .eq('status', 'approved');
+
+        if (nomErr) throw nomErr;
+
+        const candidatesByPosition = {};
+        nominations.forEach(n => {
+            if (!candidatesByPosition[n.position_id]) candidatesByPosition[n.position_id] = [];
+            candidatesByPosition[n.position_id].push({
+                id: n.id,
+                name: n.nominee?.full_name || 'Unknown',
+                matric: n.nominee?.matric_no || '',
+                department: n.nominee?.department || '',
+                level: n.nominee?.level || '',
+                manifesto: n.manifesto || ''
+            });
+        });
+
+        res.json({
+            status: 'success',
+            data: {
+                id: election.id,
+                title: election.title,
+                phase: election.phase,
+                status: election.status,
+                nomination_start: election.nomination_start,
+                nomination_end: election.nomination_end,
+                voting_start: election.voting_start,
+                voting_end: election.voting_end,
+                results_published: election.results_published,
+                positions: (positions || []).map(p => ({
+                    id: p.id,
+                    title: p.title,
+                    description: p.description,
+                    candidates: candidatesByPosition[p.id] || []
+                })),
+                departments: [
+                    'Electrical/Electronics Engineering',
+                    'Civil Engineering',
+                    'Mechanical Engineering'
+                ],
+                levels: ['100L', '200L', '300L', '400L', '500L']
+            }
+        });
+    } catch (err) {
+        logger.error('Election active error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to load election' });
+    }
+});
+
+// =============== VOTER REGISTRATION ===============
+electionRouter.post('/register', async (req, res) => {
+    try {
+        const { fullName, matricNumber, phone, receiptNumber, department, level } = req.body;
+
+        if (!fullName || !matricNumber || !phone || !receiptNumber || !department || !level) {
+            return res.status(400).json({ status: 'error', message: 'All fields are required' });
+        }
+
+        const election = await getActiveElection();
+        if (!election) {
+            return res.status(400).json({ status: 'error', message: 'No active election' });
+        }
+
+        const { data: existing } = await supabase
+            .from('voters')
+            .select('voter_id')
+            .eq('session_id', election.session_id)
+            .ilike('matric_no', matricNumber.trim())
+            .maybeSingle();
+
+        if (existing) {
+            return res.status(409).json({
+                status: 'error',
+                message: `You are already registered. Your Voter ID is ${existing.voter_id}`
+            });
+        }
+
+        const voterId = `VOTER-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+        const insertData = {
+            session_id: election.session_id,
+            full_name: fullName.trim(),
+            matric_no: matricNumber.trim().toUpperCase(),
+            phone: phone.trim(),
+            receipt_number: receiptNumber.trim().toUpperCase(),
+            department,
+            level,
+            voter_id: voterId
+        };
+
+        const { data, error } = await supabase
+            .from('voters').insert([insertData]).select().single();
+
+        if (error) throw error;
+
+        logger.info('Voter registered', {
+            requestId: req.id, voterId: data.voter_id, level: data.level, eligible: data.eligible_to_vote
+        });
+
+        res.status(201).json({
+            status: 'success',
+            data: {
+                voterId: data.voter_id,
+                fullName: data.full_name,
+                matricNumber: data.matric_no,
+                level: data.level,
+                eligibleToVote: data.eligible_to_vote
+            },
+            message: data.eligible_to_vote
+                ? 'Registration successful. You can now vote.'
+                : 'Registration successful. Note: 100L students cannot vote in this election.'
+        });
+    } catch (err) {
+        logger.error('Voter registration error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Registration failed' });
+    }
+});
+
+// =============== VERIFY VOTER ===============
+electionRouter.get('/voter/:voterId', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('voters')
+            .select('voter_id, full_name, matric_no, department, level, eligible_to_vote, has_voted')
+            .eq('voter_id', req.params.voterId)
+            .maybeSingle();
+
+        if (error) throw error;
+        if (!data) return res.status(404).json({ status: 'error', message: 'Voter not found' });
+
+        res.json({ status: 'success', data });
+    } catch (err) {
+        logger.error('Voter verify error:', { error: err.message });
+        res.status(500).json({ status: 'error', message: 'Verification failed' });
+    }
+});
+
+// =============== NOMINATIONS ===============
+electionRouter.post('/nominate', requireVoter, async (req, res) => {
+    try {
+        const { positionId, nomineeVoterId, manifesto } = req.body;
+
+        if (!positionId || !nomineeVoterId) {
+            return res.status(400).json({ status: 'error', message: 'Position and nominee required' });
+        }
+
+        const election = await getActiveElection();
+        if (!election) return res.status(400).json({ status: 'error', message: 'No active election' });
+
+        if (election.phase !== 'nomination') {
+            return res.status(403).json({
+                status: 'error',
+                message: `Nominations are ${election.phase === 'voting' ? 'closed (voting in progress)' : 'closed'}. Current phase: ${election.phase}`
+            });
+        }
+
+        const { data: position } = await supabase
+            .from('positions').select('id')
+            .eq('id', positionId).eq('election_id', election.id).maybeSingle();
+
+        if (!position) return res.status(404).json({ status: 'error', message: 'Position not found' });
+
+        const { data: nominee } = await supabase
+            .from('voters').select('id, full_name')
+            .eq('voter_id', nomineeVoterId).eq('session_id', election.session_id).maybeSingle();
+
+        if (!nominee) return res.status(404).json({ status: 'error', message: 'Nominee not found in this session' });
+
+        const { data: existing } = await supabase
+            .from('nominations').select('id')
+            .eq('election_id', election.id)
+            .eq('position_id', positionId)
+            .eq('nominee_id', nominee.id)
+            .maybeSingle();
+
+        if (existing) {
+            return res.status(409).json({ status: 'error', message: 'This person is already nominated for this position' });
+        }
+
+        const { data, error } = await supabase
+            .from('nominations')
+            .insert([{
+                election_id: election.id,
+                position_id: positionId,
+                nominee_id: nominee.id,
+                nominated_by: req.voter.id,
+                manifesto: manifesto || null,
+                status: 'pending'
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        logger.info('Nomination submitted', {
+            requestId: req.id, nominationId: data.id, nominee: nominee.full_name, nominatedBy: req.voter.voter_id
+        });
+
+        res.status(201).json({
+            status: 'success',
+            data,
+            message: `Nomination submitted for ${nominee.full_name}. Awaiting admin approval.`
+        });
+    } catch (err) {
+        logger.error('Nomination error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Nomination failed' });
+    }
+});
+
+electionRouter.get('/nominations', async (req, res) => {
+    try {
+        const election = await getActiveElection();
+        if (!election) return res.json({ status: 'success', data: [] });
+
+        const { data, error } = await supabase
+            .from('nominations')
+            .select(`
+                id, position_id, manifesto, status, created_at,
+                nominee:voters!nominations_nominee_id_fkey (id, full_name, matric_no, department, level),
+                position:positions (id, title)
+            `)
+            .eq('election_id', election.id)
+            .eq('status', 'approved');
+
+        if (error) throw error;
+        res.json({ status: 'success', data });
+    } catch (err) {
+        logger.error('Nominations list error:', { error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to load nominations' });
+    }
+});
+
+// =============== VOTING ===============
+electionRouter.post('/vote', requireVoter, async (req, res) => {
+    try {
+        const { votes } = req.body;
+
+        if (!votes || typeof votes !== 'object' || Object.keys(votes).length === 0) {
+            return res.status(400).json({ status: 'error', message: 'No votes submitted' });
+        }
+
+        const election = await getActiveElection();
+        if (!election) return res.status(400).json({ status: 'error', message: 'No active election' });
+
+        if (election.phase !== 'voting') {
+            return res.status(403).json({
+                status: 'error',
+                message: `Voting is not open. Current phase: ${election.phase}`
+            });
+        }
+
+        // ⚠️ CRITICAL: 100L restriction enforced on the server
+        if (req.voter.level === '100L' || req.voter.eligible_to_vote === false) {
+            return res.status(403).json({
+                status: 'error',
+                message: '100 Level students are not eligible to vote in this election'
+            });
+        }
+
+        if (req.voter.has_voted) {
+            return res.status(409).json({ status: 'error', message: 'You have already voted' });
+        }
+
+        const voteRows = [];
+        for (const [positionId, candidateId] of Object.entries(votes)) {
+            const { data: nomination } = await supabase
+                .from('nominations')
+                .select('id, position_id')
+                .eq('id', candidateId)
+                .eq('position_id', positionId)
+                .eq('election_id', election.id)
+                .eq('status', 'approved')
+                .maybeSingle();
+
+            if (!nomination) {
+                return res.status(400).json({
+                    status: 'error',
+                    message: `Invalid candidate for position ${positionId}`
+                });
+            }
+
+            voteRows.push({
+                election_id: election.id,
+                position_id: positionId,
+                voter_id: req.voter.id,
+                candidate_id: candidateId
+            });
+        }
+
+        const { error: voteErr } = await supabase.from('votes').insert(voteRows);
+        if (voteErr) {
+            if (voteErr.code === '23505') {
+                return res.status(409).json({ status: 'error', message: 'You have already voted for one or more positions' });
+            }
+            throw voteErr;
+        }
+
+        await supabase
+            .from('voters')
+            .update({ has_voted: true, voted_at: new Date().toISOString() })
+            .eq('id', req.voter.id);
+
+        logger.info('Vote submitted', {
+            requestId: req.id, voterId: req.voter.voter_id, positionsVoted: Object.keys(votes).length
+        });
+
+        res.json({ status: 'success', message: 'Your vote has been recorded. Thank you!' });
+    } catch (err) {
+        logger.error('Vote error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Voting failed' });
+    }
+});
+
+// =============== RESULTS / TALLIES ===============
+electionRouter.get('/tallies', async (req, res) => {
+    try {
+        const election = await getActiveElection();
+        if (!election) return res.json({ status: 'success', data: {} });
+
+        const now = Date.now();
+        const voteEnd = new Date(election.voting_end).getTime();
+        if (now < voteEnd) {
+            return res.status(403).json({
+                status: 'error',
+                message: 'Results are not yet available. Voting is still in progress.'
+            });
+        }
+
+        const { data: positions, error: posErr } = await supabase
+            .from('positions').select('id, title')
+            .eq('election_id', election.id)
+            .order('display_order');
+
+        if (posErr) throw posErr;
+
+        const { data: votes, error: voteErr } = await supabase
+            .from('votes').select('position_id, candidate_id')
+            .eq('election_id', election.id);
+
+        if (voteErr) throw voteErr;
+
+        const tallies = {};
+        votes.forEach(v => { tallies[v.candidate_id] = (tallies[v.candidate_id] || 0) + 1; });
+
+        const { data: nominations } = await supabase
+            .from('nominations')
+            .select(`
+                id, position_id,
+                nominee:voters!nominations_nominee_id_fkey (full_name, department, level)
+            `)
+            .eq('election_id', election.id)
+            .eq('status', 'approved');
+
+        const detailed = {};
+        nominations?.forEach(n => {
+            detailed[n.id] = {
+                votes: tallies[n.id] || 0,
+                name: n.nominee?.full_name,
+                department: n.nominee?.department,
+                level: n.nominee?.level,
+                position_id: n.position_id
+            };
+        });
+
+        res.json({
+            status: 'success',
+            data: {
+                election_id: election.id,
+                results_published: election.results_published,
+                positions,
+                candidates: detailed
+            }
+        });
+    } catch (err) {
+        logger.error('Tallies error:', { error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to load tallies' });
+    }
+});
+
+// ---------- Mount public election routes ----------
+app.use('/api/elections', electionRouter);
+console.log('✅ [ELEC] /api/elections router registered (nomination → voting → closed)');
+
+
+// =============== ADMIN: ELECTION MANAGEMENT ===============
+
+// Create a new election
+adminRouter.post('/elections', async (req, res) => {
+    try {
+        const {
+            title, session_id,
+            nomination_start, nomination_end,
+            voting_start, voting_end,
+            positions   // [{ title, description }]
+        } = req.body;
+
+        if (!title || !session_id || !nomination_start || !nomination_end || !voting_start || !voting_end) {
+            return res.status(400).json({ status: 'error', message: 'All date fields are required' });
+        }
+
+        if (new Date(nomination_end) <= new Date(nomination_start)) {
+            return res.status(400).json({ status: 'error', message: 'Nomination end must be after start' });
+        }
+        if (new Date(voting_start) < new Date(nomination_end)) {
+            return res.status(400).json({ status: 'error', message: 'Voting cannot start before nominations end' });
+        }
+        if (new Date(voting_end) <= new Date(voting_start)) {
+            return res.status(400).json({ status: 'error', message: 'Voting end must be after start' });
+        }
+
+        const active = await getActiveElection();
+        if (active && active.phase !== 'closed') {
+            return res.status(409).json({ status: 'error', message: 'An election is already in progress. Close it first.' });
+        }
+
+        const { data: election, error } = await supabase
+            .from('elections')
+            .insert([{
+                session_id, title, status: 'nomination',
+                nomination_start, nomination_end, voting_start, voting_end,
+                created_by: req.user.id
+            }])
+            .select().single();
+
+        if (error) throw error;
+
+        if (Array.isArray(positions) && positions.length > 0) {
+            const posRows = positions.map((p, i) => ({
+                election_id: election.id,
+                title: p.title,
+                description: p.description || null,
+                display_order: i
+            }));
+            await supabase.from('positions').insert(posRows);
+        }
+
+        logger.info('Election created', { requestId: req.id, electionId: election.id });
+        res.status(201).json({ status: 'success', data: election, message: 'Election created successfully' });
+    } catch (err) {
+        logger.error('Create election error:', { error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to create election' });
+    }
+});
+
+// List nominations (admin — all statuses)
+adminRouter.get('/elections/nominations', async (req, res) => {
+    try {
+        const election = await getActiveElection();
+        if (!election) return res.json({ status: 'success', data: [] });
+
+        const { data, error } = await supabase
+            .from('nominations')
+            .select(`
+                id, status, manifesto, created_at,
+                nominee:voters!nominations_nominee_id_fkey (full_name, matric_no, department, level),
+                position:positions (id, title)
+            `)
+            .eq('election_id', election.id)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        res.json({ status: 'success', data });
+    } catch (err) {
+        logger.error('Admin nominations list error:', { error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to load nominations' });
+    }
+});
+
+// Approve / reject a nomination
+adminRouter.patch('/elections/nominations/:id', async (req, res) => {
+    try {
+        const { status } = req.body;
+        if (!['approved', 'rejected', 'pending'].includes(status)) {
+            return res.status(400).json({ status: 'error', message: 'Invalid status' });
+        }
+
+        const { data, error } = await supabase
+            .from('nominations')
+            .update({ status, reviewed_by: req.user.id, reviewed_at: new Date().toISOString() })
+            .eq('id', req.params.id)
+            .select().single();
+
+        if (error) throw error;
+        res.json({ status: 'success', data, message: `Nomination ${status}` });
+    } catch (err) {
+        logger.error('Nomination update error:', { error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to update nomination' });
+    }
+});
+
+// Manually advance phase (overrides time windows by rewriting them)
+adminRouter.patch('/elections/phase', async (req, res) => {
+    try {
+        const { status } = req.body;
+        if (!['nomination', 'voting', 'closed'].includes(status)) {
+            return res.status(400).json({ status: 'error', message: 'Invalid phase' });
+        }
+
+        const election = await getActiveElection();
+        if (!election) return res.status(404).json({ status: 'error', message: 'No active election' });
+
+        const now = new Date().toISOString();
+        const update = { status, updated_at: now };
+
+        if (status === 'nomination') {
+            update.nomination_start = now;
+            update.nomination_end   = new Date(Date.now() + 7 * 864e5).toISOString();
+            update.voting_start     = new Date(Date.now() + 8 * 864e5).toISOString();
+            update.voting_end       = new Date(Date.now() + 15 * 864e5).toISOString();
+        } else if (status === 'voting') {
+            update.nomination_end = now;
+            update.voting_start   = now;
+            update.voting_end     = new Date(Date.now() + 7 * 864e5).toISOString();
+        } else {
+            update.voting_end = now;
+        }
+
+        const { data, error } = await supabase
+            .from('elections').update(update).eq('id', election.id).select().single();
+
+        if (error) throw error;
+        logger.info('Election phase changed', { requestId: req.id, electionId: election.id, status });
+        res.json({ status: 'success', data, message: `Election phase → ${status}` });
+    } catch (err) {
+        logger.error('Phase change error:', { error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to change phase' });
+    }
+});
+
+// ⚡ PUBLISH RESULTS — auto-promotes winners into executive_members
+adminRouter.post('/elections/publish-results', async (req, res) => {
+    try {
+        const election = await getActiveElection();
+        if (!election) return res.status(404).json({ status: 'error', message: 'No active election' });
+
+        if (Date.now() < new Date(election.voting_end).getTime()) {
+            return res.status(400).json({ status: 'error', message: 'Cannot publish results before voting ends' });
+        }
+        if (election.results_published) {
+            return res.status(409).json({ status: 'error', message: 'Results have already been published' });
+        }
+
+        const { data: nominations, error: nomErr } = await supabase
+            .from('nominations')
+            .select(`
+                id, position_id,
+                nominee:voters!nominations_nominee_id_fkey (full_name, department, level, email, phone, matric_no)
+            `)
+            .eq('election_id', election.id)
+            .eq('status', 'approved');
+
+        if (nomErr) throw nomErr;
+
+        const { data: votes, error: voteErr } = await supabase
+            .from('votes').select('candidate_id').eq('election_id', election.id);
+
+        if (voteErr) throw voteErr;
+
+        const tallies = {};
+        votes.forEach(v => { tallies[v.candidate_id] = (tallies[v.candidate_id] || 0) + 1; });
+
+        const { data: positions } = await supabase
+            .from('positions').select('id, title').eq('election_id', election.id);
+
+        const winners = [];
+        for (const pos of positions || []) {
+            const posCandidates = nominations.filter(n => n.position_id === pos.id);
+            if (posCandidates.length === 0) continue;
+
+            posCandidates.sort((a, b) => (tallies[b.id] || 0) - (tallies[a.id] || 0));
+            const top = posCandidates[0];
+
+            if (posCandidates.length > 1 && (tallies[posCandidates[0].id] || 0) === (tallies[posCandidates[1].id] || 0)) {
+                logger.warn('Tie in position — skipping', { position: pos.title });
+                continue;
+            }
+
+            winners.push({ position_title: pos.title, votes: tallies[top.id] || 0, nominee: top.nominee });
+        }
+
+        const { data: session } = await supabase
+            .from('academic_sessions').select('name').eq('id', election.session_id).single();
+
+        const sessionName = session?.name || 'Unknown';
+
+        const memberRows = winners.map(w => ({
+            full_name: w.nominee.full_name,
+            position: w.position_title,
+            department: w.nominee.department,
+            level: w.nominee.level,
+            email: w.nominee.email || null,
+            phone: w.nominee.phone || null,
+            session: sessionName,
+            status: 'active',
+            committee: 'Executive',
+            display_order: 0,
+            bio: null,
+            social_links: {},
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        }));
+
+        if (memberRows.length > 0) {
+            const { error: insertErr } = await supabase.from('executive_members').insert(memberRows);
+            if (insertErr) throw insertErr;
+        }
+
+        await supabase
+            .from('elections')
+            .update({ results_published: true, status: 'closed', updated_at: new Date().toISOString() })
+            .eq('id', election.id);
+
+        await cacheManager.invalidateByTags(['members']);
+
+        logger.info('Election results published', {
+            requestId: req.id, electionId: election.id, winnersPromoted: memberRows.length
+        });
+
+        res.json({
+            status: 'success',
+            data: {
+                winners: winners.map(w => ({
+                    position: w.position_title,
+                    name: w.nominee.full_name,
+                    votes: w.votes
+                }))
+            },
+            message: `${memberRows.length} winner(s) promoted to executive members`
+        });
+    } catch (err) {
+        logger.error('Publish results error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to publish results' });
+    }
+});
+
+// List registered voters (admin)
+adminRouter.get('/elections/voters', async (req, res) => {
+    try {
+        const election = await getActiveElection();
+        if (!election) return res.json({ status: 'success', data: [] });
+
+        const { data, error } = await supabase
+            .from('voters').select('*')
+            .eq('session_id', election.session_id)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        res.json({ status: 'success', data, count: data.length });
+    } catch (err) {
+        logger.error('Voters list error:', { error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to load voters' });
+    }
+});
 
 // ============================================================
 // ================== SECTION 5: FILE MANAGEMENT ==============
