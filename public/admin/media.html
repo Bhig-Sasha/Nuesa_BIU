@@ -1029,27 +1029,39 @@
         .dropzone {
             border: 2px dashed var(--border-strong);
             border-radius: var(--r-lg);
-            padding: 36px 20px; text-align: center;
+            padding: 48px 24px;
+            text-align: center;
             cursor: pointer;
             transition: all var(--dur-fast) var(--ease);
             background: var(--surface-muted);
         }
         .dropzone:hover, .dropzone.dragover { border-color: var(--accent); background: var(--accent-tint); }
-        .dropzone i { font-size: 2rem; color: var(--accent); margin-bottom: 10px; }
-        .dropzone .dz-title { font-weight: 700; font-size: 0.875rem; margin-bottom: 4px; }
+        .dropzone i { font-size: 2.5rem; color: var(--accent); margin-bottom: 12px; }
+        .dropzone .dz-title { font-weight: 700; font-size: 0.9375rem; margin-bottom: 4px; }
         .dropzone .dz-hint { font-size: 0.75rem; color: var(--text-muted); }
-        .dropzone .dz-formats { font-size: 0.6875rem; color: var(--text-dim); margin-top: 8px; }
+        .dropzone .dz-formats { font-size: 0.6875rem; color: var(--text-dim); margin-top: 10px; }
 
-        .file-list { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+        .file-list { margin-top: 16px; display: flex; flex-direction: column; gap: 6px; }
         .file-list-item {
             display: flex; align-items: center; gap: 10px;
-            padding: 8px 12px; background: var(--surface-muted);
+            padding: 10px 12px; background: var(--surface-muted);
             border-radius: var(--r-sm); font-size: 0.75rem;
+            border: 1px solid var(--border);
         }
-        .file-list-item.invalid { background: var(--danger-tint); border: 1px solid var(--danger); }
+        .file-list-item.invalid { background: var(--danger-tint); border-color: var(--danger); }
         .file-list-item .file-name { flex: 1; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .file-list-item .file-size { color: var(--text-dim); font-family: var(--font-mono); font-size: 0.6875rem; flex-shrink: 0; }
         .file-list-item .file-error { color: var(--danger); font-size: 0.6875rem; font-weight: 600; }
+        .file-list-item .file-status-icon {
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.6875rem;
+            flex-shrink: 0;
+        }
+        .file-list-item .file-status-icon.pending { background: var(--surface); color: var(--text-dim); border: 1px solid var(--border); }
+        .file-list-item .file-status-icon.success { background: var(--success-tint); color: var(--success); }
+        .file-list-item .file-status-icon.error   { background: var(--danger-tint); color: var(--danger); }
 
         .upload-progress-wrap {
             margin-top: 12px; padding: 12px 14px;
@@ -1058,6 +1070,19 @@
         .upload-progress-label { display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 600; color: var(--text); margin-bottom: 6px; }
         .upload-progress-bar { height: 6px; border-radius: 999px; background: rgba(16, 43, 39, 0.12); overflow: hidden; }
         .upload-progress-fill { height: 100%; background: var(--accent); border-radius: 999px; width: 0%; transition: width 200ms var(--ease); }
+
+        .upload-info-banner {
+            background: var(--info-tint);
+            border: 1px solid rgba(44, 111, 168, 0.25);
+            border-radius: var(--r);
+            padding: 10px 14px;
+            font-size: 0.75rem;
+            color: var(--info);
+            display: flex; align-items: flex-start; gap: 8px;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+        .upload-info-banner i { flex-shrink: 0; margin-top: 2px; }
 
         .placement-picker-grid {
             display: grid;
@@ -1188,7 +1213,7 @@
                 <div class="page-header">
                     <div>
                         <h1 class="page-title">Media Library</h1>
-                        <p class="page-subtitle">Manage all NUESA pictures and videos, and control what appears in the public Gallery.</p>
+                        <p class="page-subtitle">Upload pictures and videos, then describe them when you're ready.</p>
                     </div>
                     <div class="page-header-actions">
                         <button class="btn btn-secondary" id="exportMediaBtn">
@@ -1397,7 +1422,7 @@
         </div>
     </div>
 
-    <!-- Upload modal -->
+    <!-- ===== SIMPLE UPLOAD MODAL ===== -->
     <div class="modal" id="uploadModal">
         <div class="modal-content modal-lg">
             <div class="modal-header">
@@ -1405,6 +1430,13 @@
                 <button class="modal-close" onclick="hideModal('uploadModal')" aria-label="Close">&times;</button>
             </div>
             <div class="modal-body">
+                <div class="upload-info-banner">
+                    <i class="fas fa-lightbulb"></i>
+                    <span>
+                        <strong>Just upload.</strong> Titles, descriptions, alt text and tags can be added later by selecting a file and clicking <strong>Edit</strong> in the details panel.
+                    </span>
+                </div>
+
                 <div class="dropzone" id="dropzone">
                     <i class="fas fa-cloud-upload-alt"></i>
                     <div class="dz-title">Drag &amp; drop pictures and videos here</div>
@@ -1412,7 +1444,9 @@
                     <div class="dz-formats">Pictures: JPG, PNG, WEBP, GIF · Videos: MP4, WebM, MOV (max 50MB each)</div>
                 </div>
                 <input type="file" id="fileInput" multiple accept="image/jpeg,image/jpg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime" style="display: none;">
+
                 <div class="file-list" id="fileList"></div>
+
                 <div class="upload-progress-wrap" id="uploadProgressWrap" style="display: none;">
                     <div class="upload-progress-label">
                         <span id="uploadProgressText">Uploading…</span>
@@ -1422,38 +1456,10 @@
                         <div class="upload-progress-fill" id="uploadProgressFill"></div>
                     </div>
                 </div>
-                <div style="margin-top: 20px;">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label" for="uploadTitle">Media title</label>
-                            <input type="text" class="form-input" id="uploadTitle" placeholder="e.g. Engineering Week Poster 2026">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="uploadCategory">Media type</label>
-                            <select class="form-select" id="uploadCategory">
-                                <option value="picture">Picture</option>
-                                <option value="video">Video</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="uploadDescription">Description</label>
-                        <textarea class="form-textarea" id="uploadDescription" placeholder="Briefly describe this media…"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="uploadAltText">Alt text</label>
-                        <input type="text" class="form-input" id="uploadAltText" placeholder="Describe the image for accessibility and SEO">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="uploadTags">Tags</label>
-                        <input type="text" class="form-input" id="uploadTags" placeholder="e.g. engineering, week, 2026">
-                        <div class="form-hint">Comma-separated</div>
-                    </div>
-                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="hideModal('uploadModal')" type="button">Cancel</button>
-                <button class="btn btn-gold" id="confirmUploadBtn" type="button">
+                <button class="btn btn-gold" id="confirmUploadBtn" type="button" disabled>
                     <i class="fas fa-upload"></i> Upload
                 </button>
             </div>
@@ -1470,19 +1476,19 @@
             <div class="modal-body">
                 <div class="form-group">
                     <label class="form-label" for="editTitle">Media title</label>
-                    <input type="text" class="form-input" id="editTitle">
+                    <input type="text" class="form-input" id="editTitle" placeholder="Give this file a clear name">
                 </div>
                 <div class="form-group">
                     <label class="form-label" for="editDescription">Description</label>
-                    <textarea class="form-textarea" id="editDescription"></textarea>
+                    <textarea class="form-textarea" id="editDescription" placeholder="What does this file show?"></textarea>
                 </div>
                 <div class="form-group">
                     <label class="form-label" for="editAltText">Alt text</label>
-                    <input type="text" class="form-input" id="editAltText">
+                    <input type="text" class="form-input" id="editAltText" placeholder="Describe the image for accessibility and SEO">
                 </div>
                 <div class="form-group">
                     <label class="form-label" for="editTags">Tags</label>
-                    <input type="text" class="form-input" id="editTags">
+                    <input type="text" class="form-input" id="editTags" placeholder="e.g. engineering, week, 2026">
                     <div class="form-hint">Comma-separated</div>
                 </div>
             </div>
@@ -1703,7 +1709,6 @@
     const MAX_FILE_SIZE_MB = 50;
     const ALLOWED_PICTURE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
     const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
-    const GALLERY_CATEGORIES = ['events', 'academic', 'social', 'workshops', 'competitions', 'sports'];
 
     let currentUser = null;
     let inactivityTimeout = null;
@@ -1719,7 +1724,7 @@
     let currentPage = 1;
     let deletingMediaId = null;
     let editingMediaId = null;
-    let pendingUploadFiles = [];
+    let pendingUploadFiles = [];     // { file, error, status: 'pending'|'success'|'error' }
 
     // Homepage placement
     let homepagePlacement = null;
@@ -1873,9 +1878,7 @@
     }
 
     // ============================================================
-    // LOCAL STORAGE — used as a fallback for gallery + placement
-    // so that the UI is fully functional even before backend
-    // endpoints exist. When the backend exists, these are replaced.
+    // LOCAL STORAGE (fallback for gallery + placement)
     // ============================================================
     const LS_KEYS = {
         gallery: 'nuesa_gallery_items_v1',
@@ -1909,22 +1912,23 @@
         const extMatch = filename.match(/\.([a-z0-9]+)$/i);
         const extLabel = extMatch ? extMatch[1].toUpperCase() : (type === 'video' ? 'VIDEO' : 'IMG');
 
-        // Merge usage from server + local placement awareness
         let usage = Array.isArray(m.usage) ? m.usage.slice() : [];
         if (homepagePlacement && String(homepagePlacement.mediaId) === String(m.id || m.uuid)) {
             const already = usage.some(u => (u.page || '').toLowerCase() === 'home' && (u.section || '').toLowerCase().includes('hero'));
             if (!already) usage.push({ page: 'Home', section: 'Hero (Intro)' });
         }
-        // Gallery usage
         const galleryEntry = galleryItems.find(g => String(g.media_id) === String(m.id || m.uuid));
         if (galleryEntry) {
             const already = usage.some(u => (u.page || '').toLowerCase() === 'gallery');
             if (!already) usage.push({ page: 'Gallery', section: galleryEntry.published ? 'Public gallery (published)' : 'Gallery (draft)' });
         }
 
+        // If the backend doesn't send a title, derive from filename
+        const derivedTitle = (m.title || m.name || '').trim() || humanizeFilename(filename);
+
         return {
             id: m.id || m.uuid,
-            title: m.title || m.name || filename || 'Untitled',
+            title: derivedTitle,
             filename: filename,
             type: type === 'video' ? 'video' : 'picture',
             mime: mime,
@@ -1943,6 +1947,11 @@
             usage: usage,
             used: usage.length > 0
         };
+    }
+
+    function humanizeFilename(name) {
+        if (!name) return 'Untitled';
+        return name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').trim() || 'Untitled';
     }
 
     function normalizeGalleryItem(g) {
@@ -2026,7 +2035,6 @@
     }
 
     async function loadGallery() {
-        // Try server first; fall back to local storage
         try {
             const res = await apiGet('/api/admin/media/gallery');
             const list = Array.isArray(res.data) ? res.data : (res.data?.gallery || []);
@@ -2163,13 +2171,12 @@
         if (!media) return;
         const existing = getGalleryItemForMedia(mediaId);
         if (existing) {
-            // Already in gallery — open edit instead
             openGalleryEditModal(existing.id);
             return;
         }
 
         gallerySendMediaId = mediaId;
-        document.getElementById('galleryTitle').value = media.title || '';
+        document.getElementById('galleryTitle').value = media.title || humanizeFilename(media.filename);
         document.getElementById('galleryDescription').value = media.description || '';
         document.getElementById('galleryCategory').value = 'events';
         document.getElementById('galleryOrder').value = galleryItems.length;
@@ -2242,11 +2249,9 @@
         galleryItems.push(newItem);
         lsWrite(LS_KEYS.gallery, galleryItems);
 
-        // Refresh views
         updateStats();
         updateGalleryStats();
         renderGalleryTable();
-        // Media grid needs re-render because gallery badges may have changed
         await refreshMediaGalleryBadges();
         renderMediaGrid();
         if (selectedMediaId && String(selectedMediaId) === String(gallerySendMediaId)) {
@@ -2261,14 +2266,12 @@
     }
 
     async function refreshMediaGalleryBadges() {
-        // Recompute usage arrays so details panel reflects gallery status
         allMedia = allMedia.map(m => {
             let usage = (m.usage || []).filter(u => (u.page || '').toLowerCase() !== 'gallery');
             const entry = getGalleryItemForMedia(m.id);
             if (entry) {
                 usage.push({ page: 'Gallery', section: entry.status === 'published' ? 'Public gallery (published)' : 'Gallery (draft)' });
             }
-            // Homepage usage
             if (homepagePlacement && String(homepagePlacement.mediaId) === String(m.id)) {
                 if (!usage.some(u => (u.page || '').toLowerCase() === 'home')) {
                     usage.push({ page: 'Home', section: 'Hero (Intro)' });
@@ -2800,6 +2803,15 @@
                 </div>`;
         }
 
+        const untitledHint = (!m.title || m.title === humanizeFilename(m.filename))
+            ? `<div class="detail-section" style="margin-bottom:12px;">
+                   <div style="padding:10px 12px; background:var(--warning-tint); border:1px solid rgba(184,118,30,0.25); border-radius:var(--r); color:var(--warning); font-size:0.75rem; display:flex; gap:8px; align-items:flex-start;">
+                       <i class="fas fa-lightbulb" style="margin-top:2px;"></i>
+                       <span>This file hasn't been given a title yet. Click <strong>Edit</strong> below to add a title, description, alt text and tags.</span>
+                   </div>
+               </div>`
+            : '';
+
         panel.innerHTML = `
             <div class="details-preview">${previewHtml}</div>
             <div class="details-header">
@@ -2807,6 +2819,7 @@
                 <div class="details-filename">${escapeHtml(m.filename)}</div>
             </div>
             <div class="details-body">
+                ${untitledHint}
                 ${isHomepageImage ? `
                 <div class="detail-section">
                     <div class="placement-info-banner" style="margin-top: 0;">
@@ -2910,7 +2923,9 @@
     // ============================================================
     function openEditModal(m) {
         editingMediaId = m.id;
-        document.getElementById('editTitle').value = m.title || '';
+        // If the title is just the derived filename, leave it blank so the admin can type a real title
+        const isDerived = !m.title || m.title === humanizeFilename(m.filename);
+        document.getElementById('editTitle').value = isDerived ? '' : (m.title || '');
         document.getElementById('editDescription').value = m.description || '';
         document.getElementById('editAltText').value = m.alt || '';
         document.getElementById('editTags').value = (m.tags || []).join(', ');
@@ -2972,13 +2987,11 @@
         try {
             await apiDelete(`/api/admin/media/${deletingMediaId}`);
 
-            // Clear homepage placement if needed
             if (homepagePlacement && String(homepagePlacement.mediaId) === String(deletingMediaId)) {
                 homepagePlacement = null;
                 try { localStorage.removeItem(LS_KEYS.placement); } catch {}
                 renderPlacementCard();
             }
-            // Clear gallery entry if needed
             const galleryEntry = getGalleryItemForMedia(deletingMediaId);
             if (galleryEntry) {
                 galleryItems = galleryItems.filter(g => String(g.id) !== String(galleryEntry.id));
@@ -3004,7 +3017,7 @@
     }
 
     // ============================================================
-    // UPLOAD
+    // SIMPLE UPLOAD
     // ============================================================
     function validateFile(file) {
         const isPicture = ALLOWED_PICTURE_TYPES.includes(file.type);
@@ -3018,6 +3031,7 @@
         const dropzone = document.getElementById('dropzone');
         const fileInput = document.getElementById('fileInput');
         const fileList = document.getElementById('fileList');
+        const confirmBtn = document.getElementById('confirmUploadBtn');
 
         dropzone.addEventListener('click', () => fileInput.click());
         dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
@@ -3027,29 +3041,36 @@
             dropzone.classList.remove('dragover');
             handleFiles(e.dataTransfer.files);
         });
-        fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+        fileInput.addEventListener('change', () => {
+            handleFiles(fileInput.files);
+            fileInput.value = '';
+        });
 
         function handleFiles(files) {
             const incoming = Array.from(files);
             for (const f of incoming) {
                 const error = validateFile(f);
-                pendingUploadFiles.push({ file: f, error });
-            }
-            const firstValid = pendingUploadFiles.find(p => !p.error);
-            if (firstValid) {
-                document.getElementById('uploadCategory').value =
-                    firstValid.file.type.startsWith('video/') ? 'video' : 'picture';
+                pendingUploadFiles.push({ file: f, error, status: error ? 'error' : 'pending' });
             }
             renderFileList();
         }
 
         function renderFileList() {
-            if (pendingUploadFiles.length === 0) { fileList.innerHTML = ''; return; }
+            if (pendingUploadFiles.length === 0) {
+                fileList.innerHTML = '';
+                confirmBtn.disabled = true;
+                return;
+            }
             fileList.innerHTML = pendingUploadFiles.map((p, i) => {
                 const isVideo = p.file.type.startsWith('video/');
                 const icon = isVideo ? 'fa-video' : 'fa-image';
+                const status = p.error ? 'error' : (p.status || 'pending');
+                const statusIcon = status === 'success'
+                    ? '<i class="fas fa-check"></i>'
+                    : (status === 'error' ? '<i class="fas fa-exclamation"></i>' : '<i class="fas fa-clock"></i>');
                 return `
                 <div class="file-list-item ${p.error ? 'invalid' : ''}">
+                    <span class="file-status-icon ${status}">${statusIcon}</span>
                     <i class="fas ${icon}" style="color: ${p.error ? 'var(--danger)' : 'var(--accent)'};"></i>
                     <span class="file-name">${escapeHtml(p.file.name)}</span>
                     <span class="file-size">${formatBytes(p.file.size)}</span>
@@ -3064,22 +3085,18 @@
                     renderFileList();
                 });
             });
+            // Enable upload button if at least one valid file and not already uploading
+            const hasValid = pendingUploadFiles.some(p => !p.error && p.status !== 'success');
+            confirmBtn.disabled = !hasValid;
         }
 
-        document.getElementById('confirmUploadBtn').addEventListener('click', async () => {
-            const validFiles = pendingUploadFiles.filter(p => !p.error);
-            if (validFiles.length === 0) { showToast('Please select valid files', 'warning'); return; }
+        confirmBtn.addEventListener('click', async () => {
+            const validItems = pendingUploadFiles.filter(p => !p.error && p.status !== 'success');
+            if (validItems.length === 0) { showToast('Please select valid files', 'warning'); return; }
 
-            const title = document.getElementById('uploadTitle').value.trim();
-            const category = document.getElementById('uploadCategory').value;
-            const description = document.getElementById('uploadDescription').value.trim();
-            const altText = document.getElementById('uploadAltText').value.trim();
-            const tags = document.getElementById('uploadTags').value.split(',').map(t => t.trim()).filter(Boolean);
-
-            const btn = document.getElementById('confirmUploadBtn');
-            const original = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Uploading…';
+            const original = confirmBtn.innerHTML;
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Uploading…';
 
             const progressWrap = document.getElementById('uploadProgressWrap');
             const progressFill = document.getElementById('uploadProgressFill');
@@ -3090,49 +3107,51 @@
             progressPct.textContent = '0%';
 
             let successCount = 0, failCount = 0;
-            for (let i = 0; i < validFiles.length; i++) {
-                const p = validFiles[i];
-                progressText.textContent = `Uploading ${i + 1} of ${validFiles.length} — ${p.file.name}`;
+
+            for (let i = 0; i < validItems.length; i++) {
+                const p = validItems[i];
+                progressText.textContent = `Uploading ${i + 1} of ${validItems.length} — ${p.file.name}`;
+
                 const formData = new FormData();
                 formData.append('file', p.file);
-                formData.append('title', validFiles.length > 1
-                    ? (title ? `${title} ${i + 1}` : p.file.name.replace(/\.[^.]+$/, ''))
-                    : (title || p.file.name.replace(/\.[^.]+$/, '')));
-                formData.append('type', category);
-                formData.append('description', description);
-                formData.append('alt_text', altText);
-                formData.append('tags', JSON.stringify(tags));
+                formData.append('title', '');          // Title can be added later
+                formData.append('description', '');
+                formData.append('alt_text', '');
+                formData.append('tags', JSON.stringify([]));
 
                 try {
                     await apiPostForm('/api/admin/media', formData, (pct) => {
                         progressFill.style.width = pct + '%';
                         progressPct.textContent = pct + '%';
                     });
+                    p.status = 'success';
                     successCount++;
                 } catch (err) {
                     console.error('Upload failed:', err);
+                    p.status = 'error';
+                    p.error = err.message || 'Upload failed';
                     failCount++;
                 }
+                renderFileList();
             }
+
             progressFill.style.width = '100%';
             progressPct.textContent = '100%';
-            btn.disabled = false;
-            btn.innerHTML = original;
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = original;
 
             if (successCount > 0) {
-                showToast(`${successCount} file(s) uploaded${failCount ? `, ${failCount} failed` : ''}`, successCount === validFiles.length ? 'success' : 'warning');
-                pendingUploadFiles = [];
-                document.getElementById('fileList').innerHTML = '';
-                document.getElementById('uploadTitle').value = '';
-                document.getElementById('uploadDescription').value = '';
-                document.getElementById('uploadAltText').value = '';
-                document.getElementById('uploadTags').value = '';
-                hideModal('uploadModal');
-                setTimeout(() => {
-                    progressWrap.style.display = 'none';
-                    progressFill.style.width = '0%';
-                }, 800);
+                showToast(`${successCount} file${successCount === 1 ? '' : 's'} uploaded${failCount ? `, ${failCount} failed` : ''}`, successCount === validItems.length ? 'success' : 'warning');
                 await loadMedia();
+                // Remove successful items from the list after a short delay
+                setTimeout(() => {
+                    pendingUploadFiles = pendingUploadFiles.filter(p => p.status !== 'success');
+                    renderFileList();
+                    if (pendingUploadFiles.length === 0) {
+                        progressWrap.style.display = 'none';
+                        progressFill.style.width = '0%';
+                    }
+                }, 1200);
             } else {
                 showToast('All uploads failed', 'error');
             }
@@ -3277,7 +3296,6 @@
         });
 
         document.getElementById('openPickerFromGalleryBtn').addEventListener('click', () => {
-            // Open media picker to send an item to gallery — simplest: scroll to media grid
             document.getElementById('mediaSearchInput').focus();
             showToast('Choose a media item below and click “Send to Gallery”', 'info');
             document.getElementById('mediaSearchInput').scrollIntoView({ behavior: 'smooth', block: 'center' });
