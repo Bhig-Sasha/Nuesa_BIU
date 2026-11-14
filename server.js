@@ -4337,6 +4337,914 @@ adminRouter.get('/elections/voters', async (req, res) => {
 });
 
 // ============================================================
+// ================ SECTION 4.4: AWARDS SYSTEM ================
+// ============================================================
+// Award editions, categories, nominations, nominees, voting/judging,
+// winners, reports, and archive.
+//
+// Lifecycle:   draft → preparation → active → archived
+//
+// Rules enforced server-side:
+//   1. Only approved nominees can receive votes/scores.
+//   2. Voting/judging windows are time-bound (from edition config).
+//   3. Each category can use a different selection_method:
+//      public | registered | judges | combined
+//   4. Public voting: one vote per category per voter.
+//   5. Judges: one score per category per nominee per judge.
+//   6. Publishing winners sets is_published = true and copies award_winners rows.
+//   7. Old editions are archived (never deleted) when a new edition is created.
+// ============================================================
+
+// ---------- Helper: get the active award edition ----------
+async function getActiveAwardEdition() {
+    const { data, error } = await supabase
+        .from('award_editions')
+        .select('*')
+        .in('status', ['draft', 'preparation', 'active'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (error && error.code !== 'PGRST116') throw error;
+    if (!data) return null;
+
+    // Attach session name
+    let sessionName = null;
+    if (data.session_id) {
+        const { data: session } = await supabase
+            .from('academic_sessions').select('name').eq('id', data.session_id).maybeSingle();
+        sessionName = session?.name || null;
+    }
+
+    // Attach categories count
+    const { count: categoriesCount } = await supabase
+        .from('award_categories')
+        .select('id', { count: 'exact', head: true })
+        .eq('edition_id', data.id);
+
+    // Derive phase from time
+    const now = Date.now();
+    const nomStart  = data.nomination_start ? new Date(data.nomination_start).getTime() : null;
+    const nomEnd    = data.nomination_end   ? new Date(data.nomination_end).getTime()   : null;
+    const voteStart = data.voting_start     ? new Date(data.voting_start).getTime()     : null;
+    const voteEnd   = data.voting_end       ? new Date(data.voting_end).getTime()       : null;
+
+    let phase = 'preparation';
+    if (now < (nomStart || Infinity)) phase = 'preparation';
+    else if (nomStart && now >= nomStart && nomEnd && now < nomEnd) phase = 'nomination';
+    else if (voteStart && now >= voteStart && voteEnd && now < voteEnd) phase = 'voting';
+    else if (voteEnd && now >= voteEnd) phase = 'closed';
+
+    return {
+        ...data,
+        phase,
+        session_name: sessionName,
+        categories_count: categoriesCount || 0
+    };
+}
+
+// ---------- Helper: require admin (already covered by adminRouter) ----------
+// ---------- Helper: require registered voter for public vote endpoints ----------
+async function requireAwardVoter(req, res, next) {
+    try {
+        const voterId = (req.body && req.body.voterId)
+                     || (req.params && req.params.voterId)
+                     || (req.query && req.query.voterId);
+
+        if (!voterId) return res.status(401).json({ status: 'error', message: 'Voter ID required' });
+
+        const { data, error } = await supabase
+            .from('voters').select('*').eq('voter_id', voterId).maybeSingle();
+        if (error) throw error;
+        if (!data) return res.status(404).json({ status: 'error', message: 'Voter not found' });
+
+        req.voter = data;
+        next();
+    } catch (err) {
+        logger.error('requireAwardVoter error:', { error: err.message });
+        res.status(500).json({ status: 'error', message: 'Voter verification failed' });
+    }
+}
+
+// ============================================================
+// PUBLIC AWARD ENDPOINTS
+// ============================================================
+const awardRouter = express.Router();
+
+// GET /api/awards/active — current award edition + categories + approved nominees
+awardRouter.get('/active', async (req, res) => {
+    try {
+        const edition = await getActiveAwardEdition();
+        if (!edition) {
+            return res.json({ status: 'success', data: null, message: 'No active award edition' });
+        }
+
+        const { data: categories, error: catErr } = await supabase
+            .from('award_categories')
+            .select('*')
+            .eq('edition_id', edition.id)
+            .order('display_order', { ascending: true });
+        if (catErr) throw catErr;
+
+        const { data: nominees, error: nomErr } = await supabase
+            .from('award_nominations')
+            .select('*')
+            .eq('edition_id', edition.id)
+            .eq('status', 'approved');
+        if (nomErr) throw nomErr;
+
+        const nomineesByCategory = {};
+        (nominees || []).forEach(n => {
+            if (!nomineesByCategory[n.category_id]) nomineesByCategory[n.category_id] = [];
+            nomineesByCategory[n.category_id].push({
+                id: n.id,
+                name: n.nominee_name,
+                type: n.nominee_type,
+                department: n.nominee_department,
+                level: n.nominee_level,
+                group_name: n.nominee_group_name,
+                group_photo: n.nominee_group_photo,
+                group_description: n.nominee_group_description
+            });
+        });
+
+        res.json({
+            status: 'success',
+            data: {
+                ...edition,
+                categories: (categories || []).map(c => ({
+                    ...c,
+                    nominees: nomineesByCategory[c.id] || []
+                }))
+            }
+        });
+    } catch (err) {
+        logger.error('Awards active error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to load award edition' });
+    }
+});
+
+// GET /api/awards/results — public results (only after published)
+awardRouter.get('/results', async (req, res) => {
+    try {
+        const edition = await getActiveAwardEdition();
+        if (!edition) return res.json({ status: 'success', data: null });
+
+        if (!edition.results_published) {
+            return res.status(403).json({
+                status: 'error',
+                message: 'Results have not been published yet'
+            });
+        }
+
+        const { data: winners, error: winErr } = await supabase
+            .from('award_winners')
+            .select(`
+                id, winner_name, final_score,
+                category:award_categories (id, name, type),
+                nomination:award_nominations (nominee_name, nominee_department, nominee_level)
+            `)
+            .eq('edition_id', edition.id)
+            .eq('is_published', true);
+
+        if (winErr) throw winErr;
+
+        res.json({
+            status: 'success',
+            data: {
+                edition_id: edition.id,
+                edition_name: edition.name,
+                winners: (winners || []).map(w => ({
+                    award_name: w.category?.name,
+                    award_id: w.category?.id,
+                    winner_name: w.winner_name,
+                    department: w.nomination?.nominee_department || null,
+                    level: w.nomination?.nominee_level || null,
+                    score: w.final_score,
+                    published: true
+                }))
+            }
+        });
+    } catch (err) {
+        logger.error('Awards results error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to load results' });
+    }
+});
+
+// POST /api/awards/vote — cast a vote for a nominee (public or registered)
+awardRouter.post('/vote', requireAwardVoter, async (req, res) => {
+    try {
+        const { categoryId, nominationId } = req.body;
+
+        if (!categoryId || !nominationId) {
+            return res.status(400).json({ status: 'error', message: 'categoryId and nominationId required' });
+        }
+
+        const edition = await getActiveAwardEdition();
+        if (!edition) return res.status(400).json({ status: 'error', message: 'No active award edition' });
+        if (edition.phase !== 'voting') {
+            return res.status(403).json({
+                status: 'error',
+                message: `Voting is not open. Current phase: ${edition.phase}`
+            });
+        }
+
+        // Get category to check selection_method
+        const { data: category } = await supabase
+            .from('award_categories').select('*')
+            .eq('id', categoryId).eq('edition_id', edition.id).maybeSingle();
+        if (!category) return res.status(404).json({ status: 'error', message: 'Category not found' });
+
+        if (!['public', 'registered', 'combined'].includes(category.selection_method)) {
+            return res.status(403).json({
+                status: 'error',
+                message: 'This category does not use public voting'
+            });
+        }
+
+        // Verify nominee is approved and belongs to this category
+        const { data: nomination } = await supabase
+            .from('award_nominations').select('id, status')
+            .eq('id', nominationId).eq('category_id', categoryId).maybeSingle();
+        if (!nomination || nomination.status !== 'approved') {
+            return res.status(400).json({ status: 'error', message: 'Invalid nominee' });
+        }
+
+        // Insert vote (unique constraint prevents duplicate)
+        const { error: voteErr } = await supabase.from('award_votes').insert([{
+            edition_id: edition.id,
+            category_id: categoryId,
+            nomination_id: nominationId,
+            voter_id: req.voter.id
+        }]);
+
+        if (voteErr) {
+            if (voteErr.code === '23505') {
+                return res.status(409).json({
+                    status: 'error',
+                    message: 'You have already voted in this category'
+                });
+            }
+            throw voteErr;
+        }
+
+        logger.info('Award vote submitted', {
+            requestId: req.id, voterId: req.voter.voter_id,
+            categoryId, nominationId
+        });
+
+        res.json({ status: 'success', message: 'Your vote has been recorded. Thank you!' });
+    } catch (err) {
+        logger.error('Award vote error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Voting failed' });
+    }
+});
+
+// ---------- Mount public award router ----------
+app.use('/api/awards', awardRouter);
+console.log('✅ [AWARD] /api/awards router registered (public)');
+
+
+// ============================================================
+// ADMIN AWARD ENDPOINTS
+// ============================================================
+
+// ---------- ADMIN: AWARD EDITIONS ----------
+
+// GET /api/admin/awards/editions — list all editions (with active first)
+adminRouter.get('/awards/editions', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('award_editions')
+            .select(`
+                *,
+                session:academic_sessions (id, name)
+            `)
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+
+        // Attach counts
+        const enriched = await Promise.all((data || []).map(async (ed) => {
+            const [catCount, nomCount, winCount] = await Promise.all([
+                supabase.from('award_categories').select('id', { count: 'exact', head: true }).eq('edition_id', ed.id),
+                supabase.from('award_nominations').select('id', { count: 'exact', head: true }).eq('edition_id', ed.id),
+                supabase.from('award_winners').select('id', { count: 'exact', head: true }).eq('edition_id', ed.id)
+            ]);
+            return {
+                ...ed,
+                session_name: ed.session?.name || null,
+                categories_count: catCount.count || 0,
+                nominations_count: nomCount.count || 0,
+                winners_count: winCount.count || 0
+            };
+        }));
+
+        res.json({ status: 'success', data: enriched, count: enriched.length });
+    } catch (err) {
+        logger.error('Award editions list error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch award editions' });
+    }
+});
+
+// POST /api/admin/awards/editions — create edition (+ categories)
+adminRouter.post('/awards/editions', async (req, res) => {
+    try {
+        const {
+            name, session_id, status, description,
+            categories   // [{ name, type, selection_method, ... }]
+        } = req.body;
+
+        if (!name || !session_id) {
+            return res.status(400).json({ status: 'error', message: 'Name and session_id are required' });
+        }
+
+        // Archive any existing active/preparation editions
+        await supabase
+            .from('award_editions')
+            .update({ status: 'archived', updated_at: new Date().toISOString() })
+            .in('status', ['draft', 'preparation', 'active']);
+
+        const { data: edition, error } = await supabase
+            .from('award_editions')
+            .insert([{
+                name: name.trim(),
+                session_id,
+                status: status || 'draft',
+                description: description || null,
+                created_by: req.user.id
+            }])
+            .select().single();
+        if (error) throw error;
+
+        // Create categories if provided
+        if (Array.isArray(categories) && categories.length > 0) {
+            const rows = categories.map((c, i) => ({
+                edition_id: edition.id,
+                name: c.name,
+                type: c.type || 'individual',
+                selection_method: c.selection_method || 'public',
+                description: c.description || null,
+                eligibility: c.eligibility || null,
+                status: c.status || 'draft',
+                display_order: i
+            }));
+            const { error: catErr } = await supabase.from('award_categories').insert(rows);
+            if (catErr) logger.warn('Some categories failed:', { error: catErr.message });
+        }
+
+        logger.info('Award edition created', { requestId: req.id, editionId: edition.id });
+        res.status(201).json({ status: 'success', data: edition, message: 'Award edition created' });
+    } catch (err) {
+        logger.error('Create award edition error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to create award edition' });
+    }
+});
+
+// PUT /api/admin/awards/editions/:id — update edition
+adminRouter.put('/awards/editions/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const {
+            name, session_id, status, description, poster_url,
+            announcement_date, nomination_start, nomination_end,
+            review_deadline, voting_start, voting_end,
+            verification_deadline, winner_announcement
+        } = req.body;
+
+        const updateData = { updated_at: new Date().toISOString() };
+        if (name !== undefined) updateData.name = String(name).trim();
+        if (session_id !== undefined) updateData.session_id = session_id;
+        if (status !== undefined) updateData.status = status;
+        if (description !== undefined) updateData.description = description;
+        if (poster_url !== undefined) updateData.poster_url = poster_url;
+        if (announcement_date !== undefined) updateData.announcement_date = announcement_date;
+        if (nomination_start !== undefined) updateData.nomination_start = nomination_start;
+        if (nomination_end !== undefined) updateData.nomination_end = nomination_end;
+        if (review_deadline !== undefined) updateData.review_deadline = review_deadline;
+        if (voting_start !== undefined) updateData.voting_start = voting_start;
+        if (voting_end !== undefined) updateData.voting_end = voting_end;
+        if (verification_deadline !== undefined) updateData.verification_deadline = verification_deadline;
+        if (winner_announcement !== undefined) updateData.winner_announcement = winner_announcement;
+
+        const { data, error } = await supabase
+            .from('award_editions').update(updateData).eq('id', id).select().single();
+        if (error) throw error;
+        if (!data) return res.status(404).json({ status: 'error', message: 'Edition not found' });
+
+        logger.info('Award edition updated', { requestId: req.id, editionId: id });
+        res.json({ status: 'success', data, message: 'Edition updated' });
+    } catch (err) {
+        logger.error('Update award edition error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to update edition' });
+    }
+});
+
+// DELETE /api/admin/awards/editions/:id — only draft editions
+adminRouter.delete('/awards/editions/:id', async (req, res) => {
+    try {
+        const { data: existing } = await supabase
+            .from('award_editions').select('status').eq('id', req.params.id).maybeSingle();
+        if (!existing) return res.status(404).json({ status: 'error', message: 'Edition not found' });
+        if (existing.status !== 'draft') {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Only draft editions can be deleted. Archive active editions instead.'
+            });
+        }
+
+        await supabase.from('award_editions').delete().eq('id', req.params.id);
+        logger.info('Award edition deleted', { requestId: req.id, editionId: req.params.id });
+        res.json({ status: 'success', message: 'Edition deleted' });
+    } catch (err) {
+        logger.error('Delete award edition error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to delete edition' });
+    }
+});
+
+// GET /api/admin/awards/archive — list archived editions
+adminRouter.get('/awards/archive', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('award_editions')
+            .select(`
+                *,
+                session:academic_sessions (id, name)
+            `)
+            .eq('status', 'archived')
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+
+        const enriched = await Promise.all((data || []).map(async (ed) => {
+            const [catCount, winCount] = await Promise.all([
+                supabase.from('award_categories').select('id', { count: 'exact', head: true }).eq('edition_id', ed.id),
+                supabase.from('award_winners').select('id', { count: 'exact', head: true }).eq('edition_id', ed.id)
+            ]);
+            return {
+                ...ed,
+                session_name: ed.session?.name || null,
+                categories_count: catCount.count || 0,
+                winners_count: winCount.count || 0
+            };
+        }));
+
+        res.json({ status: 'success', data: enriched, count: enriched.length });
+    } catch (err) {
+        logger.error('Award archive list error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch archive' });
+    }
+});
+
+
+// ---------- ADMIN: AWARD CATEGORIES ----------
+
+// GET /api/admin/awards/categories — list categories for active edition
+adminRouter.get('/awards/categories', async (req, res) => {
+    try {
+        const edition = await getActiveAwardEdition();
+        if (!edition) return res.json({ status: 'success', data: [] });
+
+        const { data: categories, error } = await supabase
+            .from('award_categories')
+            .select('*')
+            .eq('edition_id', edition.id)
+            .order('display_order', { ascending: true });
+        if (error) throw error;
+
+        // Attach nominations count per category
+        const enriched = await Promise.all((categories || []).map(async (c) => {
+            const { count } = await supabase
+                .from('award_nominations')
+                .select('id', { count: 'exact', head: true })
+                .eq('category_id', c.id);
+            return { ...c, nominations_count: count || 0 };
+        }));
+
+        res.json({ status: 'success', data: enriched, count: enriched.length });
+    } catch (err) {
+        logger.error('Award categories list error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch categories' });
+    }
+});
+
+// POST /api/admin/awards/categories — create category
+adminRouter.post('/awards/categories', async (req, res) => {
+    try {
+        const edition = await getActiveAwardEdition();
+        if (!edition) return res.status(400).json({ status: 'error', message: 'No active edition' });
+
+        const { name, type, selection_method, description, eligibility, status } = req.body;
+        if (!name) return res.status(400).json({ status: 'error', message: 'Name is required' });
+
+        // Get next display_order
+        const { data: last } = await supabase
+            .from('award_categories')
+            .select('display_order')
+            .eq('edition_id', edition.id)
+            .order('display_order', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        const nextOrder = (last?.display_order || 0) + 1;
+
+        const { data, error } = await supabase
+            .from('award_categories')
+            .insert([{
+                edition_id: edition.id,
+                name: name.trim(),
+                type: type || 'individual',
+                selection_method: selection_method || 'public',
+                description: description || null,
+                eligibility: eligibility || null,
+                status: status || 'draft',
+                display_order: nextOrder
+            }])
+            .select().single();
+        if (error) throw error;
+
+        logger.info('Award category created', { requestId: req.id, categoryId: data.id });
+        res.status(201).json({ status: 'success', data, message: 'Category created' });
+    } catch (err) {
+        logger.error('Create award category error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to create category' });
+    }
+});
+
+// PUT /api/admin/awards/categories/:id — update category
+adminRouter.put('/awards/categories/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, type, selection_method, description, eligibility, status, display_order } = req.body;
+
+        const updateData = {};
+        if (name !== undefined) updateData.name = String(name).trim();
+        if (type !== undefined) updateData.type = type;
+        if (selection_method !== undefined) updateData.selection_method = selection_method;
+        if (description !== undefined) updateData.description = description;
+        if (eligibility !== undefined) updateData.eligibility = eligibility;
+        if (status !== undefined) updateData.status = status;
+        if (display_order !== undefined) updateData.display_order = parseInt(display_order);
+
+        if (Object.keys(updateData).length === 0) {
+            return res.status(400).json({ status: 'error', message: 'No fields to update' });
+        }
+
+        const { data, error } = await supabase
+            .from('award_categories').update(updateData).eq('id', id).select().single();
+        if (error) throw error;
+        if (!data) return res.status(404).json({ status: 'error', message: 'Category not found' });
+
+        res.json({ status: 'success', data, message: 'Category updated' });
+    } catch (err) {
+        logger.error('Update award category error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to update category' });
+    }
+});
+
+// DELETE /api/admin/awards/categories/:id — delete category (only if no nominations)
+adminRouter.delete('/awards/categories/:id', async (req, res) => {
+    try {
+        const { count } = await supabase
+            .from('award_nominations')
+            .select('id', { count: 'exact', head: true })
+            .eq('category_id', req.params.id);
+
+        if ((count || 0) > 0) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Cannot delete category with existing nominations. Deactivate instead.'
+            });
+        }
+
+        await supabase.from('award_categories').delete().eq('id', req.params.id);
+        res.json({ status: 'success', message: 'Category deleted' });
+    } catch (err) {
+        logger.error('Delete award category error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to delete category' });
+    }
+});
+
+
+// ---------- ADMIN: AWARD NOMINATIONS ----------
+
+// GET /api/admin/awards/nominations — all nominations for active edition
+adminRouter.get('/awards/nominations', async (req, res) => {
+    try {
+        const edition = await getActiveAwardEdition();
+        if (!edition) return res.json({ status: 'success', data: [] });
+
+        const { status } = req.query;
+        let query = supabase
+            .from('award_nominations')
+            .select(`
+                *,
+                category:award_categories (id, name, type, selection_method)
+            `)
+            .eq('edition_id', edition.id)
+            .order('created_at', { ascending: false });
+
+        if (status && status !== 'all') query = query.eq('status', status);
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        const enriched = (data || []).map(n => ({
+            id: n.id,
+            nominee_name: n.nominee_name,
+            nominee_type: n.nominee_type,
+            nominee_department: n.nominee_department,
+            nominee_level: n.nominee_level,
+            nominee_matric: n.nominee_matric,
+            category_id: n.category_id,
+            award_name: n.category?.name,
+            award_type: n.category?.type,
+            nominated_by_name: null,
+            reason: n.reason,
+            evidence_url: n.evidence_url,
+            status: n.status,
+            created_at: n.created_at
+        }));
+
+        res.json({ status: 'success', data: enriched, count: enriched.length });
+    } catch (err) {
+        logger.error('Admin award nominations list error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch nominations' });
+    }
+});
+
+// PATCH /api/admin/awards/nominations/:id — approve / reject
+adminRouter.patch('/awards/nominations/:id', async (req, res) => {
+    try {
+        const { status } = req.body;
+        if (!['approved', 'rejected', 'pending'].includes(status)) {
+            return res.status(400).json({ status: 'error', message: 'Invalid status' });
+        }
+
+        const { data, error } = await supabase
+            .from('award_nominations')
+            .update({ status, reviewed_by: req.user.id, reviewed_at: new Date().toISOString() })
+            .eq('id', req.params.id)
+            .select().single();
+        if (error) throw error;
+
+        logger.info('Award nomination updated', {
+            requestId: req.id, nominationId: req.params.id, status
+        });
+        res.json({ status: 'success', data, message: `Nomination ${status}` });
+    } catch (err) {
+        logger.error('Update award nomination error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to update nomination' });
+    }
+});
+
+// DELETE /api/admin/awards/nominations/:id
+adminRouter.delete('/awards/nominations/:id', async (req, res) => {
+    try {
+        await supabase.from('award_nominations').delete().eq('id', req.params.id);
+        res.json({ status: 'success', message: 'Nomination deleted' });
+    } catch (err) {
+        logger.error('Delete award nomination error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to delete nomination' });
+    }
+});
+
+
+// ---------- ADMIN: AWARD NOMINEES ----------
+
+// GET /api/admin/awards/nominees — only approved nominations
+adminRouter.get('/awards/nominees', async (req, res) => {
+    try {
+        const edition = await getActiveAwardEdition();
+        if (!edition) return res.json({ status: 'success', data: [] });
+
+        const { data, error } = await supabase
+            .from('award_nominations')
+            .select(`
+                *,
+                category:award_categories (id, name, type, selection_method)
+            `)
+            .eq('edition_id', edition.id)
+            .eq('status', 'approved')
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+
+        const enriched = (data || []).map(n => ({
+            id: n.id,
+            name: n.nominee_name,
+            type: n.nominee_type,
+            department: n.nominee_department,
+            level: n.nominee_level,
+            matric: n.nominee_matric,
+            category_id: n.category_id,
+            award_name: n.category?.name,
+            award_type: n.category?.type,
+            group_name: n.nominee_group_name,
+            group_photo: n.nominee_group_photo,
+            status: 'approved'
+        }));
+
+        res.json({ status: 'success', data: enriched, count: enriched.length });
+    } catch (err) {
+        logger.error('Admin award nominees list error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch nominees' });
+    }
+});
+
+
+// ---------- ADMIN: PUBLISH WINNERS ----------
+
+// POST /api/admin/awards/publish — verify and publish winners
+adminRouter.post('/awards/publish', async (req, res) => {
+    try {
+        const edition = await getActiveAwardEdition();
+        if (!edition) return res.status(404).json({ status: 'error', message: 'No active edition' });
+
+        if (edition.results_published) {
+            return res.status(409).json({ status: 'error', message: 'Results already published' });
+        }
+
+        // Get categories
+        const { data: categories } = await supabase
+            .from('award_categories').select('*').eq('edition_id', edition.id);
+        if (!categories?.length) {
+            return res.status(400).json({ status: 'error', message: 'No categories configured' });
+        }
+
+        const winners = [];
+
+        for (const cat of categories) {
+            // Get approved nominees
+            const { data: nominees } = await supabase
+                .from('award_nominations').select('*')
+                .eq('category_id', cat.id)
+                .eq('status', 'approved');
+            if (!nominees?.length) continue;
+
+            // Compute score based on selection_method
+            let scores = {};
+
+            if (cat.selection_method === 'public' || cat.selection_method === 'registered') {
+                // Count votes
+                for (const n of nominees) {
+                    const { count } = await supabase
+                        .from('award_votes').select('id', { count: 'exact', head: true })
+                        .eq('nomination_id', n.id);
+                    scores[n.id] = count || 0;
+                }
+            } else if (cat.selection_method === 'judges') {
+                // Sum judge scores
+                for (const n of nominees) {
+                    const { data: jScores } = await supabase
+                        .from('award_judge_scores').select('score')
+                        .eq('nomination_id', n.id);
+                    scores[n.id] = (jScores || []).reduce((s, j) => s + (parseFloat(j.score) || 0), 0);
+                }
+            } else if (cat.selection_method === 'combined') {
+                // Votes + judge scores
+                for (const n of nominees) {
+                    const [voteRes, judgeRes] = await Promise.all([
+                        supabase.from('award_votes').select('id', { count: 'exact', head: true }).eq('nomination_id', n.id),
+                        supabase.from('award_judge_scores').select('score').eq('nomination_id', n.id)
+                    ]);
+                    const voteCount = voteRes.count || 0;
+                    const judgeSum = (judgeRes.data || []).reduce((s, j) => s + (parseFloat(j.score) || 0), 0);
+                    scores[n.id] = voteCount + judgeSum;
+                }
+            }
+
+            // Find winner
+            const sorted = [...nominees].sort((a, b) => (scores[b.id] || 0) - (scores[a.id] || 0));
+            const top = sorted[0];
+            const second = sorted[1];
+
+            // Tie detection
+            if (second && (scores[top.id] || 0) === (scores[second.id] || 0)) {
+                logger.warn('Tie detected in category', { categoryId: cat.id, categoryName: cat.name });
+                // Skip publishing winners for this category — admin must resolve manually
+                continue;
+            }
+
+            winners.push({
+                edition_id: edition.id,
+                category_id: cat.id,
+                nomination_id: top.id,
+                winner_name: top.nominee_name,
+                final_score: scores[top.id] || 0,
+                is_published: true,
+                published_at: new Date().toISOString(),
+                published_by: req.user.id
+            });
+        }
+
+        if (winners.length === 0) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'No winners could be determined. Check for ties or missing nominees.'
+            });
+        }
+
+        // Insert winners
+        const { error: winErr } = await supabase.from('award_winners').insert(winners);
+        if (winErr) throw winErr;
+
+        // Mark edition as published
+        await supabase
+            .from('award_editions')
+            .update({ results_published: true, updated_at: new Date().toISOString() })
+            .eq('id', edition.id);
+
+        logger.info('Award winners published', {
+            requestId: req.id, editionId: edition.id, winnersCount: winners.length
+        });
+
+        res.json({
+            status: 'success',
+            data: { winners_count: winners.length, winners },
+            message: `${winners.length} winners published successfully`
+        });
+    } catch (err) {
+        logger.error('Publish award winners error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to publish winners' });
+    }
+});
+
+
+// ---------- ADMIN: AWARD JUDGES ----------
+
+// GET /api/admin/awards/judges — list judges for active edition
+adminRouter.get('/awards/judges', async (req, res) => {
+    try {
+        const edition = await getActiveAwardEdition();
+        if (!edition) return res.json({ status: 'success', data: [] });
+
+        const { data, error } = await supabase
+            .from('award_judges')
+            .select(`
+                *,
+                user:users (id, full_name, email)
+            `)
+            .eq('edition_id', edition.id);
+        if (error) throw error;
+
+        const enriched = (data || []).map(j => ({
+            id: j.id,
+            user_id: j.user_id,
+            user_name: j.user?.full_name,
+            user_email: j.user?.email,
+            assigned_at: j.created_at
+        }));
+
+        res.json({ status: 'success', data: enriched, count: enriched.length });
+    } catch (err) {
+        logger.error('Award judges list error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch judges' });
+    }
+});
+
+// POST /api/admin/awards/judges — assign judge
+adminRouter.post('/awards/judges', async (req, res) => {
+    try {
+        const edition = await getActiveAwardEdition();
+        if (!edition) return res.status(400).json({ status: 'error', message: 'No active edition' });
+
+        const { user_id } = req.body;
+        if (!user_id) return res.status(400).json({ status: 'error', message: 'user_id required' });
+
+        const { data, error } = await supabase
+            .from('award_judges')
+            .insert([{
+                edition_id: edition.id,
+                user_id,
+                assigned_by: req.user.id
+            }])
+            .select().single();
+
+        if (error) {
+            if (error.code === '23505') {
+                return res.status(409).json({ status: 'error', message: 'User is already a judge' });
+            }
+            throw error;
+        }
+
+        res.status(201).json({ status: 'success', data, message: 'Judge assigned' });
+    } catch (err) {
+        logger.error('Assign award judge error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to assign judge' });
+    }
+});
+
+// DELETE /api/admin/awards/judges/:id
+adminRouter.delete('/awards/judges/:id', async (req, res) => {
+    try {
+        await supabase.from('award_judges').delete().eq('id', req.params.id);
+        res.json({ status: 'success', message: 'Judge removed' });
+    } catch (err) {
+        logger.error('Remove award judge error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to remove judge' });
+    }
+});
+
+console.log('✅ [AWARD-ADMIN] /api/admin/awards/* routes registered');
+
+// ============================================================
 // ================== SECTION 5: FILE MANAGEMENT ==============
 // ============================================================
 app.post('/api/upload', verifyToken, requireRole('admin', 'editor'), upload.single('file'), async (req, res) => {

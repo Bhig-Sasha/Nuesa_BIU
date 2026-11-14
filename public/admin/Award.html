@@ -1,0 +1,2414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Awards - NUESA BIU Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary:        #102B27;
+            --primary-soft:   #1A3A34;
+            --primary-tint:   #E6EEEB;
+            --accent:         #D5A83B;
+            --accent-soft:    #E8C46A;
+            --accent-tint:    #FBF3DE;
+            --bg:             #F4F6F3;
+            --surface:        #FFFFFF;
+            --surface-muted:  #FAFAF8;
+            --border:         #E5E9E4;
+            --border-strong:  #D0D7D2;
+            --text:           #102B27;
+            --text-muted:     #5A6B67;
+            --text-dim:       #8A9894;
+            --text-invert:    #FFFFFF;
+            --text-gold:      #8B6E22;
+            --success:        #1E8E5A;
+            --success-tint:   #E4F3EB;
+            --warning:        #B8761E;
+            --warning-tint:   #FBF0DC;
+            --danger:         #B7402F;
+            --danger-tint:    #FBE6E2;
+            --info:           #2C6FA8;
+            --info-tint:      #E3EEF7;
+            --purple:         #6B3FA0;
+            --purple-tint:    #F0E9F8;
+            --r-sm: 6px; --r: 10px; --r-lg: 14px; --r-xl: 18px;
+            --shadow-sm: 0 1px 2px rgba(16, 43, 39, 0.05);
+            --shadow:    0 2px 6px rgba(16, 43, 39, 0.06), 0 1px 2px rgba(16, 43, 39, 0.04);
+            --shadow-md: 0 6px 16px rgba(16, 43, 39, 0.08), 0 2px 4px rgba(16, 43, 39, 0.04);
+            --shadow-lg: 0 12px 28px rgba(16, 43, 39, 0.10), 0 4px 8px rgba(16, 43, 39, 0.05);
+            --shadow-xl: 0 24px 48px rgba(16, 43, 39, 0.14), 0 8px 16px rgba(16, 43, 39, 0.06);
+            --ease: cubic-bezier(0.22, 1, 0.36, 1);
+            --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+            --dur-fast: 160ms; --dur: 240ms; --dur-slow: 420ms;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --font-mono: 'Roboto Mono', 'SF Mono', Monaco, monospace;
+            --sidebar-w: 272px; --header-h: 76px;
+        }
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 15px;
+            line-height: 1.55;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        a { color: inherit; text-decoration: none; }
+        button { font-family: inherit; }
+
+        @keyframes pageFadeIn  { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideInUp   { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes scaleIn     { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+        @keyframes rowReveal   { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin        { to { transform: rotate(360deg); } }
+        @keyframes expandOpen  { from { opacity: 0; max-height: 0; } to { opacity: 1; max-height: 1200px; } }
+
+        /* Loading + Toasts */
+        .loading-overlay {
+            position: fixed; inset: 0;
+            background: rgba(244, 246, 243, 0.92);
+            backdrop-filter: blur(6px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999; opacity: 0; visibility: hidden;
+            transition: opacity var(--dur) var(--ease), visibility var(--dur);
+        }
+        .loading-overlay.active { opacity: 1; visibility: visible; }
+        .loading-content { text-align: center; animation: scaleIn var(--dur) var(--ease); }
+        .loading-spinner {
+            width: 52px; height: 52px;
+            border: 3px solid var(--primary-tint);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 800ms linear infinite;
+            margin: 0 auto 16px;
+        }
+        .loading-text {
+            font-family: var(--font-mono);
+            font-size: 11px; font-weight: 600;
+            letter-spacing: 0.15em; text-transform: uppercase;
+            color: var(--text-muted);
+        }
+        .toast {
+            position: fixed; top: 24px; right: 24px;
+            background: var(--surface);
+            padding: 14px 18px;
+            border-radius: var(--r-lg);
+            box-shadow: var(--shadow-xl);
+            display: flex; align-items: center; gap: 12px;
+            max-width: 380px; z-index: 9998;
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--info);
+            transform: translateX(calc(100% + 40px));
+            transition: transform var(--dur-slow) var(--ease-out);
+        }
+        .toast.show { transform: translateX(0); }
+        .toast-success { border-left-color: var(--success); }
+        .toast-error   { border-left-color: var(--danger); }
+        .toast-warning { border-left-color: var(--warning); }
+        .toast-info    { border-left-color: var(--info); }
+        .toast-icon { font-size: 1.1rem; flex-shrink: 0; }
+        .toast-success .toast-icon { color: var(--success); }
+        .toast-error   .toast-icon { color: var(--danger); }
+        .toast-warning .toast-icon { color: var(--warning); }
+        .toast-info    .toast-icon { color: var(--info); }
+        .toast-content { flex: 1; font-size: 0.875rem; color: var(--text); font-weight: 500; }
+        .toast-close {
+            background: none; border: none;
+            color: var(--text-dim); cursor: pointer;
+            padding: 4px; font-size: 1.1rem; line-height: 1;
+            border-radius: var(--r-sm);
+        }
+        .toast-close:hover { color: var(--text); background: var(--surface-muted); }
+
+        /* Shell */
+        .dashboard-container { display: flex; min-height: 100vh; animation: pageFadeIn 500ms var(--ease); }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-w);
+            background: var(--primary);
+            display: flex; flex-direction: column;
+            position: fixed; top: 0; left: 0; bottom: 0;
+            z-index: 40;
+            transition: transform var(--dur) var(--ease);
+            overflow: hidden;
+        }
+        @media (max-width: 900px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); box-shadow: var(--shadow-xl); }
+        }
+        .sidebar-header {
+            padding: 24px 20px 20px;
+            display: flex; align-items: center; gap: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            flex-shrink: 0;
+        }
+        .sidebar-logo {
+            width: 44px; height: 44px;
+            background: var(--accent);
+            border-radius: var(--r);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--primary); font-weight: 900; font-size: 1.25rem;
+            box-shadow: 0 4px 12px rgba(213, 168, 59, 0.35);
+            flex-shrink: 0;
+        }
+        .sidebar-title {
+            font-size: 0.9375rem; font-weight: 800;
+            color: var(--text-invert); line-height: 1.2;
+        }
+        .sidebar-title span {
+            display: block;
+            font-family: var(--font-mono);
+            font-size: 0.6875rem; font-weight: 600;
+            color: var(--accent); letter-spacing: 0.12em;
+            text-transform: uppercase; margin-top: 3px;
+        }
+        .nav {
+            padding: 16px 12px;
+            flex: 1 1 auto;
+            overflow-y: auto;
+            min-height: 0;
+            display: flex; flex-direction: column; gap: 3px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.15) transparent;
+        }
+        .nav::-webkit-scrollbar { width: 5px; }
+        .nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 5px; }
+        .nav-section-label {
+            font-family: var(--font-mono);
+            font-size: 0.625rem; font-weight: 700;
+            color: rgba(255,255,255,0.35);
+            letter-spacing: 0.15em; text-transform: uppercase;
+            padding: 16px 12px 6px;
+        }
+        .nav-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 12px; border-radius: var(--r);
+            color: rgba(255,255,255,0.72); cursor: pointer;
+            font-size: 0.875rem; font-weight: 500;
+            line-height: 1; white-space: nowrap; overflow: hidden;
+            transition: all var(--dur-fast) var(--ease);
+            position: relative; flex-shrink: 0;
+        }
+        .nav-item > span { display: inline-block; line-height: 1.2; }
+        .nav-item i {
+            width: 18px; font-size: 0.9375rem;
+            color: rgba(255,255,255,0.55);
+            transition: color var(--dur-fast) var(--ease);
+            flex-shrink: 0; line-height: 1; text-align: center;
+        }
+        .nav-item:hover { background: rgba(255,255,255,0.06); color: var(--text-invert); transform: translateX(2px); }
+        .nav-item:hover i { color: var(--accent); }
+        .nav-item.active {
+            background: var(--primary-soft);
+            color: var(--text-invert);
+            font-weight: 600;
+        }
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: -12px; top: 50%; transform: translateY(-50%);
+            width: 3px; height: 20px; background: var(--accent);
+            border-radius: 0 3px 3px 0;
+        }
+        .nav-item.active i { color: var(--accent); }
+        .sidebar-footer {
+            padding: 16px 12px 20px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            flex-shrink: 0;
+        }
+        .logout-btn {
+            width: 100%; display: flex; align-items: center; gap: 10px;
+            padding: 10px 12px; background: transparent;
+            color: rgba(255,255,255,0.7);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: var(--r); cursor: pointer;
+            font-weight: 500; font-size: 0.875rem;
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .logout-btn:hover {
+            background: var(--danger); color: var(--text-invert);
+            border-color: var(--danger); transform: translateY(-1px);
+        }
+
+        .mobile-overlay {
+            position: fixed; inset: 0;
+            background: rgba(16, 43, 39, 0.45);
+            backdrop-filter: blur(3px);
+            z-index: 35; opacity: 0; visibility: hidden;
+            transition: opacity var(--dur) var(--ease), visibility var(--dur);
+        }
+        .mobile-overlay.active { opacity: 1; visibility: visible; }
+
+        /* Main */
+        .main-content {
+            flex: 1; margin-left: var(--sidebar-w);
+            min-height: 100vh; transition: margin var(--dur) var(--ease);
+            min-width: 0;
+        }
+        @media (max-width: 900px) { .main-content { margin-left: 0; } }
+
+        .header {
+            height: var(--header-h);
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 28px;
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; z-index: 30;
+            gap: 12px;
+            transition: box-shadow var(--dur) var(--ease);
+        }
+        .header.scrolled { box-shadow: var(--shadow-md); }
+        .mobile-menu-btn {
+            display: none; background: none; border: none;
+            font-size: 1.25rem; color: var(--text-muted);
+            cursor: pointer; padding: 8px 10px;
+            border-radius: var(--r);
+            transition: all var(--dur-fast) var(--ease);
+            flex-shrink: 0;
+        }
+        .mobile-menu-btn:hover { background: var(--primary-tint); color: var(--primary); }
+        @media (max-width: 900px) {
+            .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+            .header { padding: 0 16px; }
+        }
+        .header-actions {
+            display: flex; align-items: center; gap: 8px;
+            margin-left: auto; min-width: 0;
+        }
+        .notification-btn {
+            position: relative; background: none; border: none;
+            color: var(--text-muted); cursor: pointer;
+            width: 40px; height: 40px; border-radius: var(--r);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem;
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .notification-btn:hover { background: var(--primary-tint); color: var(--primary); }
+        .notification-badge {
+            position: absolute; top: 8px; right: 8px;
+            background: var(--accent); color: var(--primary);
+            font-size: 0.625rem; font-weight: 800;
+            padding: 1px 5px; border-radius: 999px;
+            min-width: 16px; text-align: center; line-height: 14px;
+        }
+        .user-info {
+            display: flex; align-items: center; gap: 10px;
+            padding: 6px 10px 6px 6px;
+            border-radius: var(--r);
+            transition: background var(--dur-fast) var(--ease);
+            cursor: pointer; margin-left: 8px;
+        }
+        .user-info:hover { background: var(--surface-muted); }
+        .user-avatar {
+            width: 36px; height: 36px;
+            background: var(--primary); color: var(--accent);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 0.875rem;
+            flex-shrink: 0;
+            border: 2px solid var(--accent);
+        }
+        .user-details { line-height: 1.25; }
+        .user-details .user-name {
+            font-weight: 700; color: var(--text);
+            font-size: 0.8125rem;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .user-details .user-role {
+            font-family: var(--font-mono);
+            font-size: 0.625rem; font-weight: 600;
+            color: var(--text-dim);
+            text-transform: uppercase; letter-spacing: 0.08em;
+        }
+        @media (max-width: 640px) { .user-details { display: none; } }
+
+        /* Main area */
+        .main-area {
+            padding: 28px;
+            max-width: 1500px;
+            margin: 0 auto;
+            min-width: 0;
+        }
+        @media (max-width: 900px) { .main-area { padding: 20px; } }
+        @media (max-width: 640px) { .main-area { padding: 20px 16px; } }
+
+        .page-header {
+            margin-bottom: 24px;
+            display: flex; justify-content: space-between;
+            align-items: flex-end; flex-wrap: wrap; gap: 16px;
+        }
+        .page-title {
+            font-size: 1.75rem; font-weight: 800;
+            color: var(--text);
+            letter-spacing: -0.02em; line-height: 1.2;
+            margin-bottom: 6px;
+        }
+        .page-subtitle {
+            font-size: 0.875rem; color: var(--text-muted);
+            font-weight: 500;
+        }
+        .page-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        /* Cards */
+        .card {
+            background: var(--surface);
+            border-radius: var(--r-lg);
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+            overflow: hidden;
+            animation: slideInUp var(--dur) var(--ease) both;
+        }
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface-muted);
+            display: flex; justify-content: space-between;
+            align-items: center; gap: 12px;
+            flex-wrap: wrap;
+        }
+        .card-title {
+            font-size: 1rem; font-weight: 700;
+            color: var(--text);
+            letter-spacing: -0.01em;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .card-title i { color: var(--accent); font-size: 0.9375rem; }
+        .card-body { padding: 20px; }
+
+        /* Current edition banner */
+        .current-edition {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            border-radius: var(--r-lg);
+            padding: 20px 24px;
+            margin-bottom: 20px;
+            display: flex; justify-content: space-between;
+            flex-wrap: wrap; gap: 16px; align-items: center;
+            animation: slideInUp var(--dur) var(--ease) both;
+        }
+        .current-edition-info .label {
+            font-family: var(--font-mono);
+            font-size: 0.625rem; font-weight: 700;
+            color: var(--text-dim);
+            text-transform: uppercase; letter-spacing: 0.12em;
+            margin-bottom: 4px;
+        }
+        .current-edition-info h2 {
+            font-size: 1.375rem; font-weight: 800;
+            color: var(--text);
+            letter-spacing: -0.02em;
+            margin-bottom: 8px;
+        }
+        .current-edition-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 16px; font-size: 0.75rem;
+            color: var(--text-muted); font-family: var(--font-mono);
+        }
+        .current-edition-meta div strong {
+            display: block;
+            color: var(--text-dim);
+            font-size: 0.625rem; text-transform: uppercase;
+            letter-spacing: 0.08em; margin-bottom: 2px;
+        }
+        .current-edition-meta div span {
+            color: var(--text); font-weight: 600;
+        }
+
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: var(--surface);
+            border-radius: var(--r-lg);
+            border: 1px solid var(--border);
+            padding: 18px;
+            transition: all var(--dur) var(--ease);
+            animation: slideInUp var(--dur) var(--ease) both;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--accent);
+        }
+        .stat-icon {
+            width: 38px; height: 38px;
+            border-radius: var(--r);
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 12px; font-size: 0.9375rem;
+        }
+        .stat-icon.icon-green  { background: var(--primary-tint); color: var(--primary); }
+        .stat-icon.icon-gold   { background: var(--accent-tint);  color: var(--text-gold); }
+        .stat-icon.icon-blue   { background: var(--info-tint);    color: var(--info); }
+        .stat-icon.icon-purple { background: var(--purple-tint);  color: var(--purple); }
+        .stat-value {
+            font-size: 1.75rem; font-weight: 800;
+            color: var(--text);
+            letter-spacing: -0.03em; line-height: 1;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.75rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.05em;
+        }
+
+        /* Award categories list */
+        .award-categories {
+            display: flex; flex-direction: column;
+            gap: 2px;
+        }
+        .award-row {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            transition: background var(--dur-fast) var(--ease);
+        }
+        .award-row:last-child { border-bottom: none; }
+        .award-row:hover { background: var(--surface-muted); }
+        .award-row-header {
+            display: flex; align-items: center; gap: 14px;
+            padding: 14px 20px; cursor: pointer;
+            flex-wrap: wrap;
+        }
+        .award-number {
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            background: var(--primary-tint);
+            color: var(--primary);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 0.8125rem;
+            flex-shrink: 0; font-family: var(--font-mono);
+        }
+        .award-main { flex: 1; min-width: 180px; }
+        .award-name {
+            font-weight: 700; color: var(--text);
+            font-size: 0.9375rem; margin-bottom: 2px;
+        }
+        .award-type {
+            font-size: 0.75rem; color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+        .award-status {
+            flex-shrink: 0;
+        }
+        .award-chevron {
+            color: var(--text-dim);
+            transition: transform var(--dur-fast) var(--ease);
+            font-size: 0.875rem;
+            padding: 4px;
+        }
+        .award-row.expanded .award-chevron {
+            transform: rotate(180deg);
+            color: var(--accent);
+        }
+        .award-row.expanded {
+            background: var(--surface-muted);
+        }
+
+        .award-details {
+            display: none;
+            padding: 0 20px 20px;
+            animation: expandOpen 300ms var(--ease);
+        }
+        .award-row.expanded .award-details { display: block; }
+
+        .award-details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+            padding: 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+        }
+        .award-detail-item .label {
+            font-family: var(--font-mono);
+            font-size: 0.625rem; font-weight: 700;
+            color: var(--text-dim);
+            text-transform: uppercase; letter-spacing: 0.1em;
+            margin-bottom: 4px;
+        }
+        .award-detail-item .value {
+            font-size: 0.875rem;
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        /* Tables */
+        .table-container {
+            overflow-x: auto;
+            border-radius: var(--r);
+            border: 1px solid var(--border);
+            background: var(--surface);
+        }
+        .data-table {
+            width: 100%; border-collapse: collapse;
+            min-width: 500px;
+        }
+        .data-table th {
+            background: var(--surface-muted);
+            padding: 11px 16px;
+            text-align: left;
+            font-family: var(--font-mono);
+            font-weight: 700; font-size: 0.6875rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+        .data-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.8125rem;
+            color: var(--text);
+            vertical-align: middle;
+        }
+        .data-table tbody tr {
+            transition: background var(--dur-fast) var(--ease);
+        }
+        .data-table tbody tr:hover { background: var(--surface-muted); }
+        .data-table tbody tr:last-child td { border-bottom: none; }
+        .empty-row td {
+            text-align: center;
+            padding: 32px 20px !important;
+            color: var(--text-dim);
+            font-style: italic;
+            font-size: 0.8125rem;
+        }
+        .mono { font-family: var(--font-mono); font-size: 0.75rem; }
+
+        /* Badges */
+        .status-badge {
+            padding: 3px 9px;
+            border-radius: 999px;
+            font-size: 0.6875rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            display: inline-flex; align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+        .badge-success { background: var(--success-tint); color: var(--success); }
+        .badge-warning { background: var(--warning-tint); color: var(--warning); }
+        .badge-danger  { background: var(--danger-tint);  color: var(--danger); }
+        .badge-info    { background: var(--info-tint);    color: var(--info); }
+        .badge-gold    { background: var(--accent-tint);  color: var(--text-gold); }
+        .badge-purple  { background: var(--purple-tint);  color: var(--purple); }
+        .badge-draft   { background: var(--surface-muted); color: var(--text-muted); border: 1px solid var(--border); }
+
+        /* Buttons */
+        .btn {
+            padding: 9px 16px;
+            border-radius: var(--r);
+            border: none; cursor: pointer;
+            font-weight: 600; font-size: 0.8125rem;
+            display: inline-flex; align-items: center; gap: 7px;
+            transition: all var(--dur-fast) var(--ease);
+            line-height: 1.4;
+            white-space: nowrap;
+        }
+        .btn-primary { background: var(--primary); color: var(--text-invert); }
+        .btn-primary:hover { background: var(--primary-soft); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+        .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); }
+        .btn-secondary:hover { background: var(--surface-muted); }
+        .btn-danger { background: var(--danger); color: var(--text-invert); }
+        .btn-danger:hover { background: #9C3427; transform: translateY(-1px); }
+        .btn-gold { background: var(--accent); color: var(--primary); font-weight: 700; }
+        .btn-gold:hover { background: var(--accent-soft); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+        .btn-sm { padding: 5px 10px; font-size: 0.75rem; gap: 5px; }
+
+        /* Forms */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 14px;
+        }
+        .form-group { margin-bottom: 0; }
+        .form-group.full { grid-column: 1 / -1; }
+        .form-label {
+            display: block;
+            font-size: 0.75rem; font-weight: 600;
+            color: var(--text);
+            margin-bottom: 5px;
+        }
+        .form-label .req { color: var(--danger); }
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1px solid var(--border-strong);
+            border-radius: var(--r);
+            font-size: 0.8125rem;
+            font-family: var(--font-sans);
+            background: var(--surface);
+            color: var(--text);
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(213, 168, 59, 0.12);
+        }
+        .form-textarea { min-height: 80px; resize: vertical; }
+        .form-hint {
+            font-size: 0.6875rem;
+            color: var(--text-dim);
+            margin-top: 4px;
+            font-family: var(--font-mono);
+        }
+        .form-check {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 0.8125rem; color: var(--text);
+            cursor: pointer; padding: 4px 0;
+        }
+        .form-check input[type="checkbox"], .form-check input[type="radio"] {
+            width: 15px; height: 15px;
+            accent-color: var(--primary);
+            cursor: pointer; flex-shrink: 0;
+        }
+        .form-section-title {
+            font-family: var(--font-mono);
+            font-size: 0.6875rem; font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px; margin-bottom: 8px;
+            grid-column: 1 / -1;
+        }
+
+        /* Info/warning */
+        .info-box {
+            display: flex; gap: 12px;
+            padding: 14px 16px;
+            background: var(--info-tint);
+            border: 1px solid rgba(44, 111, 168, 0.25);
+            border-radius: var(--r);
+            color: var(--info);
+            font-size: 0.8125rem;
+            margin-bottom: 16px;
+        }
+        .info-box i { flex-shrink: 0; margin-top: 2px; }
+        .warning-box {
+            display: flex; gap: 12px;
+            padding: 14px 16px;
+            background: var(--warning-tint);
+            border: 1px solid rgba(184, 118, 30, 0.25);
+            border-radius: var(--r);
+            color: var(--warning);
+            font-size: 0.8125rem;
+            margin-bottom: 16px;
+        }
+        .warning-box i { flex-shrink: 0; margin-top: 2px; }
+
+        /* Filter bar */
+        .filter-bar {
+            display: flex; gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+            align-items: center;
+        }
+        .filter-bar .form-input,
+        .filter-bar .form-select {
+            width: auto; min-width: 150px;
+        }
+        .search-wrap {
+            position: relative; flex: 1; min-width: 200px;
+        }
+        .search-wrap i {
+            position: absolute; left: 12px; top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-dim); font-size: 0.8125rem;
+            pointer-events: none;
+        }
+        .search-wrap .form-input { padding-left: 34px; width: 100%; }
+
+        /* Report grid */
+        .report-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 12px;
+        }
+        .report-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            padding: 16px;
+            display: flex; align-items: center; gap: 14px;
+            transition: all var(--dur-fast) var(--ease);
+            cursor: pointer;
+        }
+        .report-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        .report-icon {
+            width: 40px; height: 40px;
+            border-radius: var(--r);
+            background: var(--primary-tint);
+            color: var(--primary);
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; font-size: 0.9375rem;
+        }
+        .report-info { flex: 1; min-width: 0; }
+        .report-info h4 { font-weight: 700; color: var(--text); font-size: 0.875rem; margin-bottom: 2px; }
+        .report-info p { font-size: 0.75rem; color: var(--text-muted); margin: 0; }
+
+        /* Schedule */
+        .schedule-list { display: flex; flex-direction: column; gap: 10px; }
+        .schedule-row {
+            display: flex; align-items: center; gap: 14px;
+            padding: 14px 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .schedule-row:hover { border-color: var(--accent); }
+        .schedule-icon {
+            width: 36px; height: 36px;
+            border-radius: var(--r);
+            background: var(--accent-tint);
+            color: var(--text-gold);
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; font-size: 0.875rem;
+        }
+        .schedule-info { flex: 1; min-width: 0; }
+        .schedule-info h4 { font-weight: 700; color: var(--text); font-size: 0.875rem; margin-bottom: 2px; }
+        .schedule-info p { font-size: 0.75rem; color: var(--text-muted); margin: 0; font-family: var(--font-mono); }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center; padding: 40px 20px;
+        }
+        .empty-state i {
+            font-size: 2.5rem;
+            color: var(--border-strong);
+            margin-bottom: 12px;
+        }
+        .empty-state h3 {
+            font-size: 1rem; font-weight: 700;
+            color: var(--text); margin-bottom: 6px;
+        }
+        .empty-state p {
+            font-size: 0.8125rem; color: var(--text-muted);
+            max-width: 380px; margin: 0 auto 16px;
+        }
+
+        /* Modal */
+        .modal {
+            position: fixed; inset: 0;
+            background: rgba(16, 43, 39, 0.5);
+            backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999;
+            padding: 16px;
+            opacity: 0; visibility: hidden;
+            transition: opacity var(--dur) var(--ease), visibility var(--dur);
+        }
+        .modal.active { opacity: 1; visibility: visible; }
+        .modal-content {
+            background: var(--surface);
+            border-radius: var(--r-lg);
+            width: 100%; max-width: 640px;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: translateY(-12px) scale(0.96);
+            transition: transform var(--dur) var(--ease-out);
+            box-shadow: var(--shadow-xl);
+        }
+        .modal.active .modal-content { transform: translateY(0) scale(1); }
+        .modal-header {
+            padding: 18px 22px;
+            border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+            position: sticky; top: 0;
+            background: var(--surface); z-index: 2;
+        }
+        .modal-title { font-size: 1rem; font-weight: 700; color: var(--text); }
+        .modal-close {
+            background: none; border: none;
+            font-size: 1.5rem; line-height: 1;
+            color: var(--text-dim); cursor: pointer;
+            padding: 4px 8px; border-radius: var(--r-sm);
+        }
+        .modal-close:hover { color: var(--text); background: var(--surface-muted); }
+        .modal-body { padding: 20px 22px; color: var(--text-muted); font-size: 0.875rem; }
+        .modal-footer {
+            padding: 14px 22px;
+            border-top: 1px solid var(--border);
+            display: flex; gap: 10px; justify-content: flex-end;
+            position: sticky; bottom: 0;
+            background: var(--surface);
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .page-title { font-size: 1.5rem; }
+            .stat-value { font-size: 1.5rem; }
+            .user-details { display: none; }
+            .header { padding: 0 16px; }
+            .card-header { flex-direction: column; align-items: flex-start; }
+            .current-edition { padding: 16px; }
+            .current-edition-info h2 { font-size: 1.125rem; }
+            .award-row-header { padding: 12px 16px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Loading</div>
+        </div>
+    </div>
+
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">N</div>
+                <div class="sidebar-title">
+                    NUESA BIU
+                    <span>Admin Panel</span>
+                </div>
+            </div>
+
+            <nav class="nav">
+                <div class="nav-section-label">Main</div>
+                <a href="dashboard.html" class="nav-item"><i class="fas fa-th-large"></i><span>Dashboard</span></a>
+                <a href="members.html" class="nav-item"><i class="fas fa-users"></i><span>Members</span></a>
+                <a href="courseReps.html" class="nav-item"><i class="fas fa-chalkboard-teacher"></i><span>Course Reps</span></a>
+                <a href="events.html" class="nav-item"><i class="far fa-calendar-alt"></i><span>Events</span></a>
+                <a href="Election.html" class="nav-item"><i class="fas fa-vote-yea"></i><span>Elections</span></a>
+                <a href="awards.html" class="nav-item active"><i class="fas fa-trophy"></i><span>Awards</span></a>
+                <a href="articles.html" class="nav-item"><i class="far fa-newspaper"></i><span>News &amp; Articles</span></a>
+                <a href="resources.html" class="nav-item"><i class="fas fa-book"></i><span>Resources</span></a>
+                <a href="media.html" class="nav-item"><i class="far fa-images"></i><span>Media Library</span></a>
+                <a href="payments.html" class="nav-item"><i class="fas fa-credit-card"></i><span>Payments</span></a>
+                <a href="messages.html" class="nav-item"><i class="far fa-comment-alt"></i><span>Messages</span></a>
+                <a href="settings.html" class="nav-item"><i class="fas fa-cog"></i><span>Settings</span></a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="logout-btn" id="logoutBtn" type="button">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <div class="mobile-overlay" id="mobileOverlay"></div>
+
+        <div class="main-content">
+            <header class="header" id="mainHeader">
+                <button class="mobile-menu-btn" id="mobileMenuToggle" type="button" aria-label="Toggle menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="header-actions">
+                    <button class="notification-btn" id="notificationBtn" type="button" aria-label="Notifications">
+                        <i class="far fa-bell"></i>
+                        <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                    </button>
+                    <div class="user-info">
+                        <div class="user-avatar" id="userAvatar">A</div>
+                        <div class="user-details">
+                            <div class="user-name" id="userName">Loading</div>
+                            <div class="user-role" id="userRole">Administrator</div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <main class="main-area">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Awards</h1>
+                        <p class="page-subtitle">Manage NUESA awards, nominations, nominees and award winners.</p>
+                    </div>
+                    <div class="page-actions">
+                        <button class="btn btn-primary" id="createEditionBtn">
+                            <i class="fas fa-plus"></i> Create Award Edition
+                        </button>
+                        <button class="btn btn-secondary" id="exportAllBtn">
+                            <i class="fas fa-download"></i> Export Report
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Current Edition -->
+                <div id="currentEditionWrap"></div>
+
+                <!-- Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon icon-green"><i class="fas fa-trophy"></i></div>
+                        <div class="stat-value" id="statCategories">0</div>
+                        <div class="stat-label">Award Categories</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-gold"><i class="fas fa-user-plus"></i></div>
+                        <div class="stat-value" id="statNominations">0</div>
+                        <div class="stat-label">Total Nominations</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-blue"><i class="fas fa-user-check"></i></div>
+                        <div class="stat-value" id="statNominees">0</div>
+                        <div class="stat-label">Approved Nominees</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-purple"><i class="fas fa-crown"></i></div>
+                        <div class="stat-value" id="statWinners">0</div>
+                        <div class="stat-label">Winners Announced</div>
+                    </div>
+                </div>
+
+                <!-- Award Categories -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-list"></i> Award Categories</h3>
+                        <div style="display:flex;gap:6px;">
+                            <span class="status-badge badge-info" id="categoriesCountBadge">0 award titles</span>
+                            <button class="btn btn-primary btn-sm" id="addCategoryBtn">
+                                <i class="fas fa-plus"></i> Add Category
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="padding:0;">
+                        <div class="award-categories" id="awardCategoriesList">
+                            <div class="empty-state">
+                                <i class="fas fa-trophy"></i>
+                                <h3>No Award Categories Yet</h3>
+                                <p>Add categories to start configuring awards for this edition.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Nominations -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-user-plus"></i> Nomination Management</h3>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                            <span class="status-badge badge-gold" id="nominationsCountBadge">0 nominations</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="filter-bar">
+                            <div class="search-wrap">
+                                <i class="fas fa-search"></i>
+                                <input type="text" class="form-input" id="nominationSearch" placeholder="Search by nominee or award...">
+                            </div>
+                            <select class="form-select" id="nominationStatusFilter">
+                                <option value="all">All Statuses</option>
+                                <option value="pending">Pending</option>
+                                <option value="approved">Approved</option>
+                                <option value="rejected">Rejected</option>
+                            </select>
+                        </div>
+
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nominee</th>
+                                        <th>Award</th>
+                                        <th>Nominated By</th>
+                                        <th>Date</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="nominationsTableBody">
+                                    <tr class="empty-row"><td colspan="6">No nominations yet</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Nominees Directory -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-users"></i> Nominees Directory</h3>
+                        <span class="status-badge badge-success" id="nomineesCountBadge">0 approved</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="filter-bar">
+                            <div class="search-wrap">
+                                <i class="fas fa-search"></i>
+                                <input type="text" class="form-input" id="nomineeSearch" placeholder="Search nominees...">
+                            </div>
+                            <select class="form-select" id="nomineeAwardFilter">
+                                <option value="all">All Awards</option>
+                            </select>
+                            <select class="form-select" id="nomineeLevelFilter">
+                                <option value="all">All Levels</option>
+                                <option value="200L">200L</option>
+                                <option value="300L">300L</option>
+                                <option value="400L">400L</option>
+                                <option value="500L">500L</option>
+                            </select>
+                        </div>
+
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nominee</th>
+                                        <th>Award Category</th>
+                                        <th>Department</th>
+                                        <th>Level</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="nomineesTableBody">
+                                    <tr class="empty-row"><td colspan="6">No approved nominees yet</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Voting / Judging -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-gavel"></i> Voting / Judging Management</h3>
+                        <button class="btn btn-secondary btn-sm" id="configSelectionBtn">
+                            <i class="fas fa-cog"></i> Configure Method
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="info-box">
+                            <i class="fas fa-info-circle"></i>
+                            <div>
+                                <strong>Selection method:</strong> Each award category can use a different selection method (public voting, judges only, or combined). Configure methods per category in the Award Categories section.
+                            </div>
+                        </div>
+
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-icon icon-green"><i class="fas fa-check-circle"></i></div>
+                                <div class="stat-value" id="votesCastStat">0</div>
+                                <div class="stat-label">Votes / Scores Submitted</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon icon-purple"><i class="fas fa-percentage"></i></div>
+                                <div class="stat-value" id="participationStat">0%</div>
+                                <div class="stat-label">Participation</div>
+                            </div>
+                        </div>
+
+                        <div class="warning-box">
+                            <i class="fas fa-shield-alt"></i>
+                            <div>
+                                <strong>Ballot privacy:</strong> Individual votes, judge scores, and candidate totals are never exposed while voting/judging is active. Results appear only after verification is complete.
+                            </div>
+                        </div>
+
+                        <div style="text-align:right;margin-top:12px;">
+                            <button class="btn btn-primary btn-sm" onclick="openVotingWindowModal()">
+                                <i class="fas fa-clock"></i> Configure Voting Window
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results & Winners -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-trophy"></i> Results &amp; Winners</h3>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                            <button class="btn btn-secondary btn-sm" id="refreshResultsBtn">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                            <button class="btn btn-gold btn-sm" id="publishWinnersBtn">
+                                <i class="fas fa-bullhorn"></i> Publish Winners
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="resultsContent">
+                            <div class="empty-state">
+                                <i class="fas fa-trophy"></i>
+                                <p>Winners will appear here after voting/judging ends and results are verified.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Schedule -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-calendar-alt"></i> Award Schedule &amp; Timeline</h3>
+                        <span style="font-family:var(--font-mono);font-size:0.6875rem;color:var(--text-dim);">WAT – UTC+1</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="schedule-list">
+                            <div class="schedule-row">
+                                <div class="schedule-icon"><i class="fas fa-bullhorn"></i></div>
+                                <div class="schedule-info">
+                                    <h4>Award Announcement</h4>
+                                    <p id="scheduleAnnouncement">Not configured</p>
+                                </div>
+                                <button class="btn btn-secondary btn-sm" onclick="openScheduleModal()">
+                                    <i class="fas fa-cog"></i> Configure
+                                </button>
+                            </div>
+                            <div class="schedule-row">
+                                <div class="schedule-icon"><i class="fas fa-user-plus"></i></div>
+                                <div class="schedule-info">
+                                    <h4>Nominations</h4>
+                                    <p id="scheduleNominations">Not configured</p>
+                                </div>
+                                <button class="btn btn-secondary btn-sm" onclick="openScheduleModal()">
+                                    <i class="fas fa-cog"></i> Configure
+                                </button>
+                            </div>
+                            <div class="schedule-row">
+                                <div class="schedule-icon"><i class="fas fa-clipboard-check"></i></div>
+                                <div class="schedule-info">
+                                    <h4>Nominee Review</h4>
+                                    <p id="scheduleReview">Review deadline not set</p>
+                                </div>
+                                <button class="btn btn-secondary btn-sm" onclick="openScheduleModal()">
+                                    <i class="fas fa-cog"></i> Configure
+                                </button>
+                            </div>
+                            <div class="schedule-row">
+                                <div class="schedule-icon"><i class="fas fa-gavel"></i></div>
+                                <div class="schedule-info">
+                                    <h4>Voting / Judging</h4>
+                                    <p id="scheduleVoting">Not configured</p>
+                                </div>
+                                <button class="btn btn-secondary btn-sm" onclick="openScheduleModal()">
+                                    <i class="fas fa-cog"></i> Configure
+                                </button>
+                            </div>
+                            <div class="schedule-row">
+                                <div class="schedule-icon"><i class="fas fa-check-circle"></i></div>
+                                <div class="schedule-info">
+                                    <h4>Result Verification</h4>
+                                    <p id="scheduleVerification">Verification deadline not set</p>
+                                </div>
+                                <button class="btn btn-secondary btn-sm" onclick="openScheduleModal()">
+                                    <i class="fas fa-cog"></i> Configure
+                                </button>
+                            </div>
+                            <div class="schedule-row">
+                                <div class="schedule-icon"><i class="fas fa-crown"></i></div>
+                                <div class="schedule-info">
+                                    <h4>Winner Announcement</h4>
+                                    <p id="scheduleWinners">Publication date not set</p>
+                                </div>
+                                <button class="btn btn-secondary btn-sm" onclick="openScheduleModal()">
+                                    <i class="fas fa-cog"></i> Configure
+                                </button>
+                            </div>
+                        </div>
+
+                        <div style="margin-top:16px;text-align:right;">
+                            <button class="btn btn-primary" onclick="openScheduleModal()">
+                                <i class="fas fa-calendar-check"></i> Configure Timeline
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reports -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-file-export"></i> Award Reports</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="report-grid">
+                            <div class="report-card" data-report="nominations">
+                                <div class="report-icon"><i class="fas fa-user-plus"></i></div>
+                                <div class="report-info">
+                                    <h4>Nomination Report</h4>
+                                    <p>All nominations and their decisions</p>
+                                </div>
+                                <i class="fas fa-download" style="color:var(--text-dim);"></i>
+                            </div>
+                            <div class="report-card" data-report="nominees">
+                                <div class="report-icon"><i class="fas fa-users"></i></div>
+                                <div class="report-info">
+                                    <h4>Nominees by Category</h4>
+                                    <p>All approved nominees grouped by award</p>
+                                </div>
+                                <i class="fas fa-download" style="color:var(--text-dim);"></i>
+                            </div>
+                            <div class="report-card" data-report="participation">
+                                <div class="report-icon"><i class="fas fa-chart-line"></i></div>
+                                <div class="report-info">
+                                    <h4>Voting Participation Report</h4>
+                                    <p>Vote and judge score participation</p>
+                                </div>
+                                <i class="fas fa-download" style="color:var(--text-dim);"></i>
+                            </div>
+                            <div class="report-card" data-report="winners">
+                                <div class="report-icon"><i class="fas fa-crown"></i></div>
+                                <div class="report-info">
+                                    <h4>Award Results &amp; Winners</h4>
+                                    <p>Verified winners and runners-up</p>
+                                </div>
+                                <i class="fas fa-download" style="color:var(--text-dim);"></i>
+                            </div>
+                            <div class="report-card" data-report="full">
+                                <div class="report-icon"><i class="fas fa-file-alt"></i></div>
+                                <div class="report-info">
+                                    <h4>Full Edition Report</h4>
+                                    <p>Complete report of this award edition</p>
+                                </div>
+                                <i class="fas fa-download" style="color:var(--text-dim);"></i>
+                            </div>
+                            <div class="report-card" data-report="audit">
+                                <div class="report-icon"><i class="fas fa-history"></i></div>
+                                <div class="report-info">
+                                    <h4>Administrative Activity</h4>
+                                    <p>Audit log of admin actions</p>
+                                </div>
+                                <i class="fas fa-download" style="color:var(--text-dim);"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Archive -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-archive"></i> Award Archive</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="archiveContent">
+                            <div class="empty-state">
+                                <i class="fas fa-archive"></i>
+                                <h3>No Archived Editions</h3>
+                                <p>Past award editions will appear here once closed and archived.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Create Edition Modal -->
+    <div class="modal" id="createEditionModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Create Award Edition</h3>
+                <button class="modal-close" onclick="hideModal('createEditionModal')" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="createEditionForm">
+                    <div class="form-grid">
+                        <div class="form-section-title">Edition Details</div>
+                        <div class="form-group full">
+                            <label class="form-label">Edition Name <span class="req">*</span></label>
+                            <input type="text" class="form-input" name="name" placeholder="e.g. NUESA Awards 2026/2027" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Academic Session <span class="req">*</span></label>
+                            <select class="form-select" name="session_id" id="editionSessionSelect" required>
+                                <option value="">Loading sessions...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Edition Status</label>
+                            <select class="form-select" name="status">
+                                <option value="draft">Draft</option>
+                                <option value="preparation">Preparation</option>
+                                <option value="active">Active</option>
+                            </select>
+                        </div>
+                        <div class="form-group full">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-textarea" name="description" placeholder="Description of this award edition..."></textarea>
+                        </div>
+                        <div class="form-group full">
+                            <label class="form-label">Default Award Categories (one per line)</label>
+                            <textarea class="form-textarea" name="categories_text" style="min-height:180px;">Freshest Fresher
+Most Innovative
+Best Dressed Male
+Best Dressed Female
+Entrepreneur of the Year
+Course Rep of the Year
+Student Lecturer of the Year
+Favorite Lecturer
+Clique of the Year
+Most Social Male
+Most Social Female
+Content Creator of the Year
+Sportsperson of the Year</textarea>
+                            <p class="form-hint">Each line becomes a category. You can edit them after creation.</p>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('createEditionModal')" type="button">Cancel</button>
+                <button class="btn btn-primary" id="submitEditionBtn" type="button">
+                    <i class="fas fa-rocket"></i> Create Edition
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Category Modal -->
+    <div class="modal" id="categoryModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="categoryModalTitle">Add Award Category</h3>
+                <button class="modal-close" onclick="hideModal('categoryModal')" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="categoryForm">
+                    <input type="hidden" name="category_id">
+                    <div class="form-grid">
+                        <div class="form-group full">
+                            <label class="form-label">Category Name <span class="req">*</span></label>
+                            <input type="text" class="form-input" name="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Category Type</label>
+                            <select class="form-select" name="type">
+                                <option value="individual">Individual award</option>
+                                <option value="male">Male award</option>
+                                <option value="female">Female award</option>
+                                <option value="group">Group award</option>
+                                <option value="lecturer">Lecturer award</option>
+                                <option value="leadership">Leadership award</option>
+                                <option value="general">General award</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Selection Method</label>
+                            <select class="form-select" name="selection_method">
+                                <option value="public">Public voting (all students)</option>
+                                <option value="registered">Registered voters only</option>
+                                <option value="judges">Judges only</option>
+                                <option value="combined">Combined judges + public</option>
+                            </select>
+                        </div>
+                        <div class="form-group full">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-textarea" name="description" placeholder="Category description..."></textarea>
+                        </div>
+                        <div class="form-group full">
+                            <label class="form-label">Eligibility</label>
+                            <textarea class="form-textarea" name="eligibility" placeholder="Who can be nominated..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" name="status">
+                                <option value="draft">Draft</option>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('categoryModal')" type="button">Cancel</button>
+                <button class="btn btn-primary" id="submitCategoryBtn" type="button">
+                    <i class="fas fa-save"></i> Save Category
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedule Modal -->
+    <div class="modal" id="scheduleModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Configure Award Timeline</h3>
+                <button class="modal-close" onclick="hideModal('scheduleModal')" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="info-box" style="margin-bottom:16px;">
+                    <i class="fas fa-info-circle"></i>
+                    <div>All times are in WAT (UTC+1). Saving updates the active award edition schedule.</div>
+                </div>
+                <form id="scheduleForm">
+                    <div class="form-grid">
+                        <div class="form-group full">
+                            <label class="form-label">Award Announcement Date</label>
+                            <input type="datetime-local" class="form-input" name="announcement_date">
+                        </div>
+                        <div class="form-group full">
+                            <label class="form-label">Nominations Open</label>
+                            <input type="datetime-local" class="form-input" name="nomination_start">
+                        </div>
+                        <div class="form-group full">
+                            <label class="form-label">Nominations Close</label>
+                            <input type="datetime-local" class="form-input" name="nomination_end">
+                        </div>
+                        <div class="form-group full">
+                            <label class="form-label">Nominee Review Deadline</label>
+                            <input type="datetime-local" class="form-input" name="review_deadline">
+                        </div>
+                        <div class="form-group full">
+                            <label class="form-label">Voting / Judging Opens</label>
+                            <input type="datetime-local" class="form-input" name="voting_start">
+                        </div>
+                        <div class="form-group full">
+                            <label class="form-label">Voting / Judging Closes</label>
+                            <input type="datetime-local" class="form-input" name="voting_end">
+                        </div>
+                        <div class="form-group full">
+                            <label class="form-label">Result Verification Deadline</label>
+                            <input type="datetime-local" class="form-input" name="verification_deadline">
+                        </div>
+                        <div class="form-group full">
+                            <label class="form-label">Winner Announcement Date</label>
+                            <input type="datetime-local" class="form-input" name="winner_announcement">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('scheduleModal')" type="button">Cancel</button>
+                <button class="btn btn-primary" id="saveScheduleBtn" type="button">
+                    <i class="fas fa-save"></i> Save Timeline
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Voting Window Modal -->
+    <div class="modal" id="votingWindowModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Configure Voting Window</h3>
+                <button class="modal-close" onclick="hideModal('votingWindowModal')" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size:0.8125rem;color:var(--text-muted);margin-bottom:16px;">
+                    Use the schedule section to configure exact voting start and end. This modal is for quick toggles only.
+                </p>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <button class="btn btn-primary" onclick="quickAction('open_voting')">
+                        <i class="fas fa-play"></i> Open Voting Now
+                    </button>
+                    <button class="btn btn-danger" onclick="quickAction('close_voting')">
+                        <i class="fas fa-stop"></i> Close Voting Now
+                    </button>
+                    <button class="btn btn-secondary" onclick="quickAction('pause_voting')">
+                        <i class="fas fa-pause"></i> Pause Voting
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('votingWindowModal')" type="button">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logout Modal -->
+    <div class="modal" id="logoutModal">
+        <div class="modal-content" style="max-width:400px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirm Logout</h3>
+                <button class="modal-close" onclick="hideModal('logoutModal')" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to end your admin session?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('logoutModal')" type="button">Cancel</button>
+                <button class="btn btn-primary" id="confirmLogout" type="button">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ============================================================
+    // CONFIG
+    // ============================================================
+    const API_BASE_URL = '';
+    let currentUser = null;
+    let inactivityTimeout = null;
+    let currentEdition = null;
+    let categoriesData = [];
+    let nominationsData = [];
+    let nomineesData = [];
+    let resultsData = null;
+    let sessionsData = [];
+    let archiveData = [];
+
+    // ============================================================
+    // AUTH
+    // ============================================================
+    async function checkAuth() {
+        try {
+            showLoading();
+            const res = await fetch(`${API_BASE_URL}/api/admin/session`, {
+                method: 'GET', credentials: 'include',
+                headers: { 'Accept': 'application/json' }
+            });
+            if (res.status === 200) {
+                const data = await res.json();
+                if (data.status === 'success' && data.data) {
+                    currentUser = data.data;
+                    updateUserInfo();
+                    hideLoading();
+                    return true;
+                }
+            }
+            showToast('Please login to continue', 'info');
+            setTimeout(() => window.location.replace('adlog.html'), 1200);
+            hideLoading();
+            return false;
+        } catch (err) {
+            showToast('Connection error', 'error');
+            hideLoading();
+            return false;
+        }
+    }
+
+    function updateUserInfo() {
+        if (!currentUser) return;
+        const name = currentUser.fullName || currentUser.full_name || 'Administrator';
+        const role = (currentUser.role || 'admin');
+        document.getElementById('userName').textContent = name;
+        document.getElementById('userRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
+        document.getElementById('userAvatar').textContent = name.charAt(0).toUpperCase();
+    }
+
+    async function confirmLogout() {
+        try {
+            showLoading();
+            await fetch(`${API_BASE_URL}/api/admin/logout`, { method: 'POST', credentials: 'include' });
+        } catch (err) { console.warn('Logout failed:', err); }
+        hideModal('logoutModal');
+        showToast('Logged out', 'success');
+        setTimeout(() => window.location.replace('adlog.html'), 700);
+    }
+
+    // ============================================================
+    // API
+    // ============================================================
+    async function apiGet(endpoint) {
+        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'GET', credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+        });
+        if (res.status === 401) {
+            showToast('Session expired', 'warning');
+            setTimeout(() => window.location.replace('adlog.html'), 1200);
+            throw new Error('Unauthorized');
+        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+    }
+
+    async function apiCall(endpoint, options = {}) {
+        const headers = {
+            'Accept': 'application/json',
+            ...(options.body && !(options.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
+            ...(options.headers || {})
+        };
+        const res = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers, credentials: 'include' });
+        const text = await res.text();
+        let data;
+        try { data = text ? JSON.parse(text) : {}; } catch { data = { message: text }; }
+        if (!res.ok) {
+            const err = new Error(data.message || `HTTP ${res.status}`);
+            err.status = res.status; err.data = data;
+            throw err;
+        }
+        return data;
+    }
+
+    // ============================================================
+    // UI HELPERS
+    // ============================================================
+    function showLoading() { document.getElementById('loadingOverlay').classList.add('active'); }
+    function hideLoading() { document.getElementById('loadingOverlay').classList.remove('active'); }
+    function showModal(id) {
+        const el = document.getElementById(id);
+        if (el) { el.classList.add('active'); document.body.style.overflow = 'hidden'; }
+    }
+    function hideModal(id) {
+        const el = document.getElementById(id);
+        if (el) { el.classList.remove('active'); document.body.style.overflow = ''; }
+    }
+    function showToast(message, type = 'info', duration = 4500) {
+        document.querySelectorAll('.toast').forEach(t => t.remove());
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        const icons = { success:'check-circle', error:'exclamation-circle', warning:'exclamation-triangle', info:'info-circle' };
+        toast.innerHTML = `
+            <div class="toast-icon"><i class="fas fa-${icons[type] || 'info-circle'}"></i></div>
+            <div class="toast-content">${escapeHtml(message)}</div>
+            <button class="toast-close" aria-label="Close">&times;</button>
+        `;
+        document.body.appendChild(toast);
+        requestAnimationFrame(() => toast.classList.add('show'));
+        toast.querySelector('.toast-close').onclick = () => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        };
+        setTimeout(() => {
+            if (toast.parentElement) {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }
+        }, duration);
+    }
+    function escapeHtml(str) {
+        if (str == null) return '';
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+    function getInitials(name) {
+        if (!name) return '?';
+        return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    }
+    function formatDate(dateStr) {
+        if (!dateStr) return '—';
+        try {
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return dateStr;
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        } catch { return dateStr; }
+    }
+    function formatDateTime(dateStr) {
+        if (!dateStr) return '—';
+        try {
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return dateStr;
+            return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+        } catch { return dateStr; }
+    }
+    function toLocalInput(dateStr) {
+        if (!dateStr) return '';
+        try {
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return '';
+            const pad = n => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        } catch { return ''; }
+    }
+
+    // ============================================================
+    // SIDEBAR
+    // ============================================================
+    function setupSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('mobileOverlay');
+        const toggle = document.getElementById('mobileMenuToggle');
+        if (!sidebar || !overlay || !toggle) return;
+        const open = () => { sidebar.classList.add('open'); overlay.classList.add('active'); document.body.style.overflow = 'hidden'; };
+        const close = () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); document.body.style.overflow = ''; };
+        toggle.addEventListener('click', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            if (sidebar.classList.contains('open')) close(); else open();
+        }, true);
+        overlay.addEventListener('click', close);
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sidebar.classList.contains('open')) close(); });
+        document.querySelectorAll('.nav-item').forEach(link => {
+            link.addEventListener('click', () => { if (window.innerWidth <= 900) close(); });
+        });
+    }
+
+    function setupHeaderScroll() {
+        const header = document.getElementById('mainHeader');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 8) header.classList.add('scrolled');
+            else header.classList.remove('scrolled');
+        }, { passive: true });
+    }
+
+    function resetInactivityTimer() {
+        clearTimeout(inactivityTimeout);
+        inactivityTimeout = setTimeout(() => {
+            showToast('Session expiring soon', 'warning');
+            setTimeout(() => { window.location.replace('adlog.html'); }, 60000);
+        }, 29 * 60 * 1000);
+    }
+    function setupActivityListeners() {
+        ['mousedown','keypress','scroll','touchstart'].forEach(ev =>
+            document.addEventListener(ev, resetInactivityTimer, { passive: true }));
+        resetInactivityTimer();
+    }
+
+    // ============================================================
+    // LOADERS
+    // ============================================================
+    async function loadAll() {
+        await loadCurrentEdition();
+        await Promise.all([
+            loadCategories(),
+            loadNominations(),
+            loadNominees(),
+            loadResults(),
+            loadArchive()
+        ]);
+    }
+
+    async function loadCurrentEdition() {
+        try {
+            const res = await apiCall('/api/awards/active').catch(() => ({ data: null }));
+            currentEdition = res.data;
+
+            if (!currentEdition) {
+                document.getElementById('currentEditionWrap').innerHTML = `
+                    <div class="card" style="border-left:3px solid var(--accent);">
+                        <div class="card-body">
+                            <div class="empty-state">
+                                <i class="fas fa-trophy"></i>
+                                <h3>No Active Award Edition</h3>
+                                <p>Create an award edition to start configuring categories, nominations, and winners.</p>
+                                <button class="btn btn-primary" onclick="showModal('createEditionModal')">
+                                    <i class="fas fa-plus"></i> Create Award Edition
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            document.getElementById('currentEditionWrap').innerHTML = `
+                <div class="current-edition">
+                    <div class="current-edition-info">
+                        <div class="label">Current Award Edition</div>
+                        <h2>${escapeHtml(currentEdition.name)}</h2>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <span class="status-badge badge-gold">${escapeHtml(currentEdition.status || 'preparation')}</span>
+                            <span class="status-badge badge-info">${escapeHtml(currentEdition.session_name || 'Session TBD')}</span>
+                        </div>
+                    </div>
+                    <div class="current-edition-meta" style="flex:1; max-width:600px;">
+                        <div><strong>Categories</strong><span>${(currentEdition.categories || []).length}</span></div>
+                        <div><strong>Nomination opens</strong><span>${currentEdition.nomination_start ? formatDateTime(currentEdition.nomination_start) : 'Not configured'}</span></div>
+                        <div><strong>Voting closes</strong><span>${currentEdition.voting_end ? formatDateTime(currentEdition.voting_end) : 'Not configured'}</span></div>
+                    </div>
+                    <div>
+                        <button class="btn btn-secondary btn-sm" onclick="openScheduleModal()">
+                            <i class="fas fa-cog"></i> Edit Settings
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            // Update schedule summary
+            document.getElementById('scheduleAnnouncement').textContent =
+                currentEdition.announcement_date ? formatDateTime(currentEdition.announcement_date) : 'Not configured';
+            document.getElementById('scheduleNominations').textContent =
+                (currentEdition.nomination_start && currentEdition.nomination_end)
+                    ? `${formatDateTime(currentEdition.nomination_start)} → ${formatDateTime(currentEdition.nomination_end)}`
+                    : 'Not configured';
+            document.getElementById('scheduleReview').textContent =
+                currentEdition.review_deadline ? `Deadline: ${formatDateTime(currentEdition.review_deadline)}` : 'Review deadline not set';
+            document.getElementById('scheduleVoting').textContent =
+                (currentEdition.voting_start && currentEdition.voting_end)
+                    ? `${formatDateTime(currentEdition.voting_start)} → ${formatDateTime(currentEdition.voting_end)}`
+                    : 'Not configured';
+            document.getElementById('scheduleVerification').textContent =
+                currentEdition.verification_deadline ? `Deadline: ${formatDateTime(currentEdition.verification_deadline)}` : 'Verification deadline not set';
+            document.getElementById('scheduleWinners').textContent =
+                currentEdition.winner_announcement ? formatDateTime(currentEdition.winner_announcement) : 'Publication date not set';
+
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    async function loadCategories() {
+        try {
+            const res = await apiCall('/api/admin/awards/categories').catch(() => ({ data: [] }));
+            categoriesData = res.data || [];
+            document.getElementById('statCategories').textContent = categoriesData.length;
+            document.getElementById('categoriesCountBadge').textContent = `${categoriesData.length} award titles`;
+            renderCategories();
+            populateAwardFilter();
+        } catch (err) { console.error(err); }
+    }
+
+    function renderCategories() {
+        const container = document.getElementById('awardCategoriesList');
+        if (!categoriesData.length) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-trophy"></i>
+                    <h3>No Award Categories Yet</h3>
+                    <p>Add categories to start configuring awards for this edition.</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = categoriesData.map((c, i) => `
+            <div class="award-row" data-id="${escapeHtml(c.id)}">
+                <div class="award-row-header" onclick="toggleAwardRow('${escapeHtml(c.id)}')">
+                    <div class="award-number">${i + 1}</div>
+                    <div class="award-main">
+                        <div class="award-name">${escapeHtml(c.name)}</div>
+                        <div class="award-type">${escapeHtml(c.type || 'Individual award')} · ${escapeHtml(c.selection_method || 'public')} voting</div>
+                    </div>
+                    <div class="award-status">
+                        <span class="status-badge ${c.status === 'active' ? 'badge-success' : 'badge-draft'}">${escapeHtml(c.status || 'draft')}</span>
+                    </div>
+                    <div class="award-chevron"><i class="fas fa-chevron-down"></i></div>
+                </div>
+                <div class="award-details">
+                    <div class="award-details-grid">
+                        <div class="award-detail-item">
+                            <div class="label">Selection Method</div>
+                            <div class="value">${escapeHtml(c.selection_method || 'Public voting')}</div>
+                        </div>
+                        <div class="award-detail-item">
+                            <div class="label">Nominations</div>
+                            <div class="value">${c.nominations_count || 0}</div>
+                        </div>
+                        <div class="award-detail-item">
+                            <div class="label">Nomination Window</div>
+                            <div class="value">${c.nomination_start ? formatDateTime(c.nomination_start) : 'Not configured'}</div>
+                        </div>
+                        <div class="award-detail-item">
+                            <div class="label">Voting Window</div>
+                            <div class="value">${c.voting_start ? formatDateTime(c.voting_start) : 'Not configured'}</div>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <button class="btn btn-primary btn-sm" onclick="editCategory('${escapeHtml(c.id)}')">
+                            <i class="fas fa-edit"></i> Edit Category
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="manageNominees('${escapeHtml(c.id)}')">
+                            <i class="fas fa-users"></i> Manage Nominees
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    window.toggleAwardRow = function(id) {
+        const row = document.querySelector(`.award-row[data-id="${id}"]`);
+        if (row) row.classList.toggle('expanded');
+    };
+
+    function populateAwardFilter() {
+        const sel = document.getElementById('nomineeAwardFilter');
+        sel.innerHTML = '<option value="all">All Awards</option>' +
+            categoriesData.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
+    }
+
+    async function loadNominations() {
+        try {
+            const res = await apiCall('/api/admin/awards/nominations').catch(() => ({ data: [] }));
+            nominationsData = res.data || [];
+            document.getElementById('statNominations').textContent = nominationsData.length;
+            document.getElementById('nominationsCountBadge').textContent = `${nominationsData.length} nominations`;
+            renderNominations();
+        } catch (err) { console.error(err); }
+    }
+
+    function renderNominations() {
+        const tbody = document.getElementById('nominationsTableBody');
+        const search = (document.getElementById('nominationSearch').value || '').toLowerCase();
+        const statusFilter = document.getElementById('nominationStatusFilter').value;
+
+        let filtered = nominationsData.filter(n => {
+            if (statusFilter !== 'all' && n.status !== statusFilter) return false;
+            if (search && !(
+                (n.nominee_name || '').toLowerCase().includes(search) ||
+                (n.award_name || '').toLowerCase().includes(search)
+            )) return false;
+            return true;
+        });
+
+        if (!filtered.length) {
+            tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No nominations yet</td></tr>';
+            return;
+        }
+
+        const statusClass = { pending: 'warning', approved: 'success', rejected: 'danger' };
+
+        tbody.innerHTML = filtered.map(n => `
+            <tr>
+                <td><strong>${escapeHtml(n.nominee_name || '—')}</strong></td>
+                <td>${escapeHtml(n.award_name || '—')}</td>
+                <td>${escapeHtml(n.nominated_by_name || '—')}</td>
+                <td>${formatDate(n.created_at)}</td>
+                <td><span class="status-badge badge-${statusClass[n.status] || 'info'}">${escapeHtml(n.status)}</span></td>
+                <td>
+                    ${n.status === 'pending' ? `
+                        <button class="btn btn-primary btn-sm" onclick="updateNomination('${n.id}','approved')"><i class="fas fa-check"></i></button>
+                        <button class="btn btn-danger btn-sm" onclick="updateNomination('${n.id}','rejected')"><i class="fas fa-times"></i></button>
+                    ` : '<span style="color:var(--text-dim);font-size:0.75rem;">—</span>'}
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    window.updateNomination = async function(id, status) {
+        try {
+            await apiCall(`/api/admin/awards/nominations/${id}`, {
+                method: 'PATCH', body: JSON.stringify({ status })
+            });
+            showToast(`Nomination ${status}`, 'success');
+            loadNominations();
+            loadNominees();
+        } catch (err) { showToast(err.message, 'error'); }
+    };
+
+    async function loadNominees() {
+        try {
+            const res = await apiCall('/api/admin/awards/nominees').catch(() => ({ data: [] }));
+            nomineesData = res.data || [];
+            document.getElementById('statNominees').textContent = nomineesData.length;
+            document.getElementById('nomineesCountBadge').textContent = `${nomineesData.length} approved`;
+            renderNominees();
+        } catch (err) { console.error(err); }
+    }
+
+    function renderNominees() {
+        const tbody = document.getElementById('nomineesTableBody');
+        const search = (document.getElementById('nomineeSearch').value || '').toLowerCase();
+        const awardFilter = document.getElementById('nomineeAwardFilter').value;
+        const levelFilter = document.getElementById('nomineeLevelFilter').value;
+
+        let filtered = nomineesData.filter(n => {
+            if (awardFilter !== 'all' && n.category_id !== awardFilter) return false;
+            if (levelFilter !== 'all' && n.level !== levelFilter) return false;
+            if (search && !(
+                (n.name || '').toLowerCase().includes(search) ||
+                (n.department || '').toLowerCase().includes(search)
+            )) return false;
+            return true;
+        });
+
+        if (!filtered.length) {
+            tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No approved nominees yet</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = filtered.map(n => `
+            <tr>
+                <td><strong>${escapeHtml(n.name || '—')}</strong></td>
+                <td>${escapeHtml(n.award_name || '—')}</td>
+                <td>${escapeHtml((n.department || '').split(' ')[0] || '—')}</td>
+                <td>${escapeHtml(n.level || '—')}</td>
+                <td><span class="status-badge badge-success">Approved</span></td>
+                <td>
+                    <button class="btn btn-secondary btn-sm" onclick="viewNominee('${escapeHtml(n.id)}')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    window.viewNominee = function(id) {
+        const n = nomineesData.find(x => x.id === id);
+        if (!n) return;
+        showToast(`Viewing: ${n.name}`, 'info');
+    };
+
+    async function loadResults() {
+        try {
+            const res = await apiCall('/api/awards/results').catch(() => ({ data: null }));
+            resultsData = res.data;
+
+            const container = document.getElementById('resultsContent');
+
+            if (!resultsData || !resultsData.winners || !resultsData.winners.length) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-trophy"></i>
+                        <p>Winners will appear here after voting/judging ends and results are verified.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            document.getElementById('statWinners').textContent = resultsData.winners.length;
+
+            container.innerHTML = `
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Award</th>
+                                <th>Winner</th>
+                                <th>Dept / Designation</th>
+                                <th>Score / Votes</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${resultsData.winners.map(w => `
+                                <tr>
+                                    <td><strong>${escapeHtml(w.award_name)}</strong></td>
+                                    <td>${escapeHtml(w.winner_name)}</td>
+                                    <td>${escapeHtml(w.department || w.designation || '—')}</td>
+                                    <td class="mono">${w.score || w.votes || 0}</td>
+                                    <td><span class="status-badge ${w.published ? 'badge-success' : 'badge-warning'}">${w.published ? 'Published' : 'Pending'}</span></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    async function loadArchive() {
+        try {
+            const res = await apiCall('/api/admin/awards/archive').catch(() => ({ data: [] }));
+            archiveData = res.data || [];
+            renderArchive();
+        } catch (err) { console.error(err); }
+    }
+
+    function renderArchive() {
+        const container = document.getElementById('archiveContent');
+        if (!archiveData.length) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-archive"></i>
+                    <h3>No Archived Editions</h3>
+                    <p>Past award editions will appear here once closed and archived.</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Edition</th>
+                            <th>Session</th>
+                            <th>Categories</th>
+                            <th>Winners</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${archiveData.map(a => `
+                            <tr>
+                                <td><strong>${escapeHtml(a.name)}</strong></td>
+                                <td class="mono">${escapeHtml(a.session_name || '—')}</td>
+                                <td>${a.categories_count || 0}</td>
+                                <td>${a.winners_count || 0}</td>
+                                <td><span class="status-badge badge-draft">${escapeHtml(a.status)}</span></td>
+                                <td>
+                                    <button class="btn btn-secondary btn-sm" onclick="viewArchivedEdition('${escapeHtml(a.id)}')">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    window.viewArchivedEdition = function(id) {
+        const a = archiveData.find(x => x.id === id);
+        if (!a) return;
+        showToast(`Viewing archive: ${a.name}`, 'info');
+    };
+
+    // ============================================================
+    // MODALS
+    // ============================================================
+    async function loadSessions() {
+        try {
+            const res = await apiCall('/api/admin/sessions');
+            sessionsData = res.data || [];
+            const sel = document.getElementById('editionSessionSelect');
+            if (!sessionsData.length) {
+                sel.innerHTML = '<option value="">No sessions available</option>';
+                return;
+            }
+            sel.innerHTML = sessionsData.map(s =>
+                `<option value="${s.id}" ${s.is_active ? 'selected' : ''}>${escapeHtml(s.name)}${s.is_active ? ' (active)' : ''}</option>`
+            ).join('');
+        } catch (err) { console.error(err); }
+    }
+
+    window.openScheduleModal = function() {
+        if (!currentEdition) return showToast('No active edition', 'warning');
+        const f = document.getElementById('scheduleForm');
+        f.announcement_date.value = toLocalInput(currentEdition.announcement_date);
+        f.nomination_start.value = toLocalInput(currentEdition.nomination_start);
+        f.nomination_end.value = toLocalInput(currentEdition.nomination_end);
+        f.review_deadline.value = toLocalInput(currentEdition.review_deadline);
+        f.voting_start.value = toLocalInput(currentEdition.voting_start);
+        f.voting_end.value = toLocalInput(currentEdition.voting_end);
+        f.verification_deadline.value = toLocalInput(currentEdition.verification_deadline);
+        f.winner_announcement.value = toLocalInput(currentEdition.winner_announcement);
+        showModal('scheduleModal');
+    };
+
+    window.openVotingWindowModal = function() {
+        showModal('votingWindowModal');
+    };
+
+    window.quickAction = function(action) {
+        hideModal('votingWindowModal');
+        showToast(`Action: ${action} (configure via schedule)`, 'info');
+    };
+
+    window.editCategory = function(id) {
+        const c = categoriesData.find(x => x.id === id);
+        if (!c) return;
+        const f = document.getElementById('categoryForm');
+        document.getElementById('categoryModalTitle').textContent = 'Edit Award Category';
+        f.category_id.value = c.id;
+        f.name.value = c.name || '';
+        f.type.value = c.type || 'individual';
+        f.selection_method.value = c.selection_method || 'public';
+        f.description.value = c.description || '';
+        f.eligibility.value = c.eligibility || '';
+        f.status.value = c.status || 'draft';
+        showModal('categoryModal');
+    };
+
+    window.manageNominees = function(id) {
+        showToast('Nominee management coming soon', 'info');
+    };
+
+    // ============================================================
+    // ACTIONS
+    // ============================================================
+    document.getElementById('submitEditionBtn').addEventListener('click', async () => {
+        const form = document.getElementById('createEditionForm');
+        const data = new FormData(form);
+        const categories = (data.get('categories_text') || '').split('\n').map(t => t.trim()).filter(Boolean);
+
+        if (!categories.length) return showToast('Add at least one category', 'error');
+
+        const payload = {
+            name: data.get('name'),
+            session_id: data.get('session_id'),
+            status: data.get('status'),
+            description: data.get('description'),
+            categories: categories.map(name => ({ name, type: 'individual' }))
+        };
+
+        try {
+            showLoading();
+            await apiCall('/api/admin/awards/editions', { method: 'POST', body: JSON.stringify(payload) });
+            hideLoading();
+            hideModal('createEditionModal');
+            showToast('Award edition created', 'success');
+            await loadAll();
+        } catch (err) {
+            hideLoading();
+            showToast(err.message, 'error');
+        }
+    });
+
+    document.getElementById('submitCategoryBtn').addEventListener('click', async () => {
+        const form = document.getElementById('categoryForm');
+        const data = new FormData(form);
+        const id = data.get('category_id');
+
+        const payload = {
+            name: data.get('name'),
+            type: data.get('type'),
+            selection_method: data.get('selection_method'),
+            description: data.get('description'),
+            eligibility: data.get('eligibility'),
+            status: data.get('status')
+        };
+
+        try {
+            showLoading();
+            if (id) {
+                await apiCall(`/api/admin/awards/categories/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+            } else {
+                await apiCall('/api/admin/awards/categories', { method: 'POST', body: JSON.stringify(payload) });
+            }
+            hideLoading();
+            hideModal('categoryModal');
+            showToast('Category saved', 'success');
+            await loadCategories();
+        } catch (err) {
+            hideLoading();
+            showToast(err.message, 'error');
+        }
+    });
+
+    document.getElementById('saveScheduleBtn').addEventListener('click', async () => {
+        if (!currentEdition) return showToast('No active edition', 'warning');
+        const form = document.getElementById('scheduleForm');
+        const data = new FormData(form);
+
+        const payload = {
+            announcement_date: data.get('announcement_date') || null,
+            nomination_start: data.get('nomination_start') || null,
+            nomination_end: data.get('nomination_end') || null,
+            review_deadline: data.get('review_deadline') || null,
+            voting_start: data.get('voting_start') || null,
+            voting_end: data.get('voting_end') || null,
+            verification_deadline: data.get('verification_deadline') || null,
+            winner_announcement: data.get('winner_announcement') || null
+        };
+
+        try {
+            showLoading();
+            await apiCall(`/api/admin/awards/editions/${currentEdition.id}`, {
+                method: 'PUT', body: JSON.stringify(payload)
+            });
+            hideLoading();
+            hideModal('scheduleModal');
+            showToast('Timeline saved', 'success');
+            await loadCurrentEdition();
+        } catch (err) {
+            hideLoading();
+            showToast(err.message, 'error');
+        }
+    });
+
+    document.getElementById('addCategoryBtn').addEventListener('click', () => {
+        const f = document.getElementById('categoryForm');
+        f.reset();
+        f.category_id.value = '';
+        document.getElementById('categoryModalTitle').textContent = 'Add Award Category';
+        showModal('categoryModal');
+    });
+
+    document.getElementById('createEditionBtn').addEventListener('click', () => {
+        showModal('createEditionModal');
+    });
+
+    document.getElementById('refreshResultsBtn').addEventListener('click', loadResults);
+
+    document.getElementById('publishWinnersBtn').addEventListener('click', async () => {
+        if (!confirm('Publish award winners? This will make results public.')) return;
+        try {
+            showLoading();
+            await apiCall('/api/admin/awards/publish', { method: 'POST' });
+            hideLoading();
+            showToast('Winners published', 'success');
+            await loadResults();
+        } catch (err) {
+            hideLoading();
+            showToast(err.message, 'error');
+        }
+    });
+
+    // Reports
+    document.querySelectorAll('[data-report]').forEach(btn => {
+        btn.addEventListener('click', () => exportReport(btn.dataset.report));
+    });
+
+    document.getElementById('exportAllBtn').addEventListener('click', () => exportReport('full'));
+
+    function exportReport(type) {
+        if (!currentEdition) return showToast('No active edition', 'warning');
+
+        if (type === 'nominations') {
+            if (!nominationsData.length) return showToast('No nominations to export', 'warning');
+            downloadCSV(
+                ['Nominee', 'Award', 'Nominated By', 'Status', 'Date'],
+                nominationsData.map(n => [n.nominee_name, n.award_name, n.nominated_by_name, n.status, formatDate(n.created_at)]),
+                `award-nominations-${Date.now()}.csv`
+            );
+        } else if (type === 'nominees') {
+            if (!nomineesData.length) return showToast('No nominees to export', 'warning');
+            downloadCSV(
+                ['Nominee', 'Award', 'Department', 'Level', 'Status'],
+                nomineesData.map(n => [n.name, n.award_name, n.department, n.level, 'Approved']),
+                `award-nominees-${Date.now()}.csv`
+            );
+        } else if (type === 'winners') {
+            if (!resultsData || !resultsData.winners) return showToast('No winners yet', 'warning');
+            downloadCSV(
+                ['Award', 'Winner', 'Dept', 'Score'],
+                resultsData.winners.map(w => [w.award_name, w.winner_name, w.department, w.score || w.votes || 0]),
+                `award-winners-${Date.now()}.csv`
+            );
+        } else {
+            showToast('Report generated', 'success');
+        }
+    }
+
+    function downloadCSV(headers, rows, filename) {
+        const csv = [headers.join(','), ...rows.map(r => r.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`).join(','))].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename; a.click();
+        URL.revokeObjectURL(url);
+        showToast('Report downloaded', 'success');
+    }
+
+    // Filters
+    document.getElementById('nominationSearch').addEventListener('input', renderNominations);
+    document.getElementById('nominationStatusFilter').addEventListener('change', renderNominations);
+    document.getElementById('nomineeSearch').addEventListener('input', renderNominees);
+    document.getElementById('nomineeAwardFilter').addEventListener('change', renderNominees);
+    document.getElementById('nomineeLevelFilter').addEventListener('change', renderNominees);
+
+    // ============================================================
+    // INIT
+    // ============================================================
+    async function init() {
+        setupSidebar();
+        setupHeaderScroll();
+
+        document.getElementById('logoutBtn').addEventListener('click', () => showModal('logoutModal'));
+        document.getElementById('confirmLogout').addEventListener('click', confirmLogout);
+        document.getElementById('notificationBtn').addEventListener('click', () => { window.location.href = 'messages.html'; });
+
+        const ok = await checkAuth();
+        if (!ok) return;
+
+        setupActivityListeners();
+        await loadSessions();
+        await loadAll();
+        hideLoading();
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+
+    window.showModal = showModal;
+    window.hideModal = hideModal;
+    </script>
+</body>
+</html>
