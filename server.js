@@ -4339,21 +4339,6 @@ adminRouter.get('/elections/voters', async (req, res) => {
 // ============================================================
 // ================ SECTION 4.4: AWARDS SYSTEM ================
 // ============================================================
-// Award editions, categories, nominations, nominees, voting/judging,
-// winners, reports, and archive.
-//
-// Lifecycle:   draft → preparation → active → archived
-//
-// Rules enforced server-side:
-//   1. Only approved nominees can receive votes/scores.
-//   2. Voting/judging windows are time-bound (from edition config).
-//   3. Each category can use a different selection_method:
-//      public | registered | judges | combined
-//   4. Public voting: one vote per category per voter.
-//   5. Judges: one score per category per nominee per judge.
-//   6. Publishing winners sets is_published = true and copies award_winners rows.
-//   7. Old editions are archived (never deleted) when a new edition is created.
-// ============================================================
 
 // ---------- Helper: get the active award edition ----------
 async function getActiveAwardEdition() {
@@ -4382,7 +4367,7 @@ async function getActiveAwardEdition() {
         .select('id', { count: 'exact', head: true })
         .eq('edition_id', data.id);
 
-    // Derive phase from time
+    // Derive phase from time — FIXED: voting/closed work without nomination dates
     const now = Date.now();
     const nomStart  = data.nomination_start ? new Date(data.nomination_start).getTime() : null;
     const nomEnd    = data.nomination_end   ? new Date(data.nomination_end).getTime()   : null;
@@ -4390,10 +4375,16 @@ async function getActiveAwardEdition() {
     const voteEnd   = data.voting_end       ? new Date(data.voting_end).getTime()       : null;
 
     let phase = 'preparation';
-    if (now < (nomStart || Infinity)) phase = 'preparation';
-    else if (nomStart && now >= nomStart && nomEnd && now < nomEnd) phase = 'nomination';
-    else if (voteStart && now >= voteStart && voteEnd && now < voteEnd) phase = 'voting';
-    else if (voteEnd && now >= voteEnd) phase = 'closed';
+    if (voteEnd && now >= voteEnd) {
+        phase = 'closed';
+    } else if (voteStart && now >= voteStart && voteEnd && now < voteEnd) {
+        phase = 'voting';
+    } else if (nomStart && nomEnd && now >= nomStart && now < nomEnd) {
+        phase = 'nomination';
+    } else if (nomStart && now < nomStart) {
+        phase = 'preparation';
+    }
+    // else: no dates configured → stays 'preparation'
 
     return {
         ...data,
@@ -4403,8 +4394,7 @@ async function getActiveAwardEdition() {
     };
 }
 
-// ---------- Helper: require admin (already covered by adminRouter) ----------
-// ---------- Helper: require registered voter for public vote endpoints ----------
+// ---------- Helper: require registered voter ----------
 async function requireAwardVoter(req, res, next) {
     try {
         const voterId = (req.body && req.body.voterId)
@@ -4462,9 +4452,12 @@ awardRouter.get('/active', async (req, res) => {
                 type: n.nominee_type,
                 department: n.nominee_department,
                 level: n.nominee_level,
+                matric: n.nominee_matric,
                 group_name: n.nominee_group_name,
                 group_photo: n.nominee_group_photo,
-                group_description: n.nominee_group_description
+                group_description: n.nominee_group_description,
+                reason: n.reason,
+                evidence_url: n.evidence_url
             });
         });
 
@@ -4481,6 +4474,51 @@ awardRouter.get('/active', async (req, res) => {
     } catch (err) {
         logger.error('Awards active error:', { requestId: req.id, error: err.message });
         res.status(500).json({ status: 'error', message: 'Failed to load award edition' });
+    }
+});
+
+// GET /api/awards/archive — public list of archived editions (NEW)
+awardRouter.get('/archive', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('award_editions')
+            .select('id, name, session_id, winner_announcement, results_published, status, created_at')
+            .eq('status', 'archived')
+            .eq('results_published', true)
+            .order('winner_announcement', { ascending: false, nullsFirst: false });
+        if (error) throw error;
+
+        const enriched = await Promise.all((data || []).map(async (ed) => {
+            const [catCount, winCount] = await Promise.all([
+                supabase.from('award_categories')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('edition_id', ed.id),
+                supabase.from('award_winners')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('edition_id', ed.id)
+            ]);
+
+            let sessionName = null;
+            if (ed.session_id) {
+                const { data: s } = await supabase
+                    .from('academic_sessions').select('name').eq('id', ed.session_id).maybeSingle();
+                sessionName = s?.name || null;
+            }
+
+            return {
+                id: ed.id,
+                name: ed.name,
+                session_name: sessionName,
+                winner_announcement: ed.winner_announcement,
+                categories_count: catCount.count || 0,
+                winners_count: winCount.count || 0
+            };
+        }));
+
+        res.json({ status: 'success', data: enriched, count: enriched.length });
+    } catch (err) {
+        logger.error('Public award archive error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to load archive' });
     }
 });
 
@@ -4531,7 +4569,7 @@ awardRouter.get('/results', async (req, res) => {
     }
 });
 
-// POST /api/awards/vote — cast a vote for a nominee (public or registered)
+// POST /api/awards/vote — cast a vote for a nominee
 awardRouter.post('/vote', requireAwardVoter, async (req, res) => {
     try {
         const { categoryId, nominationId } = req.body;
@@ -4549,7 +4587,6 @@ awardRouter.post('/vote', requireAwardVoter, async (req, res) => {
             });
         }
 
-        // Get category to check selection_method
         const { data: category } = await supabase
             .from('award_categories').select('*')
             .eq('id', categoryId).eq('edition_id', edition.id).maybeSingle();
@@ -4562,7 +4599,6 @@ awardRouter.post('/vote', requireAwardVoter, async (req, res) => {
             });
         }
 
-        // Verify nominee is approved and belongs to this category
         const { data: nomination } = await supabase
             .from('award_nominations').select('id, status')
             .eq('id', nominationId).eq('category_id', categoryId).maybeSingle();
@@ -4570,7 +4606,6 @@ awardRouter.post('/vote', requireAwardVoter, async (req, res) => {
             return res.status(400).json({ status: 'error', message: 'Invalid nominee' });
         }
 
-        // Insert vote (unique constraint prevents duplicate)
         const { error: voteErr } = await supabase.from('award_votes').insert([{
             edition_id: edition.id,
             category_id: categoryId,
@@ -4611,7 +4646,7 @@ console.log('✅ [AWARD] /api/awards router registered (public)');
 
 // ---------- ADMIN: AWARD EDITIONS ----------
 
-// GET /api/admin/awards/editions — list all editions (with active first)
+// GET /api/admin/awards/editions — list all editions
 adminRouter.get('/awards/editions', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -4623,7 +4658,6 @@ adminRouter.get('/awards/editions', async (req, res) => {
             .order('created_at', { ascending: false });
         if (error) throw error;
 
-        // Attach counts
         const enriched = await Promise.all((data || []).map(async (ed) => {
             const [catCount, nomCount, winCount] = await Promise.all([
                 supabase.from('award_categories').select('id', { count: 'exact', head: true }).eq('edition_id', ed.id),
@@ -4646,19 +4680,16 @@ adminRouter.get('/awards/editions', async (req, res) => {
     }
 });
 
-// POST /api/admin/awards/editions — create edition (+ categories)
+// POST /api/admin/awards/editions — create edition
 adminRouter.post('/awards/editions', async (req, res) => {
     try {
-        const {
-            name, session_id, status, description,
-            categories   // [{ name, type, selection_method, ... }]
-        } = req.body;
+        const { name, session_id, status, description, categories } = req.body;
 
         if (!name || !session_id) {
             return res.status(400).json({ status: 'error', message: 'Name and session_id are required' });
         }
 
-        // Archive any existing active/preparation editions
+        // Archive any existing active/preparation editions (preserve history)
         await supabase
             .from('award_editions')
             .update({ status: 'archived', updated_at: new Date().toISOString() })
@@ -4711,6 +4742,16 @@ adminRouter.put('/awards/editions/:id', async (req, res) => {
             verification_deadline, winner_announcement
         } = req.body;
 
+        // Validate date order if both provided
+        if (nomination_start && nomination_end &&
+            new Date(nomination_end) <= new Date(nomination_start)) {
+            return res.status(400).json({ status: 'error', message: 'Nomination end must be after start' });
+        }
+        if (voting_start && voting_end &&
+            new Date(voting_end) <= new Date(voting_start)) {
+            return res.status(400).json({ status: 'error', message: 'Voting end must be after start' });
+        }
+
         const updateData = { updated_at: new Date().toISOString() };
         if (name !== undefined) updateData.name = String(name).trim();
         if (session_id !== undefined) updateData.session_id = session_id;
@@ -4739,7 +4780,7 @@ adminRouter.put('/awards/editions/:id', async (req, res) => {
     }
 });
 
-// DELETE /api/admin/awards/editions/:id — only draft editions
+// DELETE /api/admin/awards/editions/:id — only draft editions (cascades children)
 adminRouter.delete('/awards/editions/:id', async (req, res) => {
     try {
         const { data: existing } = await supabase
@@ -4750,6 +4791,22 @@ adminRouter.delete('/awards/editions/:id', async (req, res) => {
                 status: 'error',
                 message: 'Only draft editions can be deleted. Archive active editions instead.'
             });
+        }
+
+        // Cascade deletes (best-effort cleanup)
+        try {
+            const { data: cats } = await supabase.from('award_categories').select('id').eq('edition_id', req.params.id);
+            const catIds = (cats || []).map(c => c.id);
+            if (catIds.length) {
+                await supabase.from('award_votes').delete().in('category_id', catIds);
+                await supabase.from('award_judge_scores').delete().in('category_id', catIds);
+            }
+            await supabase.from('award_nominations').delete().eq('edition_id', req.params.id);
+            await supabase.from('award_winners').delete().eq('edition_id', req.params.id);
+            await supabase.from('award_judges').delete().eq('edition_id', req.params.id);
+            await supabase.from('award_categories').delete().eq('edition_id', req.params.id);
+        } catch (cascadeErr) {
+            logger.warn('Cascade delete warning:', { error: cascadeErr.message });
         }
 
         await supabase.from('award_editions').delete().eq('id', req.params.id);
@@ -4797,7 +4854,7 @@ adminRouter.get('/awards/archive', async (req, res) => {
 
 // ---------- ADMIN: AWARD CATEGORIES ----------
 
-// GET /api/admin/awards/categories — list categories for active edition
+// GET /api/admin/awards/categories
 adminRouter.get('/awards/categories', async (req, res) => {
     try {
         const edition = await getActiveAwardEdition();
@@ -4810,7 +4867,6 @@ adminRouter.get('/awards/categories', async (req, res) => {
             .order('display_order', { ascending: true });
         if (error) throw error;
 
-        // Attach nominations count per category
         const enriched = await Promise.all((categories || []).map(async (c) => {
             const { count } = await supabase
                 .from('award_nominations')
@@ -4826,7 +4882,7 @@ adminRouter.get('/awards/categories', async (req, res) => {
     }
 });
 
-// POST /api/admin/awards/categories — create category
+// POST /api/admin/awards/categories
 adminRouter.post('/awards/categories', async (req, res) => {
     try {
         const edition = await getActiveAwardEdition();
@@ -4835,7 +4891,6 @@ adminRouter.post('/awards/categories', async (req, res) => {
         const { name, type, selection_method, description, eligibility, status } = req.body;
         if (!name) return res.status(400).json({ status: 'error', message: 'Name is required' });
 
-        // Get next display_order
         const { data: last } = await supabase
             .from('award_categories')
             .select('display_order')
@@ -4868,7 +4923,7 @@ adminRouter.post('/awards/categories', async (req, res) => {
     }
 });
 
-// PUT /api/admin/awards/categories/:id — update category
+// PUT /api/admin/awards/categories/:id
 adminRouter.put('/awards/categories/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -4899,7 +4954,7 @@ adminRouter.put('/awards/categories/:id', async (req, res) => {
     }
 });
 
-// DELETE /api/admin/awards/categories/:id — delete category (only if no nominations)
+// DELETE /api/admin/awards/categories/:id
 adminRouter.delete('/awards/categories/:id', async (req, res) => {
     try {
         const { count } = await supabase
@@ -4925,7 +4980,7 @@ adminRouter.delete('/awards/categories/:id', async (req, res) => {
 
 // ---------- ADMIN: AWARD NOMINATIONS ----------
 
-// GET /api/admin/awards/nominations — all nominations for active edition
+// GET /api/admin/awards/nominations
 adminRouter.get('/awards/nominations', async (req, res) => {
     try {
         const edition = await getActiveAwardEdition();
@@ -4946,21 +5001,33 @@ adminRouter.get('/awards/nominations', async (req, res) => {
         const { data, error } = await query;
         if (error) throw error;
 
-        const enriched = (data || []).map(n => ({
-            id: n.id,
-            nominee_name: n.nominee_name,
-            nominee_type: n.nominee_type,
-            nominee_department: n.nominee_department,
-            nominee_level: n.nominee_level,
-            nominee_matric: n.nominee_matric,
-            category_id: n.category_id,
-            award_name: n.category?.name,
-            award_type: n.category?.type,
-            nominated_by_name: null,
-            reason: n.reason,
-            evidence_url: n.evidence_url,
-            status: n.status,
-            created_at: n.created_at
+        // Attach nominator name (from voters table) if available
+        const enriched = await Promise.all((data || []).map(async (n) => {
+            let nominatedByName = null;
+            if (n.nominated_by) {
+                const { data: voter } = await supabase
+                    .from('voters').select('full_name').eq('id', n.nominated_by).maybeSingle();
+                nominatedByName = voter?.full_name || null;
+            }
+
+            return {
+                id: n.id,
+                nominee_name: n.nominee_name,
+                nominee_type: n.nominee_type,
+                nominee_department: n.nominee_department,
+                nominee_level: n.nominee_level,
+                nominee_matric: n.nominee_matric,
+                group_name: n.nominee_group_name,
+                group_photo: n.nominee_group_photo,
+                category_id: n.category_id,
+                award_name: n.category?.name,
+                award_type: n.category?.type,
+                nominated_by_name: nominatedByName,
+                reason: n.reason,
+                evidence_url: n.evidence_url,
+                status: n.status,
+                created_at: n.created_at
+            };
         }));
 
         res.json({ status: 'success', data: enriched, count: enriched.length });
@@ -4970,7 +5037,7 @@ adminRouter.get('/awards/nominations', async (req, res) => {
     }
 });
 
-// PATCH /api/admin/awards/nominations/:id — approve / reject
+// PATCH /api/admin/awards/nominations/:id — approve/reject
 adminRouter.patch('/awards/nominations/:id', async (req, res) => {
     try {
         const { status } = req.body;
@@ -5009,7 +5076,7 @@ adminRouter.delete('/awards/nominations/:id', async (req, res) => {
 
 // ---------- ADMIN: AWARD NOMINEES ----------
 
-// GET /api/admin/awards/nominees — only approved nominations
+// GET /api/admin/awards/nominees
 adminRouter.get('/awards/nominees', async (req, res) => {
     try {
         const edition = await getActiveAwardEdition();
@@ -5038,6 +5105,9 @@ adminRouter.get('/awards/nominees', async (req, res) => {
             award_type: n.category?.type,
             group_name: n.nominee_group_name,
             group_photo: n.nominee_group_photo,
+            group_description: n.nominee_group_description,
+            reason: n.reason,
+            evidence_url: n.evidence_url,
             status: 'approved'
         }));
 
@@ -5051,7 +5121,7 @@ adminRouter.get('/awards/nominees', async (req, res) => {
 
 // ---------- ADMIN: PUBLISH WINNERS ----------
 
-// POST /api/admin/awards/publish — verify and publish winners
+// POST /api/admin/awards/publish
 adminRouter.post('/awards/publish', async (req, res) => {
     try {
         const edition = await getActiveAwardEdition();
@@ -5061,7 +5131,6 @@ adminRouter.post('/awards/publish', async (req, res) => {
             return res.status(409).json({ status: 'error', message: 'Results already published' });
         }
 
-        // Get categories
         const { data: categories } = await supabase
             .from('award_categories').select('*').eq('edition_id', edition.id);
         if (!categories?.length) {
@@ -5069,20 +5138,19 @@ adminRouter.post('/awards/publish', async (req, res) => {
         }
 
         const winners = [];
+        const skipped = [];
+        const ties = [];
 
         for (const cat of categories) {
-            // Get approved nominees
             const { data: nominees } = await supabase
                 .from('award_nominations').select('*')
                 .eq('category_id', cat.id)
                 .eq('status', 'approved');
-            if (!nominees?.length) continue;
+            if (!nominees?.length) { skipped.push(cat.name); continue; }
 
-            // Compute score based on selection_method
             let scores = {};
 
             if (cat.selection_method === 'public' || cat.selection_method === 'registered') {
-                // Count votes
                 for (const n of nominees) {
                     const { count } = await supabase
                         .from('award_votes').select('id', { count: 'exact', head: true })
@@ -5090,7 +5158,6 @@ adminRouter.post('/awards/publish', async (req, res) => {
                     scores[n.id] = count || 0;
                 }
             } else if (cat.selection_method === 'judges') {
-                // Sum judge scores
                 for (const n of nominees) {
                     const { data: jScores } = await supabase
                         .from('award_judge_scores').select('score')
@@ -5098,7 +5165,6 @@ adminRouter.post('/awards/publish', async (req, res) => {
                     scores[n.id] = (jScores || []).reduce((s, j) => s + (parseFloat(j.score) || 0), 0);
                 }
             } else if (cat.selection_method === 'combined') {
-                // Votes + judge scores
                 for (const n of nominees) {
                     const [voteRes, judgeRes] = await Promise.all([
                         supabase.from('award_votes').select('id', { count: 'exact', head: true }).eq('nomination_id', n.id),
@@ -5110,15 +5176,14 @@ adminRouter.post('/awards/publish', async (req, res) => {
                 }
             }
 
-            // Find winner
             const sorted = [...nominees].sort((a, b) => (scores[b.id] || 0) - (scores[a.id] || 0));
             const top = sorted[0];
             const second = sorted[1];
 
-            // Tie detection
+            // Skip ties — admin must resolve manually
             if (second && (scores[top.id] || 0) === (scores[second.id] || 0)) {
                 logger.warn('Tie detected in category', { categoryId: cat.id, categoryName: cat.name });
-                // Skip publishing winners for this category — admin must resolve manually
+                ties.push(cat.name);
                 continue;
             }
 
@@ -5137,15 +5202,14 @@ adminRouter.post('/awards/publish', async (req, res) => {
         if (winners.length === 0) {
             return res.status(400).json({
                 status: 'error',
-                message: 'No winners could be determined. Check for ties or missing nominees.'
+                message: 'No winners could be determined',
+                details: { ties, skipped }
             });
         }
 
-        // Insert winners
         const { error: winErr } = await supabase.from('award_winners').insert(winners);
         if (winErr) throw winErr;
 
-        // Mark edition as published
         await supabase
             .from('award_editions')
             .update({ results_published: true, updated_at: new Date().toISOString() })
@@ -5157,8 +5221,13 @@ adminRouter.post('/awards/publish', async (req, res) => {
 
         res.json({
             status: 'success',
-            data: { winners_count: winners.length, winners },
-            message: `${winners.length} winners published successfully`
+            data: {
+                winners_count: winners.length,
+                winners,
+                skipped_categories: skipped,
+                tied_categories: ties
+            },
+            message: `${winners.length} winners published${ties.length ? ` (${ties.length} tie${ties.length !== 1 ? 's' : ''} skipped)` : ''}`
         });
     } catch (err) {
         logger.error('Publish award winners error:', { requestId: req.id, error: err.message });
@@ -5169,7 +5238,7 @@ adminRouter.post('/awards/publish', async (req, res) => {
 
 // ---------- ADMIN: AWARD JUDGES ----------
 
-// GET /api/admin/awards/judges — list judges for active edition
+// GET /api/admin/awards/judges
 adminRouter.get('/awards/judges', async (req, res) => {
     try {
         const edition = await getActiveAwardEdition();
@@ -5199,7 +5268,7 @@ adminRouter.get('/awards/judges', async (req, res) => {
     }
 });
 
-// POST /api/admin/awards/judges — assign judge
+// POST /api/admin/awards/judges
 adminRouter.post('/awards/judges', async (req, res) => {
     try {
         const edition = await getActiveAwardEdition();
