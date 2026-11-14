@@ -960,9 +960,6 @@
                         <button class="btn btn-primary" id="createEditionBtn">
                             <i class="fas fa-plus"></i> Create Award Edition
                         </button>
-                        <button class="btn btn-secondary" id="exportAllBtn">
-                            <i class="fas fa-download"></i> Export Report
-                        </button>
                     </div>
                 </div>
 
@@ -1117,7 +1114,7 @@
                             </div>
                         </div>
 
-                        <div class="stats-grid">
+                        <div class="stats-grid" style="grid-template-columns: repeat(2, 1fr); max-width: 500px;">
                             <div class="stat-card">
                                 <div class="stat-icon icon-green"><i class="fas fa-check-circle"></i></div>
                                 <div class="stat-value" id="votesCastStat">0</div>
@@ -1242,65 +1239,6 @@
                             <button class="btn btn-primary" onclick="openScheduleModal()">
                                 <i class="fas fa-calendar-check"></i> Configure Timeline
                             </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Reports -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title"><i class="fas fa-file-export"></i> Award Reports</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="report-grid">
-                            <div class="report-card" data-report="nominations">
-                                <div class="report-icon"><i class="fas fa-user-plus"></i></div>
-                                <div class="report-info">
-                                    <h4>Nomination Report</h4>
-                                    <p>All nominations and their decisions</p>
-                                </div>
-                                <i class="fas fa-download" style="color:var(--text-dim);"></i>
-                            </div>
-                            <div class="report-card" data-report="nominees">
-                                <div class="report-icon"><i class="fas fa-users"></i></div>
-                                <div class="report-info">
-                                    <h4>Nominees by Category</h4>
-                                    <p>All approved nominees grouped by award</p>
-                                </div>
-                                <i class="fas fa-download" style="color:var(--text-dim);"></i>
-                            </div>
-                            <div class="report-card" data-report="participation">
-                                <div class="report-icon"><i class="fas fa-chart-line"></i></div>
-                                <div class="report-info">
-                                    <h4>Voting Participation Report</h4>
-                                    <p>Vote and judge score participation</p>
-                                </div>
-                                <i class="fas fa-download" style="color:var(--text-dim);"></i>
-                            </div>
-                            <div class="report-card" data-report="winners">
-                                <div class="report-icon"><i class="fas fa-crown"></i></div>
-                                <div class="report-info">
-                                    <h4>Award Results &amp; Winners</h4>
-                                    <p>Verified winners and runners-up</p>
-                                </div>
-                                <i class="fas fa-download" style="color:var(--text-dim);"></i>
-                            </div>
-                            <div class="report-card" data-report="full">
-                                <div class="report-icon"><i class="fas fa-file-alt"></i></div>
-                                <div class="report-info">
-                                    <h4>Full Edition Report</h4>
-                                    <p>Complete report of this award edition</p>
-                                </div>
-                                <i class="fas fa-download" style="color:var(--text-dim);"></i>
-                            </div>
-                            <div class="report-card" data-report="audit">
-                                <div class="report-icon"><i class="fas fa-history"></i></div>
-                                <div class="report-info">
-                                    <h4>Administrative Activity</h4>
-                                    <p>Audit log of admin actions</p>
-                                </div>
-                                <i class="fas fa-download" style="color:var(--text-dim);"></i>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -2378,51 +2316,11 @@ document.getElementById('publishWinnersBtn').addEventListener('click', async () 
     }
 });
 
-// Reports
-document.querySelectorAll('[data-report]').forEach(btn => {
-    btn.addEventListener('click', () => exportReport(btn.dataset.report));
-});
-
-document.getElementById('exportAllBtn').addEventListener('click', () => exportReport('full'));
-
-function exportReport(type) {
-    if (!currentEdition) return showToast('No active edition', 'warning');
-
-    if (type === 'nominations') {
-        if (!nominationsData.length) return showToast('No nominations to export', 'warning');
-        downloadCSV(
-            ['Nominee', 'Award', 'Nominated By', 'Status', 'Date'],
-            nominationsData.map(n => [n.nominee_name, n.award_name, n.nominated_by_name, n.status, formatDate(n.created_at)]),
-            `award-nominations-${Date.now()}.csv`
-        );
-    } else if (type === 'nominees') {
-        if (!nomineesData.length) return showToast('No nominees to export', 'warning');
-        downloadCSV(
-            ['Nominee', 'Award', 'Department', 'Level', 'Status'],
-            nomineesData.map(n => [n.name, n.award_name, n.department, n.level, 'Approved']),
-            `award-nominees-${Date.now()}.csv`
-        );
-    } else if (type === 'winners') {
-        if (!resultsData || !resultsData.winners) return showToast('No winners yet', 'warning');
-        downloadCSV(
-            ['Award', 'Winner', 'Dept', 'Score'],
-            resultsData.winners.map(w => [w.award_name, w.winner_name, w.department, w.score || w.votes || 0]),
-            `award-winners-${Date.now()}.csv`
-        );
-    } else {
-        showToast('Report generated', 'success');
-    }
-}
-
-function downloadCSV(headers, rows, filename) {
-    const csv = [headers.join(','), ...rows.map(r => r.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`).join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename; a.click();
-    URL.revokeObjectURL(url);
-    showToast('Report downloaded', 'success');
-}
+// Reports (kept for future use, but no DOM elements reference them now)
+// document.querySelectorAll('[data-report]').forEach(btn => {
+//     btn.addEventListener('click', () => exportReport(btn.dataset.report));
+// });
+// document.getElementById('exportAllBtn')?.addEventListener('click', () => exportReport('full'));
 
 // Filters
 document.getElementById('nominationSearch').addEventListener('input', renderNominations);
