@@ -2156,21 +2156,15 @@ adminRouter.delete('/resources/:id', async (req, res) => {
 });
 
 // ==================== MEDIA LIBRARY ====================
-// Only pictures (JPG/PNG/WEBP/GIF) and videos (MP4/WEBM/MOV).
-// No documents, no placement management — used by Members, Executives,
-// Course Reps (profile photos), Events (posters/galleries), and Articles (thumbnails).
-
 function inferMediaType(mime) {
     return mime && mime.startsWith('video/') ? 'video' : 'picture';
 }
 
-// Convert a saved file path → public URL like /uploads/media/images/2026-11-13/foo.jpg
 function buildMediaPublicUrl(absPath) {
     const rel = path.relative(path.join(__dirname, 'uploads'), absPath).split(path.sep).join('/');
     return `/uploads/${rel}`;
 }
 
-// Shape a DB row for the frontend
 function shapeMediaRow(m) {
     return {
         id: m.id,
@@ -2193,6 +2187,15 @@ function shapeMediaRow(m) {
         created_at: m.created_at,
         updated_at: m.updated_at
     };
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function requireUuidParam(res, id) {
+    if (!UUID_RE.test(id)) {
+        res.status(400).json({ status: 'error', message: 'Invalid media ID format' });
+        return false;
+    }
+    return true;
 }
 
 // GET /api/admin/media — list all pictures + videos
@@ -2233,18 +2236,6 @@ adminRouter.get('/media', async (req, res) => {
     }
 });
 
-// GET /api/admin/media/:id — single item
-adminRouter.get('/media/:id', async (req, res) => {
-    try {
-        const result = await db.query('select', 'media', { where: { id: req.params.id } });
-        if (result.data.length === 0) return res.status(404).json({ status: 'error', message: 'Media not found' });
-        res.json({ status: 'success', data: shapeMediaRow(result.data[0]) });
-    } catch (error) {
-        logger.error('Admin media fetch error:', { requestId: req.id, error: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to fetch media' });
-    }
-});
-
 // POST /api/admin/media — multipart upload (single file per request)
 adminRouter.post('/media', mediaUpload.single('file'), async (req, res) => {
     try {
@@ -2255,7 +2246,6 @@ adminRouter.post('/media', mediaUpload.single('file'), async (req, res) => {
         const publicUrl = buildMediaPublicUrl(req.file.path);
         const mediaType = inferMediaType(req.file.mimetype);
 
-        // Parse tags — frontend sends JSON array string; also accept comma list as fallback
         let tags = [];
         if (req.body.tags) {
             try {
@@ -2302,7 +2292,6 @@ adminRouter.post('/media', mediaUpload.single('file'), async (req, res) => {
             message: 'Media uploaded successfully'
         });
     } catch (error) {
-        // Clean up the file if the DB insert failed
         if (req.file && req.file.path) {
             try { await fs.unlink(req.file.path); }
             catch (cleanupErr) {
@@ -2326,8 +2315,311 @@ adminRouter.post('/media', mediaUpload.single('file'), async (req, res) => {
     }
 });
 
+// ==================== ADMIN: GALLERY MANAGEMENT ====================
+// GET /api/admin/media/gallery — list all gallery items
+adminRouter.get('/media/gallery', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('media_gallery')
+            .select(`
+                id, media_id, title, description, category, status, display_order,
+                created_at, updated_at,
+                media:media!media_gallery_media_id_fkey(
+                    id, title, file_url, thumbnail_url, file_type, media_type, size_bytes
+                )
+            `)
+            .order('display_order', { ascending: true })
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        const mapped = (data || []).map(g => ({
+            id: g.id,
+            media_id: g.media_id,
+            title: g.title,
+            description: g.description,
+            category: g.category,
+            status: g.status,
+            published: g.status === 'published',
+            order: g.display_order,
+            created_at: g.created_at,
+            updated_at: g.updated_at,
+            media: g.media ? {
+                id: g.media.id,
+                url: g.media.file_url,
+                thumbnail_url: g.media.thumbnail_url || g.media.file_url,
+                mime_type: g.media.file_type,
+                type: g.media.media_type,
+                size_bytes: g.media.size_bytes
+            } : null
+        }));
+
+        res.json({ status: 'success', data: mapped, count: mapped.length });
+    } catch (error) {
+        logger.error('Admin gallery list error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch gallery' });
+    }
+});
+
+// POST /api/admin/media/gallery — send a media item to the gallery
+adminRouter.post('/media/gallery', async (req, res) => {
+    try {
+        const { media_id, title, description, category, status, display_order } = req.body;
+
+        if (!media_id) {
+            return res.status(400).json({ status: 'error', message: 'media_id is required' });
+        }
+        if (!title || !String(title).trim()) {
+            return res.status(400).json({ status: 'error', message: 'title is required' });
+        }
+
+        const { data: media, error: mediaErr } = await supabase
+            .from('media')
+            .select('id, title')
+            .eq('id', media_id)
+            .maybeSingle();
+
+        if (mediaErr) throw mediaErr;
+        if (!media) {
+            return res.status(404).json({ status: 'error', message: 'Media not found' });
+        }
+
+        const { data: existing } = await supabase
+            .from('media_gallery')
+            .select('id')
+            .eq('media_id', media_id)
+            .maybeSingle();
+
+        if (existing) {
+            return res.status(409).json({
+                status: 'error',
+                message: 'This media is already in the gallery. Edit the existing entry instead.'
+            });
+        }
+
+        const finalStatus = (status === 'published') ? 'published' : 'draft';
+
+        const { data, error } = await supabase
+            .from('media_gallery')
+            .insert([{
+                media_id,
+                title: String(title).trim(),
+                description: description ? String(description).trim() : null,
+                category: (category || 'events').toLowerCase(),
+                status: finalStatus,
+                display_order: Number.isFinite(parseInt(display_order)) ? parseInt(display_order) : 0,
+                created_by: req.user.id
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        logger.info('Gallery item created', {
+            requestId: req.id, galleryId: data.id, mediaId: media_id, status: finalStatus
+        });
+
+        res.status(201).json({ status: 'success', data, message: 'Sent to gallery' });
+    } catch (error) {
+        logger.error('Admin gallery create error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: error.message || 'Failed to send to gallery' });
+    }
+});
+
+// PUT /api/admin/media/gallery/:id — edit a gallery item
+adminRouter.put('/media/gallery/:id', async (req, res) => {
+    try {
+        const { title, description, category, status, display_order } = req.body;
+        const updateData = { updated_at: new Date().toISOString() };
+
+        if (title !== undefined) updateData.title = String(title).trim();
+        if (description !== undefined) updateData.description = description ? String(description).trim() : null;
+        if (category !== undefined) updateData.category = String(category).toLowerCase();
+        if (status !== undefined) updateData.status = status === 'published' ? 'published' : 'draft';
+        if (display_order !== undefined) updateData.display_order = parseInt(display_order) || 0;
+
+        const { data, error } = await supabase
+            .from('media_gallery')
+            .update(updateData)
+            .eq('id', req.params.id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        if (!data) return res.status(404).json({ status: 'error', message: 'Gallery item not found' });
+
+        logger.info('Gallery item updated', { requestId: req.id, galleryId: req.params.id });
+        res.json({ status: 'success', data, message: 'Gallery item updated' });
+    } catch (error) {
+        logger.error('Admin gallery update error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to update gallery item' });
+    }
+});
+
+// PATCH /api/admin/media/gallery/:id — quick status toggle
+adminRouter.patch('/media/gallery/:id', async (req, res) => {
+    try {
+        const { status } = req.body;
+        if (!['draft', 'published'].includes(status)) {
+            return res.status(400).json({ status: 'error', message: 'status must be draft or published' });
+        }
+
+        const { data, error } = await supabase
+            .from('media_gallery')
+            .update({ status, updated_at: new Date().toISOString() })
+            .eq('id', req.params.id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        if (!data) return res.status(404).json({ status: 'error', message: 'Gallery item not found' });
+
+        res.json({ status: 'success', data, message: `Gallery item ${status}` });
+    } catch (error) {
+        logger.error('Admin gallery toggle error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to update gallery status' });
+    }
+});
+
+// DELETE /api/admin/media/gallery/:id — remove from gallery (keeps media file)
+adminRouter.delete('/media/gallery/:id', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('media_gallery')
+            .delete()
+            .eq('id', req.params.id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        if (!data) return res.status(404).json({ status: 'error', message: 'Gallery item not found' });
+
+        logger.info('Gallery item removed', { requestId: req.id, galleryId: req.params.id });
+        res.json({ status: 'success', message: 'Removed from gallery (file kept in Media Library)' });
+    } catch (error) {
+        logger.error('Admin gallery delete error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to remove from gallery' });
+    }
+});
+
+// ==================== ADMIN: HOMEPAGE PLACEMENT ====================
+// GET /api/admin/media/placements/homepage-hero
+adminRouter.get('/media/placements/homepage-hero', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('media_placements')
+            .select(`
+                id, slot, media_id, updated_at,
+                media:media!media_placements_media_id_fkey(
+                    id, title, file_url, thumbnail_url, media_type)
+            `)
+            .eq('slot', 'homepage-hero')
+            .maybeSingle();
+
+        if (error && error.code !== 'PGRST116') throw error;
+
+        if (!data) {
+            return res.json({ status: 'success', data: null });
+        }
+
+        res.json({
+            status: 'success',
+            data: {
+                media_id: data.media_id,
+                url: data.media?.file_url || null,
+                thumbnail_url: data.media?.thumbnail_url || null,
+                title: data.media?.title || null,
+                updated_at: data.updated_at
+            }
+        });
+    } catch (error) {
+        logger.error('Admin placement get error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch placement' });
+    }
+});
+
+// PUT /api/admin/media/placements/homepage-hero
+adminRouter.put('/media/placements/homepage-hero', async (req, res) => {
+    try {
+        const { media_id } = req.body;
+        if (!media_id) {
+            return res.status(400).json({ status: 'error', message: 'media_id is required' });
+        }
+
+        const { data: media, error: mediaErr } = await supabase
+            .from('media')
+            .select('id, media_type, file_url, thumbnail_url, title')
+            .eq('id', media_id)
+            .maybeSingle();
+
+        if (mediaErr) throw mediaErr;
+        if (!media) return res.status(404).json({ status: 'error', message: 'Media not found' });
+        if (media.media_type !== 'picture') {
+            return res.status(400).json({ status: 'error', message: 'Only pictures can be used for the homepage hero' });
+        }
+
+        const { data, error } = await supabase
+            .from('media_placements')
+            .upsert({
+                slot: 'homepage-hero',
+                media_id,
+                updated_by: req.user.id,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'slot' })
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        logger.info('Homepage hero placement set', {
+            requestId: req.id, mediaId: media_id, by: req.user.id
+        });
+
+        res.json({
+            status: 'success',
+            data: {
+                media_id: data.media_id,
+                url: media.file_url,
+                thumbnail_url: media.thumbnail_url || media.file_url,
+                title: media.title,
+                updated_at: data.updated_at
+            },
+            message: 'Homepage hero image updated'
+        });
+    } catch (error) {
+        logger.error('Admin placement set error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to update placement' });
+    }
+});
+
+// DELETE /api/admin/media/placements/homepage-hero
+adminRouter.delete('/media/placements/homepage-hero', async (req, res) => {
+    try {
+        await supabase.from('media_placements').delete().eq('slot', 'homepage-hero');
+        logger.info('Homepage hero placement cleared', { requestId: req.id, by: req.user.id });
+        res.json({ status: 'success', message: 'Homepage hero image cleared' });
+    } catch (error) {
+        logger.error('Admin placement delete error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to clear placement' });
+    }
+});
+
+// GET /api/admin/media/:id — single item
+adminRouter.get('/media/:id', async (req, res) => {
+    if (!requireUuidParam(res, req.params.id)) return;
+    try {
+        const result = await db.query('select', 'media', { where: { id: req.params.id } });
+        if (result.data.length === 0) return res.status(404).json({ status: 'error', message: 'Media not found' });
+        res.json({ status: 'success', data: shapeMediaRow(result.data[0]) });
+    } catch (error) {
+        logger.error('Admin media fetch error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch media' });
+    }
+});
+
 // PUT /api/admin/media/:id — edit metadata only
 adminRouter.put('/media/:id', validate(schemas.updateMedia), async (req, res) => {
+    if (!requireUuidParam(res, req.params.id)) return;
     try {
         const { title, description, alt_text, tags } = req.body;
         const updateData = { updated_at: new Date().toISOString() };
@@ -2360,6 +2652,7 @@ adminRouter.put('/media/:id', validate(schemas.updateMedia), async (req, res) =>
 
 // DELETE /api/admin/media/:id — remove DB row + file on disk
 adminRouter.delete('/media/:id', async (req, res) => {
+    if (!requireUuidParam(res, req.params.id)) return;
     try {
         const checkResult = await db.query('select', 'media', {
             where: { id: req.params.id },
@@ -2372,7 +2665,6 @@ adminRouter.delete('/media/:id', async (req, res) => {
 
         const { file_url, title } = checkResult.data[0];
 
-        // Delete file from disk (best-effort)
         if (file_url && file_url.startsWith('/uploads/')) {
             const relative = file_url.replace(/^\/uploads\//, '');
             const filePath = path.join(__dirname, 'uploads', relative);
@@ -2399,8 +2691,6 @@ adminRouter.delete('/media/:id', async (req, res) => {
 });
 
 // ==================== ADMIN: GALLERY MANAGEMENT ====================
-// Gallery entries are separate from media. Removing one never deletes the file.
-
 // GET /api/admin/media/gallery — list all gallery items
 adminRouter.get('/media/gallery', async (req, res) => {
     try {
