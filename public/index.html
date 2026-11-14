@@ -307,7 +307,7 @@
         .inline-flex { display: inline-flex; }
         .block { display: block; }
 
-        /* ===== HERO (with dynamic background) ===== */
+        /* ===== HERO (gradient only — placement image now lives in About) ===== */
         .hero {
             min-height: 85vh;
             display: flex;
@@ -316,19 +316,6 @@
             background: linear-gradient(135deg, var(--emerald-500) 0%, var(--emerald-600) 50%, var(--teal-700) 100%);
             overflow: hidden;
             position: relative;
-            transition: background-image 600ms ease, background-color 600ms ease;
-        }
-        .hero.has-image {
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-        }
-        .hero.has-image::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, rgba(6, 78, 59, 0.78) 0%, rgba(4, 120, 87, 0.65) 50%, rgba(15, 118, 110, 0.78) 100%);
-            z-index: 0;
         }
         .hero-pattern {
             position: absolute;
@@ -628,7 +615,7 @@
                     </div>
 
                     <div class="about-image">
-                        <img src="/logo.jpg" alt="NUESA BIU Logo">
+                        <img id="aboutImage" src="/logo.jpg" alt="NUESA BIU Logo">
                         <div class="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-emerald-600 rounded-tl-lg"></div>
                         <div class="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-emerald-600 rounded-tr-lg"></div>
                         <div class="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-emerald-600 rounded-bl-lg"></div>
@@ -826,24 +813,20 @@
             return response.json();
         }
 
-        // ==================== HERO PLACEMENT ====================
-        // Loads the current homepage hero image from the Media Library placement.
-        // Falls back to the emerald gradient if none is set or the API fails.
-        async function loadHeroPlacement() {
+        // ==================== ABOUT IMAGE PLACEMENT ====================
+        // Loads the image set in the Media Library "homepage-hero" placement and
+        // applies it to the About section image. Falls back to /logo.jpg if none.
+        async function loadAboutPlacement() {
             try {
-                // Try the public placement endpoint first
                 let res;
                 try {
                     res = await fetchAPI('/api/media/placements/homepage-hero');
                 } catch (err) {
-                    // Fall back to admin endpoint — will 401 for public visitors, but
-                    // the page still works because of the try/catch wrapper.
                     res = await fetchAPI('/api/admin/media/placements/homepage-hero');
                 }
 
                 const data = res.data || res;
 
-                // Determine the image URL from the various possible response shapes
                 const url =
                     data.url ||
                     data.image_url ||
@@ -852,17 +835,14 @@
                     (data.media_id ? await resolveMediaUrl(data.media_id) : null);
 
                 if (url) {
-                    applyHeroImage(url);
+                    applyAboutImage(url);
                 }
-                // If no url — keep the default gradient
             } catch (err) {
-                // Silent fallback — gradient hero is already shown
-                console.warn('Homepage hero placement not available:', err.message);
+                // Silent fallback — the default /logo.jpg stays in place
+                console.warn('About image placement not available:', err.message);
             }
         }
 
-        // If the placement endpoint only returns a media_id, we need to fetch
-        // the media to get the actual URL.
         async function resolveMediaUrl(mediaId) {
             try {
                 const res = await fetchAPI(`/api/media/${mediaId}`);
@@ -873,21 +853,20 @@
             }
         }
 
-        function applyHeroImage(url) {
-            const hero = document.getElementById('hero');
-            if (!hero || !url) return;
+        function applyAboutImage(url) {
+            const aboutImg = document.getElementById('aboutImage');
+            if (!aboutImg || !url) return;
 
-            // Preload the image so the swap is instant
-            const img = new Image();
-            img.onload = () => {
-                hero.style.backgroundImage = `url("${url}")`;
-                hero.classList.add('has-image');
+            // Preload so the swap is instant and doesn't flash
+            const preload = new Image();
+            preload.onload = () => {
+                aboutImg.src = url;
+                aboutImg.alt = 'NUESA BIU';
             };
-            img.onerror = () => {
-                // Silent fallback to gradient
-                console.warn('Hero image failed to load:', url);
+            preload.onerror = () => {
+                console.warn('About image failed to load:', url);
             };
-            img.src = url;
+            preload.src = url;
         }
 
         // ==================== STATS ====================
@@ -1022,7 +1001,6 @@
                 observer.observe(section);
             });
 
-            // Make sure the hero is visible immediately
             const hero = document.getElementById('hero');
             if (hero) {
                 hero.style.opacity = '1';
@@ -1035,7 +1013,7 @@
             console.log('NUESA BIU - Connecting to live backend:', API_BASE_URL);
             setupScrollAnimations();
             await Promise.all([
-                loadHeroPlacement(),
+                loadAboutPlacement(),
                 loadStatistics(),
                 loadEvents()
             ]);
