@@ -93,6 +93,8 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
     global: { headers: { 'x-application-name': 'nuesa-biu-api', 'x-version': '1.2.0' } }
 });
 
+const STORAGE_BUCKET = 'media';
+
 // -------------------- 1.4 CUSTOM ERROR CLASSES -------------
 class DatabaseError extends Error {
     constructor(message, code, table, operation) {
@@ -2243,9 +2245,42 @@ adminRouter.post('/media', mediaUpload.single('file'), async (req, res) => {
             return res.status(400).json({ status: 'error', message: 'No file uploaded' });
         }
 
-        const publicUrl = buildMediaPublicUrl(req.file.path);
-        const mediaType = inferMediaType(req.file.mimetype);
+        const isVideo = (req.file.mimetype || '').startsWith('video/');
+        const mediaType = isVideo ? 'video' : 'picture';
 
+        // Build a unique path inside the bucket, e.g.
+        //   images/2026-11-14/biu-poster-1731600000000.jpg
+        const ext = path.extname(req.file.originalname).toLowerCase();
+        const safeName = path.basename(req.file.originalname, ext)
+            .replace(/[^a-zA-Z0-9_-]/g, '_')
+            .substring(0, 50) || 'file';
+        const datePart = new Date().toISOString().split('T')[0];
+        const storageKey = `${isVideo ? 'videos' : 'images'}/${datePart}/${safeName}-${Date.now()}${ext}`;
+
+        // Read the temp file multer just saved to disk
+        const fileBuffer = await fs.readFile(req.file.path);
+
+        // Upload to Supabase Storage
+        const { error: uploadErr } = await supabase.storage
+            .from(STORAGE_BUCKET)
+            .upload(storageKey, fileBuffer, {
+                contentType: req.file.mimetype,
+                upsert: false,
+                cacheControl: '31536000'   // 1 year — files never change
+            });
+
+        if (uploadErr) throw uploadErr;
+
+        // Get the permanent public URL
+        const { data: urlData } = supabase.storage
+            .from(STORAGE_BUCKET)
+            .getPublicUrl(storageKey);
+        const publicUrl = urlData.publicUrl;
+
+        // Clean up the temp file that multer left on Render's disk
+        try { await fs.unlink(req.file.path); } catch {}
+
+        // Parse tags — same as before
         let tags = [];
         if (req.body.tags) {
             try {
@@ -2262,7 +2297,7 @@ adminRouter.post('/media', mediaUpload.single('file'), async (req, res) => {
         const newMedia = {
             title,
             filename: req.file.originalname,
-            file_url: publicUrl,
+            file_url: publicUrl,               // ← permanent https://xyz.supabase.co/storage/...
             file_type: req.file.mimetype,
             media_type: mediaType,
             size_bytes: req.file.size,
@@ -2281,9 +2316,8 @@ adminRouter.post('/media', mediaUpload.single('file'), async (req, res) => {
         const result = await db.query('insert', 'media', { data: newMedia });
         const saved = result.data[0];
 
-        logger.info('Media uploaded', {
-            requestId: req.id, mediaId: saved.id,
-            type: mediaType, sizeBytes: req.file.size, uploader: req.user.id
+        logger.info('Media uploaded to Supabase Storage', {
+            requestId: req.id, mediaId: saved.id, storageKey, type: mediaType
         });
 
         res.status(201).json({
@@ -2293,13 +2327,12 @@ adminRouter.post('/media', mediaUpload.single('file'), async (req, res) => {
         });
     } catch (error) {
         if (req.file && req.file.path) {
-            try { await fs.unlink(req.file.path); }
-            catch (cleanupErr) {
-                logger.warn('Could not clean up orphan media file', { path: req.file.path, error: cleanupErr.message });
-            }
+            try { await fs.unlink(req.file.path); } catch {}
         }
 
-        logger.error('Admin media upload error:', { requestId: req.id, error: error.message });
+        logger.error('Admin media upload error:', {
+            requestId: req.id, error: error.message, code: error.code
+        });
 
         if (error instanceof multer.MulterError) {
             if (error.code === 'LIMIT_FILE_SIZE') {
@@ -2665,15 +2698,22 @@ adminRouter.delete('/media/:id', async (req, res) => {
 
         const { file_url, title } = checkResult.data[0];
 
-        if (file_url && file_url.startsWith('/uploads/')) {
-            const relative = file_url.replace(/^\/uploads\//, '');
-            const filePath = path.join(__dirname, 'uploads', relative);
-            try {
-                await fs.unlink(filePath);
-            } catch (fileError) {
-                logger.warn('Could not delete media file from disk', {
-                    requestId: req.id, fileUrl: file_url, error: fileError.message
-                });
+        // Delete from Supabase Storage if the URL is a storage URL
+        if (file_url && file_url.includes(`/storage/v1/object/public/${STORAGE_BUCKET}/`)) {
+            const storageKey = decodeURIComponent(
+                file_url.split(`/storage/v1/object/public/${STORAGE_BUCKET}/`)[1] || ''
+            );
+            if (storageKey) {
+                try {
+                    const { error: storageErr } = await supabase.storage
+                        .from(STORAGE_BUCKET)
+                        .remove([storageKey]);
+                    if (storageErr) throw storageErr;
+                } catch (storageErr) {
+                    logger.warn('Could not delete storage object', {
+                        requestId: req.id, storageKey, error: storageErr.message
+                    });
+                }
             }
         }
 
