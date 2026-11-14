@@ -93,7 +93,7 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
     global: { headers: { 'x-application-name': 'nuesa-biu-api', 'x-version': '1.2.0' } }
 });
 
-const STORAGE_BUCKET = 'media';
+const STORAGE_BUCKET = 'nuesa-media';
 
 // -------------------- 1.4 CUSTOM ERROR CLASSES -------------
 class DatabaseError extends Error {
