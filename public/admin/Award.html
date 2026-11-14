@@ -1554,861 +1554,907 @@ Sportsperson of the Year</textarea>
         </div>
     </div>
 
-    <script>
-    // ============================================================
-    // CONFIG
-    // ============================================================
-    const API_BASE_URL = '';
-    let currentUser = null;
-    let inactivityTimeout = null;
-    let currentEdition = null;
-    let categoriesData = [];
-    let nominationsData = [];
-    let nomineesData = [];
-    let resultsData = null;
-    let sessionsData = [];
-    let archiveData = [];
+<script>
+// ============================================================
+// CONFIG
+// ============================================================
+const API_BASE_URL = '';
+let currentUser = null;
+let inactivityTimeout = null;
+let currentEdition = null;
+let categoriesData = [];
+let nominationsData = [];
+let nomineesData = [];
+let resultsData = null;
+let sessionsData = [];
+let archiveData = [];
 
-    // ============================================================
-    // AUTH
-    // ============================================================
-    async function checkAuth() {
-        try {
-            showLoading();
-            const res = await fetch(`${API_BASE_URL}/api/admin/session`, {
-                method: 'GET', credentials: 'include',
-                headers: { 'Accept': 'application/json' }
-            });
-            if (res.status === 200) {
-                const data = await res.json();
-                if (data.status === 'success' && data.data) {
-                    currentUser = data.data;
-                    updateUserInfo();
-                    hideLoading();
-                    return true;
-                }
-            }
-            showToast('Please login to continue', 'info');
-            setTimeout(() => window.location.replace('adlog.html'), 1200);
-            hideLoading();
-            return false;
-        } catch (err) {
-            showToast('Connection error', 'error');
-            hideLoading();
-            return false;
-        }
-    }
-
-    function updateUserInfo() {
-        if (!currentUser) return;
-        const name = currentUser.fullName || currentUser.full_name || 'Administrator';
-        const role = (currentUser.role || 'admin');
-        document.getElementById('userName').textContent = name;
-        document.getElementById('userRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
-        document.getElementById('userAvatar').textContent = name.charAt(0).toUpperCase();
-    }
-
-    async function confirmLogout() {
-        try {
-            showLoading();
-            await fetch(`${API_BASE_URL}/api/admin/logout`, { method: 'POST', credentials: 'include' });
-        } catch (err) { console.warn('Logout failed:', err); }
-        hideModal('logoutModal');
-        showToast('Logged out', 'success');
-        setTimeout(() => window.location.replace('adlog.html'), 700);
-    }
-
-    // ============================================================
-    // API
-    // ============================================================
-    async function apiGet(endpoint) {
-        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+// ============================================================
+// AUTH
+// ============================================================
+async function checkAuth() {
+    try {
+        showLoading();
+        const res = await fetch(`${API_BASE_URL}/api/admin/session`, {
             method: 'GET', credentials: 'include',
             headers: { 'Accept': 'application/json' }
         });
-        if (res.status === 401) {
-            showToast('Session expired', 'warning');
-            setTimeout(() => window.location.replace('adlog.html'), 1200);
-            throw new Error('Unauthorized');
+        if (res.status === 200) {
+            const data = await res.json();
+            if (data.status === 'success' && data.data) {
+                currentUser = data.data;
+                updateUserInfo();
+                hideLoading();
+                return true;
+            }
         }
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
+        showToast('Please login to continue', 'info');
+        setTimeout(() => window.location.replace('adlog.html'), 1200);
+        hideLoading();
+        return false;
+    } catch (err) {
+        showToast('Connection error', 'error');
+        hideLoading();
+        return false;
     }
+}
 
-    async function apiCall(endpoint, options = {}) {
-        const headers = {
-            'Accept': 'application/json',
-            ...(options.body && !(options.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
-            ...(options.headers || {})
-        };
-        const res = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers, credentials: 'include' });
-        const text = await res.text();
-        let data;
-        try { data = text ? JSON.parse(text) : {}; } catch { data = { message: text }; }
-        if (!res.ok) {
-            const err = new Error(data.message || `HTTP ${res.status}`);
-            err.status = res.status; err.data = data;
-            throw err;
-        }
-        return data;
-    }
+function updateUserInfo() {
+    if (!currentUser) return;
+    const name = currentUser.fullName || currentUser.full_name || 'Administrator';
+    const role = (currentUser.role || 'admin');
+    document.getElementById('userName').textContent = name;
+    document.getElementById('userRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
+    document.getElementById('userAvatar').textContent = name.charAt(0).toUpperCase();
+}
 
-    // ============================================================
-    // UI HELPERS
-    // ============================================================
-    function showLoading() { document.getElementById('loadingOverlay').classList.add('active'); }
-    function hideLoading() { document.getElementById('loadingOverlay').classList.remove('active'); }
-    function showModal(id) {
-        const el = document.getElementById(id);
-        if (el) { el.classList.add('active'); document.body.style.overflow = 'hidden'; }
+async function confirmLogout() {
+    try {
+        showLoading();
+        await fetch(`${API_BASE_URL}/api/admin/logout`, { method: 'POST', credentials: 'include' });
+    } catch (err) { console.warn('Logout failed:', err); }
+    hideModal('logoutModal');
+    showToast('Logged out', 'success');
+    setTimeout(() => window.location.replace('adlog.html'), 700);
+}
+
+// ============================================================
+// API
+// ============================================================
+async function apiGet(endpoint) {
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: 'GET', credentials: 'include',
+        headers: { 'Accept': 'application/json' }
+    });
+    if (res.status === 401) {
+        showToast('Session expired', 'warning');
+        setTimeout(() => window.location.replace('adlog.html'), 1200);
+        throw new Error('Unauthorized');
     }
-    function hideModal(id) {
-        const el = document.getElementById(id);
-        if (el) { el.classList.remove('active'); document.body.style.overflow = ''; }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
+async function apiCall(endpoint, options = {}) {
+    const headers = {
+        'Accept': 'application/json',
+        ...(options.body && !(options.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
+        ...(options.headers || {})
+    };
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers, credentials: 'include' });
+    const text = await res.text();
+    let data;
+    try { data = text ? JSON.parse(text) : {}; } catch { data = { message: text }; }
+    if (!res.ok) {
+        const err = new Error(data.message || `HTTP ${res.status}`);
+        err.status = res.status; err.data = data;
+        throw err;
     }
-    function showToast(message, type = 'info', duration = 4500) {
-        document.querySelectorAll('.toast').forEach(t => t.remove());
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        const icons = { success:'check-circle', error:'exclamation-circle', warning:'exclamation-triangle', info:'info-circle' };
-        toast.innerHTML = `
-            <div class="toast-icon"><i class="fas fa-${icons[type] || 'info-circle'}"></i></div>
-            <div class="toast-content">${escapeHtml(message)}</div>
-            <button class="toast-close" aria-label="Close">&times;</button>
-        `;
-        document.body.appendChild(toast);
-        requestAnimationFrame(() => toast.classList.add('show'));
-        toast.querySelector('.toast-close').onclick = () => {
+    return data;
+}
+
+// ============================================================
+// UI HELPERS
+// ============================================================
+function showLoading() { document.getElementById('loadingOverlay').classList.add('active'); }
+function hideLoading() { document.getElementById('loadingOverlay').classList.remove('active'); }
+function showModal(id) {
+    const el = document.getElementById(id);
+    if (el) { el.classList.add('active'); document.body.style.overflow = 'hidden'; }
+}
+function hideModal(id) {
+    const el = document.getElementById(id);
+    if (el) { el.classList.remove('active'); document.body.style.overflow = ''; }
+}
+function showToast(message, type = 'info', duration = 4500) {
+    document.querySelectorAll('.toast').forEach(t => t.remove());
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    const icons = { success:'check-circle', error:'exclamation-circle', warning:'exclamation-triangle', info:'info-circle' };
+    toast.innerHTML = `
+        <div class="toast-icon"><i class="fas fa-${icons[type] || 'info-circle'}"></i></div>
+        <div class="toast-content">${escapeHtml(message)}</div>
+        <button class="toast-close" aria-label="Close">&times;</button>
+    `;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('show'));
+    toast.querySelector('.toast-close').onclick = () => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    };
+    setTimeout(() => {
+        if (toast.parentElement) {
             toast.classList.remove('show');
             setTimeout(() => toast.remove(), 300);
-        };
-        setTimeout(() => {
-            if (toast.parentElement) {
-                toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 300);
-            }
-        }, duration);
-    }
-    function escapeHtml(str) {
-        if (str == null) return '';
-        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-    }
-    function getInitials(name) {
-        if (!name) return '?';
-        return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-    }
-    function formatDate(dateStr) {
-        if (!dateStr) return '—';
-        try {
-            const d = new Date(dateStr);
-            if (isNaN(d.getTime())) return dateStr;
-            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        } catch { return dateStr; }
-    }
-    function formatDateTime(dateStr) {
-        if (!dateStr) return '—';
-        try {
-            const d = new Date(dateStr);
-            if (isNaN(d.getTime())) return dateStr;
-            return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
-        } catch { return dateStr; }
-    }
-    function toLocalInput(dateStr) {
-        if (!dateStr) return '';
-        try {
-            const d = new Date(dateStr);
-            if (isNaN(d.getTime())) return '';
-            const pad = n => String(n).padStart(2, '0');
-            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-        } catch { return ''; }
-    }
+        }
+    }, duration);
+}
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function getInitials(name) {
+    if (!name) return '?';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+}
+function formatDate(dateStr) {
+    if (!dateStr) return '—';
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch { return dateStr; }
+}
+function formatDateTime(dateStr) {
+    if (!dateStr) return '—';
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+    } catch { return dateStr; }
+}
+function toLocalInput(dateStr) {
+    if (!dateStr) return '';
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return '';
+        const pad = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    } catch { return ''; }
+}
 
-    // ============================================================
-    // SIDEBAR
-    // ============================================================
-    function setupSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('mobileOverlay');
-        const toggle = document.getElementById('mobileMenuToggle');
-        if (!sidebar || !overlay || !toggle) return;
-        const open = () => { sidebar.classList.add('open'); overlay.classList.add('active'); document.body.style.overflow = 'hidden'; };
-        const close = () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); document.body.style.overflow = ''; };
-        toggle.addEventListener('click', (e) => {
-            e.preventDefault(); e.stopPropagation();
-            if (sidebar.classList.contains('open')) close(); else open();
-        }, true);
-        overlay.addEventListener('click', close);
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sidebar.classList.contains('open')) close(); });
-        document.querySelectorAll('.nav-item').forEach(link => {
-            link.addEventListener('click', () => { if (window.innerWidth <= 900) close(); });
-        });
-    }
+// ============================================================
+// SIDEBAR
+// ============================================================
+function setupSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('mobileOverlay');
+    const toggle = document.getElementById('mobileMenuToggle');
+    if (!sidebar || !overlay || !toggle) return;
+    const open = () => { sidebar.classList.add('open'); overlay.classList.add('active'); document.body.style.overflow = 'hidden'; };
+    const close = () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); document.body.style.overflow = ''; };
+    toggle.addEventListener('click', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        if (sidebar.classList.contains('open')) close(); else open();
+    }, true);
+    overlay.addEventListener('click', close);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sidebar.classList.contains('open')) close(); });
+    document.querySelectorAll('.nav-item').forEach(link => {
+        link.addEventListener('click', () => { if (window.innerWidth <= 900) close(); });
+    });
+}
 
-    function setupHeaderScroll() {
-        const header = document.getElementById('mainHeader');
-        window.addEventListener('scroll', () => {
-            if (window.scrollY > 8) header.classList.add('scrolled');
-            else header.classList.remove('scrolled');
-        }, { passive: true });
-    }
+function setupHeaderScroll() {
+    const header = document.getElementById('mainHeader');
+    window.addEventListener('scroll', () => {
+        if (window.scrollY > 8) header.classList.add('scrolled');
+        else header.classList.remove('scrolled');
+    }, { passive: true });
+}
 
-    function resetInactivityTimer() {
-        clearTimeout(inactivityTimeout);
-        inactivityTimeout = setTimeout(() => {
-            showToast('Session expiring soon', 'warning');
-            setTimeout(() => { window.location.replace('adlog.html'); }, 60000);
-        }, 29 * 60 * 1000);
-    }
-    function setupActivityListeners() {
-        ['mousedown','keypress','scroll','touchstart'].forEach(ev =>
-            document.addEventListener(ev, resetInactivityTimer, { passive: true }));
-        resetInactivityTimer();
-    }
+function resetInactivityTimer() {
+    clearTimeout(inactivityTimeout);
+    inactivityTimeout = setTimeout(() => {
+        showToast('Session expiring soon', 'warning');
+        setTimeout(() => { window.location.replace('adlog.html'); }, 60000);
+    }, 29 * 60 * 1000);
+}
+function setupActivityListeners() {
+    ['mousedown','keypress','scroll','touchstart'].forEach(ev =>
+        document.addEventListener(ev, resetInactivityTimer, { passive: true }));
+    resetInactivityTimer();
+}
 
-    // ============================================================
-    // LOADERS
-    // ============================================================
-    async function loadAll() {
-        await loadCurrentEdition();
-        await Promise.all([
-            loadCategories(),
-            loadNominations(),
-            loadNominees(),
-            loadResults(),
-            loadArchive()
-        ]);
-    }
+// ============================================================
+// LOADERS
+// ============================================================
+async function loadAll() {
+    await loadCurrentEdition();
+    await Promise.all([
+        loadCategories(),
+        loadNominations(),
+        loadNominees(),
+        loadResults(),
+        loadArchive()
+    ]);
+}
 
-    async function loadCurrentEdition() {
-        try {
-            const res = await apiCall('/api/awards/active').catch(() => ({ data: null }));
-            currentEdition = res.data;
+async function loadCurrentEdition() {
+    try {
+        const res = await apiCall('/api/awards/active').catch(() => ({ data: null }));
+        currentEdition = res.data;
 
-            if (!currentEdition) {
-                document.getElementById('currentEditionWrap').innerHTML = `
-                    <div class="card" style="border-left:3px solid var(--accent);">
-                        <div class="card-body">
-                            <div class="empty-state">
-                                <i class="fas fa-trophy"></i>
-                                <h3>No Active Award Edition</h3>
-                                <p>Create an award edition to start configuring categories, nominations, and winners.</p>
-                                <button class="btn btn-primary" onclick="showModal('createEditionModal')">
-                                    <i class="fas fa-plus"></i> Create Award Edition
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-
+        if (!currentEdition) {
+            // Small inline "not configured" indicator — no big empty state
             document.getElementById('currentEditionWrap').innerHTML = `
-                <div class="current-edition">
+                <div class="current-edition" style="border-left-color: var(--text-dim);">
                     <div class="current-edition-info">
                         <div class="label">Current Award Edition</div>
-                        <h2>${escapeHtml(currentEdition.name)}</h2>
+                        <h2 style="color: var(--text-muted); font-size: 1.125rem; font-weight: 600;">
+                            <i class="fas fa-circle" style="color: var(--text-dim); font-size: 0.5rem; vertical-align: middle; margin-right: 6px;"></i>
+                            No active edition
+                        </h2>
                         <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                            <span class="status-badge badge-gold">${escapeHtml(currentEdition.status || 'preparation')}</span>
-                            <span class="status-badge badge-info">${escapeHtml(currentEdition.session_name || 'Session TBD')}</span>
+                            <span class="status-badge badge-draft">not configured</span>
                         </div>
                     </div>
-                    <div class="current-edition-meta" style="flex:1; max-width:600px;">
-                        <div><strong>Categories</strong><span>${(currentEdition.categories || []).length}</span></div>
-                        <div><strong>Nomination opens</strong><span>${currentEdition.nomination_start ? formatDateTime(currentEdition.nomination_start) : 'Not configured'}</span></div>
-                        <div><strong>Voting closes</strong><span>${currentEdition.voting_end ? formatDateTime(currentEdition.voting_end) : 'Not configured'}</span></div>
-                    </div>
-                    <div>
-                        <button class="btn btn-secondary btn-sm" onclick="openScheduleModal()">
-                            <i class="fas fa-cog"></i> Edit Settings
-                        </button>
+                    <div class="current-edition-meta" style="flex:1; max-width:600px; opacity:0.6;">
+                        <div><strong>Categories</strong><span>—</span></div>
+                        <div><strong>Nomination opens</strong><span>—</span></div>
+                        <div><strong>Voting closes</strong><span>—</span></div>
                     </div>
                 </div>
             `;
 
-            // Update schedule summary
-            document.getElementById('scheduleAnnouncement').textContent =
-                currentEdition.announcement_date ? formatDateTime(currentEdition.announcement_date) : 'Not configured';
-            document.getElementById('scheduleNominations').textContent =
-                (currentEdition.nomination_start && currentEdition.nomination_end)
-                    ? `${formatDateTime(currentEdition.nomination_start)} → ${formatDateTime(currentEdition.nomination_end)}`
-                    : 'Not configured';
-            document.getElementById('scheduleReview').textContent =
-                currentEdition.review_deadline ? `Deadline: ${formatDateTime(currentEdition.review_deadline)}` : 'Review deadline not set';
-            document.getElementById('scheduleVoting').textContent =
-                (currentEdition.voting_start && currentEdition.voting_end)
-                    ? `${formatDateTime(currentEdition.voting_start)} → ${formatDateTime(currentEdition.voting_end)}`
-                    : 'Not configured';
-            document.getElementById('scheduleVerification').textContent =
-                currentEdition.verification_deadline ? `Deadline: ${formatDateTime(currentEdition.verification_deadline)}` : 'Verification deadline not set';
-            document.getElementById('scheduleWinners').textContent =
-                currentEdition.winner_announcement ? formatDateTime(currentEdition.winner_announcement) : 'Publication date not set';
-
-        } catch (err) {
-            console.error(err);
+            // Reset schedule labels
+            const clearedIds = [
+                'scheduleAnnouncement','scheduleNominations','scheduleReview',
+                'scheduleVoting','scheduleVerification','scheduleWinners'
+            ];
+            clearedIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = 'Not configured';
+            });
+            return;
         }
+
+        // Edition exists — show full banner
+        document.getElementById('currentEditionWrap').innerHTML = `
+            <div class="current-edition">
+                <div class="current-edition-info">
+                    <div class="label">Current Award Edition</div>
+                    <h2>${escapeHtml(currentEdition.name)}</h2>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                        <span class="status-badge badge-gold">${escapeHtml(currentEdition.status || 'preparation')}</span>
+                        <span class="status-badge badge-info">${escapeHtml(currentEdition.session_name || 'Session TBD')}</span>
+                    </div>
+                </div>
+                <div class="current-edition-meta" style="flex:1; max-width:600px;">
+                    <div><strong>Categories</strong><span>${(currentEdition.categories || []).length}</span></div>
+                    <div><strong>Nomination opens</strong><span>${currentEdition.nomination_start ? formatDateTime(currentEdition.nomination_start) : 'Not configured'}</span></div>
+                    <div><strong>Voting closes</strong><span>${currentEdition.voting_end ? formatDateTime(currentEdition.voting_end) : 'Not configured'}</span></div>
+                </div>
+                <div>
+                    <button class="btn btn-secondary btn-sm" onclick="openScheduleModal()">
+                        <i class="fas fa-cog"></i> Edit Settings
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // Update schedule summary
+        document.getElementById('scheduleAnnouncement').textContent =
+            currentEdition.announcement_date ? formatDateTime(currentEdition.announcement_date) : 'Not configured';
+        document.getElementById('scheduleNominations').textContent =
+            (currentEdition.nomination_start && currentEdition.nomination_end)
+                ? `${formatDateTime(currentEdition.nomination_start)} → ${formatDateTime(currentEdition.nomination_end)}`
+                : 'Not configured';
+        document.getElementById('scheduleReview').textContent =
+            currentEdition.review_deadline ? `Deadline: ${formatDateTime(currentEdition.review_deadline)}` : 'Review deadline not set';
+        document.getElementById('scheduleVoting').textContent =
+            (currentEdition.voting_start && currentEdition.voting_end)
+                ? `${formatDateTime(currentEdition.voting_start)} → ${formatDateTime(currentEdition.voting_end)}`
+                : 'Not configured';
+        document.getElementById('scheduleVerification').textContent =
+            currentEdition.verification_deadline ? `Deadline: ${formatDateTime(currentEdition.verification_deadline)}` : 'Verification deadline not set';
+        document.getElementById('scheduleWinners').textContent =
+            currentEdition.winner_announcement ? formatDateTime(currentEdition.winner_announcement) : 'Publication date not set';
+
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function loadCategories() {
+    try {
+        const res = await apiCall('/api/admin/awards/categories').catch(() => ({ data: [] }));
+        categoriesData = res.data || [];
+        document.getElementById('statCategories').textContent = categoriesData.length;
+        document.getElementById('categoriesCountBadge').textContent = `${categoriesData.length} award titles`;
+        renderCategories();
+        populateAwardFilter();
+    } catch (err) { console.error(err); }
+}
+
+function renderCategories() {
+    const container = document.getElementById('awardCategoriesList');
+    if (!categoriesData.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-trophy"></i>
+                <h3>No Award Categories Yet</h3>
+                <p>Add categories to start configuring awards for this edition.</p>
+            </div>
+        `;
+        return;
     }
 
-    async function loadCategories() {
-        try {
-            const res = await apiCall('/api/admin/awards/categories').catch(() => ({ data: [] }));
-            categoriesData = res.data || [];
-            document.getElementById('statCategories').textContent = categoriesData.length;
-            document.getElementById('categoriesCountBadge').textContent = `${categoriesData.length} award titles`;
-            renderCategories();
-            populateAwardFilter();
-        } catch (err) { console.error(err); }
+    container.innerHTML = categoriesData.map((c, i) => `
+        <div class="award-row" data-id="${escapeHtml(c.id)}">
+            <div class="award-row-header" onclick="toggleAwardRow('${escapeHtml(c.id)}')">
+                <div class="award-number">${i + 1}</div>
+                <div class="award-main">
+                    <div class="award-name">${escapeHtml(c.name)}</div>
+                    <div class="award-type">${escapeHtml(c.type || 'Individual award')} · ${escapeHtml(c.selection_method || 'public')} voting</div>
+                </div>
+                <div class="award-status">
+                    <span class="status-badge ${c.status === 'active' ? 'badge-success' : 'badge-draft'}">${escapeHtml(c.status || 'draft')}</span>
+                </div>
+                <div class="award-chevron"><i class="fas fa-chevron-down"></i></div>
+            </div>
+            <div class="award-details">
+                <div class="award-details-grid">
+                    <div class="award-detail-item">
+                        <div class="label">Selection Method</div>
+                        <div class="value">${escapeHtml(c.selection_method || 'Public voting')}</div>
+                    </div>
+                    <div class="award-detail-item">
+                        <div class="label">Nominations</div>
+                        <div class="value">${c.nominations_count || 0}</div>
+                    </div>
+                    <div class="award-detail-item">
+                        <div class="label">Nomination Window</div>
+                        <div class="value">${c.nomination_start ? formatDateTime(c.nomination_start) : 'Not configured'}</div>
+                    </div>
+                    <div class="award-detail-item">
+                        <div class="label">Voting Window</div>
+                        <div class="value">${c.voting_start ? formatDateTime(c.voting_start) : 'Not configured'}</div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="btn btn-primary btn-sm" onclick="editCategory('${escapeHtml(c.id)}')">
+                        <i class="fas fa-edit"></i> Edit Category
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="manageNominees('${escapeHtml(c.id)}')">
+                        <i class="fas fa-users"></i> Manage Nominees
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+window.toggleAwardRow = function(id) {
+    const row = document.querySelector(`.award-row[data-id="${id}"]`);
+    if (row) row.classList.toggle('expanded');
+};
+
+function populateAwardFilter() {
+    const sel = document.getElementById('nomineeAwardFilter');
+    sel.innerHTML = '<option value="all">All Awards</option>' +
+        categoriesData.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
+}
+
+async function loadNominations() {
+    try {
+        const res = await apiCall('/api/admin/awards/nominations').catch(() => ({ data: [] }));
+        nominationsData = res.data || [];
+        document.getElementById('statNominations').textContent = nominationsData.length;
+        document.getElementById('nominationsCountBadge').textContent = `${nominationsData.length} nominations`;
+        renderNominations();
+    } catch (err) { console.error(err); }
+}
+
+function renderNominations() {
+    const tbody = document.getElementById('nominationsTableBody');
+    const search = (document.getElementById('nominationSearch').value || '').toLowerCase();
+    const statusFilter = document.getElementById('nominationStatusFilter').value;
+
+    let filtered = nominationsData.filter(n => {
+        if (statusFilter !== 'all' && n.status !== statusFilter) return false;
+        if (search && !(
+            (n.nominee_name || '').toLowerCase().includes(search) ||
+            (n.award_name || '').toLowerCase().includes(search)
+        )) return false;
+        return true;
+    });
+
+    if (!filtered.length) {
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No nominations yet</td></tr>';
+        return;
     }
 
-    function renderCategories() {
-        const container = document.getElementById('awardCategoriesList');
-        if (!categoriesData.length) {
+    const statusClass = { pending: 'warning', approved: 'success', rejected: 'danger' };
+
+    tbody.innerHTML = filtered.map(n => `
+        <tr>
+            <td><strong>${escapeHtml(n.nominee_name || '—')}</strong></td>
+            <td>${escapeHtml(n.award_name || '—')}</td>
+            <td>${escapeHtml(n.nominated_by_name || '—')}</td>
+            <td>${formatDate(n.created_at)}</td>
+            <td><span class="status-badge badge-${statusClass[n.status] || 'info'}">${escapeHtml(n.status)}</span></td>
+            <td>
+                ${n.status === 'pending' ? `
+                    <button class="btn btn-primary btn-sm" onclick="updateNomination('${n.id}','approved')"><i class="fas fa-check"></i></button>
+                    <button class="btn btn-danger btn-sm" onclick="updateNomination('${n.id}','rejected')"><i class="fas fa-times"></i></button>
+                ` : '<span style="color:var(--text-dim);font-size:0.75rem;">—</span>'}
+            </td>
+        </tr>
+    `).join('');
+}
+
+window.updateNomination = async function(id, status) {
+    try {
+        await apiCall(`/api/admin/awards/nominations/${id}`, {
+            method: 'PATCH', body: JSON.stringify({ status })
+        });
+        showToast(`Nomination ${status}`, 'success');
+        loadNominations();
+        loadNominees();
+    } catch (err) { showToast(err.message, 'error'); }
+};
+
+async function loadNominees() {
+    try {
+        const res = await apiCall('/api/admin/awards/nominees').catch(() => ({ data: [] }));
+        nomineesData = res.data || [];
+        document.getElementById('statNominees').textContent = nomineesData.length;
+        document.getElementById('nomineesCountBadge').textContent = `${nomineesData.length} approved`;
+        renderNominees();
+    } catch (err) { console.error(err); }
+}
+
+function renderNominees() {
+    const tbody = document.getElementById('nomineesTableBody');
+    const search = (document.getElementById('nomineeSearch').value || '').toLowerCase();
+    const awardFilter = document.getElementById('nomineeAwardFilter').value;
+    const levelFilter = document.getElementById('nomineeLevelFilter').value;
+
+    let filtered = nomineesData.filter(n => {
+        if (awardFilter !== 'all' && n.category_id !== awardFilter) return false;
+        if (levelFilter !== 'all' && n.level !== levelFilter) return false;
+        if (search && !(
+            (n.name || '').toLowerCase().includes(search) ||
+            (n.department || '').toLowerCase().includes(search)
+        )) return false;
+        return true;
+    });
+
+    if (!filtered.length) {
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No approved nominees yet</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(n => `
+        <tr>
+            <td><strong>${escapeHtml(n.name || '—')}</strong></td>
+            <td>${escapeHtml(n.award_name || '—')}</td>
+            <td>${escapeHtml((n.department || '').split(' ')[0] || '—')}</td>
+            <td>${escapeHtml(n.level || '—')}</td>
+            <td><span class="status-badge badge-success">Approved</span></td>
+            <td>
+                <button class="btn btn-secondary btn-sm" onclick="viewNominee('${escapeHtml(n.id)}')">
+                    <i class="fas fa-eye"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+window.viewNominee = function(id) {
+    const n = nomineesData.find(x => x.id === id);
+    if (!n) return;
+    showToast(`Viewing: ${n.name}`, 'info');
+};
+
+async function loadResults() {
+    try {
+        const res = await apiCall('/api/awards/results').catch(() => ({ data: null }));
+        resultsData = res.data;
+
+        const container = document.getElementById('resultsContent');
+
+        if (!resultsData || !resultsData.winners || !resultsData.winners.length) {
             container.innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-trophy"></i>
-                    <h3>No Award Categories Yet</h3>
-                    <p>Add categories to start configuring awards for this edition.</p>
+                    <p>Winners will appear here after voting/judging ends and results are verified.</p>
                 </div>
             `;
             return;
         }
 
-        container.innerHTML = categoriesData.map((c, i) => `
-            <div class="award-row" data-id="${escapeHtml(c.id)}">
-                <div class="award-row-header" onclick="toggleAwardRow('${escapeHtml(c.id)}')">
-                    <div class="award-number">${i + 1}</div>
-                    <div class="award-main">
-                        <div class="award-name">${escapeHtml(c.name)}</div>
-                        <div class="award-type">${escapeHtml(c.type || 'Individual award')} · ${escapeHtml(c.selection_method || 'public')} voting</div>
-                    </div>
-                    <div class="award-status">
-                        <span class="status-badge ${c.status === 'active' ? 'badge-success' : 'badge-draft'}">${escapeHtml(c.status || 'draft')}</span>
-                    </div>
-                    <div class="award-chevron"><i class="fas fa-chevron-down"></i></div>
-                </div>
-                <div class="award-details">
-                    <div class="award-details-grid">
-                        <div class="award-detail-item">
-                            <div class="label">Selection Method</div>
-                            <div class="value">${escapeHtml(c.selection_method || 'Public voting')}</div>
-                        </div>
-                        <div class="award-detail-item">
-                            <div class="label">Nominations</div>
-                            <div class="value">${c.nominations_count || 0}</div>
-                        </div>
-                        <div class="award-detail-item">
-                            <div class="label">Nomination Window</div>
-                            <div class="value">${c.nomination_start ? formatDateTime(c.nomination_start) : 'Not configured'}</div>
-                        </div>
-                        <div class="award-detail-item">
-                            <div class="label">Voting Window</div>
-                            <div class="value">${c.voting_start ? formatDateTime(c.voting_start) : 'Not configured'}</div>
-                        </div>
-                    </div>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                        <button class="btn btn-primary btn-sm" onclick="editCategory('${escapeHtml(c.id)}')">
-                            <i class="fas fa-edit"></i> Edit Category
-                        </button>
-                        <button class="btn btn-secondary btn-sm" onclick="manageNominees('${escapeHtml(c.id)}')">
-                            <i class="fas fa-users"></i> Manage Nominees
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    window.toggleAwardRow = function(id) {
-        const row = document.querySelector(`.award-row[data-id="${id}"]`);
-        if (row) row.classList.toggle('expanded');
-    };
-
-    function populateAwardFilter() {
-        const sel = document.getElementById('nomineeAwardFilter');
-        sel.innerHTML = '<option value="all">All Awards</option>' +
-            categoriesData.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
-    }
-
-    async function loadNominations() {
-        try {
-            const res = await apiCall('/api/admin/awards/nominations').catch(() => ({ data: [] }));
-            nominationsData = res.data || [];
-            document.getElementById('statNominations').textContent = nominationsData.length;
-            document.getElementById('nominationsCountBadge').textContent = `${nominationsData.length} nominations`;
-            renderNominations();
-        } catch (err) { console.error(err); }
-    }
-
-    function renderNominations() {
-        const tbody = document.getElementById('nominationsTableBody');
-        const search = (document.getElementById('nominationSearch').value || '').toLowerCase();
-        const statusFilter = document.getElementById('nominationStatusFilter').value;
-
-        let filtered = nominationsData.filter(n => {
-            if (statusFilter !== 'all' && n.status !== statusFilter) return false;
-            if (search && !(
-                (n.nominee_name || '').toLowerCase().includes(search) ||
-                (n.award_name || '').toLowerCase().includes(search)
-            )) return false;
-            return true;
-        });
-
-        if (!filtered.length) {
-            tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No nominations yet</td></tr>';
-            return;
-        }
-
-        const statusClass = { pending: 'warning', approved: 'success', rejected: 'danger' };
-
-        tbody.innerHTML = filtered.map(n => `
-            <tr>
-                <td><strong>${escapeHtml(n.nominee_name || '—')}</strong></td>
-                <td>${escapeHtml(n.award_name || '—')}</td>
-                <td>${escapeHtml(n.nominated_by_name || '—')}</td>
-                <td>${formatDate(n.created_at)}</td>
-                <td><span class="status-badge badge-${statusClass[n.status] || 'info'}">${escapeHtml(n.status)}</span></td>
-                <td>
-                    ${n.status === 'pending' ? `
-                        <button class="btn btn-primary btn-sm" onclick="updateNomination('${n.id}','approved')"><i class="fas fa-check"></i></button>
-                        <button class="btn btn-danger btn-sm" onclick="updateNomination('${n.id}','rejected')"><i class="fas fa-times"></i></button>
-                    ` : '<span style="color:var(--text-dim);font-size:0.75rem;">—</span>'}
-                </td>
-            </tr>
-        `).join('');
-    }
-
-    window.updateNomination = async function(id, status) {
-        try {
-            await apiCall(`/api/admin/awards/nominations/${id}`, {
-                method: 'PATCH', body: JSON.stringify({ status })
-            });
-            showToast(`Nomination ${status}`, 'success');
-            loadNominations();
-            loadNominees();
-        } catch (err) { showToast(err.message, 'error'); }
-    };
-
-    async function loadNominees() {
-        try {
-            const res = await apiCall('/api/admin/awards/nominees').catch(() => ({ data: [] }));
-            nomineesData = res.data || [];
-            document.getElementById('statNominees').textContent = nomineesData.length;
-            document.getElementById('nomineesCountBadge').textContent = `${nomineesData.length} approved`;
-            renderNominees();
-        } catch (err) { console.error(err); }
-    }
-
-    function renderNominees() {
-        const tbody = document.getElementById('nomineesTableBody');
-        const search = (document.getElementById('nomineeSearch').value || '').toLowerCase();
-        const awardFilter = document.getElementById('nomineeAwardFilter').value;
-        const levelFilter = document.getElementById('nomineeLevelFilter').value;
-
-        let filtered = nomineesData.filter(n => {
-            if (awardFilter !== 'all' && n.category_id !== awardFilter) return false;
-            if (levelFilter !== 'all' && n.level !== levelFilter) return false;
-            if (search && !(
-                (n.name || '').toLowerCase().includes(search) ||
-                (n.department || '').toLowerCase().includes(search)
-            )) return false;
-            return true;
-        });
-
-        if (!filtered.length) {
-            tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No approved nominees yet</td></tr>';
-            return;
-        }
-
-        tbody.innerHTML = filtered.map(n => `
-            <tr>
-                <td><strong>${escapeHtml(n.name || '—')}</strong></td>
-                <td>${escapeHtml(n.award_name || '—')}</td>
-                <td>${escapeHtml((n.department || '').split(' ')[0] || '—')}</td>
-                <td>${escapeHtml(n.level || '—')}</td>
-                <td><span class="status-badge badge-success">Approved</span></td>
-                <td>
-                    <button class="btn btn-secondary btn-sm" onclick="viewNominee('${escapeHtml(n.id)}')">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                </td>
-            </tr>
-        `).join('');
-    }
-
-    window.viewNominee = function(id) {
-        const n = nomineesData.find(x => x.id === id);
-        if (!n) return;
-        showToast(`Viewing: ${n.name}`, 'info');
-    };
-
-    async function loadResults() {
-        try {
-            const res = await apiCall('/api/awards/results').catch(() => ({ data: null }));
-            resultsData = res.data;
-
-            const container = document.getElementById('resultsContent');
-
-            if (!resultsData || !resultsData.winners || !resultsData.winners.length) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-trophy"></i>
-                        <p>Winners will appear here after voting/judging ends and results are verified.</p>
-                    </div>
-                `;
-                return;
-            }
-
-            document.getElementById('statWinners').textContent = resultsData.winners.length;
-
-            container.innerHTML = `
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Award</th>
-                                <th>Winner</th>
-                                <th>Dept / Designation</th>
-                                <th>Score / Votes</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${resultsData.winners.map(w => `
-                                <tr>
-                                    <td><strong>${escapeHtml(w.award_name)}</strong></td>
-                                    <td>${escapeHtml(w.winner_name)}</td>
-                                    <td>${escapeHtml(w.department || w.designation || '—')}</td>
-                                    <td class="mono">${w.score || w.votes || 0}</td>
-                                    <td><span class="status-badge ${w.published ? 'badge-success' : 'badge-warning'}">${w.published ? 'Published' : 'Pending'}</span></td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            `;
-        } catch (err) {
-            console.error(err);
-        }
-    }
-
-    async function loadArchive() {
-        try {
-            const res = await apiCall('/api/admin/awards/archive').catch(() => ({ data: [] }));
-            archiveData = res.data || [];
-            renderArchive();
-        } catch (err) { console.error(err); }
-    }
-
-    function renderArchive() {
-        const container = document.getElementById('archiveContent');
-        if (!archiveData.length) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-archive"></i>
-                    <h3>No Archived Editions</h3>
-                    <p>Past award editions will appear here once closed and archived.</p>
-                </div>
-            `;
-            return;
-        }
+        document.getElementById('statWinners').textContent = resultsData.winners.length;
 
         container.innerHTML = `
             <div class="table-container">
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Edition</th>
-                            <th>Session</th>
-                            <th>Categories</th>
-                            <th>Winners</th>
+                            <th>Award</th>
+                            <th>Winner</th>
+                            <th>Dept / Designation</th>
+                            <th>Score / Votes</th>
                             <th>Status</th>
-                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${archiveData.map(a => `
+                        ${resultsData.winners.map(w => `
                             <tr>
-                                <td><strong>${escapeHtml(a.name)}</strong></td>
-                                <td class="mono">${escapeHtml(a.session_name || '—')}</td>
-                                <td>${a.categories_count || 0}</td>
-                                <td>${a.winners_count || 0}</td>
-                                <td><span class="status-badge badge-draft">${escapeHtml(a.status)}</span></td>
-                                <td>
-                                    <button class="btn btn-secondary btn-sm" onclick="viewArchivedEdition('${escapeHtml(a.id)}')">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                </td>
+                                <td><strong>${escapeHtml(w.award_name)}</strong></td>
+                                <td>${escapeHtml(w.winner_name)}</td>
+                                <td>${escapeHtml(w.department || w.designation || '—')}</td>
+                                <td class="mono">${w.score || w.votes || 0}</td>
+                                <td><span class="status-badge ${w.published ? 'badge-success' : 'badge-warning'}">${w.published ? 'Published' : 'Pending'}</span></td>
                             </tr>
                         `).join('')}
                     </tbody>
                 </table>
             </div>
         `;
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function loadArchive() {
+    try {
+        const res = await apiCall('/api/admin/awards/archive').catch(() => ({ data: [] }));
+        archiveData = res.data || [];
+        renderArchive();
+    } catch (err) { console.error(err); }
+}
+
+function renderArchive() {
+    const container = document.getElementById('archiveContent');
+    if (!archiveData.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-archive"></i>
+                <h3>No Archived Editions</h3>
+                <p>Past award editions will appear here once closed and archived.</p>
+            </div>
+        `;
+        return;
     }
 
-    window.viewArchivedEdition = function(id) {
-        const a = archiveData.find(x => x.id === id);
-        if (!a) return;
-        showToast(`Viewing archive: ${a.name}`, 'info');
-    };
+    container.innerHTML = `
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Edition</th>
+                        <th>Session</th>
+                        <th>Categories</th>
+                        <th>Winners</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${archiveData.map(a => `
+                        <tr>
+                            <td><strong>${escapeHtml(a.name)}</strong></td>
+                            <td class="mono">${escapeHtml(a.session_name || '—')}</td>
+                            <td>${a.categories_count || 0}</td>
+                            <td>${a.winners_count || 0}</td>
+                            <td><span class="status-badge badge-draft">${escapeHtml(a.status)}</span></td>
+                            <td>
+                                <button class="btn btn-secondary btn-sm" onclick="viewArchivedEdition('${escapeHtml(a.id)}')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
 
-    // ============================================================
-    // MODALS
-    // ============================================================
-    async function loadSessions() {
-        try {
-            const res = await apiCall('/api/admin/sessions');
-            sessionsData = res.data || [];
-            const sel = document.getElementById('editionSessionSelect');
-            if (!sessionsData.length) {
-                sel.innerHTML = '<option value="">No sessions available</option>';
-                return;
-            }
-            sel.innerHTML = sessionsData.map(s =>
-                `<option value="${s.id}" ${s.is_active ? 'selected' : ''}>${escapeHtml(s.name)}${s.is_active ? ' (active)' : ''}</option>`
-            ).join('');
-        } catch (err) { console.error(err); }
-    }
+window.viewArchivedEdition = function(id) {
+    const a = archiveData.find(x => x.id === id);
+    if (!a) return;
+    showToast(`Viewing archive: ${a.name}`, 'info');
+};
 
-    window.openScheduleModal = function() {
-        if (!currentEdition) return showToast('No active edition', 'warning');
-        const f = document.getElementById('scheduleForm');
-        f.announcement_date.value = toLocalInput(currentEdition.announcement_date);
-        f.nomination_start.value = toLocalInput(currentEdition.nomination_start);
-        f.nomination_end.value = toLocalInput(currentEdition.nomination_end);
-        f.review_deadline.value = toLocalInput(currentEdition.review_deadline);
-        f.voting_start.value = toLocalInput(currentEdition.voting_start);
-        f.voting_end.value = toLocalInput(currentEdition.voting_end);
-        f.verification_deadline.value = toLocalInput(currentEdition.verification_deadline);
-        f.winner_announcement.value = toLocalInput(currentEdition.winner_announcement);
-        showModal('scheduleModal');
-    };
-
-    window.openVotingWindowModal = function() {
-        showModal('votingWindowModal');
-    };
-
-    window.quickAction = function(action) {
-        hideModal('votingWindowModal');
-        showToast(`Action: ${action} (configure via schedule)`, 'info');
-    };
-
-    window.editCategory = function(id) {
-        const c = categoriesData.find(x => x.id === id);
-        if (!c) return;
-        const f = document.getElementById('categoryForm');
-        document.getElementById('categoryModalTitle').textContent = 'Edit Award Category';
-        f.category_id.value = c.id;
-        f.name.value = c.name || '';
-        f.type.value = c.type || 'individual';
-        f.selection_method.value = c.selection_method || 'public';
-        f.description.value = c.description || '';
-        f.eligibility.value = c.eligibility || '';
-        f.status.value = c.status || 'draft';
-        showModal('categoryModal');
-    };
-
-    window.manageNominees = function(id) {
-        showToast('Nominee management coming soon', 'info');
-    };
-
-    // ============================================================
-    // ACTIONS
-    // ============================================================
-    document.getElementById('submitEditionBtn').addEventListener('click', async () => {
-        const form = document.getElementById('createEditionForm');
-        const data = new FormData(form);
-        const categories = (data.get('categories_text') || '').split('\n').map(t => t.trim()).filter(Boolean);
-
-        if (!categories.length) return showToast('Add at least one category', 'error');
-
-        const payload = {
-            name: data.get('name'),
-            session_id: data.get('session_id'),
-            status: data.get('status'),
-            description: data.get('description'),
-            categories: categories.map(name => ({ name, type: 'individual' }))
-        };
-
-        try {
-            showLoading();
-            await apiCall('/api/admin/awards/editions', { method: 'POST', body: JSON.stringify(payload) });
-            hideLoading();
-            hideModal('createEditionModal');
-            showToast('Award edition created', 'success');
-            await loadAll();
-        } catch (err) {
-            hideLoading();
-            showToast(err.message, 'error');
+// ============================================================
+// MODALS
+// ============================================================
+async function loadSessions() {
+    try {
+        const res = await apiCall('/api/admin/sessions');
+        sessionsData = res.data || [];
+        const sel = document.getElementById('editionSessionSelect');
+        if (!sessionsData.length) {
+            sel.innerHTML = '<option value="">No sessions available</option>';
+            return;
         }
-    });
+        sel.innerHTML = sessionsData.map(s =>
+            `<option value="${s.id}" ${s.is_active ? 'selected' : ''}>${escapeHtml(s.name)}${s.is_active ? ' (active)' : ''}</option>`
+        ).join('');
+    } catch (err) { console.error(err); }
+}
 
-    document.getElementById('submitCategoryBtn').addEventListener('click', async () => {
-        const form = document.getElementById('categoryForm');
-        const data = new FormData(form);
-        const id = data.get('category_id');
+window.openScheduleModal = function() {
+    if (!currentEdition) return showToast('No active edition', 'warning');
+    const f = document.getElementById('scheduleForm');
+    f.announcement_date.value = toLocalInput(currentEdition.announcement_date);
+    f.nomination_start.value = toLocalInput(currentEdition.nomination_start);
+    f.nomination_end.value = toLocalInput(currentEdition.nomination_end);
+    f.review_deadline.value = toLocalInput(currentEdition.review_deadline);
+    f.voting_start.value = toLocalInput(currentEdition.voting_start);
+    f.voting_end.value = toLocalInput(currentEdition.voting_end);
+    f.verification_deadline.value = toLocalInput(currentEdition.verification_deadline);
+    f.winner_announcement.value = toLocalInput(currentEdition.winner_announcement);
+    showModal('scheduleModal');
+};
 
-        const payload = {
-            name: data.get('name'),
-            type: data.get('type'),
-            selection_method: data.get('selection_method'),
-            description: data.get('description'),
-            eligibility: data.get('eligibility'),
-            status: data.get('status')
-        };
+window.openVotingWindowModal = function() {
+    showModal('votingWindowModal');
+};
 
-        try {
-            showLoading();
-            if (id) {
-                await apiCall(`/api/admin/awards/categories/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
-            } else {
-                await apiCall('/api/admin/awards/categories', { method: 'POST', body: JSON.stringify(payload) });
-            }
-            hideLoading();
-            hideModal('categoryModal');
-            showToast('Category saved', 'success');
-            await loadCategories();
-        } catch (err) {
-            hideLoading();
-            showToast(err.message, 'error');
+window.quickAction = async function(action) {
+    if (!currentEdition) return showToast('No active edition', 'warning');
+
+    try {
+        showLoading();
+        const now = new Date().toISOString();
+        let payload = {};
+
+        if (action === 'open_voting') {
+            payload = {
+                nomination_end: currentEdition.nomination_end || now,
+                voting_start: now,
+                voting_end: new Date(Date.now() + 7 * 864e5).toISOString()
+            };
+        } else if (action === 'close_voting' || action === 'pause_voting') {
+            payload = { voting_end: now };
         }
-    });
 
-    document.getElementById('saveScheduleBtn').addEventListener('click', async () => {
-        if (!currentEdition) return showToast('No active edition', 'warning');
-        const form = document.getElementById('scheduleForm');
-        const data = new FormData(form);
+        await apiCall(`/api/admin/awards/editions/${currentEdition.id}`, {
+            method: 'PUT', body: JSON.stringify(payload)
+        });
 
-        const payload = {
-            announcement_date: data.get('announcement_date') || null,
-            nomination_start: data.get('nomination_start') || null,
-            nomination_end: data.get('nomination_end') || null,
-            review_deadline: data.get('review_deadline') || null,
-            voting_start: data.get('voting_start') || null,
-            voting_end: data.get('voting_end') || null,
-            verification_deadline: data.get('verification_deadline') || null,
-            winner_announcement: data.get('winner_announcement') || null
-        };
-
-        try {
-            showLoading();
-            await apiCall(`/api/admin/awards/editions/${currentEdition.id}`, {
-                method: 'PUT', body: JSON.stringify(payload)
-            });
-            hideLoading();
-            hideModal('scheduleModal');
-            showToast('Timeline saved', 'success');
-            await loadCurrentEdition();
-        } catch (err) {
-            hideLoading();
-            showToast(err.message, 'error');
-        }
-    });
-
-    document.getElementById('addCategoryBtn').addEventListener('click', () => {
-        const f = document.getElementById('categoryForm');
-        f.reset();
-        f.category_id.value = '';
-        document.getElementById('categoryModalTitle').textContent = 'Add Award Category';
-        showModal('categoryModal');
-    });
-
-    document.getElementById('createEditionBtn').addEventListener('click', () => {
-        showModal('createEditionModal');
-    });
-
-    document.getElementById('refreshResultsBtn').addEventListener('click', loadResults);
-
-    document.getElementById('publishWinnersBtn').addEventListener('click', async () => {
-        if (!confirm('Publish award winners? This will make results public.')) return;
-        try {
-            showLoading();
-            await apiCall('/api/admin/awards/publish', { method: 'POST' });
-            hideLoading();
-            showToast('Winners published', 'success');
-            await loadResults();
-        } catch (err) {
-            hideLoading();
-            showToast(err.message, 'error');
-        }
-    });
-
-    // Reports
-    document.querySelectorAll('[data-report]').forEach(btn => {
-        btn.addEventListener('click', () => exportReport(btn.dataset.report));
-    });
-
-    document.getElementById('exportAllBtn').addEventListener('click', () => exportReport('full'));
-
-    function exportReport(type) {
-        if (!currentEdition) return showToast('No active edition', 'warning');
-
-        if (type === 'nominations') {
-            if (!nominationsData.length) return showToast('No nominations to export', 'warning');
-            downloadCSV(
-                ['Nominee', 'Award', 'Nominated By', 'Status', 'Date'],
-                nominationsData.map(n => [n.nominee_name, n.award_name, n.nominated_by_name, n.status, formatDate(n.created_at)]),
-                `award-nominations-${Date.now()}.csv`
-            );
-        } else if (type === 'nominees') {
-            if (!nomineesData.length) return showToast('No nominees to export', 'warning');
-            downloadCSV(
-                ['Nominee', 'Award', 'Department', 'Level', 'Status'],
-                nomineesData.map(n => [n.name, n.award_name, n.department, n.level, 'Approved']),
-                `award-nominees-${Date.now()}.csv`
-            );
-        } else if (type === 'winners') {
-            if (!resultsData || !resultsData.winners) return showToast('No winners yet', 'warning');
-            downloadCSV(
-                ['Award', 'Winner', 'Dept', 'Score'],
-                resultsData.winners.map(w => [w.award_name, w.winner_name, w.department, w.score || w.votes || 0]),
-                `award-winners-${Date.now()}.csv`
-            );
-        } else {
-            showToast('Report generated', 'success');
-        }
-    }
-
-    function downloadCSV(headers, rows, filename) {
-        const csv = [headers.join(','), ...rows.map(r => r.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`).join(','))].join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = filename; a.click();
-        URL.revokeObjectURL(url);
-        showToast('Report downloaded', 'success');
-    }
-
-    // Filters
-    document.getElementById('nominationSearch').addEventListener('input', renderNominations);
-    document.getElementById('nominationStatusFilter').addEventListener('change', renderNominations);
-    document.getElementById('nomineeSearch').addEventListener('input', renderNominees);
-    document.getElementById('nomineeAwardFilter').addEventListener('change', renderNominees);
-    document.getElementById('nomineeLevelFilter').addEventListener('change', renderNominees);
-
-    // ============================================================
-    // INIT
-    // ============================================================
-    async function init() {
-        setupSidebar();
-        setupHeaderScroll();
-
-        document.getElementById('logoutBtn').addEventListener('click', () => showModal('logoutModal'));
-        document.getElementById('confirmLogout').addEventListener('click', confirmLogout);
-        document.getElementById('notificationBtn').addEventListener('click', () => { window.location.href = 'messages.html'; });
-
-        const ok = await checkAuth();
-        if (!ok) return;
-
-        setupActivityListeners();
-        await loadSessions();
-        await loadAll();
         hideLoading();
+        hideModal('votingWindowModal');
+        showToast(`Voting ${action.replace('_', ' ')} — public page updated`, 'success');
+        await loadCurrentEdition();
+    } catch (err) {
+        hideLoading();
+        showToast(err.message || 'Failed to update voting window', 'error');
     }
+};
 
-    document.addEventListener('DOMContentLoaded', init);
+window.editCategory = function(id) {
+    const c = categoriesData.find(x => x.id === id);
+    if (!c) return;
+    const f = document.getElementById('categoryForm');
+    document.getElementById('categoryModalTitle').textContent = 'Edit Award Category';
+    f.category_id.value = c.id;
+    f.name.value = c.name || '';
+    f.type.value = c.type || 'individual';
+    f.selection_method.value = c.selection_method || 'public';
+    f.description.value = c.description || '';
+    f.eligibility.value = c.eligibility || '';
+    f.status.value = c.status || 'draft';
+    showModal('categoryModal');
+};
 
-    window.showModal = showModal;
-    window.hideModal = hideModal;
-    </script>
+window.manageNominees = function(id) {
+    showToast('Nominee management coming soon', 'info');
+};
+
+// ============================================================
+// ACTIONS
+// ============================================================
+document.getElementById('submitEditionBtn').addEventListener('click', async () => {
+    const form = document.getElementById('createEditionForm');
+    const data = new FormData(form);
+    const categories = (data.get('categories_text') || '').split('\n').map(t => t.trim()).filter(Boolean);
+
+    if (!categories.length) return showToast('Add at least one category', 'error');
+
+    const payload = {
+        name: data.get('name'),
+        session_id: data.get('session_id'),
+        status: data.get('status'),
+        description: data.get('description'),
+        categories: categories.map(name => ({ name, type: 'individual' }))
+    };
+
+    try {
+        showLoading();
+        await apiCall('/api/admin/awards/editions', { method: 'POST', body: JSON.stringify(payload) });
+        hideLoading();
+        hideModal('createEditionModal');
+        showToast('Award edition created', 'success');
+        await loadAll();
+    } catch (err) {
+        hideLoading();
+        showToast(err.message, 'error');
+    }
+});
+
+document.getElementById('submitCategoryBtn').addEventListener('click', async () => {
+    const form = document.getElementById('categoryForm');
+    const data = new FormData(form);
+    const id = data.get('category_id');
+
+    const payload = {
+        name: data.get('name'),
+        type: data.get('type'),
+        selection_method: data.get('selection_method'),
+        description: data.get('description'),
+        eligibility: data.get('eligibility'),
+        status: data.get('status')
+    };
+
+    try {
+        showLoading();
+        if (id) {
+            await apiCall(`/api/admin/awards/categories/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+        } else {
+            await apiCall('/api/admin/awards/categories', { method: 'POST', body: JSON.stringify(payload) });
+        }
+        hideLoading();
+        hideModal('categoryModal');
+        showToast('Category saved', 'success');
+        await loadCategories();
+        await loadCurrentEdition();
+    } catch (err) {
+        hideLoading();
+        showToast(err.message, 'error');
+    }
+});
+
+document.getElementById('saveScheduleBtn').addEventListener('click', async () => {
+    if (!currentEdition) return showToast('No active edition', 'warning');
+    const form = document.getElementById('scheduleForm');
+    const data = new FormData(form);
+
+    const payload = {
+        announcement_date: data.get('announcement_date') || null,
+        nomination_start: data.get('nomination_start') || null,
+        nomination_end: data.get('nomination_end') || null,
+        review_deadline: data.get('review_deadline') || null,
+        voting_start: data.get('voting_start') || null,
+        voting_end: data.get('voting_end') || null,
+        verification_deadline: data.get('verification_deadline') || null,
+        winner_announcement: data.get('winner_announcement') || null
+    };
+
+    try {
+        showLoading();
+        await apiCall(`/api/admin/awards/editions/${currentEdition.id}`, {
+            method: 'PUT', body: JSON.stringify(payload)
+        });
+        hideLoading();
+        hideModal('scheduleModal');
+        showToast('Timeline saved', 'success');
+        await loadCurrentEdition();
+    } catch (err) {
+        hideLoading();
+        showToast(err.message, 'error');
+    }
+});
+
+document.getElementById('addCategoryBtn').addEventListener('click', () => {
+    const f = document.getElementById('categoryForm');
+    f.reset();
+    f.category_id.value = '';
+    document.getElementById('categoryModalTitle').textContent = 'Add Award Category';
+    showModal('categoryModal');
+});
+
+document.getElementById('createEditionBtn').addEventListener('click', () => {
+    showModal('createEditionModal');
+});
+
+document.getElementById('refreshResultsBtn').addEventListener('click', loadResults);
+
+document.getElementById('publishWinnersBtn').addEventListener('click', async () => {
+    if (!confirm('Publish award winners? This will make results public.')) return;
+    try {
+        showLoading();
+        await apiCall('/api/admin/awards/publish', { method: 'POST' });
+        hideLoading();
+        showToast('Winners published', 'success');
+        await loadResults();
+        await loadCurrentEdition();
+    } catch (err) {
+        hideLoading();
+        showToast(err.message, 'error');
+    }
+});
+
+// Reports
+document.querySelectorAll('[data-report]').forEach(btn => {
+    btn.addEventListener('click', () => exportReport(btn.dataset.report));
+});
+
+document.getElementById('exportAllBtn').addEventListener('click', () => exportReport('full'));
+
+function exportReport(type) {
+    if (!currentEdition) return showToast('No active edition', 'warning');
+
+    if (type === 'nominations') {
+        if (!nominationsData.length) return showToast('No nominations to export', 'warning');
+        downloadCSV(
+            ['Nominee', 'Award', 'Nominated By', 'Status', 'Date'],
+            nominationsData.map(n => [n.nominee_name, n.award_name, n.nominated_by_name, n.status, formatDate(n.created_at)]),
+            `award-nominations-${Date.now()}.csv`
+        );
+    } else if (type === 'nominees') {
+        if (!nomineesData.length) return showToast('No nominees to export', 'warning');
+        downloadCSV(
+            ['Nominee', 'Award', 'Department', 'Level', 'Status'],
+            nomineesData.map(n => [n.name, n.award_name, n.department, n.level, 'Approved']),
+            `award-nominees-${Date.now()}.csv`
+        );
+    } else if (type === 'winners') {
+        if (!resultsData || !resultsData.winners) return showToast('No winners yet', 'warning');
+        downloadCSV(
+            ['Award', 'Winner', 'Dept', 'Score'],
+            resultsData.winners.map(w => [w.award_name, w.winner_name, w.department, w.score || w.votes || 0]),
+            `award-winners-${Date.now()}.csv`
+        );
+    } else {
+        showToast('Report generated', 'success');
+    }
+}
+
+function downloadCSV(headers, rows, filename) {
+    const csv = [headers.join(','), ...rows.map(r => r.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`).join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+    showToast('Report downloaded', 'success');
+}
+
+// Filters
+document.getElementById('nominationSearch').addEventListener('input', renderNominations);
+document.getElementById('nominationStatusFilter').addEventListener('change', renderNominations);
+document.getElementById('nomineeSearch').addEventListener('input', renderNominees);
+document.getElementById('nomineeAwardFilter').addEventListener('change', renderNominees);
+document.getElementById('nomineeLevelFilter').addEventListener('change', renderNominees);
+
+// ============================================================
+// INIT
+// ============================================================
+async function init() {
+    setupSidebar();
+    setupHeaderScroll();
+
+    document.getElementById('logoutBtn').addEventListener('click', () => showModal('logoutModal'));
+    document.getElementById('confirmLogout').addEventListener('click', confirmLogout);
+    document.getElementById('notificationBtn').addEventListener('click', () => { window.location.href = 'messages.html'; });
+
+    const ok = await checkAuth();
+    if (!ok) return;
+
+    setupActivityListeners();
+    await loadSessions();
+    await loadAll();
+    hideLoading();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+
+window.showModal = showModal;
+window.hideModal = hideModal;
+</script>
 </body>
 </html>
