@@ -3,7 +3,7 @@
  * NUESA BIU API SERVER - ORGANIZED VERSION
  * ============================================================
  * @author Sasha Troger
- * @version 1.2.0  (added Media Library)
+ * @version 1.3.0  (Media Library + Gallery + Supabase Storage + Bulk Nominations)
  * @license MIT
  * @DevSignature ST-BIU-2026
  */
@@ -34,20 +34,15 @@ const morgan = require('morgan');
 const timeout = require('connect-timeout');
 const mime = require('mime-types');
 const cookieParser = require('cookie-parser');
-const crypto = require('crypto');
 const uuid = require('uuid');
 const Joi = require('joi');
 const csrf = require('csurf');
 const Redis = require('ioredis');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
-const { exec } = require('child_process');
-const util = require('util');
-const execPromise = util.promisify(exec);
 
 // -------------------- 1.2 CONFIGURATION --------------------
 const REQUIRED_ENV_VARS = ['JWT_SECRET', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'];
-
 const missingEnvVars = REQUIRED_ENV_VARS.filter(varName => !process.env[varName]);
 if (missingEnvVars.length > 0) {
     console.error('❌ ERROR: Missing required environment variables:', missingEnvVars.join(', '));
@@ -64,7 +59,7 @@ const BASE_URL = process.env.API_URL || (IS_PRODUCTION
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRE = process.env.JWT_EXPIRE || '7d';
 const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024;
-const MAX_MEDIA_FILE_SIZE = parseInt(process.env.MAX_MEDIA_FILE_SIZE) || 50 * 1024 * 1024; // 50 MB for media
+const MAX_MEDIA_FILE_SIZE = parseInt(process.env.MAX_MEDIA_FILE_SIZE) || 50 * 1024 * 1024;
 const MAX_REQUEST_SIZE = process.env.MAX_REQUEST_SIZE || '10mb';
 
 // -------------------- 1.3 DATABASE SETUP -------------------
@@ -90,7 +85,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey, {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
     db: { schema: 'public', pool: { max: 20, idleTimeoutMillis: 30000 } },
-    global: { headers: { 'x-application-name': 'nuesa-biu-api', 'x-version': '1.2.0' } }
+    global: { headers: { 'x-application-name': 'nuesa-biu-api', 'x-version': '1.3.0' } }
 });
 
 const STORAGE_BUCKET = 'nuesa-media';
@@ -653,11 +648,8 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5500';
 if (!ALLOWED_ORIGINS.includes(FRONTEND_URL)) ALLOWED_ORIGINS.push(FRONTEND_URL);
 
-// Render
 ALLOWED_ORIGINS.push('https://nuesa-biu-pjp0.onrender.com');
 ALLOWED_ORIGINS.push('https://www.nuesa-biu-pjp0.onrender.com');
-
-// Vercel frontend
 ALLOWED_ORIGINS.push('https://nuesa-biu.vercel.app');
 ALLOWED_ORIGINS.push('https://www.nuesa-biu.vercel.app');
 
@@ -858,7 +850,7 @@ app.get('/api/health', async (req, res) => {
         const dbStatus = await checkDatabase();
         res.status(200).json({
             status: 'healthy', database: dbStatus,
-            uptime: process.uptime(), timestamp: new Date().toISOString(), version: '1.2.0'
+            uptime: process.uptime(), timestamp: new Date().toISOString(), version: '1.3.0'
         });
     } catch (error) {
         res.status(200).json({ status: 'degraded', message: 'Partial service disruption', timestamp: new Date().toISOString() });
@@ -866,12 +858,12 @@ app.get('/api/health', async (req, res) => {
 });
 
 app.get('/api/ping', (req, res) => {
-    res.json({ status: 'success', message: 'pong', timestamp: new Date().toISOString(), version: '1.2.0', requestId: req.id });
+    res.json({ status: 'success', message: 'pong', timestamp: new Date().toISOString(), version: '1.3.0', requestId: req.id });
 });
 
 app.get('/api', (req, res) => {
     res.json({
-        message: 'NUESA BIU API Server', version: '1.2.0', environment: NODE_ENV, status: 'operational',
+        message: 'NUESA BIU API Server', version: '1.3.0', environment: NODE_ENV, status: 'operational',
         timestamp: new Date().toISOString(),
         documentation: `${req.protocol}://${req.get('host')}/api/docs`,
         endpoints: {
@@ -879,7 +871,8 @@ app.get('/api', (req, res) => {
             resources: '/api/resources', articles: '/api/articles', profile: '/api/profile',
             health: '/api/health', 'stats-public': '/api/stats/public',
             contact: '/api/contact/submit', docs: '/api/docs', 'course-reps': '/api/course-reps',
-            media: '/api/admin/media'
+            media: '/api/admin/media', elections: '/api/elections', awards: '/api/awards',
+            gallery: '/api/gallery'
         },
         requestId: req.id
     });
@@ -916,7 +909,7 @@ app.get('/api/stats/public', cacheMiddleware(300, ['stats']), async (req, res) =
 const swaggerOptions = {
     definition: {
         openapi: '3.0.0',
-        info: { title: 'NUESA BIU API', version: '1.2.0', description: 'API documentation for NUESA BIU application', contact: { name: 'NUESA BIU', email: process.env.ADMIN_EMAIL } },
+        info: { title: 'NUESA BIU API', version: '1.3.0', description: 'API documentation for NUESA BIU application', contact: { name: 'NUESA BIU', email: process.env.ADMIN_EMAIL } },
         servers: [{ url: IS_PRODUCTION ? 'https://nuesa-biu-pjp0.onrender.com' : `http://localhost:${PORT}`, description: IS_PRODUCTION ? 'Production server' : 'Development server' }],
         components: { securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } } }
     },
@@ -997,7 +990,6 @@ app.get('/api/sessions/active', cacheMiddleware(60, ['sessions']), async (req, r
         });
     } catch (error) {
         logger.error('Active session fetch error:', { requestId: req.id, error: error.message });
-        // If table doesn't exist yet, return null gracefully rather than 500
         if (error.message && error.message.includes('relation') && error.message.includes('does not exist')) {
             return res.json({ status: 'success', data: null, count: 0 });
         }
@@ -1022,14 +1014,11 @@ memberRouter.get('/', cacheMiddleware(120, ['members']), async (req, res) => {
         let where = { status };
         if (committee && committee !== 'all') where.committee = committee;
 
-        // Session filtering
         if (session === 'all') {
             // No session filter — return everything
         } else if (session) {
-            // Explicit session name provided (e.g. ?session=2025/2026)
             where.session = session;
         } else {
-            // Default: filter by currently active session
             try {
                 const activeSessionRes = await db.query('select', 'academic_sessions', {
                     where: { is_active: true },
@@ -1037,12 +1026,9 @@ memberRouter.get('/', cacheMiddleware(120, ['members']), async (req, res) => {
                 });
                 const activeSession = activeSessionRes.data[0];
                 if (activeSession) {
-                    // Try session_id first (new schema), fall back to session name (legacy)
                     where.session = activeSession.name;
                 }
-                // If no active session exists, don't filter — show all members
             } catch (sessionErr) {
-                // If academic_sessions table doesn't exist, skip session filtering entirely
                 logger.warn('Could not resolve active session for member filter:', {
                     requestId: req.id,
                     error: sessionErr.message
@@ -1067,10 +1053,6 @@ memberRouter.get('/', cacheMiddleware(120, ['members']), async (req, res) => {
     }
 });
 
-/**
- * GET /api/members/:id
- * Returns a single member by ID
- */
 memberRouter.get('/:id', cacheMiddleware(300, ['members']), async (req, res) => {
     try {
         const result = await db.query('select', 'executive_members', {
@@ -1092,7 +1074,6 @@ app.use('/api/members', memberRouter);
 // -------------------- 3.5 PUBLIC EVENTS ROUTES --------------
 const eventRouter = express.Router();
 
-// GET /api/events — list all events
 eventRouter.get('/', cacheMiddleware(120, ['biu_events']), async (req, res) => {
     try {
         const { status = 'all', category, limit = 100 } = req.query;
@@ -1125,7 +1106,6 @@ eventRouter.get('/', cacheMiddleware(120, ['biu_events']), async (req, res) => {
     }
 });
 
-// GET /api/events/status/upcoming — explicit upcoming filter
 eventRouter.get('/status/upcoming', cacheMiddleware(60, ['biu_events']), async (req, res) => {
     try {
         const result = await db.query('select', 'biu_events', {
@@ -1139,7 +1119,6 @@ eventRouter.get('/status/upcoming', cacheMiddleware(60, ['biu_events']), async (
     }
 });
 
-// GET /api/events/status/past — explicit past filter
 eventRouter.get('/status/past', cacheMiddleware(300, ['biu_events']), async (req, res) => {
     try {
         const result = await db.query('select', 'biu_events', {
@@ -1153,7 +1132,6 @@ eventRouter.get('/status/past', cacheMiddleware(300, ['biu_events']), async (req
     }
 });
 
-// GET /api/events/category/:category
 eventRouter.get('/category/:category', cacheMiddleware(120, ['biu_events']), async (req, res) => {
     try {
         const result = await db.query('select', 'biu_events', {
@@ -1167,7 +1145,6 @@ eventRouter.get('/category/:category', cacheMiddleware(120, ['biu_events']), asy
     }
 });
 
-// GET /api/events/:id — single event (must stay LAST, since :id matches anything)
 eventRouter.get('/:id', cacheMiddleware(300, ['biu_events']), async (req, res) => {
     try {
         const result = await db.query('select', 'biu_events', { where: { id: req.params.id } });
@@ -1187,7 +1164,6 @@ console.log('✅ [12] /api/events router registered');
 // -------------------- 3.6 PUBLIC RESOURCES ROUTES -----------
 const resourceRouter = express.Router();
 
-// GET /api/resources — list all resources with optional filters
 resourceRouter.get('/', cacheMiddleware(120, ['resources']), async (req, res) => {
     try {
         const { category, department, level, course_code, year, semester, limit = 100 } = req.query;
@@ -1196,7 +1172,6 @@ resourceRouter.get('/', cacheMiddleware(120, ['resources']), async (req, res) =>
         if (category && category !== 'all') where.category = category;
         if (department && department !== 'all') where.department = department;
         if (level && level !== 'all') {
-            // Accept "100" or "100L" — normalize to integer
             const levelNum = parseInt(String(level).replace(/[^\d]/g, ''), 10);
             if (!isNaN(levelNum)) where.level = levelNum;
         }
@@ -1222,13 +1197,10 @@ resourceRouter.get('/', cacheMiddleware(120, ['resources']), async (req, res) =>
     }
 });
 
-// GET /api/resources/past-questions — filter category flexibly (singular OR plural)
 resourceRouter.get('/past-questions', cacheMiddleware(120, ['resources']), async (req, res) => {
     try {
         const { department, level, course_code, year, semester, limit = 100 } = req.query;
 
-        // Accept any of these common spellings so old data still works
-        // Supabase `.in()` needs an array — use the operator form
         let where = {
             category: { operator: 'in', value: ['past-question', 'past-questions', 'past_question', 'Past Question', 'Past Questions'] }
         };
@@ -1255,9 +1227,6 @@ resourceRouter.get('/past-questions', cacheMiddleware(120, ['resources']), async
     }
 });
 
-// GET /api/resources/meta/categories — return distinct categories
-// Supabase JS client does NOT support SQL DISTINCT in .select(),
-// so we fetch the column and dedupe in JS.
 resourceRouter.get('/meta/categories', async (req, res) => {
     try {
         const result = await db.query('select', 'resources', {
@@ -1272,7 +1241,6 @@ resourceRouter.get('/meta/categories', async (req, res) => {
     }
 });
 
-// GET /api/resources/meta/departments — return distinct departments
 resourceRouter.get('/meta/departments', async (req, res) => {
     try {
         const result = await db.query('select', 'resources', {
@@ -1287,7 +1255,6 @@ resourceRouter.get('/meta/departments', async (req, res) => {
     }
 });
 
-// GET /api/resources/meta/courses — return distinct course codes/titles
 resourceRouter.get('/meta/courses', async (req, res) => {
     try {
         const { department } = req.query;
@@ -1300,7 +1267,6 @@ resourceRouter.get('/meta/courses', async (req, res) => {
             where
         });
 
-        // Dedupe by course_code in JS (Supabase has no DISTINCT)
         const seen = new Set();
         const courses = [];
         for (const row of result.data) {
@@ -1319,7 +1285,6 @@ resourceRouter.get('/meta/courses', async (req, res) => {
     }
 });
 
-// POST /api/resources/:id/download — increment download count
 resourceRouter.post('/:id/download', async (req, res) => {
     try {
         const getResult = await db.query('select', 'resources', {
@@ -1343,7 +1308,6 @@ resourceRouter.post('/:id/download', async (req, res) => {
     }
 });
 
-// GET /api/resources/:id — single resource (must stay LAST — matches any single segment)
 resourceRouter.get('/:id', cacheMiddleware(300, ['resources']), async (req, res) => {
     try {
         const result = await db.query('select', 'resources', { where: { id: req.params.id } });
@@ -2158,13 +2122,8 @@ adminRouter.delete('/resources/:id', async (req, res) => {
 });
 
 // ==================== MEDIA LIBRARY ====================
-function inferMediaType(mime) {
-    return mime && mime.startsWith('video/') ? 'video' : 'picture';
-}
-
-function buildMediaPublicUrl(absPath) {
-    const rel = path.relative(path.join(__dirname, 'uploads'), absPath).split(path.sep).join('/');
-    return `/uploads/${rel}`;
+function inferMediaType(mimeType) {
+    return mimeType && mimeType.startsWith('video/') ? 'video' : 'picture';
 }
 
 function shapeMediaRow(m) {
@@ -2175,7 +2134,7 @@ function shapeMediaRow(m) {
         url: m.file_url,
         thumbnail_url: m.thumbnail_url,
         file_type: m.file_type,
-        type: m.media_type,                  // 'picture' | 'video'
+        type: m.media_type,
         size_bytes: m.size_bytes,
         dimensions: (m.width && m.height) ? `${m.width} × ${m.height}` : null,
         width: m.width,
@@ -2199,6 +2158,8 @@ function requireUuidParam(res, id) {
     }
     return true;
 }
+
+// =============== STATIC ROUTES FIRST (must be declared before /media/:id) ===============
 
 // GET /api/admin/media — list all pictures + videos
 adminRouter.get('/media', async (req, res) => {
@@ -2238,7 +2199,7 @@ adminRouter.get('/media', async (req, res) => {
     }
 });
 
-// POST /api/admin/media — multipart upload (single file per request)
+// POST /api/admin/media — multipart upload to Supabase Storage
 adminRouter.post('/media', mediaUpload.single('file'), async (req, res) => {
     try {
         if (!req.file) {
@@ -2248,8 +2209,6 @@ adminRouter.post('/media', mediaUpload.single('file'), async (req, res) => {
         const isVideo = (req.file.mimetype || '').startsWith('video/');
         const mediaType = isVideo ? 'video' : 'picture';
 
-        // Build a unique path inside the bucket, e.g.
-        //   images/2026-11-14/biu-poster-1731600000000.jpg
         const ext = path.extname(req.file.originalname).toLowerCase();
         const safeName = path.basename(req.file.originalname, ext)
             .replace(/[^a-zA-Z0-9_-]/g, '_')
@@ -2257,30 +2216,25 @@ adminRouter.post('/media', mediaUpload.single('file'), async (req, res) => {
         const datePart = new Date().toISOString().split('T')[0];
         const storageKey = `${isVideo ? 'videos' : 'images'}/${datePart}/${safeName}-${Date.now()}${ext}`;
 
-        // Read the temp file multer just saved to disk
         const fileBuffer = await fs.readFile(req.file.path);
 
-        // Upload to Supabase Storage
         const { error: uploadErr } = await supabase.storage
             .from(STORAGE_BUCKET)
             .upload(storageKey, fileBuffer, {
                 contentType: req.file.mimetype,
                 upsert: false,
-                cacheControl: '31536000'   // 1 year — files never change
+                cacheControl: '31536000'
             });
 
         if (uploadErr) throw uploadErr;
 
-        // Get the permanent public URL
         const { data: urlData } = supabase.storage
             .from(STORAGE_BUCKET)
             .getPublicUrl(storageKey);
         const publicUrl = urlData.publicUrl;
 
-        // Clean up the temp file that multer left on Render's disk
         try { await fs.unlink(req.file.path); } catch {}
 
-        // Parse tags — same as before
         let tags = [];
         if (req.body.tags) {
             try {
@@ -2297,7 +2251,7 @@ adminRouter.post('/media', mediaUpload.single('file'), async (req, res) => {
         const newMedia = {
             title,
             filename: req.file.originalname,
-            file_url: publicUrl,               // ← permanent https://xyz.supabase.co/storage/...
+            file_url: publicUrl,
             file_type: req.file.mimetype,
             media_type: mediaType,
             size_bytes: req.file.size,
@@ -2348,8 +2302,7 @@ adminRouter.post('/media', mediaUpload.single('file'), async (req, res) => {
     }
 });
 
-// ==================== ADMIN: GALLERY MANAGEMENT ====================
-// GET /api/admin/media/gallery — list all gallery items
+// ==================== ADMIN: GALLERY (must precede /media/:id) ====================
 adminRouter.get('/media/gallery', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -2394,34 +2347,21 @@ adminRouter.get('/media/gallery', async (req, res) => {
     }
 });
 
-// POST /api/admin/media/gallery — send a media item to the gallery
 adminRouter.post('/media/gallery', async (req, res) => {
     try {
         const { media_id, title, description, category, status, display_order } = req.body;
 
-        if (!media_id) {
-            return res.status(400).json({ status: 'error', message: 'media_id is required' });
-        }
-        if (!title || !String(title).trim()) {
-            return res.status(400).json({ status: 'error', message: 'title is required' });
-        }
+        if (!media_id) return res.status(400).json({ status: 'error', message: 'media_id is required' });
+        if (!title || !String(title).trim()) return res.status(400).json({ status: 'error', message: 'title is required' });
 
         const { data: media, error: mediaErr } = await supabase
-            .from('media')
-            .select('id, title')
-            .eq('id', media_id)
-            .maybeSingle();
+            .from('media').select('id, title').eq('id', media_id).maybeSingle();
 
         if (mediaErr) throw mediaErr;
-        if (!media) {
-            return res.status(404).json({ status: 'error', message: 'Media not found' });
-        }
+        if (!media) return res.status(404).json({ status: 'error', message: 'Media not found' });
 
         const { data: existing } = await supabase
-            .from('media_gallery')
-            .select('id')
-            .eq('media_id', media_id)
-            .maybeSingle();
+            .from('media_gallery').select('id').eq('media_id', media_id).maybeSingle();
 
         if (existing) {
             return res.status(409).json({
@@ -2448,10 +2388,7 @@ adminRouter.post('/media/gallery', async (req, res) => {
 
         if (error) throw error;
 
-        logger.info('Gallery item created', {
-            requestId: req.id, galleryId: data.id, mediaId: media_id, status: finalStatus
-        });
-
+        logger.info('Gallery item created', { requestId: req.id, galleryId: data.id, mediaId: media_id, status: finalStatus });
         res.status(201).json({ status: 'success', data, message: 'Sent to gallery' });
     } catch (error) {
         logger.error('Admin gallery create error:', { requestId: req.id, error: error.message });
@@ -2459,7 +2396,6 @@ adminRouter.post('/media/gallery', async (req, res) => {
     }
 });
 
-// PUT /api/admin/media/gallery/:id — edit a gallery item
 adminRouter.put('/media/gallery/:id', async (req, res) => {
     try {
         const { title, description, category, status, display_order } = req.body;
@@ -2472,11 +2408,7 @@ adminRouter.put('/media/gallery/:id', async (req, res) => {
         if (display_order !== undefined) updateData.display_order = parseInt(display_order) || 0;
 
         const { data, error } = await supabase
-            .from('media_gallery')
-            .update(updateData)
-            .eq('id', req.params.id)
-            .select()
-            .single();
+            .from('media_gallery').update(updateData).eq('id', req.params.id).select().single();
 
         if (error) throw error;
         if (!data) return res.status(404).json({ status: 'error', message: 'Gallery item not found' });
@@ -2489,7 +2421,6 @@ adminRouter.put('/media/gallery/:id', async (req, res) => {
     }
 });
 
-// PATCH /api/admin/media/gallery/:id — quick status toggle
 adminRouter.patch('/media/gallery/:id', async (req, res) => {
     try {
         const { status } = req.body;
@@ -2498,11 +2429,8 @@ adminRouter.patch('/media/gallery/:id', async (req, res) => {
         }
 
         const { data, error } = await supabase
-            .from('media_gallery')
-            .update({ status, updated_at: new Date().toISOString() })
-            .eq('id', req.params.id)
-            .select()
-            .single();
+            .from('media_gallery').update({ status, updated_at: new Date().toISOString() })
+            .eq('id', req.params.id).select().single();
 
         if (error) throw error;
         if (!data) return res.status(404).json({ status: 'error', message: 'Gallery item not found' });
@@ -2514,15 +2442,10 @@ adminRouter.patch('/media/gallery/:id', async (req, res) => {
     }
 });
 
-// DELETE /api/admin/media/gallery/:id — remove from gallery (keeps media file)
 adminRouter.delete('/media/gallery/:id', async (req, res) => {
     try {
         const { data, error } = await supabase
-            .from('media_gallery')
-            .delete()
-            .eq('id', req.params.id)
-            .select()
-            .single();
+            .from('media_gallery').delete().eq('id', req.params.id).select().single();
 
         if (error) throw error;
         if (!data) return res.status(404).json({ status: 'error', message: 'Gallery item not found' });
@@ -2535,8 +2458,7 @@ adminRouter.delete('/media/gallery/:id', async (req, res) => {
     }
 });
 
-// ==================== ADMIN: HOMEPAGE PLACEMENT ====================
-// GET /api/admin/media/placements/homepage-hero
+// ==================== ADMIN: HOMEPAGE PLACEMENT (must precede /media/:id) ====================
 adminRouter.get('/media/placements/homepage-hero', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -2550,10 +2472,7 @@ adminRouter.get('/media/placements/homepage-hero', async (req, res) => {
             .maybeSingle();
 
         if (error && error.code !== 'PGRST116') throw error;
-
-        if (!data) {
-            return res.json({ status: 'success', data: null });
-        }
+        if (!data) return res.json({ status: 'success', data: null });
 
         res.json({
             status: 'success',
@@ -2571,19 +2490,14 @@ adminRouter.get('/media/placements/homepage-hero', async (req, res) => {
     }
 });
 
-// PUT /api/admin/media/placements/homepage-hero
 adminRouter.put('/media/placements/homepage-hero', async (req, res) => {
     try {
         const { media_id } = req.body;
-        if (!media_id) {
-            return res.status(400).json({ status: 'error', message: 'media_id is required' });
-        }
+        if (!media_id) return res.status(400).json({ status: 'error', message: 'media_id is required' });
 
         const { data: media, error: mediaErr } = await supabase
-            .from('media')
-            .select('id, media_type, file_url, thumbnail_url, title')
-            .eq('id', media_id)
-            .maybeSingle();
+            .from('media').select('id, media_type, file_url, thumbnail_url, title')
+            .eq('id', media_id).maybeSingle();
 
         if (mediaErr) throw mediaErr;
         if (!media) return res.status(404).json({ status: 'error', message: 'Media not found' });
@@ -2604,9 +2518,7 @@ adminRouter.put('/media/placements/homepage-hero', async (req, res) => {
 
         if (error) throw error;
 
-        logger.info('Homepage hero placement set', {
-            requestId: req.id, mediaId: media_id, by: req.user.id
-        });
+        logger.info('Homepage hero placement set', { requestId: req.id, mediaId: media_id, by: req.user.id });
 
         res.json({
             status: 'success',
@@ -2625,7 +2537,6 @@ adminRouter.put('/media/placements/homepage-hero', async (req, res) => {
     }
 });
 
-// DELETE /api/admin/media/placements/homepage-hero
 adminRouter.delete('/media/placements/homepage-hero', async (req, res) => {
     try {
         await supabase.from('media_placements').delete().eq('slot', 'homepage-hero');
@@ -2637,7 +2548,8 @@ adminRouter.delete('/media/placements/homepage-hero', async (req, res) => {
     }
 });
 
-// GET /api/admin/media/:id — single item
+// =============== WILDCARD ROUTES LAST (/media/:id must come after all /media/<static>) ===============
+
 adminRouter.get('/media/:id', async (req, res) => {
     if (!requireUuidParam(res, req.params.id)) return;
     try {
@@ -2650,7 +2562,6 @@ adminRouter.get('/media/:id', async (req, res) => {
     }
 });
 
-// PUT /api/admin/media/:id — edit metadata only
 adminRouter.put('/media/:id', validate(schemas.updateMedia), async (req, res) => {
     if (!requireUuidParam(res, req.params.id)) return;
     try {
@@ -2683,7 +2594,6 @@ adminRouter.put('/media/:id', validate(schemas.updateMedia), async (req, res) =>
     }
 });
 
-// DELETE /api/admin/media/:id — remove DB row + file on disk
 adminRouter.delete('/media/:id', async (req, res) => {
     if (!requireUuidParam(res, req.params.id)) return;
     try {
@@ -2698,7 +2608,6 @@ adminRouter.delete('/media/:id', async (req, res) => {
 
         const { file_url, title } = checkResult.data[0];
 
-        // Delete from Supabase Storage if the URL is a storage URL
         if (file_url && file_url.includes(`/storage/v1/object/public/${STORAGE_BUCKET}/`)) {
             const storageKey = decodeURIComponent(
                 file_url.split(`/storage/v1/object/public/${STORAGE_BUCKET}/`)[1] || ''
@@ -2730,304 +2639,8 @@ adminRouter.delete('/media/:id', async (req, res) => {
     }
 });
 
-// ==================== ADMIN: GALLERY MANAGEMENT ====================
-// GET /api/admin/media/gallery — list all gallery items
-adminRouter.get('/media/gallery', async (req, res) => {
-    try {
-
-        const { data, error } = await supabase
-            .from('media_gallery')
-            .select(`
-                id, media_id, title, description, category, status, display_order,
-                created_at, updated_at,
-                media:media!media_gallery_media_id_fkey(
-                    id, title, file_url, thumbnail_url, file_type, media_type, size_bytes
-                )
-            `)
-            .order('display_order', { ascending: true })
-            .order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-        const mapped = (data || []).map(g => ({
-            id: g.id,
-            media_id: g.media_id,
-            title: g.title,
-            description: g.description,
-            category: g.category,
-            status: g.status,
-            published: g.status === 'published',
-            order: g.display_order,
-            created_at: g.created_at,
-            updated_at: g.updated_at,
-            media: g.media ? {
-                id: g.media.id,
-                url: g.media.file_url,
-                thumbnail_url: g.media.thumbnail_url || g.media.file_url,
-                mime_type: g.media.file_type,
-                type: g.media.media_type,
-                size_bytes: g.media.size_bytes
-            } : null
-        }));
-
-        res.json({ status: 'success', data: mapped, count: mapped.length });
-    } catch (error) {
-        logger.error('Admin gallery list error:', { requestId: req.id, error: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to fetch gallery' });
-    }
-});
-
-// POST /api/admin/media/gallery — send a media item to the gallery
-adminRouter.post('/media/gallery', async (req, res) => {
-    try {
-        const { media_id, title, description, category, status, display_order } = req.body;
-
-        if (!media_id) {
-            return res.status(400).json({ status: 'error', message: 'media_id is required' });
-        }
-        if (!title || !String(title).trim()) {
-            return res.status(400).json({ status: 'error', message: 'title is required' });
-        }
-
-        // Verify media exists
-        const { data: media, error: mediaErr } = await supabase
-            .from('media')
-            .select('id, title')
-            .eq('id', media_id)
-            .maybeSingle();
-
-        if (mediaErr) throw mediaErr;
-        if (!media) {
-            return res.status(404).json({ status: 'error', message: 'Media not found' });
-        }
-
-        // Reject duplicates (one gallery entry per media)
-        const { data: existing } = await supabase
-            .from('media_gallery')
-            .select('id')
-            .eq('media_id', media_id)
-            .maybeSingle();
-
-        if (existing) {
-            return res.status(409).json({
-                status: 'error',
-                message: 'This media is already in the gallery. Edit the existing entry instead.'
-            });
-        }
-
-        const finalStatus = (status === 'published') ? 'published' : 'draft';
-
-        const { data, error } = await supabase
-            .from('media_gallery')
-            .insert([{
-                media_id,
-                title: String(title).trim(),
-                description: description ? String(description).trim() : null,
-                category: (category || 'events').toLowerCase(),
-                status: finalStatus,
-                display_order: Number.isFinite(parseInt(display_order)) ? parseInt(display_order) : 0,
-                created_by: req.user.id
-            }])
-            .select()
-            .single();
-
-        if (error) throw error;
-
-        logger.info('Gallery item created', {
-            requestId: req.id, galleryId: data.id, mediaId: media_id, status: finalStatus
-        });
-
-        res.status(201).json({ status: 'success', data, message: 'Sent to gallery' });
-    } catch (error) {
-        logger.error('Admin gallery create error:', { requestId: req.id, error: error.message });
-        res.status(500).json({ status: 'error', message: error.message || 'Failed to send to gallery' });
-    }
-});
-
-// PUT /api/admin/media/gallery/:id — edit a gallery item
-adminRouter.put('/media/gallery/:id', async (req, res) => {
-    try {
-        const { title, description, category, status, display_order } = req.body;
-        const updateData = { updated_at: new Date().toISOString() };
-
-        if (title !== undefined) updateData.title = String(title).trim();
-        if (description !== undefined) updateData.description = description ? String(description).trim() : null;
-        if (category !== undefined) updateData.category = String(category).toLowerCase();
-        if (status !== undefined) updateData.status = status === 'published' ? 'published' : 'draft';
-        if (display_order !== undefined) updateData.display_order = parseInt(display_order) || 0;
-
-        const { data, error } = await supabase
-            .from('media_gallery')
-            .update(updateData)
-            .eq('id', req.params.id)
-            .select()
-            .single();
-
-        if (error) throw error;
-        if (!data) return res.status(404).json({ status: 'error', message: 'Gallery item not found' });
-
-        logger.info('Gallery item updated', { requestId: req.id, galleryId: req.params.id });
-        res.json({ status: 'success', data, message: 'Gallery item updated' });
-    } catch (error) {
-        logger.error('Admin gallery update error:', { requestId: req.id, error: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to update gallery item' });
-    }
-});
-
-// PATCH /api/admin/media/gallery/:id — quick status toggle
-adminRouter.patch('/media/gallery/:id', async (req, res) => {
-    try {
-        const { status } = req.body;
-        if (!['draft', 'published'].includes(status)) {
-            return res.status(400).json({ status: 'error', message: 'status must be draft or published' });
-        }
-
-        const { data, error } = await supabase
-            .from('media_gallery')
-            .update({ status, updated_at: new Date().toISOString() })
-            .eq('id', req.params.id)
-            .select()
-            .single();
-
-        if (error) throw error;
-        if (!data) return res.status(404).json({ status: 'error', message: 'Gallery item not found' });
-
-        res.json({ status: 'success', data, message: `Gallery item ${status}` });
-    } catch (error) {
-        logger.error('Admin gallery toggle error:', { requestId: req.id, error: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to update gallery status' });
-    }
-});
-
-// DELETE /api/admin/media/gallery/:id — remove from gallery (keeps media file)
-adminRouter.delete('/media/gallery/:id', async (req, res) => {
-    try {
-        const { data, error } = await supabase
-            .from('media_gallery')
-            .delete()
-            .eq('id', req.params.id)
-            .select()
-            .single();
-
-        if (error) throw error;
-        if (!data) return res.status(404).json({ status: 'error', message: 'Gallery item not found' });
-
-        logger.info('Gallery item removed', { requestId: req.id, galleryId: req.params.id });
-        res.json({ status: 'success', message: 'Removed from gallery (file kept in Media Library)' });
-    } catch (error) {
-        logger.error('Admin gallery delete error:', { requestId: req.id, error: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to remove from gallery' });
-    }
-});
-
-// ==================== ADMIN: HOMEPAGE PLACEMENT ====================
-
-// GET /api/admin/media/placements/homepage-hero
-adminRouter.get('/media/placements/homepage-hero', async (req, res) => {
-    try {
-        const { data, error } = await supabase
-            .from('media_placements')
-            .select(`
-                id, slot, media_id, updated_at,
-                media:media!media_placements_media_id_fkey(
-                    id, title, file_url, thumbnail_url, media_type)
-            `)
-            .eq('slot', 'homepage-hero')
-            .maybeSingle();
-
-        if (error && error.code !== 'PGRST116') throw error;
-
-        if (!data) {
-            return res.json({ status: 'success', data: null });
-        }
-
-        res.json({
-            status: 'success',
-            data: {
-                media_id: data.media_id,
-                url: data.media?.file_url || null,
-                thumbnail_url: data.media?.thumbnail_url || null,
-                title: data.media?.title || null,
-                updated_at: data.updated_at
-            }
-        });
-    } catch (error) {
-        logger.error('Admin placement get error:', { requestId: req.id, error: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to fetch placement' });
-    }
-});
-
-// PUT /api/admin/media/placements/homepage-hero
-adminRouter.put('/media/placements/homepage-hero', async (req, res) => {
-    try {
-        const { media_id } = req.body;
-        if (!media_id) {
-            return res.status(400).json({ status: 'error', message: 'media_id is required' });
-        }
-
-        // Verify media exists and is a picture
-        const { data: media, error: mediaErr } = await supabase
-            .from('media')
-            .select('id, media_type, file_url, thumbnail_url, title')
-            .eq('id', media_id)
-            .maybeSingle();
-
-        if (mediaErr) throw mediaErr;
-        if (!media) return res.status(404).json({ status: 'error', message: 'Media not found' });
-        if (media.media_type !== 'picture') {
-            return res.status(400).json({ status: 'error', message: 'Only pictures can be used for the homepage hero' });
-        }
-
-        // Upsert (one row per slot)
-        const { data, error } = await supabase
-            .from('media_placements')
-            .upsert({
-                slot: 'homepage-hero',
-                media_id,
-                updated_by: req.user.id,
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'slot' })
-            .select()
-            .single();
-
-        if (error) throw error;
-
-        logger.info('Homepage hero placement set', {
-            requestId: req.id, mediaId: media_id, by: req.user.id
-        });
-
-        res.json({
-            status: 'success',
-            data: {
-                media_id: data.media_id,
-                url: media.file_url,
-                thumbnail_url: media.thumbnail_url || media.file_url,
-                title: media.title,
-                updated_at: data.updated_at
-            },
-            message: 'Homepage hero image updated'
-        });
-    } catch (error) {
-        logger.error('Admin placement set error:', { requestId: req.id, error: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to update placement' });
-    }
-});
-
-// DELETE /api/admin/media/placements/homepage-hero
-adminRouter.delete('/media/placements/homepage-hero', async (req, res) => {
-    try {
-        await supabase.from('media_placements').delete().eq('slot', 'homepage-hero');
-        logger.info('Homepage hero placement cleared', { requestId: req.id, by: req.user.id });
-        res.json({ status: 'success', message: 'Homepage hero image cleared' });
-    } catch (error) {
-        logger.error('Admin placement delete error:', { requestId: req.id, error: error.message });
-        res.status(500).json({ status: 'error', message: 'Failed to clear placement' });
-    }
-});
-
 // ==================== ACADEMIC SESSIONS MANAGEMENT ====================
 
-// GET /api/admin/sessions — list all sessions
 adminRouter.get('/sessions', async (req, res) => {
     try {
         const result = await db.query('select', 'academic_sessions', {
@@ -3043,7 +2656,6 @@ adminRouter.get('/sessions', async (req, res) => {
     }
 });
 
-// POST /api/admin/sessions — create (inactive by default)
 adminRouter.post('/sessions', async (req, res) => {
     try {
         const { name, session_name, start_date, end_date, description } = req.body;
@@ -3056,7 +2668,6 @@ adminRouter.post('/sessions', async (req, res) => {
             return res.status(400).json({ status: 'error', message: 'Session name must be in the format YYYY/YYYY' });
         }
 
-        // Duplicate check
         const existing = await db.query('select', 'academic_sessions', { where: { name: finalName }, select: 'id' });
         if (existing.data.length > 0) {
             return res.status(409).json({ status: 'error', message: 'A session with this name already exists' });
@@ -3067,7 +2678,7 @@ adminRouter.post('/sessions', async (req, res) => {
             start_date: start_date || null,
             end_date: end_date || null,
             description: description || null,
-            is_active: false,  // NEVER auto-activate
+            is_active: false,
             created_by: req.user.id
         };
 
@@ -3080,7 +2691,6 @@ adminRouter.post('/sessions', async (req, res) => {
     }
 });
 
-// PUT /api/admin/sessions/:id — edit
 adminRouter.put('/sessions/:id', async (req, res) => {
     try {
         const { name, session_name, start_date, end_date, description } = req.body;
@@ -3119,24 +2729,20 @@ adminRouter.put('/sessions/:id', async (req, res) => {
     }
 });
 
-// PATCH /api/admin/sessions/:id/activate — atomically activate one, deactivate all others
 adminRouter.patch('/sessions/:id/activate', async (req, res) => {
     try {
         const sessionId = req.params.id;
 
-        // Check target exists
         const target = await db.query('select', 'academic_sessions', { where: { id: sessionId } });
         if (target.data.length === 0) {
             return res.status(404).json({ status: 'error', message: 'Session not found' });
         }
 
-        // Deactivate all others first
         await db.query('update', 'academic_sessions', {
             data: { is_active: false, updated_at: new Date().toISOString() },
             where: { is_active: true }
         });
 
-        // Activate target
         const result = await db.query('update', 'academic_sessions', {
             data: { is_active: true, updated_at: new Date().toISOString() },
             where: { id: sessionId }
@@ -3154,7 +2760,6 @@ adminRouter.patch('/sessions/:id/activate', async (req, res) => {
     }
 });
 
-// DELETE /api/admin/sessions/:id — delete (reject if active)
 adminRouter.delete('/sessions/:id', async (req, res) => {
     try {
         const check = await db.query('select', 'academic_sessions', {
@@ -3181,8 +2786,6 @@ adminRouter.delete('/sessions/:id', async (req, res) => {
 });
 
 // ==================== SETTINGS MANAGEMENT ====================
-
-// GET /api/admin/settings — fetch all settings as a single object
 adminRouter.get('/settings', async (req, res) => {
     try {
         const result = await db.query('select', 'settings', {});
@@ -3192,7 +2795,6 @@ adminRouter.get('/settings', async (req, res) => {
         }
         res.json({ status: 'success', data: settings });
     } catch (error) {
-        // If table doesn't exist, return empty settings so frontend still works
         if (error.message && error.message.includes('relation') && error.message.includes('does not exist')) {
             return res.json({ status: 'success', data: {}, note: 'settings table not created yet' });
         }
@@ -3201,7 +2803,6 @@ adminRouter.get('/settings', async (req, res) => {
     }
 });
 
-// PUT /api/admin/settings — upsert settings (accepts { settings: { key: value, ... } })
 adminRouter.put('/settings', async (req, res) => {
     try {
         const { settings } = req.body;
@@ -3700,8 +3301,6 @@ userRouter.delete('/:id', async (req, res) => {
 });
 
 // ==================== COURSE REPS MANAGEMENT ====================
-
-// GET /api/admin/course-reps — list all representatives
 adminRouter.get('/course-reps', async (req, res) => {
     try {
         const { session, level, rep_type, status, department } = req.query;
@@ -3738,7 +3337,6 @@ adminRouter.get('/course-reps', async (req, res) => {
     }
 });
 
-// POST /api/admin/course-reps — create a representative
 adminRouter.post('/course-reps', async (req, res) => {
     try {
         const {
@@ -3771,8 +3369,6 @@ adminRouter.post('/course-reps', async (req, res) => {
             return res.status(400).json({ status: 'error', message: 'Invalid status' });
         }
 
-        // Duplicate matric check — scoped per (session, rep_type) so the same
-        // student can hold both a general and a departmental role.
         if (matric_no) {
             const { data: dupMatric, error: dupErr } = await supabase
                 .from('course_representatives')
@@ -3791,7 +3387,6 @@ adminRouter.post('/course-reps', async (req, res) => {
             }
         }
 
-        // Duplicate active position check
         if (finalStatus === 'active') {
             let dupQuery = supabase
                 .from('course_representatives')
@@ -3889,7 +3484,6 @@ adminRouter.post('/course-reps', async (req, res) => {
     }
 });
 
-// PUT /api/admin/course-reps/:id — update a representative
 adminRouter.put('/course-reps/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -4029,7 +3623,6 @@ adminRouter.put('/course-reps/:id', async (req, res) => {
     }
 });
 
-// PATCH /api/admin/course-reps/:id/status — quick status toggle
 adminRouter.patch('/course-reps/:id/status', async (req, res) => {
     try {
         const { id } = req.params;
@@ -4093,7 +3686,6 @@ adminRouter.patch('/course-reps/:id/status', async (req, res) => {
     }
 });
 
-// DELETE /api/admin/course-reps/:id
 adminRouter.delete('/course-reps/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -4118,7 +3710,6 @@ adminRouter.delete('/course-reps/:id', async (req, res) => {
     }
 });
 
-// GET /api/admin/course-reps/:id — single rep (admin view, with nested dept reps)
 adminRouter.get('/course-reps/:id', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -4137,7 +3728,6 @@ adminRouter.get('/course-reps/:id', async (req, res) => {
     }
 });
 
-// GET /api/admin/course-reps/stats — dashboard counts
 adminRouter.get('/course-reps/stats', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -4173,7 +3763,6 @@ adminRouter.get('/course-reps/stats', async (req, res) => {
     }
 });
 
-// Meta endpoints
 adminRouter.get('/course-reps/meta/sessions', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -4359,75 +3948,204 @@ electionRouter.get('/active', async (req, res) => {
     }
 });
 
-// =============== VOTER REGISTRATION ===============
-electionRouter.post('/register', async (req, res) => {
+// =============== VERIFY VOTER (used by the new voting flow) ===============
+electionRouter.post('/voter/verify', async (req, res) => {
     try {
-        const { fullName, matricNumber, phone, receiptNumber, department, level } = req.body;
-
-        if (!fullName || !matricNumber || !phone || !receiptNumber || !department || !level) {
-            return res.status(400).json({ status: 'error', message: 'All fields are required' });
+        const { matricNumber, phone } = req.body;
+        if (!matricNumber || !phone) {
+            return res.status(400).json({ status: 'error', message: 'Matric number and phone number are required' });
         }
 
         const election = await getActiveElection();
-        if (!election) {
-            return res.status(400).json({ status: 'error', message: 'No active election' });
-        }
+        if (!election) return res.status(400).json({ status: 'error', message: 'No active election' });
 
-        const { data: existing } = await supabase
+        const { data: voter } = await supabase
             .from('voters')
-            .select('voter_id')
+            .select('*')
             .eq('session_id', election.session_id)
             .ilike('matric_no', matricNumber.trim())
             .maybeSingle();
 
-        if (existing) {
-            return res.status(409).json({
-                status: 'error',
-                message: `You are already registered. Your Voter ID is ${existing.voter_id}`
+        if (voter) {
+            const storedPhone = (voter.phone || '').replace(/\s/g, '');
+            const inputPhone = phone.replace(/\s/g, '');
+            if (storedPhone && storedPhone !== 'PENDING' && storedPhone !== inputPhone) {
+                return res.status(401).json({ status: 'error', message: 'Phone number does not match our records' });
+            }
+            return res.json({
+                status: 'success',
+                data: {
+                    voterId: voter.voter_id,
+                    fullName: voter.full_name,
+                    matricNumber: voter.matric_no,
+                    hasVoted: voter.has_voted,
+                    eligibleToVote: voter.eligible_to_vote
+                }
             });
         }
 
-        const voterId = `VOTER-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
-        const insertData = {
-            session_id: election.session_id,
-            full_name: fullName.trim(),
-            matric_no: matricNumber.trim().toUpperCase(),
-            phone: phone.trim(),
-            receipt_number: receiptNumber.trim().toUpperCase(),
-            department,
-            level,
-            voter_id: voterId
-        };
+        // Auto-create voter if not found
+        const newVoterId = `VOTER-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+        const { data: created, error: cErr } = await supabase
+            .from('voters')
+            .insert([{
+                session_id: election.session_id,
+                full_name: 'Pending Registration',
+                matric_no: matricNumber.trim().toUpperCase(),
+                phone: phone.trim(),
+                receipt_number: 'AUTO-VERIFY',
+                department: 'Pending',
+                level: 'Pending',
+                voter_id: newVoterId,
+                eligible_to_vote: true
+            }])
+            .select()
+            .single();
 
-        const { data, error } = await supabase
-            .from('voters').insert([insertData]).select().single();
+        if (cErr) throw cErr;
 
-        if (error) throw error;
+        logger.info('Voter auto-created on verify', { voterId: created.voter_id, matric: matricNumber });
 
-        logger.info('Voter registered', {
-            requestId: req.id, voterId: data.voter_id, level: data.level, eligible: data.eligible_to_vote
-        });
-
-        res.status(201).json({
+        res.json({
             status: 'success',
             data: {
-                voterId: data.voter_id,
-                fullName: data.full_name,
-                matricNumber: data.matric_no,
-                level: data.level,
-                eligibleToVote: data.eligible_to_vote
-            },
-            message: data.eligible_to_vote
-                ? 'Registration successful. You can now vote.'
-                : 'Registration successful. Note: 100L students cannot vote in this election.'
+                voterId: created.voter_id,
+                fullName: created.full_name,
+                matricNumber: created.matric_no,
+                hasVoted: created.has_voted,
+                eligibleToVote: created.eligible_to_vote
+            }
         });
     } catch (err) {
-        logger.error('Voter registration error:', { requestId: req.id, error: err.message });
-        res.status(500).json({ status: 'error', message: 'Registration failed' });
+        logger.error('Voter verify error:', { error: err.message });
+        res.status(500).json({ status: 'error', message: 'Verification failed' });
     }
 });
 
-// =============== VERIFY VOTER ===============
+// =============== BULK NOMINATIONS (used by the new nominate modal) ===============
+electionRouter.post('/nominations/bulk', async (req, res) => {
+    try {
+        const { nominator, nominees } = req.body;
+
+        if (!nominator || !Array.isArray(nominees) || nominees.length === 0) {
+            return res.status(400).json({ status: 'error', message: 'Nominator and at least one nominee are required' });
+        }
+        ['fullName', 'matricNumber', 'phone', 'department', 'level'].forEach(k => {
+            if (!nominator[k]) throw new Error(`Nominator ${k} is required`);
+        });
+
+        const election = await getActiveElection();
+        if (!election) return res.status(400).json({ status: 'error', message: 'No active election' });
+        if (!['preparation', 'pending', 'nomination'].includes(election.phase)) {
+            return res.status(403).json({ status: 'error', message: `Nominations are closed (current phase: ${election.phase})` });
+        }
+
+        // Find or create the nominator voter record
+        const { data: existingNominator } = await supabase
+            .from('voters')
+            .select('id, voter_id')
+            .eq('session_id', election.session_id)
+            .ilike('matric_no', nominator.matricNumber.trim())
+            .maybeSingle();
+
+        let nominatorVoterId;
+        if (existingNominator) {
+            nominatorVoterId = existingNominator.id;
+        } else {
+            const vid = `VOTER-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+            const { data: created, error: cErr } = await supabase
+                .from('voters')
+                .insert([{
+                    session_id: election.session_id,
+                    full_name: nominator.fullName.trim(),
+                    matric_no: nominator.matricNumber.trim().toUpperCase(),
+                    phone: nominator.phone.trim(),
+                    receipt_number: 'NOMINATION-AUTO',
+                    department: nominator.department,
+                    level: nominator.level,
+                    voter_id: vid
+                }])
+                .select()
+                .single();
+            if (cErr) throw cErr;
+            nominatorVoterId = created.id;
+        }
+
+        const rows = [];
+        for (const nominee of nominees) {
+            const { data: position } = await supabase
+                .from('positions').select('id')
+                .eq('id', nominee.positionId).eq('election_id', election.id).maybeSingle();
+            if (!position) continue;
+
+            const { data: existingNominee } = await supabase
+                .from('voters').select('id')
+                .eq('session_id', election.session_id)
+                .ilike('matric_no', nominee.matric.trim())
+                .maybeSingle();
+
+            let nomineeVoterId;
+            if (existingNominee) {
+                nomineeVoterId = existingNominee.id;
+            } else {
+                const nvid = `VOTER-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+                const { data: createdNominee, error: nErr } = await supabase
+                    .from('voters')
+                    .insert([{
+                        session_id: election.session_id,
+                        full_name: nominee.name.trim(),
+                        matric_no: nominee.matric.trim().toUpperCase(),
+                        phone: 'PENDING',
+                        receipt_number: 'NOMINATION-AUTO',
+                        department: nominee.department,
+                        level: nominee.level,
+                        voter_id: nvid
+                    }])
+                    .select()
+                    .single();
+                if (nErr) throw nErr;
+                nomineeVoterId = createdNominee.id;
+            }
+
+            const { data: dup } = await supabase
+                .from('nominations').select('id')
+                .eq('election_id', election.id)
+                .eq('position_id', nominee.positionId)
+                .eq('nominee_id', nomineeVoterId)
+                .maybeSingle();
+            if (dup) continue;
+
+            rows.push({
+                election_id: election.id,
+                position_id: nominee.positionId,
+                nominee_id: nomineeVoterId,
+                nominated_by: nominatorVoterId,
+                manifesto: nominee.reason || null,
+                status: 'pending'
+            });
+        }
+
+        if (!rows.length) {
+            return res.status(400).json({ status: 'error', message: 'No new valid nominations to submit' });
+        }
+
+        const { data: inserted, error: insErr } = await supabase.from('nominations').insert(rows).select();
+        if (insErr) throw insErr;
+
+        logger.info('Bulk nominations submitted', { count: inserted.length, nominatorMatric: nominator.matricNumber });
+
+        res.status(201).json({
+            status: 'success',
+            data: { nominationsCreated: inserted.length },
+            message: `${inserted.length} nomination${inserted.length === 1 ? '' : 's'} submitted for review`
+        });
+    } catch (err) {
+        logger.error('Bulk nomination error:', { error: err.message });
+        res.status(500).json({ status: 'error', message: err.message || 'Failed to submit nominations' });
+    }
+});
+
+// =============== VOTER LOOKUP (kept for backward compat) ===============
 electionRouter.get('/voter/:voterId', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -4560,7 +4278,6 @@ electionRouter.post('/vote', requireVoter, async (req, res) => {
             });
         }
 
-        // ⚠️ CRITICAL: 100L restriction enforced on the server
         if (req.voter.level === '100L' || req.voter.eligible_to_vote === false) {
             return res.status(403).json({
                 status: 'error',
@@ -4695,14 +4412,13 @@ console.log('✅ [ELEC] /api/elections router registered (nomination → voting 
 
 // =============== ADMIN: ELECTION MANAGEMENT ===============
 
-// Create a new election
 adminRouter.post('/elections', async (req, res) => {
     try {
         const {
             title, session_id,
             nomination_start, nomination_end,
             voting_start, voting_end,
-            positions   // [{ title, description }]
+            positions
         } = req.body;
 
         if (!title || !session_id || !nomination_start || !nomination_end || !voting_start || !voting_end) {
@@ -4753,7 +4469,6 @@ adminRouter.post('/elections', async (req, res) => {
     }
 });
 
-// List nominations (admin — all statuses)
 adminRouter.get('/elections/nominations', async (req, res) => {
     try {
         const election = await getActiveElection();
@@ -4777,7 +4492,6 @@ adminRouter.get('/elections/nominations', async (req, res) => {
     }
 });
 
-// Approve / reject a nomination
 adminRouter.patch('/elections/nominations/:id', async (req, res) => {
     try {
         const { status } = req.body;
@@ -4799,7 +4513,6 @@ adminRouter.patch('/elections/nominations/:id', async (req, res) => {
     }
 });
 
-// Manually advance phase (overrides time windows by rewriting them)
 adminRouter.patch('/elections/phase', async (req, res) => {
     try {
         const { status } = req.body;
@@ -4838,7 +4551,6 @@ adminRouter.patch('/elections/phase', async (req, res) => {
     }
 });
 
-// ⚡ PUBLISH RESULTS — auto-promotes winners into executive_members
 adminRouter.post('/elections/publish-results', async (req, res) => {
     try {
         const election = await getActiveElection();
@@ -4944,7 +4656,6 @@ adminRouter.post('/elections/publish-results', async (req, res) => {
     }
 });
 
-// List registered voters (admin)
 adminRouter.get('/elections/voters', async (req, res) => {
     try {
         const election = await getActiveElection();
@@ -4967,7 +4678,6 @@ adminRouter.get('/elections/voters', async (req, res) => {
 // ================ SECTION 4.4: AWARDS SYSTEM ================
 // ============================================================
 
-// ---------- Helper: get the active award edition ----------
 async function getActiveAwardEdition() {
     const { data, error } = await supabase
         .from('award_editions')
@@ -4980,7 +4690,6 @@ async function getActiveAwardEdition() {
     if (error && error.code !== 'PGRST116') throw error;
     if (!data) return null;
 
-    // Attach session name
     let sessionName = null;
     if (data.session_id) {
         const { data: session } = await supabase
@@ -4988,13 +4697,11 @@ async function getActiveAwardEdition() {
         sessionName = session?.name || null;
     }
 
-    // Attach categories count
     const { count: categoriesCount } = await supabase
         .from('award_categories')
         .select('id', { count: 'exact', head: true })
         .eq('edition_id', data.id);
 
-    // Derive phase from time — FIXED: voting/closed work without nomination dates
     const now = Date.now();
     const nomStart  = data.nomination_start ? new Date(data.nomination_start).getTime() : null;
     const nomEnd    = data.nomination_end   ? new Date(data.nomination_end).getTime()   : null;
@@ -5011,7 +4718,6 @@ async function getActiveAwardEdition() {
     } else if (nomStart && now < nomStart) {
         phase = 'preparation';
     }
-    // else: no dates configured → stays 'preparation'
 
     return {
         ...data,
@@ -5021,7 +4727,6 @@ async function getActiveAwardEdition() {
     };
 }
 
-// ---------- Helper: require registered voter ----------
 async function requireAwardVoter(req, res, next) {
     try {
         const voterId = (req.body && req.body.voterId)
@@ -5043,12 +4748,8 @@ async function requireAwardVoter(req, res, next) {
     }
 }
 
-// ============================================================
-// PUBLIC AWARD ENDPOINTS
-// ============================================================
 const awardRouter = express.Router();
 
-// GET /api/awards/active — current award edition + categories + approved nominees
 awardRouter.get('/active', async (req, res) => {
     try {
         const edition = await getActiveAwardEdition();
@@ -5104,7 +4805,6 @@ awardRouter.get('/active', async (req, res) => {
     }
 });
 
-// GET /api/awards/archive — public list of archived editions (NEW)
 awardRouter.get('/archive', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -5149,7 +4849,6 @@ awardRouter.get('/archive', async (req, res) => {
     }
 });
 
-// GET /api/awards/results — public results (only after published)
 awardRouter.get('/results', async (req, res) => {
     try {
         const edition = await getActiveAwardEdition();
@@ -5196,7 +4895,6 @@ awardRouter.get('/results', async (req, res) => {
     }
 });
 
-// POST /api/awards/vote — cast a vote for a nominee
 awardRouter.post('/vote', requireAwardVoter, async (req, res) => {
     try {
         const { categoryId, nominationId } = req.body;
@@ -5262,18 +4960,10 @@ awardRouter.post('/vote', requireAwardVoter, async (req, res) => {
     }
 });
 
-// ---------- Mount public award router ----------
 app.use('/api/awards', awardRouter);
 console.log('✅ [AWARD] /api/awards router registered (public)');
 
-
-// ============================================================
-// ADMIN AWARD ENDPOINTS
-// ============================================================
-
-// ---------- ADMIN: AWARD EDITIONS ----------
-
-// GET /api/admin/awards/editions — list all editions
+// ---------- ADMIN AWARD ENDPOINTS ----------
 adminRouter.get('/awards/editions', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -5307,7 +4997,6 @@ adminRouter.get('/awards/editions', async (req, res) => {
     }
 });
 
-// POST /api/admin/awards/editions — create edition
 adminRouter.post('/awards/editions', async (req, res) => {
     try {
         const { name, session_id, status, description, categories } = req.body;
@@ -5316,7 +5005,6 @@ adminRouter.post('/awards/editions', async (req, res) => {
             return res.status(400).json({ status: 'error', message: 'Name and session_id are required' });
         }
 
-        // Archive any existing active/preparation editions (preserve history)
         await supabase
             .from('award_editions')
             .update({ status: 'archived', updated_at: new Date().toISOString() })
@@ -5334,7 +5022,6 @@ adminRouter.post('/awards/editions', async (req, res) => {
             .select().single();
         if (error) throw error;
 
-        // Create categories if provided
         if (Array.isArray(categories) && categories.length > 0) {
             const rows = categories.map((c, i) => ({
                 edition_id: edition.id,
@@ -5358,7 +5045,6 @@ adminRouter.post('/awards/editions', async (req, res) => {
     }
 });
 
-// PUT /api/admin/awards/editions/:id — update edition
 adminRouter.put('/awards/editions/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -5369,7 +5055,6 @@ adminRouter.put('/awards/editions/:id', async (req, res) => {
             verification_deadline, winner_announcement
         } = req.body;
 
-        // Validate date order if both provided
         if (nomination_start && nomination_end &&
             new Date(nomination_end) <= new Date(nomination_start)) {
             return res.status(400).json({ status: 'error', message: 'Nomination end must be after start' });
@@ -5407,7 +5092,6 @@ adminRouter.put('/awards/editions/:id', async (req, res) => {
     }
 });
 
-// DELETE /api/admin/awards/editions/:id — only draft editions (cascades children)
 adminRouter.delete('/awards/editions/:id', async (req, res) => {
     try {
         const { data: existing } = await supabase
@@ -5420,7 +5104,6 @@ adminRouter.delete('/awards/editions/:id', async (req, res) => {
             });
         }
 
-        // Cascade deletes (best-effort cleanup)
         try {
             const { data: cats } = await supabase.from('award_categories').select('id').eq('edition_id', req.params.id);
             const catIds = (cats || []).map(c => c.id);
@@ -5445,7 +5128,6 @@ adminRouter.delete('/awards/editions/:id', async (req, res) => {
     }
 });
 
-// GET /api/admin/awards/archive — list archived editions
 adminRouter.get('/awards/archive', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -5478,10 +5160,6 @@ adminRouter.get('/awards/archive', async (req, res) => {
     }
 });
 
-
-// ---------- ADMIN: AWARD CATEGORIES ----------
-
-// GET /api/admin/awards/categories
 adminRouter.get('/awards/categories', async (req, res) => {
     try {
         const edition = await getActiveAwardEdition();
@@ -5509,7 +5187,6 @@ adminRouter.get('/awards/categories', async (req, res) => {
     }
 });
 
-// POST /api/admin/awards/categories
 adminRouter.post('/awards/categories', async (req, res) => {
     try {
         const edition = await getActiveAwardEdition();
@@ -5550,7 +5227,6 @@ adminRouter.post('/awards/categories', async (req, res) => {
     }
 });
 
-// PUT /api/admin/awards/categories/:id
 adminRouter.put('/awards/categories/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -5581,7 +5257,6 @@ adminRouter.put('/awards/categories/:id', async (req, res) => {
     }
 });
 
-// DELETE /api/admin/awards/categories/:id
 adminRouter.delete('/awards/categories/:id', async (req, res) => {
     try {
         const { count } = await supabase
@@ -5604,10 +5279,6 @@ adminRouter.delete('/awards/categories/:id', async (req, res) => {
     }
 });
 
-
-// ---------- ADMIN: AWARD NOMINATIONS ----------
-
-// GET /api/admin/awards/nominations
 adminRouter.get('/awards/nominations', async (req, res) => {
     try {
         const edition = await getActiveAwardEdition();
@@ -5628,7 +5299,6 @@ adminRouter.get('/awards/nominations', async (req, res) => {
         const { data, error } = await query;
         if (error) throw error;
 
-        // Attach nominator name (from voters table) if available
         const enriched = await Promise.all((data || []).map(async (n) => {
             let nominatedByName = null;
             if (n.nominated_by) {
@@ -5664,7 +5334,6 @@ adminRouter.get('/awards/nominations', async (req, res) => {
     }
 });
 
-// PATCH /api/admin/awards/nominations/:id — approve/reject
 adminRouter.patch('/awards/nominations/:id', async (req, res) => {
     try {
         const { status } = req.body;
@@ -5689,7 +5358,6 @@ adminRouter.patch('/awards/nominations/:id', async (req, res) => {
     }
 });
 
-// DELETE /api/admin/awards/nominations/:id
 adminRouter.delete('/awards/nominations/:id', async (req, res) => {
     try {
         await supabase.from('award_nominations').delete().eq('id', req.params.id);
@@ -5700,10 +5368,6 @@ adminRouter.delete('/awards/nominations/:id', async (req, res) => {
     }
 });
 
-
-// ---------- ADMIN: AWARD NOMINEES ----------
-
-// GET /api/admin/awards/nominees
 adminRouter.get('/awards/nominees', async (req, res) => {
     try {
         const edition = await getActiveAwardEdition();
@@ -5745,10 +5409,6 @@ adminRouter.get('/awards/nominees', async (req, res) => {
     }
 });
 
-
-// ---------- ADMIN: PUBLISH WINNERS ----------
-
-// POST /api/admin/awards/publish
 adminRouter.post('/awards/publish', async (req, res) => {
     try {
         const edition = await getActiveAwardEdition();
@@ -5807,7 +5467,6 @@ adminRouter.post('/awards/publish', async (req, res) => {
             const top = sorted[0];
             const second = sorted[1];
 
-            // Skip ties — admin must resolve manually
             if (second && (scores[top.id] || 0) === (scores[second.id] || 0)) {
                 logger.warn('Tie detected in category', { categoryId: cat.id, categoryName: cat.name });
                 ties.push(cat.name);
@@ -5862,10 +5521,6 @@ adminRouter.post('/awards/publish', async (req, res) => {
     }
 });
 
-
-// ---------- ADMIN: AWARD JUDGES ----------
-
-// GET /api/admin/awards/judges
 adminRouter.get('/awards/judges', async (req, res) => {
     try {
         const edition = await getActiveAwardEdition();
@@ -5895,7 +5550,6 @@ adminRouter.get('/awards/judges', async (req, res) => {
     }
 });
 
-// POST /api/admin/awards/judges
 adminRouter.post('/awards/judges', async (req, res) => {
     try {
         const edition = await getActiveAwardEdition();
@@ -5927,7 +5581,6 @@ adminRouter.post('/awards/judges', async (req, res) => {
     }
 });
 
-// DELETE /api/admin/awards/judges/:id
 adminRouter.delete('/awards/judges/:id', async (req, res) => {
     try {
         await supabase.from('award_judges').delete().eq('id', req.params.id);
@@ -5946,7 +5599,6 @@ console.log('✅ [AWARD-ADMIN] /api/admin/awards/* routes registered');
 
 const publicMediaRouter = express.Router();
 
-// GET /api/gallery — PUBLIC. Only published items, no auth required.
 publicMediaRouter.get('/gallery', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -5980,7 +5632,6 @@ publicMediaRouter.get('/gallery', async (req, res) => {
             } : null
         }));
 
-        // Cache for 60s — public pages hit this a lot
         res.setHeader('Cache-Control', 'public, max-age=60');
         res.json({ status: 'success', data: mapped, count: mapped.length });
     } catch (error) {
@@ -5989,11 +5640,10 @@ publicMediaRouter.get('/gallery', async (req, res) => {
     }
 });
 
-// GET /api/media/placements/homepage-hero — PUBLIC. Returns the current hero image.
 publicMediaRouter.get('/media/placements/homepage-hero', async (req, res) => {
     try {
         const { data, error } = await supabase
-                        .from('media_placements')
+            .from('media_placements')
             .select(`
                 media_id, updated_at,
                 media:media!media_placements_media_id_fkey(
@@ -6103,7 +5753,10 @@ if (publicExists) {
         '/members': 'member.html', '/member.html': 'member.html',
         '/resources': 'resources.html', '/resources.html': 'resources.html',
         '/news': 'news.html', '/news.html': 'news.html',
-        '/contact': 'contacts.html', '/contacts.html': 'contacts.html'
+        '/contact': 'contacts.html', '/contacts.html': 'contacts.html',
+        '/gallery': 'gallery.html', '/gallery.html': 'gallery.html',
+        '/elections': 'elections.html', '/elections.html': 'elections.html',
+        '/awards': 'awards.html', '/awards.html': 'awards.html'
     };
 
     Object.entries(publicRoutes).forEach(([route, file]) => {
