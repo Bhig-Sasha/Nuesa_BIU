@@ -2404,12 +2404,15 @@ adminRouter.delete('/media/:id', async (req, res) => {
 // GET /api/admin/media/gallery — list all gallery items
 adminRouter.get('/media/gallery', async (req, res) => {
     try {
+
         const { data, error } = await supabase
             .from('media_gallery')
             .select(`
                 id, media_id, title, description, category, status, display_order,
                 created_at, updated_at,
-                media:media(id, title, file_url, thumbnail_url, file_type, media_type, size_bytes)
+                media:media!media_gallery_media_id_fkey(
+                    id, title, file_url, thumbnail_url, file_type, media_type, size_bytes
+                )
             `)
             .order('display_order', { ascending: true })
             .order('created_at', { ascending: false });
@@ -2596,7 +2599,8 @@ adminRouter.get('/media/placements/homepage-hero', async (req, res) => {
             .from('media_placements')
             .select(`
                 id, slot, media_id, updated_at,
-                media:media(id, title, file_url, thumbnail_url, media_type)
+                media:media!media_placements_media_id_fkey(
+                    id, title, file_url, thumbnail_url, media_type)
             `)
             .eq('slot', 'homepage-hero')
             .maybeSingle();
@@ -5619,7 +5623,8 @@ publicMediaRouter.get('/gallery', async (req, res) => {
             .from('media_gallery')
             .select(`
                 id, title, description, category, status, display_order, created_at,
-                media:media(id, file_url, thumbnail_url, file_type, media_type, size_bytes)
+                media:media!media_gallery_media_id_fkey(
+                    id, file_url, thumbnail_url, file_type, media_type, size_bytes)
             `)
             .eq('status', 'published')
             .order('display_order', { ascending: true })
@@ -5658,10 +5663,11 @@ publicMediaRouter.get('/gallery', async (req, res) => {
 publicMediaRouter.get('/media/placements/homepage-hero', async (req, res) => {
     try {
         const { data, error } = await supabase
-            .from('media_placements')
+                        .from('media_placements')
             .select(`
                 media_id, updated_at,
-                media:media(id, file_url, thumbnail_url, title, media_type)
+                media:media!media_placements_media_id_fkey(
+                    id, file_url, thumbnail_url, title, media_type)
             `)
             .eq('slot', 'homepage-hero')
             .maybeSingle();
