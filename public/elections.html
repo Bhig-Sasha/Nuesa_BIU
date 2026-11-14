@@ -2148,7 +2148,7 @@
         </div>
     </footer>
 
-    <script>
+<script>
     /* ============================================================
        CONFIG
        ============================================================ */
@@ -2313,27 +2313,24 @@
             });
         });
 
-        // NOW derive departments & levels — CANDIDATES is populated
+        // Derive departments & levels after CANDIDATES is populated
         const derivedDepartments = [...new Set(CANDIDATES.map(c => c.department).filter(Boolean))].sort();
         const derivedLevels = [...new Set(CANDIDATES.map(c => c.level).filter(Boolean))]
             .sort((a, b) => parseInt(a) - parseInt(b));
 
-        // Prefer server-supplied lists if present, otherwise use derived ones
-        DEPARTMENTS = (raw.departments && raw.departments.length) ? raw.departments : derivedDepartments;
-        LEVELS = (raw.levels && raw.levels.length) ? raw.levels : derivedLevels;
-
-        // Ensure the three standard BIU engineering departments are always available
-        // (in case the server doesn't send them but candidates use short names)
-        if (!DEPARTMENTS.length) {
-            DEPARTMENTS = [
+        // Prefer server-supplied lists if present, otherwise use derived ones,
+        // otherwise fall back to the standard BIU lists
+        DEPARTMENTS = (raw.departments && raw.departments.length)
+            ? raw.departments
+            : (derivedDepartments.length ? derivedDepartments : [
                 'Electrical/Electronics Engineering',
                 'Mechanical Engineering',
                 'Civil Engineering'
-            ];
-        }
-        if (!LEVELS.length) {
-            LEVELS = ['100L', '200L', '300L', '400L', '500L'];
-        }
+            ]);
+
+        LEVELS = (raw.levels && raw.levels.length)
+            ? raw.levels
+            : (derivedLevels.length ? derivedLevels : ['100L', '200L', '300L', '400L', '500L']);
 
         electionPhase = raw.phase || 'closed';
         resultsPublished = !!raw.results_published;
@@ -2348,14 +2345,12 @@
 
         currentTab = tabId;
 
-        // Update nav buttons
         document.querySelectorAll('.election-nav button').forEach(btn => {
             const isActive = btn.dataset.tab === tabId;
             btn.classList.toggle('active', isActive);
             btn.setAttribute('aria-selected', String(isActive));
         });
 
-        // Show / hide panels
         const panels = {
             register: document.getElementById('panel-register'),
             candidates: document.getElementById('panel-candidates'),
@@ -2372,13 +2367,11 @@
             }
         });
 
-        // Render
         if (tabId === 'register') renderRegister();
         else if (tabId === 'candidates') renderCandidates();
         else if (tabId === 'vote') renderVote();
         else if (tabId === 'results') refreshResults();
 
-        // Scroll to panel if requested
         if (options.scroll !== false) {
             const navHeight = document.getElementById('navbar').offsetHeight;
             const nav = document.getElementById('electionNav');
@@ -2398,7 +2391,6 @@
         btn.addEventListener('click', () => switchTab(btn.dataset.tab));
     });
 
-    // Hero buttons
     document.getElementById('heroRegisterBtn').addEventListener('click', (e) => {
         e.preventDefault();
         switchTab('register');
@@ -2573,7 +2565,6 @@
     function bindRegisterHandlers() {
         const form = document.getElementById('registerForm');
 
-        // Restore any previously typed values
         if (registerFormData.fullName) document.getElementById('fullName').value = registerFormData.fullName;
         if (registerFormData.phone) document.getElementById('phone').value = registerFormData.phone;
         if (registerFormData.matricNumber) document.getElementById('matricNumber').value = registerFormData.matricNumber;
@@ -2733,7 +2724,11 @@
        ============================================================ */
     function renderCandidates() {
         if (!CANDIDATES.length) {
-            candidatesContent.innerHTML = emptyState('fa-users-slash', 'No candidates yet', 'The electoral committee has not approved any candidates for this election.');
+            candidatesContent.innerHTML = emptyState(
+                'fa-users-slash',
+                'No candidates yet',
+                'The electoral committee has not approved any candidates for this election. Please check back after nominations close.'
+            );
             return;
         }
 
@@ -2859,7 +2854,11 @@
 
         const positions = positionsWithCandidates();
         if (!positions.length) {
-            voteContent.innerHTML = emptyState('fa-ban', 'No positions open', 'There are no positions available for voting at the moment.');
+            voteContent.innerHTML = emptyState(
+                'fa-hourglass-half',
+                'No candidates to vote for yet',
+                'The electoral committee has not published any approved candidates. Voting will open once candidates are confirmed.'
+            );
             return;
         }
 
@@ -2975,7 +2974,11 @@
 
     function renderResults() {
         if (!CANDIDATES.length) {
-            resultsContent.innerHTML = emptyState('fa-chart-bar', 'No results yet', 'There are no results to display at the moment.');
+            resultsContent.innerHTML = emptyState(
+                'fa-chart-bar',
+                'No results yet',
+                'There are no candidates or results to display at the moment.'
+            );
             return;
         }
 
@@ -3036,7 +3039,6 @@
 
         resultsContent.innerHTML = html;
 
-        // Animate the bars into position
         requestAnimationFrame(() => {
             resultsContent.querySelectorAll('.result-bar-fill').forEach(el => {
                 const w = parseFloat(el.dataset.width) || 0;
@@ -3109,11 +3111,13 @@
 
             updateStatusStrip();
 
-            if (!POSITIONS.length || !CANDIDATES.length) {
+            // ⚠️ Key change: registration only needs POSITIONS. Candidates are
+            // not required for registration to work — only for voting.
+            if (!POSITIONS.length) {
                 registerContent.innerHTML = emptyState(
                     'fa-info-circle',
                     'Election setup incomplete',
-                    'The election exists but no positions or approved candidates have been published yet.'
+                    'The election exists but no positions have been published yet. Please check back once the setup is complete.'
                 );
                 return;
             }
@@ -3157,6 +3161,6 @@
             targets.forEach(el => el.classList.add('is-visible'));
         }
     })();
-    </script>
+</script>
 </body>
 </html>
