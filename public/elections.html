@@ -445,6 +445,33 @@
             max-width: 44rem; line-height: 1.6;
         }
 
+        /* REGISTRATION STATUS BANNER (top of page) */
+        .reg-banner {
+            display: flex; align-items: center; gap: 1rem;
+            padding: 1.15rem 1.35rem;
+            background: linear-gradient(135deg, var(--emerald-50), var(--white));
+            border: 1px solid var(--emerald-200);
+            border-radius: var(--radius-lg);
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        .reg-banner-icon {
+            width: 46px; height: 46px; border-radius: 12px;
+            background: var(--emerald-600); color: var(--white);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem; flex-shrink: 0;
+        }
+        .reg-banner-body { flex: 1; min-width: 200px; }
+        .reg-banner-body h4 {
+            font-size: .95rem; font-weight: 800;
+            color: var(--emerald-900); margin-bottom: .2rem;
+        }
+        .reg-banner-body p {
+            font-size: .82rem; color: var(--emerald-800); line-height: 1.5;
+        }
+        .reg-banner .btn { flex-shrink: 0; }
+        @media (max-width: 640px) { .reg-banner .btn { width: 100%; } }
+
         /* ELECTION INFO */
         .info-grid {
             display: grid;
@@ -697,6 +724,10 @@
             font-size: .9rem; color: var(--slate-900);
             transition: all var(--dur-fast) var(--ease);
             appearance: none;
+        }
+        .field input:disabled {
+            background: var(--slate-100); color: var(--slate-600);
+            cursor: not-allowed;
         }
         .field textarea {
             min-height: 90px; padding-top: .85rem; resize: vertical;
@@ -970,6 +1001,7 @@
             box-shadow: var(--shadow-xl);
             animation: modalSlideUp .35s var(--ease-out);
         }
+        .modal-sm { max-width: 460px; }
         @keyframes modalSlideUp {
             from { opacity: 0; transform: translateY(24px) scale(.97); }
             to   { opacity: 1; transform: translateY(0) scale(1); }
@@ -1171,6 +1203,34 @@
         .add-nominee-btn i { font-size: .8rem; }
 
         .divider { height: 1px; background: var(--slate-200); margin: 1.5rem 0; }
+
+        /* READ-ONLY IDENTITY CARD (inside nomination modal) */
+        .identity-card {
+            display: flex; align-items: center; gap: .9rem;
+            padding: .95rem 1.1rem;
+            background: linear-gradient(135deg, var(--emerald-50), var(--white));
+            border: 1px solid var(--emerald-200);
+            border-radius: var(--radius);
+            margin-bottom: 1.1rem;
+        }
+        .identity-avatar {
+            width: 46px; height: 46px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--emerald-700), var(--emerald-950));
+            color: var(--amber-300);
+            display: flex; align-items: center; justify-content: center;
+            font-family: var(--font-sans);
+            font-weight: 800; font-size: 1rem;
+            flex-shrink: 0;
+        }
+        .identity-body { min-width: 0; }
+        .identity-body strong {
+            display: block; font-size: .9rem; font-weight: 800;
+            color: var(--slate-900);
+        }
+        .identity-body span {
+            font-family: var(--font-mono); font-size: .7rem;
+            color: var(--slate-500);
+        }
 
         /* STATE BOX */
         .state-box {
@@ -1399,11 +1459,11 @@
                         <span class="accent">Your Future.</span>
                     </h1>
                     <p class="hero-sub">
-                        Nominate the leaders you believe in, review every candidate, and cast your ballot — all in one place.
+                        Register once, then use your matric number to nominate and vote — all in one place.
                     </p>
                     <div class="hero-ctas">
-                        <a href="#nominate" class="btn btn-gold" id="heroNominateBtn">
-                            <i class="fas fa-user-plus"></i> Nominate a Candidate
+                        <a href="#register" class="btn btn-gold" id="heroRegisterBtn">
+                            <i class="fas fa-user-check"></i> Register as a Voter
                         </a>
                         <a href="#candidates" class="btn btn-outline" id="heroCandidatesBtn">
                             <i class="fas fa-users"></i> Meet Candidates
@@ -1413,22 +1473,22 @@
                         <div class="hero-step">
                             <div class="hero-step-num">01</div>
                             <div class="hero-step-body">
-                                <h4>Nominate</h4>
-                                <p>Put forward a peer</p>
+                                <h4>Register</h4>
+                                <p>Once as a voter</p>
                             </div>
                         </div>
                         <div class="hero-step">
                             <div class="hero-step-num">02</div>
                             <div class="hero-step-body">
-                                <h4>Review</h4>
-                                <p>Read every manifesto</p>
+                                <h4>Nominate</h4>
+                                <p>Use your matric</p>
                             </div>
                         </div>
                         <div class="hero-step">
                             <div class="hero-step-num">03</div>
                             <div class="hero-step-body">
                                 <h4>Vote</h4>
-                                <p>Cast your secure ballot</p>
+                                <p>Cast your ballot</p>
                             </div>
                         </div>
                     </div>
@@ -1439,8 +1499,8 @@
                     <div class="hero-visual-caption">
                         <div class="hero-visual-caption-icon"><i class="fas fa-shield-halved"></i></div>
                         <div class="hero-visual-caption-body">
-                            <strong>Secure & Verified</strong>
-                            <span>Every ballot is anonymous</span>
+                            <strong>One-Time Registration</strong>
+                            <span>One ballot per student</span>
                         </div>
                     </div>
                 </div>
@@ -1482,12 +1542,24 @@
         </div>
 
         <div class="page-body">
+            <!-- REGISTRATION BANNER -->
+            <div class="reg-banner" id="regBanner">
+                <div class="reg-banner-icon"><i class="fas fa-user-check"></i></div>
+                <div class="reg-banner-body" id="regBannerBody">
+                    <h4>Register once to participate</h4>
+                    <p>Register as a voter to nominate and vote. You only need to do this once for this election.</p>
+                </div>
+                <button class="btn btn-gold" id="openRegisterBtn" type="button">
+                    <i class="fas fa-user-plus"></i> Register as a Voter
+                </button>
+            </div>
+
             <!-- 01 — ELECTION INFORMATION -->
             <section class="content-section" id="info">
                 <div class="section-head">
                     <span class="section-eyebrow"><i class="fas fa-info-circle"></i> 01 · Election Information</span>
                     <h2 class="section-title">About this election</h2>
-                    <p class="section-sub">Everything you need to know before nominating or voting.</p>
+                    <p class="section-sub">Everything you need to know before registering, nominating or voting.</p>
                 </div>
                 <div class="info-grid" id="infoGrid">
                     <div class="loading-box" style="grid-column: 1/-1;">
@@ -1498,19 +1570,19 @@
             </section>
 
             <!-- 02 — NOMINATION SECTION -->
-            <section class="content-section" id="nominate">
+            <section class="content-section" id="register">
                 <div class="section-head">
                     <span class="section-eyebrow"><i class="fas fa-user-plus"></i> 02 · Nominations</span>
                     <h2 class="section-title">Nominate a candidate</h2>
-                    <p class="section-sub">Know someone who would represent your department well? Put their name forward. You can nominate multiple people in a single submission.</p>
+                    <p class="section-sub">Enter your registered matric number to unlock the nomination form. You can nominate multiple people in a single submission.</p>
                 </div>
                 <div class="nominate-cta" id="nominateCTA">
                     <div class="nominate-cta-text">
                         <h3>Ready to nominate?</h3>
-                        <p>Enter your details once, then add as many nominees as you want. All nominations are sent together for the electoral committee to review.</p>
+                        <p>Nomination is open to registered voters only. Enter your matric number to continue.</p>
                     </div>
                     <button class="btn btn-gold" id="openNominateBtn" type="button">
-                        <i class="fas fa-pen-to-square"></i> Open Nomination Form
+                        <i class="fas fa-pen-to-square"></i> Access Nomination
                     </button>
                 </div>
             </section>
@@ -1535,7 +1607,7 @@
                 <div class="section-head">
                     <span class="section-eyebrow"><i class="fas fa-lock"></i> 04 · Secure Ballot</span>
                     <h2 class="section-title">Cast your vote</h2>
-                    <p class="section-sub">Verify your identity with your matric number and phone number, then select one candidate per position.</p>
+                    <p class="section-sub">Enter your registered matric number to access the ballot. You must have registered as a voter first.</p>
                 </div>
                 <div id="voteContent">
                     <div class="loading-box">
@@ -1624,6 +1696,7 @@
        CONFIG
        ============================================================ */
     const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
+    const STORAGE_KEY = 'nuesa_voter_session';
 
     /* ============================================================
        STATE
@@ -1636,9 +1709,11 @@
     let electionPhase = 'closed';
     let resultsPublished = false;
     let tallies = {};
-    let verifiedVoter = null;
     let hasVoted = false;
     let votes = {};
+
+    // Registered voter for this browser session (persisted in sessionStorage)
+    let verifiedVoter = loadVoterSession();
 
     const statusTitle = document.getElementById('statusTitle');
     const statusPhase = document.getElementById('statusPhase');
@@ -1649,9 +1724,31 @@
     const candidatesContent = document.getElementById('candidatesContent');
     const voteContent = document.getElementById('voteContent');
     const resultsContent = document.getElementById('resultsContent');
+    const regBanner = document.getElementById('regBanner');
+    const regBannerBody = document.getElementById('regBannerBody');
+    const openRegisterBtn = document.getElementById('openRegisterBtn');
 
     /* ============================================================
-       BODY SCROLL LOCK (restores scroll position on close)
+       SESSION STORAGE — keeps the voter logged in across reloads
+       ============================================================ */
+    function saveVoterSession(voter) {
+        try {
+            sessionStorage.setItem(STORAGE_KEY, JSON.stringify(voter));
+        } catch {}
+    }
+    function loadVoterSession() {
+        try {
+            const raw = sessionStorage.getItem(STORAGE_KEY);
+            if (!raw) return null;
+            return JSON.parse(raw);
+        } catch { return null; }
+    }
+    function clearVoterSession() {
+        try { sessionStorage.removeItem(STORAGE_KEY); } catch {}
+    }
+
+    /* ============================================================
+       BODY SCROLL LOCK
        ============================================================ */
     function lockBodyScroll() {
         const y = window.scrollY;
@@ -1703,6 +1800,12 @@
     }
     function positionsWithCandidates() {
         return POSITIONS.filter(p => candidatesFor(p.id).length > 0);
+    }
+    function normalizeMatric(m) {
+        return String(m || '').trim().toUpperCase();
+    }
+    function validatePhone(p) {
+        return /^[0-9+\-\s()]{7,20}$/.test(String(p || '').trim());
     }
 
     /* ============================================================
@@ -1796,6 +1899,372 @@
 
         electionPhase = raw.phase || 'closed';
         resultsPublished = !!raw.results_published;
+    }
+
+    /* ============================================================
+       REGISTRATION STATUS BANNER
+       ============================================================ */
+    function renderRegBanner() {
+        if (!verifiedVoter) {
+            regBannerBody.innerHTML = `
+                <h4>Register once to participate</h4>
+                <p>Register as a voter to nominate and vote. You only need to do this once for this election.</p>`;
+            openRegisterBtn.innerHTML = '<i class="fas fa-user-plus"></i> Register as a Voter';
+            openRegisterBtn.disabled = false;
+        } else {
+            regBannerBody.innerHTML = `
+                <h4>You're registered as ${esc(verifiedVoter.fullName)}</h4>
+                <p>Matric: <strong>${esc(verifiedVoter.matricNumber)}</strong> · You can now nominate and vote.</p>`;
+            openRegisterBtn.innerHTML = '<i class="fas fa-right-from-bracket"></i> End Session';
+            openRegisterBtn.disabled = false;
+            openRegisterBtn.onclick = () => {
+                clearVoterSession();
+                verifiedVoter = null;
+                hasVoted = false;
+                votes = {};
+                renderRegBanner();
+                renderVote();
+                showFloatingToast('Session ended. You can register again with your matric number.', 'info');
+            };
+        }
+    }
+
+    /* ============================================================
+       REGISTER MODAL (one-time voter registration)
+       ============================================================ */
+    function openRegisterModal() {
+        const modal = document.createElement('div');
+        modal.className = 'modal-backdrop';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.innerHTML = `
+            <div class="modal modal-sm">
+                <div class="modal-head">
+                    <button class="modal-close" aria-label="Close">&times;</button>
+                    <h3 class="modal-title">Register as a Voter</h3>
+                    <p class="modal-sub">Complete your details to register for the election. You only need to do this once.</p>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-error" id="regError">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span id="regErrorText"></span>
+                    </div>
+
+                    <div class="field">
+                        <label>Full name</label>
+                        <div class="field-input-wrap">
+                            <i class="fas fa-user"></i>
+                            <input type="text" id="regName" placeholder="e.g. John Doe" required autocomplete="name">
+                        </div>
+                        <div class="field-error">Enter your full name.</div>
+                    </div>
+                    <div class="field">
+                        <label>Matriculation number</label>
+                        <div class="field-input-wrap">
+                            <i class="fas fa-hashtag"></i>
+                            <input type="text" id="regMatric" placeholder="e.g. ENG/2021/001" required style="text-transform:uppercase;" autocomplete="off">
+                        </div>
+                        <div class="field-error">Enter your matriculation number.</div>
+                    </div>
+                    <div class="field">
+                        <label>Phone number</label>
+                        <div class="field-input-wrap">
+                            <i class="fas fa-phone"></i>
+                            <input type="tel" id="regPhone" placeholder="e.g. 08012345678" required autocomplete="tel">
+                        </div>
+                        <div class="field-error">Enter a valid phone number.</div>
+                    </div>
+                    <div class="field">
+                        <label>Department</label>
+                        <div class="field-input-wrap">
+                            <i class="fas fa-building"></i>
+                            <select id="regDept" required>
+                                <option value="">Select department</option>
+                                ${DEPARTMENTS.map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="field-error">Select your department.</div>
+                    </div>
+                    <div class="field">
+                        <label>Level</label>
+                        <div class="field-input-wrap">
+                            <i class="fas fa-graduation-cap"></i>
+                            <select id="regLevel" required>
+                                <option value="">Select level</option>
+                                ${LEVELS.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="field-error">Select your level.</div>
+                    </div>
+                </div>
+                <div class="modal-foot">
+                    <button type="button" class="btn btn-back" id="cancelRegBtn">Cancel</button>
+                    <button type="button" class="btn btn-gold" id="submitRegBtn">
+                        <i class="fas fa-user-check"></i> Register
+                    </button>
+                </div>
+            </div>`;
+
+        document.body.appendChild(modal);
+        lockBodyScroll();
+
+        const close = () => { modal.remove(); unlockBodyScroll(); };
+        modal.addEventListener('click', e => { if (e.target === modal) close(); });
+        modal.querySelector('.modal-close').addEventListener('click', close);
+        document.getElementById('cancelRegBtn').addEventListener('click', close);
+
+        document.getElementById('submitRegBtn').addEventListener('click', async function () {
+            const errorBox = document.getElementById('regError');
+            const errorText = document.getElementById('regErrorText');
+            errorBox.classList.remove('show');
+
+            const payload = {
+                fullName: document.getElementById('regName').value.trim(),
+                matricNumber: normalizeMatric(document.getElementById('regMatric').value),
+                phone: document.getElementById('regPhone').value.trim(),
+                department: document.getElementById('regDept').value,
+                level: document.getElementById('regLevel').value
+            };
+
+            // Client-side validation
+            const fields = [
+                { key: 'fullName', el: document.getElementById('regName') },
+                { key: 'matricNumber', el: document.getElementById('regMatric') },
+                { key: 'phone', el: document.getElementById('regPhone') },
+                { key: 'department', el: document.getElementById('regDept') },
+                { key: 'level', el: document.getElementById('regLevel') }
+            ];
+            let ok = true;
+            fields.forEach(f => {
+                const wrap = f.el.closest('.field');
+                if (!payload[f.key]) { wrap.classList.add('has-error'); ok = false; }
+                else wrap.classList.remove('has-error');
+            });
+
+            if (!payload.fullName || payload.fullName.length < 3) {
+                errorText.textContent = 'Please enter your full name.';
+                errorBox.classList.add('show'); return;
+            }
+            if (!validatePhone(payload.phone)) {
+                errorText.textContent = 'Please enter a valid phone number.';
+                errorBox.classList.add('show'); return;
+            }
+            if (!ok) {
+                errorText.textContent = 'Please complete all fields before registering.';
+                errorBox.classList.add('show'); return;
+            }
+
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registering…';
+
+            try {
+                // Backend endpoint that registers a voter for the active election.
+                // If your backend requires OTP, add a second request here to verify
+                // the OTP before accepting the voter.
+                const res = await fetch(`${API_BASE_URL}/api/elections/voter/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok || data.status !== 'success' || !data.data) {
+                    // Friendly messages for the most common failures
+                    if (res.status === 409) {
+                        throw new Error(data.message || 'This matric number is already registered.');
+                    }
+                    if (res.status === 404) {
+                        throw new Error(data.message || 'Registration endpoint unavailable. Please try again later.');
+                    }
+                    throw new Error(data.message || `Registration failed (${res.status})`);
+                }
+
+                const voter = data.data;
+                verifiedVoter = {
+                    voterId: voter.voterId,
+                    fullName: voter.fullName,
+                    matricNumber: voter.matricNumber,
+                    hasVoted: !!voter.hasVoted
+                };
+                saveVoterSession(verifiedVoter);
+
+                close();
+                renderRegBanner();
+                renderVote();
+                showFloatingToast(
+                    `Welcome, ${voter.fullName}. You can now nominate and vote.`,
+                    'success'
+                );
+            } catch (err) {
+                errorText.textContent = err.message || 'Registration failed. Please try again.';
+                errorBox.classList.add('show');
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-user-check"></i> Register';
+            }
+        });
+    }
+
+    openRegisterBtn.addEventListener('click', () => {
+        if (verifiedVoter) return; // handled by end-session binding above
+        openRegisterModal();
+    });
+    document.getElementById('heroRegisterBtn').addEventListener('click', (e) => {
+        e.preventDefault();
+        if (!verifiedVoter) openRegisterModal();
+        else document.getElementById('vote').scrollIntoView({ behavior: 'smooth' });
+    });
+
+    /* ============================================================
+       MATRIC PROMPT (used before Nominate and before Vote)
+       ============================================================ */
+    function openMatricPrompt(opts) {
+        const { mode, onVerified } = opts; // mode: 'nominate' | 'vote'
+
+        const titles = {
+            nominate: {
+                title: 'Access Nomination',
+                sub: 'Enter your registered matriculation number to continue.',
+                action: 'Continue to Nomination',
+                icon: 'fa-pen-to-square'
+            },
+            vote: {
+                title: 'Access Ballot',
+                sub: 'Enter your registered matriculation number to access the ballot.',
+                action: 'Continue to Voting',
+                icon: 'fa-vote-yea'
+            }
+        };
+        const t = titles[mode];
+
+        const modal = document.createElement('div');
+        modal.className = 'modal-backdrop';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.innerHTML = `
+            <div class="modal modal-sm">
+                <div class="modal-head">
+                    <button class="modal-close" aria-label="Close">&times;</button>
+                    <h3 class="modal-title">${esc(t.title)}</h3>
+                    <p class="modal-sub">${esc(t.sub)}</p>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-error" id="promptError">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span id="promptErrorText"></span>
+                    </div>
+                    <div class="field">
+                        <label>Matriculation number</label>
+                        <div class="field-input-wrap">
+                            <i class="fas fa-hashtag"></i>
+                            <input type="text" id="promptMatric"
+                                placeholder="e.g. ENG/2021/001" required
+                                style="text-transform:uppercase;" autocomplete="off"
+                                value="${esc(verifiedVoter?.matricNumber || '')}">
+                        </div>
+                        <div class="field-error">Enter your matric number.</div>
+                    </div>
+                </div>
+                <div class="modal-foot">
+                    <button type="button" class="btn btn-back" id="promptCancel">Cancel</button>
+                    <button type="button" class="btn btn-gold" id="promptContinue">
+                        <i class="fas ${t.icon}"></i> ${esc(t.action)}
+                    </button>
+                </div>
+            </div>`;
+
+        document.body.appendChild(modal);
+        lockBodyScroll();
+
+        const close = () => { modal.remove(); unlockBodyScroll(); };
+        modal.addEventListener('click', e => { if (e.target === modal) close(); });
+        modal.querySelector('.modal-close').addEventListener('click', close);
+        document.getElementById('promptCancel').addEventListener('click', close);
+
+        const input = document.getElementById('promptMatric');
+        input.focus();
+
+        document.getElementById('promptContinue').addEventListener('click', async function () {
+            const errorBox = document.getElementById('promptError');
+            const errorText = document.getElementById('promptErrorText');
+            errorBox.classList.remove('show');
+
+            const matric = normalizeMatric(input.value);
+            if (!matric) {
+                errorText.textContent = 'Please enter your matric number.';
+                errorBox.classList.add('show'); return;
+            }
+
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying…';
+
+            try {
+                const voter = await verifyVoterByMatric(matric);
+
+                if (!voter) {
+                    throw new Error(
+                        mode === 'nominate'
+                            ? 'You must register as a voter before you can nominate.'
+                            : 'Please register as a voter before voting.'
+                    );
+                }
+                if (mode === 'vote' && voter.hasVoted) {
+                    throw new Error('You have already cast your vote.');
+                }
+                if (mode === 'vote' && voter.eligibleToVote === false) {
+                    throw new Error('You are not eligible to vote in this election.');
+                }
+
+                // Persist this voter for the session
+                verifiedVoter = {
+                    voterId: voter.voterId,
+                    fullName: voter.fullName,
+                    matricNumber: voter.matricNumber,
+                    hasVoted: !!voter.hasVoted
+                };
+                saveVoterSession(verifiedVoter);
+
+                close();
+                renderRegBanner();
+
+                // Hand off to the next stage
+                onVerified(verifiedVoter);
+            } catch (err) {
+                errorText.textContent = err.message || 'Could not verify your matric number.';
+                errorBox.classList.add('show');
+                this.disabled = false;
+                this.innerHTML = `<i class="fas ${t.icon}"></i> ${esc(t.action)}`;
+            }
+        });
+    }
+
+    /* ============================================================
+       VERIFY VOTER BY MATRIC
+       ------------------------------------------------------------
+       Calls the backend voter lookup. Returns the voter record or
+       null if the matric is not registered. If you add OTP later,
+       insert the OTP verification here before returning `voter`.
+       ============================================================ */
+    async function verifyVoterByMatric(matric) {
+        const res = await fetch(`${API_BASE_URL}/api/elections/voter/${encodeURIComponent(matric)}`, {
+            headers: { 'Accept': 'application/json' }
+        });
+
+        if (res.status === 404) return null;
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.status !== 'success' || !data.data) {
+            throw new Error(data?.message || 'Could not verify your matric number.');
+        }
+
+        // Normalize for callers
+        const v = data.data;
+        return {
+            voterId: v.voter_id,
+            fullName: v.full_name,
+            matricNumber: v.matric_no,
+            hasVoted: !!v.has_voted,
+            eligibleToVote: v.eligible_to_vote !== false
+        };
     }
 
     /* ============================================================
@@ -1924,7 +2393,7 @@
     }
 
     /* ============================================================
-       NOMINATE — MODAL
+       NOMINATE — modal (post-verification)
        ============================================================ */
     let nomineeCount = 0;
 
@@ -2004,6 +2473,10 @@
             alert('Nominations are not open yet — no positions have been configured.');
             return;
         }
+        if (!verifiedVoter) {
+            showFloatingToast('You must register as a voter before you can nominate.', 'error');
+            return;
+        }
 
         nomineeCount = 0;
         const modal = document.createElement('div');
@@ -2015,7 +2488,7 @@
                 <div class="modal-head">
                     <button class="modal-close" aria-label="Close">&times;</button>
                     <h3 class="modal-title">Nominate candidates</h3>
-                    <p class="modal-sub">Enter your details once, then add as many nominees as you want. All nominations are submitted together.</p>
+                    <p class="modal-sub">All nominations are submitted together for the electoral committee to review.</p>
                 </div>
                 <div class="modal-body" id="nominateModalBody">
                     <div class="alert alert-error" id="nominateError">
@@ -2023,52 +2496,13 @@
                         <span id="nominateErrorText"></span>
                     </div>
 
-                    <div class="nom-step-head"><span>1</span> Your details</div>
-                    <div class="field">
-                        <label>Full name</label>
-                        <div class="field-input-wrap">
-                            <i class="fas fa-user"></i>
-                            <input type="text" id="nominatorName" placeholder="e.g. John Doe" required>
+                    <div class="nom-step-head"><span>1</span> Nominator</div>
+                    <div class="identity-card">
+                        <div class="identity-avatar">${esc(initials(verifiedVoter.fullName))}</div>
+                        <div class="identity-body">
+                            <strong>${esc(verifiedVoter.fullName)}</strong>
+                            <span>${esc(verifiedVoter.matricNumber)} · Verified voter</span>
                         </div>
-                        <div class="field-error">Enter your name.</div>
-                    </div>
-                    <div class="field">
-                        <label>Matric number</label>
-                        <div class="field-input-wrap">
-                            <i class="fas fa-hashtag"></i>
-                            <input type="text" id="nominatorMatric" placeholder="e.g. ENG/2021/001" required style="text-transform:uppercase;">
-                        </div>
-                        <div class="field-error">Enter your matric number.</div>
-                    </div>
-                    <div class="field">
-                        <label>Phone number</label>
-                        <div class="field-input-wrap">
-                            <i class="fas fa-phone"></i>
-                            <input type="tel" id="nominatorPhone" placeholder="e.g. 08012345678" required>
-                        </div>
-                        <div class="field-error">Enter a valid phone number.</div>
-                    </div>
-                    <div class="field">
-                        <label>Department</label>
-                        <div class="field-input-wrap">
-                            <i class="fas fa-building"></i>
-                            <select id="nominatorDept" required>
-                                <option value="">Select department</option>
-                                ${DEPARTMENTS.map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div class="field-error">Select a department.</div>
-                    </div>
-                    <div class="field">
-                        <label>Level</label>
-                        <div class="field-input-wrap">
-                            <i class="fas fa-graduation-cap"></i>
-                            <select id="nominatorLevel" required>
-                                <option value="">Select level</option>
-                                ${LEVELS.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div class="field-error">Select a level.</div>
                     </div>
 
                     <div class="divider"></div>
@@ -2129,25 +2563,6 @@
             const errorText = document.getElementById('nominateErrorText');
             errorBox.classList.remove('show');
 
-            const nominator = {
-                fullName: document.getElementById('nominatorName').value.trim(),
-                matricNumber: document.getElementById('nominatorMatric').value.trim().toUpperCase(),
-                phone: document.getElementById('nominatorPhone').value.trim(),
-                department: document.getElementById('nominatorDept').value,
-                level: document.getElementById('nominatorLevel').value
-            };
-
-            if (!nominator.fullName || !nominator.matricNumber || !nominator.phone || !nominator.department || !nominator.level) {
-                errorText.textContent = 'Please fill in all your details before submitting.';
-                errorBox.classList.add('show');
-                return;
-            }
-            if (!/^[0-9+\-\s()]{7,20}$/.test(nominator.phone)) {
-                errorText.textContent = 'Please enter a valid phone number.';
-                errorBox.classList.add('show');
-                return;
-            }
-
             const nomineeCards = document.querySelectorAll('#nomineeList .nominee-card');
             const nominees = [];
             let valid = true;
@@ -2161,7 +2576,7 @@
                 const nominee = {
                     positionId: get(`nominee_position_${idx}`),
                     name: get(`nominee_name_${idx}`),
-                    matric: get(`nominee_matric_${idx}`).toUpperCase(),
+                    matric: normalizeMatric(get(`nominee_matric_${idx}`)),
                     department: get(`nominee_dept_${idx}`),
                     level: get(`nominee_level_${idx}`),
                     reason: get(`nominee_reason_${idx}`)
@@ -2190,17 +2605,30 @@
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting…';
 
             try {
+                const payload = {
+                    nominator: {
+                        fullName: verifiedVoter.fullName,
+                        matricNumber: verifiedVoter.matricNumber,
+                        phone: '',
+                        department: '',
+                        level: ''
+                    },
+                    nominees
+                };
                 const res = await fetch(`${API_BASE_URL}/api/elections/nominations/bulk`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                    body: JSON.stringify({ nominator, nominees })
+                    body: JSON.stringify(payload)
                 });
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok || data.status !== 'success') {
                     throw new Error(data?.message || `Submission failed (${res.status})`);
                 }
                 close();
-                showFloatingToast(`Thanks! ${nominees.length} nomination${nominees.length === 1 ? '' : 's'} submitted for review.`, 'success');
+                showFloatingToast(
+                    `Thanks! ${nominees.length} nomination${nominees.length === 1 ? '' : 's'} submitted for review.`,
+                    'success'
+                );
             } catch (err) {
                 errorText.textContent = err.message || 'Could not submit nominations. Please try again.';
                 errorBox.classList.add('show');
@@ -2210,11 +2638,18 @@
         });
     }
 
-    document.getElementById('openNominateBtn').addEventListener('click', openNominateModal);
-    document.getElementById('heroNominateBtn').addEventListener('click', (e) => {
-        e.preventDefault();
-        document.getElementById('nominate').scrollIntoView({ behavior: 'smooth' });
+    // "Access Nomination" — always ask for matric first
+    document.getElementById('openNominateBtn').addEventListener('click', () => {
+        if (!verifiedVoter) {
+            openMatricPrompt({
+                mode: 'nominate',
+                onVerified: () => openNominateModal()
+            });
+            return;
+        }
+        openNominateModal();
     });
+
     document.getElementById('heroCandidatesBtn').addEventListener('click', (e) => {
         e.preventDefault();
         document.getElementById('candidates').scrollIntoView({ behavior: 'smooth' });
@@ -2238,9 +2673,9 @@
             voteContent.innerHTML = `
                 <div class="verify-box">
                     <div class="verify-head">
-                        <div class="verify-head-icon"><i class="fas fa-shield-halved"></i></div>
-                        <h3>Verify your identity</h3>
-                        <p>Enter your matric number and phone number to unlock the ballot.</p>
+                        <div class="verify-head-icon"><i class="fas fa-lock"></i></div>
+                        <h3>Access the ballot</h3>
+                        <p>Enter your registered matric number to access the ballot. You must have registered as a voter first.</p>
                     </div>
                     <div class="alert alert-error" id="verifyError">
                         <i class="fas fa-exclamation-circle"></i>
@@ -2250,70 +2685,71 @@
                         <label>Matric number</label>
                         <div class="field-input-wrap">
                             <i class="fas fa-hashtag"></i>
-                            <input type="text" id="verifyMatric" placeholder="e.g. ENG/2021/001" required style="text-transform:uppercase;">
-                        </div>
-                    </div>
-                    <div class="field">
-                        <label>Phone number</label>
-                        <div class="field-input-wrap">
-                            <i class="fas fa-phone"></i>
-                            <input type="tel" id="verifyPhone" placeholder="e.g. 08012345678" required>
+                            <input type="text" id="verifyMatric" placeholder="e.g. ENG/2021/001" required style="text-transform:uppercase;" autocomplete="off">
                         </div>
                     </div>
                     <button class="btn btn-gold btn-block" id="verifyBtn" type="button" style="margin-top:.5rem;">
-                        <i class="fas fa-unlock"></i> Unlock Ballot
+                        <i class="fas fa-unlock"></i> Continue to Voting
                     </button>
+                    <p style="text-align:center;margin-top:1rem;font-size:.78rem;color:var(--slate-500);">
+                        Not registered yet?
+                        <a href="#" id="verifyRegLink" style="color:var(--emerald-700);font-weight:700;text-decoration:underline;">Register as a voter</a>
+                    </p>
                 </div>`;
 
+            document.getElementById('verifyRegLink').addEventListener('click', (e) => {
+                e.preventDefault();
+                openRegisterModal();
+            });
+
             document.getElementById('verifyBtn').addEventListener('click', async () => {
-                const matric = document.getElementById('verifyMatric').value.trim().toUpperCase();
-                const phone = document.getElementById('verifyPhone').value.trim();
+                const matric = normalizeMatric(document.getElementById('verifyMatric').value);
                 const errorBox = document.getElementById('verifyError');
                 const errorText = document.getElementById('verifyErrorText');
                 const btn = document.getElementById('verifyBtn');
                 errorBox.classList.remove('show');
 
-                if (!matric || !phone) {
-                    errorText.textContent = 'Please enter your matric number and phone number.';
-                    errorBox.classList.add('show');
-                    return;
+                if (!matric) {
+                    errorText.textContent = 'Please enter your matric number.';
+                    errorBox.classList.add('show'); return;
                 }
 
                 btn.disabled = true;
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying…';
 
                 try {
-                    const res = await fetch(`${API_BASE_URL}/api/elections/voter/verify`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                        body: JSON.stringify({ matricNumber: matric, phone })
-                    });
-                    const data = await res.json().catch(() => ({}));
-                    if (!res.ok || data.status !== 'success' || !data.data) {
-                        throw new Error(data?.message || 'Could not verify your details.');
+                    const voter = await verifyVoterByMatric(matric);
+
+                    if (!voter) {
+                        throw new Error('Please register as a voter before voting.');
                     }
-                    if (data.data.hasVoted) {
-                        throw new Error('Our records show you have already voted in this election.');
+                    if (voter.hasVoted) {
+                        throw new Error('You have already cast your vote.');
                     }
-                    if (data.data.eligibleToVote === false) {
+                    if (voter.eligibleToVote === false) {
                         throw new Error('You are not eligible to vote in this election.');
                     }
+
                     verifiedVoter = {
-                        voterId: data.data.voterId,
-                        fullName: data.data.fullName,
-                        matricNumber: data.data.matricNumber
+                        voterId: voter.voterId,
+                        fullName: voter.fullName,
+                        matricNumber: voter.matricNumber,
+                        hasVoted: false
                     };
+                    saveVoterSession(verifiedVoter);
+                    renderRegBanner();
                     renderVote();
                 } catch (err) {
                     errorText.textContent = err.message || 'Verification failed. Please check your details.';
                     errorBox.classList.add('show');
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-unlock"></i> Unlock Ballot';
+                    btn.innerHTML = '<i class="fas fa-unlock"></i> Continue to Voting';
                 }
             });
             return;
         }
 
+        // Verified: show ballot
         const positions = positionsWithCandidates();
         if (!positions.length) {
             voteContent.innerHTML = `
@@ -2555,9 +2991,11 @@
             renderStatus();
             renderInfo();
             renderCandidates();
+            renderRegBanner();
             renderVote();
             renderResults();
 
+            // Nominations are closed → disable the Access button
             if (!['preparation', 'pending', 'nomination'].includes(electionPhase)) {
                 const ctaButton = document.getElementById('openNominateBtn');
                 if (ctaButton) {
@@ -2567,6 +3005,19 @@
                     ctaButton.style.cursor = 'not-allowed';
                 }
             }
+
+            // If the session voter is already registered, keep their hasVoted state fresh
+            if (verifiedVoter && verifiedVoter.matricNumber) {
+                try {
+                    const fresh = await verifyVoterByMatric(verifiedVoter.matricNumber);
+                    if (fresh) {
+                        verifiedVoter.hasVoted = fresh.hasVoted;
+                        hasVoted = fresh.hasVoted;
+                        saveVoterSession(verifiedVoter);
+                    }
+                } catch {}
+            }
+            renderVote();
         } catch (err) {
             console.error('Election init failed:', err);
             infoGrid.innerHTML = '';
