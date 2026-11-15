@@ -3,7 +3,7 @@
  * NUESA BIU API SERVER - ORGANIZED VERSION
  * ============================================================
  * @author Sasha Troger
- * @version 1.3.0  (Media Library + Gallery + Supabase Storage + Bulk Nominations)
+ * @version 1.3.3  (voter/register + matric lookup for verify + security fixes)
  * @license MIT
  * @DevSignature ST-BIU-2026
  */
@@ -4072,6 +4072,146 @@ electionRouter.post('/voter/verify', async (req, res) => {
     }
 });
 
+// =============== VOTER REGISTRATION (public) ===============
+// Allows a student to self-register for the current election session.
+// Required fields: fullName, matricNumber, phone, department, level
+electionRouter.post('/voter/register', createRateLimiter(8, 15 * 60 * 1000, 'Too many registration attempts'), async (req, res) => {
+    try {
+        const {
+            fullName,
+            matricNumber,
+            phone,
+            department,
+            level,
+            email,
+            receiptNumber
+        } = req.body;
+
+        // Basic required-field validation
+        if (!fullName || !String(fullName).trim()) {
+            return res.status(400).json({ status: 'error', message: 'Full name is required' });
+        }
+        if (!matricNumber || !String(matricNumber).trim()) {
+            return res.status(400).json({ status: 'error', message: 'Matric number is required' });
+        }
+        if (!phone || !String(phone).trim()) {
+            return res.status(400).json({ status: 'error', message: 'Phone number is required' });
+        }
+        if (!department || !String(department).trim()) {
+            return res.status(400).json({ status: 'error', message: 'Department is required' });
+        }
+        if (!level || !String(level).trim()) {
+            return res.status(400).json({ status: 'error', message: 'Level is required' });
+        }
+
+        const election = await getActiveElection();
+        if (!election) {
+            return res.status(400).json({ status: 'error', message: 'No active election. Registration is closed.' });
+        }
+
+        // Only allow registration while election is open for nominations or before voting ends
+        if (!['preparation', 'pending', 'nomination', 'voting'].includes(election.phase)) {
+            return res.status(403).json({
+                status: 'error',
+                message: `Registration is closed (current phase: ${election.phase})`
+            });
+        }
+
+        const cleanMatric = String(matricNumber).trim().toUpperCase();
+        const cleanPhone  = String(phone).replace(/\s/g, '').trim();
+        const cleanName   = String(fullName).trim();
+        const cleanDept   = String(department).trim();
+        const cleanLevel  = String(level).trim();
+
+        // Check if this matric is already registered for the current session
+        const { data: existing, error: existErr } = await supabase
+            .from('voters')
+            .select('id, voter_id, full_name, phone')
+            .eq('session_id', election.session_id)
+            .ilike('matric_no', cleanMatric)
+            .maybeSingle();
+
+        if (existErr && existErr.code !== 'PGRST116') throw existErr;
+
+        if (existing) {
+            // Already registered – treat as success so the frontend can continue to verify
+            return res.status(200).json({
+                status: 'success',
+                data: {
+                    voterId: existing.voter_id,
+                    fullName: existing.full_name,
+                    matricNumber: cleanMatric,
+                    alreadyRegistered: true
+                },
+                message: 'You are already registered for this election'
+            });
+        }
+
+        // Generate a unique voter ID
+        const newVoterId = `VOTER-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+
+        const insertPayload = {
+            session_id: election.session_id,
+            full_name: cleanName,
+            matric_no: cleanMatric,
+            phone: cleanPhone,
+            department: cleanDept,
+            level: cleanLevel,
+            email: email ? String(email).trim().toLowerCase() : null,
+            receipt_number: receiptNumber ? String(receiptNumber).trim() : 'SELF-REGISTER',
+            voter_id: newVoterId,
+            eligible_to_vote: true,
+            has_voted: false,
+            created_at: new Date().toISOString()
+        };
+
+        const { data: created, error: insertErr } = await supabase
+            .from('voters')
+            .insert([insertPayload])
+            .select('id, voter_id, full_name, matric_no, department, level, eligible_to_vote, has_voted')
+            .single();
+
+        if (insertErr) {
+            // Unique constraint violation (race condition)
+            if (insertErr.code === '23505') {
+                return res.status(409).json({
+                    status: 'error',
+                    message: 'This matric number is already registered'
+                });
+            }
+            throw insertErr;
+        }
+
+        logger.info('Voter self-registered', {
+            requestId: req.id,
+            voterId: created.voter_id,
+            matric: cleanMatric,
+            sessionId: election.session_id
+        });
+
+        res.status(201).json({
+            status: 'success',
+            data: {
+                voterId: created.voter_id,
+                fullName: created.full_name,
+                matricNumber: created.matric_no,
+                department: created.department,
+                level: created.level,
+                eligibleToVote: created.eligible_to_vote,
+                hasVoted: created.has_voted,
+                alreadyRegistered: false
+            },
+            message: 'Registration successful. You can now proceed to nominate or vote.'
+        });
+    } catch (err) {
+        logger.error('Voter registration error:', { requestId: req.id, error: err.message });
+        res.status(500).json({
+            status: 'error',
+            message: err.message || 'Registration failed. Please try again.'
+        });
+    }
+});
+
 // =============== BULK NOMINATIONS ===============
 electionRouter.post('/nominations/bulk', async (req, res) => {
     try {
@@ -4209,20 +4349,51 @@ electionRouter.post('/nominations/bulk', async (req, res) => {
 });
 
 // =============== VOTER LOOKUP (kept for backward compat) ===============
+// Lookup by matric number (frontend) OR by voter_id (legacy)
 electionRouter.get('/voter/:voterId', async (req, res) => {
     try {
-        const { data, error } = await supabase
-            .from('voters')
-            .select('voter_id, full_name, matric_no, department, level, eligible_to_vote, has_voted')
-            .eq('voter_id', req.params.voterId)
-            .maybeSingle();
+        const idOrMatric = String(req.params.voterId || '').trim();
+        if (!idOrMatric) {
+            return res.status(400).json({ status: 'error', message: 'Matric number or voter ID is required' });
+        }
 
-        if (error) throw error;
-        if (!data) return res.status(404).json({ status: 'error', message: 'Voter not found' });
+        // Prefer active election session when available
+        let sessionId = null;
+        try {
+            const election = await getActiveElection();
+            if (election) sessionId = election.session_id;
+        } catch (_) {}
+
+        // 1) Try matric number (case-insensitive) — this is what the elections page sends
+        let query = supabase
+            .from('voters')
+            .select('voter_id, full_name, matric_no, department, level, eligible_to_vote, has_voted, phone')
+            .ilike('matric_no', idOrMatric);
+
+        if (sessionId) query = query.eq('session_id', sessionId);
+
+        let { data, error } = await query.maybeSingle();
+        if (error && error.code !== 'PGRST116') throw error;
+
+        // 2) Fallback: look up by voter_id (UUID-style or VOTER-XXXX)
+        if (!data) {
+            let q2 = supabase
+                .from('voters')
+                .select('voter_id, full_name, matric_no, department, level, eligible_to_vote, has_voted, phone')
+                .eq('voter_id', idOrMatric);
+            if (sessionId) q2 = q2.eq('session_id', sessionId);
+            const res2 = await q2.maybeSingle();
+            if (res2.error && res2.error.code !== 'PGRST116') throw res2.error;
+            data = res2.data;
+        }
+
+        if (!data) {
+            return res.status(404).json({ status: 'error', message: 'Voter not found' });
+        }
 
         res.json({ status: 'success', data });
     } catch (err) {
-        logger.error('Voter verify error:', { error: err.message });
+        logger.error('Voter lookup error:', { error: err.message, param: req.params.voterId });
         res.status(500).json({ status: 'error', message: 'Verification failed' });
     }
 });
