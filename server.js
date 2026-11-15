@@ -160,6 +160,12 @@ class DatabaseService {
                             case 'contains': query = query.contains(key, value.value); break;
                             case 'overlaps': query = query.overlaps(key, value.value); break;
                             case 'isNull': query = query.is(key, null); break;
+                            case 'in':
+                                query = query.in(key, Array.isArray(value.value) ? value.value : [value.value]);
+                                break;
+                            case 'not.in':
+                                query = query.not(key, 'in', Array.isArray(value.value) ? value.value : [value.value]);
+                                break;
                             default: query = query.eq(key, value.value);
                         }
                     } else if (value !== undefined && value !== null) {
@@ -524,32 +530,92 @@ class AuthService {
 const authService = new AuthService();
 
 // -------------------- 1.11 ACCOUNT LOCKOUT -----------------
-const loginAttempts = new Map();
+// -------------------- 1.11 ACCOUNT LOCKOUT -----------------
+const LOCKOUT_THRESHOLD  = 5;
+const LOCKOUT_WINDOW_SEC = 15 * 60;
+
+// In-memory fallback (only used if Redis is unavailable)
+const memoryAttempts = new Map();
+
+function redisReady() {
+    return redis && redis.status === 'ready';
+}
 
 async function checkLoginAttempts(identifier) {
-    const attempts = loginAttempts.get(identifier) || { count: 0, lockedUntil: null };
-    if (attempts.lockedUntil && attempts.lockedUntil > Date.now()) {
-        throw new AuthError('Account temporarily locked. Try again later.', 'ACCOUNT_LOCKED');
+    const key = String(identifier).toLowerCase();
+
+    if (redisReady()) {
+        try {
+            const locked = await redis.get(`login:locked:${key}`);
+            if (locked) {
+                const ttl = await redis.ttl(`login:locked:${key}`);
+                const mins = Math.max(1, Math.ceil(ttl / 60));
+                throw new AuthError(
+                    `Account temporarily locked. Try again in ${mins} minute(s).`,
+                    'ACCOUNT_LOCKED'
+                );
+            }
+            return;
+        } catch (err) {
+            if (err instanceof AuthError) throw err;
+            logger.warn('Redis lockout read failed, using memory fallback:', err.message);
+        }
     }
-    if (attempts.lockedUntil && attempts.lockedUntil <= Date.now()) {
-        loginAttempts.delete(identifier);
-        return;
+
+    const rec = memoryAttempts.get(key);
+    if (rec && rec.lockedUntil && rec.lockedUntil > Date.now()) {
+        const mins = Math.ceil((rec.lockedUntil - Date.now()) / 60000);
+        throw new AuthError(
+            `Account temporarily locked. Try again in ${mins} minute(s).`,
+            'ACCOUNT_LOCKED'
+        );
     }
-    return attempts;
+    if (rec && rec.lockedUntil && rec.lockedUntil <= Date.now()) {
+        memoryAttempts.delete(key);
+    }
 }
 
 async function recordFailedAttempt(identifier) {
-    const attempts = loginAttempts.get(identifier) || { count: 0, lockedUntil: null };
-    attempts.count += 1;
-    if (attempts.count >= 5) {
-        attempts.lockedUntil = Date.now() + 15 * 60 * 1000;
-        attempts.count = 0;
-        logger.warn('Account locked due to multiple failed attempts', { identifier });
+    const key = String(identifier).toLowerCase();
+
+    if (redisReady()) {
+        try {
+            const count = await redis.incr(`login:attempts:${key}`);
+            if (count === 1) {
+                await redis.expire(`login:attempts:${key}`, LOCKOUT_WINDOW_SEC);
+            }
+            if (count >= LOCKOUT_THRESHOLD) {
+                await redis.set(`login:locked:${key}`, '1', 'EX', LOCKOUT_WINDOW_SEC);
+                await redis.del(`login:attempts:${key}`);
+                logger.warn('Account locked (Redis) due to multiple failed attempts', { identifier: key });
+            }
+            return;
+        } catch (err) {
+            logger.warn('Redis lockout write failed, using memory fallback:', err.message);
+        }
     }
-    loginAttempts.set(identifier, attempts);
+
+    const rec = memoryAttempts.get(key) || { count: 0, lockedUntil: null };
+    rec.count += 1;
+    if (rec.count >= LOCKOUT_THRESHOLD) {
+        rec.lockedUntil = Date.now() + LOCKOUT_WINDOW_SEC * 1000;
+        rec.count = 0;
+        logger.warn('Account locked (memory) due to multiple failed attempts', { identifier: key });
+    }
+    memoryAttempts.set(key, rec);
 }
 
-async function resetLoginAttempts(identifier) { loginAttempts.delete(identifier); }
+async function resetLoginAttempts(identifier) {
+    const key = String(identifier).toLowerCase();
+    if (redisReady()) {
+        try {
+            await redis.del(`login:attempts:${key}`, `login:locked:${key}`);
+        } catch (err) {
+            logger.warn('Redis lockout reset failed:', err.message);
+        }
+    }
+    memoryAttempts.delete(key);
+}
 
 // -------------------- 1.12 DATABASE INIT -------------------
 async function initializeDatabase() {
@@ -3948,72 +4014,56 @@ electionRouter.get('/active', async (req, res) => {
     }
 });
 
-// =============== VERIFY VOTER (used by the new voting flow) ===============
+// =============== VERIFY VOTER ===============
 electionRouter.post('/voter/verify', async (req, res) => {
     try {
         const { matricNumber, phone } = req.body;
         if (!matricNumber || !phone) {
-            return res.status(400).json({ status: 'error', message: 'Matric number and phone number are required' });
+            return res.status(400).json({
+                status: 'error',
+                message: 'Matric number and phone number are required'
+            });
         }
 
         const election = await getActiveElection();
-        if (!election) return res.status(400).json({ status: 'error', message: 'No active election' });
+        if (!election) {
+            return res.status(400).json({ status: 'error', message: 'No active election' });
+        }
 
-        const { data: voter } = await supabase
+        const { data: voter, error } = await supabase
             .from('voters')
             .select('*')
             .eq('session_id', election.session_id)
             .ilike('matric_no', matricNumber.trim())
             .maybeSingle();
 
-        if (voter) {
-            const storedPhone = (voter.phone || '').replace(/\s/g, '');
-            const inputPhone = phone.replace(/\s/g, '');
-            if (storedPhone && storedPhone !== 'PENDING' && storedPhone !== inputPhone) {
-                return res.status(401).json({ status: 'error', message: 'Phone number does not match our records' });
-            }
-            return res.json({
-                status: 'success',
-                data: {
-                    voterId: voter.voter_id,
-                    fullName: voter.full_name,
-                    matricNumber: voter.matric_no,
-                    hasVoted: voter.has_voted,
-                    eligibleToVote: voter.eligible_to_vote
-                }
+        if (error) throw error;
+
+        if (!voter) {
+            return res.status(404).json({
+                status: 'error',
+                code: 'VOTER_NOT_REGISTERED',
+                message: 'Voter not found. Please contact an administrator to register.'
             });
         }
 
-        // Auto-create voter if not found
-        const newVoterId = `VOTER-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
-        const { data: created, error: cErr } = await supabase
-            .from('voters')
-            .insert([{
-                session_id: election.session_id,
-                full_name: 'Pending Registration',
-                matric_no: matricNumber.trim().toUpperCase(),
-                phone: phone.trim(),
-                receipt_number: 'AUTO-VERIFY',
-                department: 'Pending',
-                level: 'Pending',
-                voter_id: newVoterId,
-                eligible_to_vote: true
-            }])
-            .select()
-            .single();
+        const storedPhone = (voter.phone || '').replace(/\s/g, '');
+        const inputPhone  = phone.replace(/\s/g, '');
+        if (storedPhone && storedPhone !== 'PENDING' && storedPhone !== inputPhone) {
+            return res.status(401).json({
+                status: 'error',
+                message: 'Phone number does not match our records'
+            });
+        }
 
-        if (cErr) throw cErr;
-
-        logger.info('Voter auto-created on verify', { voterId: created.voter_id, matric: matricNumber });
-
-        res.json({
+        return res.json({
             status: 'success',
             data: {
-                voterId: created.voter_id,
-                fullName: created.full_name,
-                matricNumber: created.matric_no,
-                hasVoted: created.has_voted,
-                eligibleToVote: created.eligible_to_vote
+                voterId: voter.voter_id,
+                fullName: voter.full_name,
+                matricNumber: voter.matric_no,
+                hasVoted: voter.has_voted,
+                eligibleToVote: voter.eligible_to_vote
             }
         });
     } catch (err) {
@@ -4022,103 +4072,99 @@ electionRouter.post('/voter/verify', async (req, res) => {
     }
 });
 
-// =============== BULK NOMINATIONS (used by the new nominate modal) ===============
+// =============== BULK NOMINATIONS ===============
 electionRouter.post('/nominations/bulk', async (req, res) => {
     try {
         const { nominator, nominees } = req.body;
 
         if (!nominator || !Array.isArray(nominees) || nominees.length === 0) {
-            return res.status(400).json({ status: 'error', message: 'Nominator and at least one nominee are required' });
+            return res.status(400).json({
+                status: 'error',
+                message: 'Nominator and at least one nominee are required'
+            });
         }
         ['fullName', 'matricNumber', 'phone', 'department', 'level'].forEach(k => {
             if (!nominator[k]) throw new Error(`Nominator ${k} is required`);
         });
 
         const election = await getActiveElection();
-        if (!election) return res.status(400).json({ status: 'error', message: 'No active election' });
+        if (!election) {
+            return res.status(400).json({ status: 'error', message: 'No active election' });
+        }
         if (!['preparation', 'pending', 'nomination'].includes(election.phase)) {
-            return res.status(403).json({ status: 'error', message: `Nominations are closed (current phase: ${election.phase})` });
+            return res.status(403).json({
+                status: 'error',
+                message: `Nominations are closed (current phase: ${election.phase})`
+            });
         }
 
-        // Find or create the nominator voter record
-        const { data: existingNominator } = await supabase
+        // Nominator must already be a registered voter for this session
+        const { data: existingNominator, error: nominatorErr } = await supabase
             .from('voters')
             .select('id, voter_id')
             .eq('session_id', election.session_id)
             .ilike('matric_no', nominator.matricNumber.trim())
             .maybeSingle();
 
-        let nominatorVoterId;
-        if (existingNominator) {
-            nominatorVoterId = existingNominator.id;
-        } else {
-            const vid = `VOTER-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
-            const { data: created, error: cErr } = await supabase
-                .from('voters')
-                .insert([{
-                    session_id: election.session_id,
-                    full_name: nominator.fullName.trim(),
-                    matric_no: nominator.matricNumber.trim().toUpperCase(),
-                    phone: nominator.phone.trim(),
-                    receipt_number: 'NOMINATION-AUTO',
-                    department: nominator.department,
-                    level: nominator.level,
-                    voter_id: vid
-                }])
-                .select()
-                .single();
-            if (cErr) throw cErr;
-            nominatorVoterId = created.id;
+        if (nominatorErr) throw nominatorErr;
+
+        if (!existingNominator) {
+            return res.status(404).json({
+                status: 'error',
+                code: 'NOMINATOR_NOT_REGISTERED',
+                message: 'Nominator is not registered as a voter. Please contact an administrator.'
+            });
         }
+        const nominatorVoterId = existingNominator.id;
 
         const rows = [];
-        for (const nominee of nominees) {
-            const { data: position } = await supabase
-                .from('positions').select('id')
-                .eq('id', nominee.positionId).eq('election_id', election.id).maybeSingle();
-            if (!position) continue;
+        const skipped = [];
 
-            const { data: existingNominee } = await supabase
-                .from('voters').select('id')
+        for (const nominee of nominees) {
+            const { data: position, error: posErr } = await supabase
+                .from('positions')
+                .select('id')
+                .eq('id', nominee.positionId)
+                .eq('election_id', election.id)
+                .maybeSingle();
+
+            if (posErr) throw posErr;
+            if (!position) {
+                skipped.push({ matric: nominee.matric, reason: 'invalid position' });
+                continue;
+            }
+
+            const { data: existingNominee, error: nomineeErr } = await supabase
+                .from('voters')
+                .select('id')
                 .eq('session_id', election.session_id)
                 .ilike('matric_no', nominee.matric.trim())
                 .maybeSingle();
 
-            let nomineeVoterId;
-            if (existingNominee) {
-                nomineeVoterId = existingNominee.id;
-            } else {
-                const nvid = `VOTER-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
-                const { data: createdNominee, error: nErr } = await supabase
-                    .from('voters')
-                    .insert([{
-                        session_id: election.session_id,
-                        full_name: nominee.name.trim(),
-                        matric_no: nominee.matric.trim().toUpperCase(),
-                        phone: 'PENDING',
-                        receipt_number: 'NOMINATION-AUTO',
-                        department: nominee.department,
-                        level: nominee.level,
-                        voter_id: nvid
-                    }])
-                    .select()
-                    .single();
-                if (nErr) throw nErr;
-                nomineeVoterId = createdNominee.id;
+            if (nomineeErr) throw nomineeErr;
+
+            if (!existingNominee) {
+                skipped.push({ matric: nominee.matric, reason: 'nominee not registered' });
+                continue;
             }
 
             const { data: dup } = await supabase
-                .from('nominations').select('id')
+                .from('nominations')
+                .select('id')
                 .eq('election_id', election.id)
                 .eq('position_id', nominee.positionId)
-                .eq('nominee_id', nomineeVoterId)
+                .eq('nominee_id', existingNominee.id)
                 .maybeSingle();
-            if (dup) continue;
+
+            if (dup) {
+                skipped.push({ matric: nominee.matric, reason: 'already nominated for this position' });
+                continue;
+            }
 
             rows.push({
                 election_id: election.id,
                 position_id: nominee.positionId,
-                nominee_id: nomineeVoterId,
+                nominee_id: existingNominee.id,
                 nominated_by: nominatorVoterId,
                 manifesto: nominee.reason || null,
                 status: 'pending'
@@ -4126,18 +4172,35 @@ electionRouter.post('/nominations/bulk', async (req, res) => {
         }
 
         if (!rows.length) {
-            return res.status(400).json({ status: 'error', message: 'No new valid nominations to submit' });
+            return res.status(400).json({
+                status: 'error',
+                message: 'No new valid nominations to submit',
+                details: { skipped }
+            });
         }
 
-        const { data: inserted, error: insErr } = await supabase.from('nominations').insert(rows).select();
+        const { data: inserted, error: insErr } = await supabase
+            .from('nominations')
+            .insert(rows)
+            .select();
+
         if (insErr) throw insErr;
 
-        logger.info('Bulk nominations submitted', { count: inserted.length, nominatorMatric: nominator.matricNumber });
+        logger.info('Bulk nominations submitted', {
+            count: inserted.length,
+            skipped: skipped.length,
+            nominatorMatric: nominator.matricNumber
+        });
 
         res.status(201).json({
             status: 'success',
-            data: { nominationsCreated: inserted.length },
-            message: `${inserted.length} nomination${inserted.length === 1 ? '' : 's'} submitted for review`
+            data: {
+                nominationsCreated: inserted.length,
+                skipped
+            },
+            message: `${inserted.length} nomination${inserted.length === 1 ? '' : 's'} submitted for review${
+                skipped.length ? ` (${skipped.length} skipped)` : ''
+            }`
         });
     } catch (err) {
         logger.error('Bulk nomination error:', { error: err.message });
@@ -5952,6 +6015,16 @@ async function startServer() {
         console.error('❌ [1/2] Server listen error:', err);
         process.exit(1);
     });
+
+    // Connect Redis if configured (needed because lazyConnect: true)
+    if (redis && redis.status === 'wait') {
+        try {
+            await redis.connect();
+            console.log('✅ Redis client connected');
+        } catch (err) {
+            console.warn('⚠️ Redis connect failed, using in-memory fallback:', err.message);
+        }
+    }
 
     console.log(`⏳ [2/2] Initializing database...`);
     initializeDatabase()
