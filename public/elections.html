@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="google-site-verification" content="0Vv4J6V0Gvj5omX7n8fmkRvJDacyyBxbgXcvFiGr8p4" />
-    <title>NUESA BIU Elections 2026</title>
+    <title>NUESA BIU Elections</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -29,11 +29,8 @@
             --ease-out: cubic-bezier(.16,1,.3,1);
             --dur: 320ms; --dur-fast: 180ms; --dur-slow: 650ms;
 
-            /* === FONT STACK — matches dashboard (Inter + Roboto Mono only) === */
             --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             --font-mono: 'Roboto Mono', 'SF Mono', Monaco, monospace;
-            /* Keep --font-display as alias to Inter so all existing selectors
-               render in the same family as the dashboard. */
             --font-display: var(--font-sans);
 
             --radius-sm: 8px; --radius: 14px; --radius-lg: 20px; --radius-xl: 28px;
@@ -47,13 +44,14 @@
             overflow-x: hidden; min-height: 100vh;
             -webkit-font-smoothing: antialiased;
         }
-        body.menu-open, body.modal-open { overflow: hidden; }
+        body.menu-open { overflow: hidden; }
+        body.modal-open { overflow: hidden; position: fixed; width: 100%; }
         img, video { max-width: 100%; display: block; }
         button, a { -webkit-tap-highlight-color: transparent; }
         button { font-family: inherit; cursor: pointer; }
         a { color: inherit; text-decoration: none; }
 
-        /* NAVBAR — same behavior as dashboard */
+        /* NAVBAR */
         .navbar {
             position: fixed; top: 0; left: 0; right: 0; width: 100%;
             z-index: 1000; padding: 1rem 0;
@@ -68,10 +66,7 @@
             padding: .5rem 0;
             box-shadow: 0 10px 30px rgba(2,44,34,.25);
         }
-        .nav-container {
-            max-width: 80rem; margin: 0 auto;
-            padding: 0 2rem;
-        }
+        .nav-container { max-width: 80rem; margin: 0 auto; padding: 0 2rem; }
         @media (max-width: 640px) { .nav-container { padding: 0 1rem; } }
         .nav-flex { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
 
@@ -947,7 +942,7 @@
             box-shadow: 0 0 12px rgba(213,168,59,.4);
         }
 
-        /* MODALS */
+        /* MODALS — fixed scroll */
         .modal-backdrop {
             position: fixed; inset: 0; z-index: 2000;
             background: rgba(2,44,34,.7);
@@ -958,14 +953,16 @@
             padding-bottom: max(1rem, env(safe-area-inset-bottom));
             opacity: 0;
             animation: modalFadeIn .25s ease-out forwards;
-            overscroll-behavior: contain;
         }
         @keyframes modalFadeIn { to { opacity: 1; } }
 
         .modal {
             background: var(--white);
             border-radius: var(--radius-xl);
-            max-width: 520px; width: 100%;
+            max-width: 520px;
+            width: 100%;
+            height: calc(100vh - 2rem);
+            height: calc(100dvh - 2rem);
             max-height: calc(100vh - 2rem);
             max-height: calc(100dvh - 2rem);
             overflow: hidden;
@@ -1021,7 +1018,9 @@
             padding: 1.5rem;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
-            flex: 1;
+            overscroll-behavior: contain;
+            flex: 1 1 auto;
+            min-height: 0;
         }
         .modal-foot {
             padding: 1rem 1.5rem;
@@ -1652,6 +1651,22 @@
     const resultsContent = document.getElementById('resultsContent');
 
     /* ============================================================
+       BODY SCROLL LOCK (restores scroll position on close)
+       ============================================================ */
+    function lockBodyScroll() {
+        const y = window.scrollY;
+        document.body.dataset.scrollY = String(y);
+        document.body.style.top = `-${y}px`;
+        document.body.classList.add('modal-open');
+    }
+    function unlockBodyScroll() {
+        const y = parseInt(document.body.dataset.scrollY || '0', 10);
+        document.body.classList.remove('modal-open');
+        document.body.style.top = '';
+        window.scrollTo(0, y);
+    }
+
+    /* ============================================================
        HELPERS
        ============================================================ */
     function esc(str) {
@@ -1899,8 +1914,8 @@
                 </div>
             </div>`;
         document.body.appendChild(modal);
-        document.body.classList.add('modal-open');
-        const close = () => { modal.remove(); document.body.classList.remove('modal-open'); };
+        lockBodyScroll();
+        const close = () => { modal.remove(); unlockBodyScroll(); };
         modal.addEventListener('click', e => { if (e.target === modal) close(); });
         modal.querySelector('.modal-close').addEventListener('click', close);
         document.addEventListener('keydown', function escHandler(e) {
@@ -2073,9 +2088,9 @@
             </div>`;
 
         document.body.appendChild(modal);
-        document.body.classList.add('modal-open');
+        lockBodyScroll();
 
-        const close = () => { modal.remove(); document.body.classList.remove('modal-open'); };
+        const close = () => { modal.remove(); unlockBodyScroll(); };
         modal.addEventListener('click', e => { if (e.target === modal) close(); });
         modal.querySelector('.modal-close').addEventListener('click', close);
         document.getElementById('cancelNominateBtn').addEventListener('click', close);
