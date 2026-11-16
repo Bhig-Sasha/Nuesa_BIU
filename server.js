@@ -4185,8 +4185,7 @@ electionRouter.post('/voter/register', async (req, res) => {
                     phone: existing.phone,
                     department: existing.department,
                     level: existing.level,
-                    hasVoted: existing.has_voted,
-                    eligibleToVote: existing.eligible_to_vote
+                    hasVoted: existing.has_voted
                 },
                 message: 'You are already registered. Proceeding to verification.'
             });
