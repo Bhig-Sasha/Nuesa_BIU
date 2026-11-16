@@ -6004,6 +6004,483 @@ adminRouter.delete('/awards/judges/:id', async (req, res) => {
 console.log('✅ [AWARD-ADMIN] /api/admin/awards/* routes registered');
 
 // ============================================================
+// ================ ADMIN TIMETABLE MANAGEMENT ================
+// ============================================================
+
+const adminTimetableRouter = express.Router();
+adminTimetableRouter.use(verifyToken);
+adminTimetableRouter.use(requireRole('admin'));
+
+// ---------- SETTINGS (session / semester / status) ----------
+adminTimetableRouter.get('/settings', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('timetable_packages')
+            .select('*')
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (error) throw error;
+
+        res.json({
+            status: 'success',
+            data: data || {
+                session: null,
+                semester: null,
+                status: 'draft',
+                is_published: false
+            }
+        });
+    } catch (err) {
+        logger.error('Timetable settings get error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to load timetable settings' });
+    }
+});
+
+adminTimetableRouter.put('/settings', async (req, res) => {
+    try {
+        const { session, semester, title } = req.body;
+
+        // Find the current (latest) package or create one
+        let { data: pkg } = await supabase
+            .from('timetable_packages')
+            .select('id')
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (!pkg) {
+            const { data: created, error: createErr } = await supabase
+                .from('timetable_packages')
+                .insert([{
+                    session: session || null,
+                    semester: semester || null,
+                    title: title || `${session || ''} ${semester || ''}`.trim() || 'Timetable',
+                    status: 'draft',
+                    is_published: false
+                }])
+                .select()
+                .single();
+            if (createErr) throw createErr;
+            pkg = created;
+        } else {
+            const { data: updated, error: updErr } = await supabase
+                .from('timetable_packages')
+                .update({
+                    session: session ?? undefined,
+                    semester: semester ?? undefined,
+                    title: title ?? undefined,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', pkg.id)
+                .select()
+                .single();
+            if (updErr) throw updErr;
+            pkg = updated;
+        }
+
+        res.json({ status: 'success', data: pkg, message: 'Settings saved' });
+    } catch (err) {
+        logger.error('Timetable settings update error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to save settings' });
+    }
+});
+
+// ---------- LIST + CREATE TIMETABLES ----------
+adminTimetableRouter.get('/timetables', async (req, res) => {
+    try {
+        const { type, level, status } = req.query; // type = class | exam
+
+        let query = supabase
+            .from('timetable_packages')
+            .select(`
+                *,
+                class_count:timetable_classes(count),
+                exam_count:timetable_exams(count)
+            `)
+            .order('updated_at', { ascending: false });
+
+        if (status) query = query.eq('status', status);
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        // Flatten counts
+        const mapped = (data || []).map(p => ({
+            ...p,
+            class_count: p.class_count?.[0]?.count || 0,
+            exam_count: p.exam_count?.[0]?.count || 0
+        }));
+
+        res.json({ status: 'success', data: mapped, count: mapped.length });
+    } catch (err) {
+        logger.error('List timetables error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to load timetables' });
+    }
+});
+
+adminTimetableRouter.post('/timetables', async (req, res) => {
+    try {
+        const {
+            type = 'class',          // class | exam
+            level,
+            session,
+            semester,
+            title,
+            entries = [],            // array of class/exam rows
+            pdf_url = null
+        } = req.body;
+
+        if (!['class', 'exam'].includes(type)) {
+            return res.status(400).json({ status: 'error', message: 'type must be class or exam' });
+        }
+
+        // Create package
+        const { data: pkg, error: pkgErr } = await supabase
+            .from('timetable_packages')
+            .insert([{
+                title: title || `${level || ''} ${type} timetable`.trim(),
+                session: session || null,
+                semester: semester || null,
+                status: 'draft',
+                is_published: false,
+                class_pdf_url: type === 'class' ? pdf_url : null,
+                exam_pdf_url: type === 'exam' ? pdf_url : null
+            }])
+            .select()
+            .single();
+
+        if (pkgErr) throw pkgErr;
+
+        // Insert entries if provided
+        if (Array.isArray(entries) && entries.length) {
+            if (type === 'class') {
+                const rows = entries.map(e => ({
+                    package_id: pkg.id,
+                    course_code: e.course_code || e.code || null,
+                    course_title: e.course_title || e.title || null,
+                    level: e.level || level || null,
+                    semester: e.semester || semester || null,
+                    department: e.department || null,
+                    day_of_week: e.day || e.day_of_week || null,
+                    start_time: e.start_time || null,
+                    end_time: e.end_time || null,
+                    venue: e.venue || e.location || null,
+                    lecturer: e.lecturer || e.instructor || null,
+                    class_status: e.class_status || 'scheduled'
+                }));
+                const { error } = await supabase.from('timetable_classes').insert(rows);
+                if (error) throw error;
+            } else {
+                const rows = entries.map(e => ({
+                    package_id: pkg.id,
+                    course_code: e.course_code || e.code || null,
+                    course_title: e.course_title || e.title || null,
+                    level: e.level || level || null,
+                    semester: e.semester || semester || null,
+                    exam_date: e.date || e.exam_date || null,
+                    start_time: e.start_time || null,
+                    end_time: e.end_time || null,
+                    venue: e.venue || e.location || null,
+                    exam_type: e.exam_type || 'written'
+                }));
+                const { error } = await supabase.from('timetable_exams').insert(rows);
+                if (error) throw error;
+            }
+        }
+
+        res.status(201).json({
+            status: 'success',
+            data: pkg,
+            message: 'Timetable created as draft'
+        });
+    } catch (err) {
+        logger.error('Create timetable error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: err.message || 'Failed to create timetable' });
+    }
+});
+
+// ---------- GET / UPDATE / DELETE SINGLE TIMETABLE ----------
+adminTimetableRouter.get('/timetables/:id', async (req, res) => {
+    try {
+        const { data: pkg, error } = await supabase
+            .from('timetable_packages')
+            .select('*')
+            .eq('id', req.params.id)
+            .single();
+
+        if (error || !pkg) {
+            return res.status(404).json({ status: 'error', message: 'Timetable not found' });
+        }
+
+        const [classesRes, examsRes] = await Promise.all([
+            supabase.from('timetable_classes').select('*').eq('package_id', pkg.id).order('day_of_week').order('start_time'),
+            supabase.from('timetable_exams').select('*').eq('package_id', pkg.id).order('exam_date').order('start_time')
+        ]);
+
+        res.json({
+            status: 'success',
+            data: {
+                ...pkg,
+                classes: classesRes.data || [],
+                exams: examsRes.data || []
+            }
+        });
+    } catch (err) {
+        logger.error('Get timetable error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to load timetable' });
+    }
+});
+
+adminTimetableRouter.put('/timetables/:id', async (req, res) => {
+    try {
+        const { title, session, semester, entries, type, pdf_url } = req.body;
+
+        const updates = {
+            updated_at: new Date().toISOString()
+        };
+        if (title !== undefined) updates.title = title;
+        if (session !== undefined) updates.session = session;
+        if (semester !== undefined) updates.semester = semester;
+        if (pdf_url !== undefined) {
+            if (type === 'exam') updates.exam_pdf_url = pdf_url;
+            else updates.class_pdf_url = pdf_url;
+        }
+
+        const { data: pkg, error: pkgErr } = await supabase
+            .from('timetable_packages')
+            .update(updates)
+            .eq('id', req.params.id)
+            .select()
+            .single();
+
+        if (pkgErr) throw pkgErr;
+
+        // Optional: replace all entries
+        if (Array.isArray(entries)) {
+            if (type === 'class' || !type) {
+                await supabase.from('timetable_classes').delete().eq('package_id', pkg.id);
+                if (entries.length) {
+                    const rows = entries.map(e => ({
+                        package_id: pkg.id,
+                        course_code: e.course_code || e.code || null,
+                        course_title: e.course_title || e.title || null,
+                        level: e.level || null,
+                        semester: e.semester || semester || null,
+                        department: e.department || null,
+                        day_of_week: e.day || e.day_of_week || null,
+                        start_time: e.start_time || null,
+                        end_time: e.end_time || null,
+                        venue: e.venue || null,
+                        lecturer: e.lecturer || null,
+                        class_status: e.class_status || 'scheduled'
+                    }));
+                    await supabase.from('timetable_classes').insert(rows);
+                }
+            }
+            if (type === 'exam') {
+                await supabase.from('timetable_exams').delete().eq('package_id', pkg.id);
+                if (entries.length) {
+                    const rows = entries.map(e => ({
+                        package_id: pkg.id,
+                        course_code: e.course_code || e.code || null,
+                        course_title: e.course_title || e.title || null,
+                        level: e.level || null,
+                        semester: e.semester || semester || null,
+                        exam_date: e.date || e.exam_date || null,
+                        start_time: e.start_time || null,
+                        end_time: e.end_time || null,
+                        venue: e.venue || null,
+                        exam_type: e.exam_type || 'written'
+                    }));
+                    await supabase.from('timetable_exams').insert(rows);
+                }
+            }
+        }
+
+        res.json({ status: 'success', data: pkg, message: 'Timetable updated' });
+    } catch (err) {
+        logger.error('Update timetable error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to update timetable' });
+    }
+});
+
+adminTimetableRouter.delete('/timetables/:id', async (req, res) => {
+    try {
+        const { error } = await supabase
+            .from('timetable_packages')
+            .delete()
+            .eq('id', req.params.id);
+
+        if (error) throw error;
+
+        res.json({ status: 'success', message: 'Timetable deleted' });
+    } catch (err) {
+        logger.error('Delete timetable error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to delete timetable' });
+    }
+});
+
+// ---------- PUBLISH / UNPUBLISH / ARCHIVE ----------
+adminTimetableRouter.post('/timetables/:id/publish', async (req, res) => {
+    try {
+        // Unpublish any currently published package first (only one live at a time)
+        await supabase
+            .from('timetable_packages')
+            .update({ is_published: false, status: 'draft', updated_at: new Date().toISOString() })
+            .eq('is_published', true);
+
+        const { data, error } = await supabase
+            .from('timetable_packages')
+            .update({
+                is_published: true,
+                status: 'published',
+                published_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', req.params.id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        // Invalidate public cache
+        await cacheManager.invalidate('timetable*');
+
+        res.json({ status: 'success', data, message: 'Timetable published' });
+    } catch (err) {
+        logger.error('Publish timetable error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to publish' });
+    }
+});
+
+adminTimetableRouter.post('/timetables/:id/unpublish', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('timetable_packages')
+            .update({
+                is_published: false,
+                status: 'draft',
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', req.params.id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        await cacheManager.invalidate('timetable*');
+
+        res.json({ status: 'success', data, message: 'Timetable unpublished' });
+    } catch (err) {
+        logger.error('Unpublish timetable error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to unpublish' });
+    }
+});
+
+adminTimetableRouter.post('/timetables/:id/archive', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('timetable_packages')
+            .update({
+                is_published: false,
+                status: 'archived',
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', req.params.id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        await cacheManager.invalidate('timetable*');
+
+        res.json({ status: 'success', data, message: 'Timetable archived' });
+    } catch (err) {
+        logger.error('Archive timetable error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to archive' });
+    }
+});
+
+// ---------- ANNOUNCEMENTS ----------
+adminTimetableRouter.get('/announcements', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('timetable_announcements')
+            .select('*, package:timetable_packages(id, title, session, semester)')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        res.json({ status: 'success', data: data || [], count: (data || []).length });
+    } catch (err) {
+        logger.error('List announcements error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to load announcements' });
+    }
+});
+
+adminTimetableRouter.post('/announcements', async (req, res) => {
+    try {
+        const { title, body, priority = 'normal', package_id, expires_at } = req.body;
+
+        if (!title) {
+            return res.status(400).json({ status: 'error', message: 'title is required' });
+        }
+
+        // If no package_id given, attach to the latest package
+        let pkgId = package_id;
+        if (!pkgId) {
+            const { data: latest } = await supabase
+                .from('timetable_packages')
+                .select('id')
+                .order('updated_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            pkgId = latest?.id || null;
+        }
+
+        const { data, error } = await supabase
+            .from('timetable_announcements')
+            .insert([{
+                package_id: pkgId,
+                title,
+                body: body || null,
+                priority,
+                is_active: true,
+                expires_at: expires_at || null
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        res.status(201).json({ status: 'success', data, message: 'Announcement created' });
+    } catch (err) {
+        logger.error('Create announcement error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to create announcement' });
+    }
+});
+
+adminTimetableRouter.delete('/announcements/:id', async (req, res) => {
+    try {
+        const { error } = await supabase
+            .from('timetable_announcements')
+            .delete()
+            .eq('id', req.params.id);
+
+        if (error) throw error;
+        res.json({ status: 'success', message: 'Announcement deleted' });
+    } catch (err) {
+        logger.error('Delete announcement error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to delete announcement' });
+    }
+});
+
+// Mount the router
+app.use('/api/admin/timetable', adminTimetableRouter);
+app.use('/api/admin/timetables', adminTimetableRouter); // alias for convenience
+
+console.log('✅ [ADMIN-TIMETABLE] /api/admin/timetable/* routes registered');
+
+// ============================================================
 // ================ SECTION 4.5: PUBLIC GALLERY + PLACEMENT ===
 // ============================================================
 
@@ -6087,6 +6564,218 @@ publicMediaRouter.get('/media/placements/homepage-hero', async (req, res) => {
 
 app.use('/api', publicMediaRouter);
 console.log('✅ [PUBLIC-MEDIA] /api/gallery and /api/media/placements/* registered');
+
+// ============================================================
+// ================ PUBLIC TIMETABLE + THEME ==================
+// ============================================================
+
+/**
+ * GET /api/timetable
+ * Returns the current published timetable package:
+ * - session + semester metadata
+ * - class timetable
+ * - exam timetable
+ * - announcements
+ * - available levels & semesters (for filters)
+ */
+app.get('/api/timetable', cacheMiddleware(60, ['timetable']), async (req, res) => {
+    try {
+        // 1. Get the active / published timetable package
+        const { data: packageData, error: pkgErr } = await supabase
+            .from('timetable_packages')
+            .select('*')
+            .eq('is_published', true)
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (pkgErr) throw pkgErr;
+
+        if (!packageData) {
+            return res.json({
+                status: 'success',
+                data: null,
+                message: 'No timetable has been published yet'
+            });
+        }
+
+        // 2. Fetch related data in parallel
+        const [classesRes, examsRes, announcementsRes] = await Promise.all([
+            supabase
+                .from('timetable_classes')
+                .select('*')
+                .eq('package_id', packageData.id)
+                .order('day_of_week', { ascending: true })
+                .order('start_time', { ascending: true }),
+
+            supabase
+                .from('timetable_exams')
+                .select('*')
+                .eq('package_id', packageData.id)
+                .order('exam_date', { ascending: true })
+                .order('start_time', { ascending: true }),
+
+            supabase
+                .from('timetable_announcements')
+                .select('*')
+                .eq('package_id', packageData.id)
+                .eq('is_active', true)
+                .order('created_at', { ascending: false })
+        ]);
+
+        if (classesRes.error) throw classesRes.error;
+        if (examsRes.error) throw examsRes.error;
+        if (announcementsRes.error) throw announcementsRes.error;
+
+        const classes = classesRes.data || [];
+        const exams = examsRes.data || [];
+        const announcements = announcementsRes.data || [];
+
+        // 3. Build dynamic filter options
+        const levels = [...new Set(classes.map(c => c.level).filter(Boolean))].sort();
+        const semesters = [...new Set([
+            packageData.semester,
+            ...classes.map(c => c.semester).filter(Boolean)
+        ])].filter(Boolean);
+
+        // 4. Shape the response the frontend expects
+        const response = {
+            status: 'success',
+            data: {
+                // Meta
+                id: packageData.id,
+                session: packageData.session || packageData.academic_session || null,
+                semester: packageData.semester || null,
+                title: packageData.title || null,
+                is_published: packageData.is_published,
+                published_at: packageData.published_at || packageData.updated_at,
+                updated_at: packageData.updated_at,
+                status: packageData.status || (packageData.is_published ? 'published' : 'draft'),
+
+                // PDF links (if you store them)
+                class_pdf_url: packageData.class_pdf_url || null,
+                exam_pdf_url: packageData.exam_pdf_url || null,
+
+                // Filter options
+                available_levels: levels,
+                available_semesters: semesters,
+
+                // Actual data
+                classes: classes.map(c => ({
+                    id: c.id,
+                    course_code: c.course_code || c.code || null,
+                    course_title: c.course_title || c.title || null,
+                    level: c.level || null,
+                    semester: c.semester || packageData.semester || null,
+                    department: c.department || null,
+                    day: c.day_of_week || c.day || null,
+                    start_time: c.start_time || null,
+                    end_time: c.end_time || null,
+                    venue: c.venue || c.location || null,
+                    lecturer: c.lecturer || c.instructor || null,
+                    class_status: c.class_status || c.status || 'scheduled'
+                })),
+
+                exams: exams.map(e => ({
+                    id: e.id,
+                    course_code: e.course_code || e.code || null,
+                    course_title: e.course_title || e.title || null,
+                    level: e.level || null,
+                    semester: e.semester || packageData.semester || null,
+                    exam_date: e.exam_date || null,
+                    start_time: e.start_time || null,
+                    end_time: e.end_time || null,
+                    venue: e.venue || e.location || null,
+                    exam_type: e.exam_type || 'written'
+                })),
+
+                announcements: announcements.map(a => ({
+                    id: a.id,
+                    title: a.title,
+                    body: a.body || a.content || null,
+                    priority: a.priority || 'normal',
+                    created_at: a.created_at,
+                    expires_at: a.expires_at || null
+                }))
+            }
+        };
+
+        res.json(response);
+    } catch (err) {
+        logger.error('Timetable fetch error:', { requestId: req.id, error: err.message });
+        res.status(500).json({
+            status: 'error',
+            message: 'Unable to load timetable'
+        });
+    }
+});
+
+
+/**
+ * GET /api/theme
+ * Returns CSS variable values so the public pages stay in sync with the dashboard theme.
+ */
+app.get('/api/theme', cacheMiddleware(300, ['theme']), async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('site_settings')
+            .select('key, value')
+            .in('key', [
+                'primary_color',
+                'accent_color',
+                'background_color',
+                'text_color',
+                'surface_color',
+                'success_color',
+                'warning_color',
+                'danger_color'
+            ]);
+
+        if (error) throw error;
+
+        // Convert rows → object of CSS variables
+        const theme = {};
+        (data || []).forEach(row => {
+            if (row.key && row.value) {
+                // e.g. primary_color → --primary
+                const cssVar = '--' + row.key.replace(/_color$/, '').replace(/_/g, '-');
+                theme[cssVar] = row.value;
+            }
+        });
+
+        // Sensible defaults if nothing is configured yet
+        const defaults = {
+            '--primary': '#102B27',
+            '--accent': '#D5A83B',
+            '--bg': '#F4F6F3',
+            '--text': '#102B27',
+            '--surface': '#FFFFFF',
+            '--success': '#1E8E5A',
+            '--warning': '#B8761E',
+            '--danger': '#B7402F'
+        };
+
+        res.json({
+            status: 'success',
+            data: { ...defaults, ...theme }
+        });
+    } catch (err) {
+        logger.error('Theme fetch error:', { requestId: req.id, error: err.message });
+        // Still return defaults so the page doesn't break
+        res.json({
+            status: 'success',
+            data: {
+                '--primary': '#102B27',
+                '--accent': '#D5A83B',
+                '--bg': '#F4F6F3',
+                '--text': '#102B27',
+                '--surface': '#FFFFFF'
+            }
+        });
+    }
+});
+
+console.log('✅ [TIMETABLE] /api/timetable and /api/theme registered');
 
 // ============================================================
 // ================== SECTION 5: FILE MANAGEMENT ==============
