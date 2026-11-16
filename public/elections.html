@@ -671,6 +671,8 @@
         .vote-banner p { font-size: .82rem; color: var(--emerald-800); line-height: 1.5; }
         .vote-banner p strong { color: var(--emerald-900); }
 
+        .alert { white-space: pre-line; }
+        
         /* VERIFY BOX */
         .verify-box {
             background: var(--white);
@@ -2497,192 +2499,236 @@
             </div>`;
     }
 
-    function openNominateModal() {
-        if (!POSITIONS.length) {
-            alert('Nominations are not open yet — no positions have been configured.');
-            return;
-        }
-        if (!verifiedVoter) {
-            showFloatingToast('You must register as a voter before you can nominate.', 'error');
-            return;
-        }
+function openNominateModal() {
+    if (!POSITIONS.length) {
+        alert('Nominations are not open yet — no positions have been configured.');
+        return;
+    }
+    if (!verifiedVoter) {
+        showFloatingToast('You must register as a voter before you can nominate.', 'error');
+        return;
+    }
 
-        nomineeCount = 0;
-        const modal = document.createElement('div');
-        modal.className = 'modal-backdrop';
-        modal.setAttribute('role', 'dialog');
-        modal.setAttribute('aria-modal', 'true');
-        modal.innerHTML = `
-            <div class="modal modal-lg">
-                <div class="modal-head">
-                    <button class="modal-close" aria-label="Close">&times;</button>
-                    <h3 class="modal-title">Nominate candidates</h3>
-                    <p class="modal-sub">All nominations are submitted together for the electoral committee to review.</p>
+    nomineeCount = 0;
+    const modal = document.createElement('div');
+    modal.className = 'modal-backdrop';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.innerHTML = `
+        <div class="modal modal-lg">
+            <div class="modal-head">
+                <button class="modal-close" aria-label="Close">&times;</button>
+                <h3 class="modal-title">Nominate candidates</h3>
+                <p class="modal-sub">All nominations are submitted together for the electoral committee to review.</p>
+            </div>
+            <div class="modal-body" id="nominateModalBody">
+                <div class="alert alert-error" id="nominateError">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span id="nominateErrorText"></span>
                 </div>
-                <div class="modal-body" id="nominateModalBody">
-                    <div class="alert alert-error" id="nominateError">
-                        <i class="fas fa-exclamation-circle"></i>
-                        <span id="nominateErrorText"></span>
+
+                <div class="nom-step-head"><span>1</span> Nominator</div>
+                <div class="identity-card">
+                    <div class="identity-avatar">${esc(initials(verifiedVoter.fullName))}</div>
+                    <div class="identity-body">
+                        <strong>${esc(verifiedVoter.fullName)}</strong>
+                        <span>${esc(verifiedVoter.matricNumber)} · Verified voter</span>
                     </div>
-
-                    <div class="nom-step-head"><span>1</span> Nominator</div>
-                    <div class="identity-card">
-                        <div class="identity-avatar">${esc(initials(verifiedVoter.fullName))}</div>
-                        <div class="identity-body">
-                            <strong>${esc(verifiedVoter.fullName)}</strong>
-                            <span>${esc(verifiedVoter.matricNumber)} · Verified voter</span>
-                        </div>
-                    </div>
-
-                    <div class="divider"></div>
-
-                    <div class="nom-step-head"><span>2</span> People you want to nominate</div>
-                    <div id="nomineeList"></div>
-                    <button type="button" class="add-nominee-btn" id="addNomineeBtn">
-                        <i class="fas fa-plus"></i> Add another nominee
-                    </button>
                 </div>
-                <div class="modal-foot">
-                    <button type="button" class="btn btn-back" id="cancelNominateBtn">Cancel</button>
-                    <button type="button" class="btn btn-gold" id="submitNominateBtn">
-                        <i class="fas fa-paper-plane"></i> Submit all nominations
-                    </button>
-                </div>
-            </div>`;
 
-        document.body.appendChild(modal);
-        lockBodyScroll();
+                <div class="divider"></div>
 
-        const close = () => { modal.remove(); unlockBodyScroll(); };
-        modal.addEventListener('click', e => { if (e.target === modal) close(); });
-        modal.querySelector('.modal-close').addEventListener('click', close);
-        document.getElementById('cancelNominateBtn').addEventListener('click', close);
+                <div class="nom-step-head"><span>2</span> People you want to nominate</div>
+                <div id="nomineeList"></div>
+                <button type="button" class="add-nominee-btn" id="addNomineeBtn">
+                    <i class="fas fa-plus"></i> Add another nominee
+                </button>
+            </div>
+            <div class="modal-foot">
+                <button type="button" class="btn btn-back" id="cancelNominateBtn">Cancel</button>
+                <button type="button" class="btn btn-gold" id="submitNominateBtn">
+                    <i class="fas fa-paper-plane"></i> Submit all nominations
+                </button>
+            </div>
+        </div>`;
 
-        function addNominee() {
-            const list = document.getElementById('nomineeList');
-            const card = document.createElement('div');
-            card.innerHTML = nomineeCardHtml(nomineeCount);
-            list.appendChild(card.firstElementChild);
-            nomineeCount++;
-            refreshRemoveButtons();
-        }
+    document.body.appendChild(modal);
+    lockBodyScroll();
 
-        function refreshRemoveButtons() {
-            const cards = document.querySelectorAll('#nomineeList .nominee-card');
-            cards.forEach((card, i) => {
-                const title = card.querySelector('.nominee-card-title');
-                if (title) title.textContent = `Nominee ${i + 1}`;
-                const btn = card.querySelector('.nominee-remove-btn');
-                if (btn) {
-                    btn.style.display = cards.length > 1 ? 'inline-flex' : 'none';
-                    btn.onclick = () => {
-                        if (document.querySelectorAll('#nomineeList .nominee-card').length <= 1) return;
-                        card.remove();
-                        refreshRemoveButtons();
-                    };
-                }
-            });
-        }
+    const close = () => { modal.remove(); unlockBodyScroll(); };
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
+    modal.querySelector('.modal-close').addEventListener('click', close);
+    document.getElementById('cancelNominateBtn').addEventListener('click', close);
 
-        addNominee();
-        document.getElementById('addNomineeBtn').addEventListener('click', addNominee);
+    function addNominee() {
+        const list = document.getElementById('nomineeList');
+        const card = document.createElement('div');
+        card.innerHTML = nomineeCardHtml(nomineeCount);
+        list.appendChild(card.firstElementChild);
+        nomineeCount++;
+        refreshRemoveButtons();
+    }
 
-        document.getElementById('submitNominateBtn').addEventListener('click', async () => {
-            const errorBox = document.getElementById('nominateError');
-            const errorText = document.getElementById('nominateErrorText');
-            errorBox.classList.remove('show');
-
-            const nomineeCards = document.querySelectorAll('#nomineeList .nominee-card');
-            const nominees = [];
-            let valid = true;
-
-            nomineeCards.forEach(card => {
-                const idx = card.dataset.nomineeIndex;
-                const get = name => {
-                    const el = card.querySelector(`[name="${name}"]`);
-                    return el ? el.value.trim() : '';
+    function refreshRemoveButtons() {
+        const cards = document.querySelectorAll('#nomineeList .nominee-card');
+        cards.forEach((card, i) => {
+            const title = card.querySelector('.nominee-card-title');
+            if (title) title.textContent = `Nominee ${i + 1}`;
+            const btn = card.querySelector('.nominee-remove-btn');
+            if (btn) {
+                btn.style.display = cards.length > 1 ? 'inline-flex' : 'none';
+                btn.onclick = () => {
+                    if (document.querySelectorAll('#nomineeList .nominee-card').length <= 1) return;
+                    card.remove();
+                    refreshRemoveButtons();
                 };
-                const nominee = {
-                    positionId: get(`nominee_position_${idx}`),
-                    name: get(`nominee_name_${idx}`),
-                    matric: normalizeMatric(get(`nominee_matric_${idx}`)),
-                    department: get(`nominee_dept_${idx}`),
-                    level: get(`nominee_level_${idx}`),
-                    reason: get(`nominee_reason_${idx}`)
-                };
-                if (!nominee.positionId || !nominee.name || !nominee.matric || !nominee.department || !nominee.level) {
-                    valid = false;
-                    card.querySelectorAll('.field').forEach(f => {
-                        const input = f.querySelector('input, select');
-                        if (input && !input.value.trim()) f.classList.add('has-error');
-                        else f.classList.remove('has-error');
-                    });
-                } else {
-                    card.querySelectorAll('.field').forEach(f => f.classList.remove('has-error'));
-                }
-                nominees.push(nominee);
-            });
-
-            if (!valid) {
-                errorText.textContent = 'Please complete every nominee\'s details.';
-                errorBox.classList.add('show');
-                return;
-            }
-
-            const submitBtn = document.getElementById('submitNominateBtn');
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting…';
-
-            try {
-                // FIX #4: send real phone / department / level
-                const payload = {
-                    nominator: {
-                        fullName: verifiedVoter.fullName,
-                        matricNumber: verifiedVoter.matricNumber,
-                        phone: verifiedVoter.phone || '',
-                        department: verifiedVoter.department || '',
-                        level: verifiedVoter.level || ''
-                    },
-                    nominees
-                };
-                const res = await fetch(`${API_BASE_URL}/api/elections/nominations/bulk`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json().catch(() => ({}));
-                if (!res.ok || data.status !== 'success') {
-                    throw new Error(data?.message || `Submission failed (${res.status})`);
-                }
-                close();
-                showFloatingToast(
-                    `Thanks! ${nominees.length} nomination${nominees.length === 1 ? '' : 's'} submitted for review.`,
-                    'success'
-                );
-            } catch (err) {
-                errorText.textContent = err.message || 'Could not submit nominations. Please try again.';
-                errorBox.classList.add('show');
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit all nominations';
             }
         });
     }
 
-    document.getElementById('openNominateBtn').addEventListener('click', () => {
-        if (!verifiedVoter) {
-            openMatricPrompt({
-                mode: 'nominate',
-                onVerified: () => openNominateModal()
-            });
+    addNominee();
+    document.getElementById('addNomineeBtn').addEventListener('click', addNominee);
+
+    document.getElementById('submitNominateBtn').addEventListener('click', async () => {
+        const errorBox = document.getElementById('nominateError');
+        const errorText = document.getElementById('nominateErrorText');
+        errorBox.classList.remove('show');
+        errorText.textContent = '';
+
+        const nomineeCards = document.querySelectorAll('#nomineeList .nominee-card');
+        const nominees = [];
+        let valid = true;
+
+        nomineeCards.forEach(card => {
+            const idx = card.dataset.nomineeIndex;
+            const get = name => {
+                const el = card.querySelector(`[name="${name}"]`);
+                return el ? el.value.trim() : '';
+            };
+            const nominee = {
+                positionId: get(`nominee_position_${idx}`),
+                name: get(`nominee_name_${idx}`),
+                matric: normalizeMatric(get(`nominee_matric_${idx}`)),
+                department: get(`nominee_dept_${idx}`),
+                level: get(`nominee_level_${idx}`),
+                reason: get(`nominee_reason_${idx}`)
+            };
+            if (!nominee.positionId || !nominee.name || !nominee.matric || !nominee.department || !nominee.level) {
+                valid = false;
+                card.querySelectorAll('.field').forEach(f => {
+                    const input = f.querySelector('input, select');
+                    if (input && !input.value.trim()) f.classList.add('has-error');
+                    else f.classList.remove('has-error');
+                });
+            } else {
+                card.querySelectorAll('.field').forEach(f => f.classList.remove('has-error'));
+            }
+            nominees.push(nominee);
+        });
+
+        if (!valid) {
+            errorText.textContent = 'Please complete every nominee\'s details.';
+            errorBox.classList.add('show');
             return;
         }
-        openNominateModal();
-    });
 
-    document.getElementById('heroCandidatesBtn').addEventListener('click', (e) => {
-        e.preventDefault();
-        document.getElementById('candidates').scrollIntoView({ behavior: 'smooth' });
+        const submitBtn = document.getElementById('submitNominateBtn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting…';
+
+        try {
+            const payload = {
+                nominator: {
+                    fullName: verifiedVoter.fullName,
+                    matricNumber: verifiedVoter.matricNumber,
+                    phone: verifiedVoter.phone || '',
+                    department: verifiedVoter.department || '',
+                    level: verifiedVoter.level || ''
+                },
+                nominees
+            };
+            const res = await fetch(`${API_BASE_URL}/api/elections/nominations/bulk`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json().catch(() => ({}));
+
+            // ---- Full failure: nothing was created -------------------------
+            if (!res.ok || data.status !== 'success') {
+                let msg = data?.message || `Submission failed (${res.status})`;
+
+                // Backend puts per-nominee reasons in data.details.skipped
+                const skipped = data?.details?.skipped;
+                if (Array.isArray(skipped) && skipped.length) {
+                    const lines = skipped.map(s => {
+                        const who = s.matric ? `${s.matric}: ` : '';
+                        return `• ${who}${s.reason || 'skipped'}`;
+                    }).join('\n');
+                    msg += `\n\nReasons:\n${lines}`;
+                }
+                throw new Error(msg);
+            }
+
+            // ---- Partial success: some created, some skipped ---------------
+            const created = data?.data?.nominationsCreated ?? nominees.length;
+            const skippedList = data?.data?.skipped || [];
+
+            if (created === 0) {
+                // Nothing new went through — keep the modal open and show why
+                let msg = data?.message || 'No new valid nominations to submit';
+                if (skippedList.length) {
+                    const lines = skippedList.map(s => {
+                        const who = s.matric ? `${s.matric}: ` : '';
+                        return `• ${who}${s.reason || 'skipped'}`;
+                    }).join('\n');
+                    msg += `\n\nReasons:\n${lines}`;
+                }
+                throw new Error(msg);
+            }
+
+            // At least one nomination succeeded
+            close();
+
+            if (skippedList.length) {
+                const brief = skippedList.map(s => {
+                    const who = s.matric ? s.matric : 'one nominee';
+                    return `${who} — ${s.reason || 'skipped'}`;
+                }).join('; ');
+                showFloatingToast(
+                    `${created} nomination${created === 1 ? '' : 's'} submitted. ${skippedList.length} skipped: ${brief}`,
+                    'info'
+                );
+            } else {
+                showFloatingToast(
+                    `Thanks! ${created} nomination${created === 1 ? '' : 's'} submitted for review.`,
+                    'success'
+                );
+            }
+        } catch (err) {
+            errorText.textContent = err.message || 'Could not submit nominations. Please try again.';
+            errorBox.classList.add('show');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit all nominations';
+        }
     });
+}
+
+document.getElementById('openNominateBtn').addEventListener('click', () => {
+    if (!verifiedVoter) {
+        openMatricPrompt({
+            mode: 'nominate',
+            onVerified: () => openNominateModal()
+        });
+        return;
+    }
+    openNominateModal();
+});
+
+document.getElementById('heroCandidatesBtn').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('candidates').scrollIntoView({ behavior: 'smooth' });
+});
 
     /* ============================================================
        VOTE
