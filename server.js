@@ -6040,7 +6040,8 @@ adminTimetableRouter.get('/settings', async (req, res) => {
 
 adminTimetableRouter.put('/settings', async (req, res) => {
     try {
-        const { session, semester, title } = req.body;
+        // NEW: accept status in the body so the "Academic Timetable Status" field persists
+        const { session, semester, title, status } = req.body;
 
         let { data: pkg } = await supabase
             .from('timetable_packages')
@@ -6056,8 +6057,10 @@ adminTimetableRouter.put('/settings', async (req, res) => {
                     session: session || null,
                     semester: semester || null,
                     title: title || `${session || ''} ${semester || ''}`.trim() || 'Timetable',
-                    status: 'draft',
-                    is_published: false
+                    // NEW: honor status on create
+                    status: status || 'draft',
+                    is_published: (status || 'draft') === 'published',
+                    published_at: status === 'published' ? new Date().toISOString() : null
                 }])
                 .select()
                 .single();
@@ -6068,6 +6071,12 @@ adminTimetableRouter.put('/settings', async (req, res) => {
             if (session  !== undefined) updates.session  = session  || null;
             if (semester !== undefined) updates.semester = semester || null;
             if (title    !== undefined) updates.title    = title;
+            // NEW: persist status and mirror to is_published / published_at
+            if (status   !== undefined) {
+                updates.status       = status;
+                updates.is_published = status === 'published';
+                if (status === 'published') updates.published_at = new Date().toISOString();
+            }
 
             const { data: updated, error: updErr } = await supabase
                 .from('timetable_packages')
@@ -6078,6 +6087,9 @@ adminTimetableRouter.put('/settings', async (req, res) => {
             if (updErr) throw updErr;
             pkg = updated;
         }
+
+        // NEW: clear cache so public pages pick up the change
+        await cacheManager.invalidate('timetable*');
 
         res.json({ status: 'success', data: pkg, message: 'Settings saved' });
     } catch (err) {
@@ -6129,12 +6141,16 @@ adminTimetableRouter.post('/', async (req, res) => {
             semester,
             title,
             entries = [],
-            pdf_url = null
+            pdf_url = null,
+            // NEW: accept status from the request body
+            status: requestedStatus = 'draft'
         } = req.body;
 
         if (!['class', 'exam'].includes(type)) {
             return res.status(400).json({ status: 'error', message: 'type must be class or exam' });
         }
+
+        const isPublished = requestedStatus === 'published';
 
         const { data: pkg, error: pkgErr } = await supabase
             .from('timetable_packages')
@@ -6142,8 +6158,10 @@ adminTimetableRouter.post('/', async (req, res) => {
                 title: title || `${level || ''} ${type} timetable`.trim(),
                 session: session || null,
                 semester: semester || null,
-                status: 'draft',
-                is_published: false,
+                level: level || null,                                 // NEW: persist level
+                status: isPublished ? 'published' : 'draft',          // NEW: honor requested status
+                is_published: isPublished,                            // NEW
+                published_at: isPublished ? new Date().toISOString() : null, // NEW
                 class_pdf_url: type === 'class' ? pdf_url : null,
                 exam_pdf_url: type === 'exam' ? pdf_url : null
             }])
@@ -6193,7 +6211,7 @@ adminTimetableRouter.post('/', async (req, res) => {
         res.status(201).json({
             status: 'success',
             data: pkg,
-            message: 'Timetable created as draft'
+            message: isPublished ? 'Timetable created and published' : 'Timetable created as draft'
         });
     } catch (err) {
         logger.error('Create timetable error:', { requestId: req.id, error: err.message });
@@ -6237,7 +6255,8 @@ adminTimetableRouter.get('/:id', async (req, res) => {
 
 adminTimetableRouter.put('/:id', async (req, res) => {
     try {
-        const { title, session, semester, entries, type, pdf_url } = req.body;
+        // NEW: accept level and status from the request body
+        const { title, session, semester, entries, type, pdf_url, level, status } = req.body;
 
         if (Array.isArray(entries) && entries.length > 0 && !['class', 'exam'].includes(type)) {
             return res.status(400).json({
@@ -6250,7 +6269,13 @@ adminTimetableRouter.put('/:id', async (req, res) => {
         if (title    !== undefined) updates.title    = title;
         if (session  !== undefined) updates.session  = session  || null;
         if (semester !== undefined) updates.semester = semester || null;
-        if (pdf_url  !== undefined) {
+        if (level    !== undefined) updates.level    = level    || null;  // NEW
+        if (status   !== undefined) {                                     // NEW
+            updates.status       = status;
+            updates.is_published = status === 'published';
+            if (status === 'published') updates.published_at = new Date().toISOString();
+        }
+        if (pdf_url !== undefined) {
             if (type === 'exam') updates.exam_pdf_url  = pdf_url;
             else                 updates.class_pdf_url = pdf_url;
         }
@@ -6277,7 +6302,7 @@ adminTimetableRouter.put('/:id', async (req, res) => {
                         package_id: pkg.id,
                         course_code: e.course_code || e.code || null,
                         course_title: e.course_title || e.title || null,
-                        level: e.level || null,
+                        level: e.level || level || null,       // NEW: fall back to package-level
                         semester: e.semester || semester || null,
                         department: e.department || null,
                         day_of_week: e.day || e.day_of_week || null,
@@ -6296,7 +6321,7 @@ adminTimetableRouter.put('/:id', async (req, res) => {
                         package_id: pkg.id,
                         course_code: e.course_code || e.code || null,
                         course_title: e.course_title || e.title || null,
-                        level: e.level || null,
+                        level: e.level || level || null,       // NEW: fall back to package-level
                         semester: e.semester || semester || null,
                         exam_date: e.date || e.exam_date || null,
                         start_time: e.start_time || null,
@@ -6368,10 +6393,24 @@ adminTimetableRouter.post('/:id/publish', async (req, res) => {
         if (targetErr) throw targetErr;
         if (!target) return res.status(404).json({ status: 'error', message: 'Timetable not found' });
 
-        await supabase
+        // NEW: only demote other timetables that belong to the SAME level+session+semester.
+        // This lets you keep 100/200/300/400/500 all published at the same time.
+        const { data: thisPkg } = await supabase
             .from('timetable_packages')
-            .update({ is_published: false, status: 'draft', updated_at: new Date().toISOString() })
-            .eq('is_published', true);
+            .select('level, session, semester')
+            .eq('id', req.params.id)
+            .maybeSingle();
+
+        if (thisPkg?.level && thisPkg?.session && thisPkg?.semester) {
+            await supabase
+                .from('timetable_packages')
+                .update({ is_published: false, status: 'draft', updated_at: new Date().toISOString() })
+                .eq('is_published', true)
+                .eq('level', thisPkg.level)
+                .eq('session', thisPkg.session)
+                .eq('semester', thisPkg.semester)
+                .neq('id', req.params.id);
+        }
 
         const { data, error } = await supabase
             .from('timetable_packages')
@@ -6392,7 +6431,7 @@ adminTimetableRouter.post('/:id/publish', async (req, res) => {
         res.json({ status: 'success', data, message: 'Timetable published' });
     } catch (err) {
         logger.error('Publish timetable error:', { requestId: req.id, error: err.message });
-        res.status(500).json({ status: 'error', message: 'Failed to publish' });
+        res.status(500).json({ status: 'error', message: err.message || 'Failed to publish' }); // NEW: surface real error
     }
 });
 
