@@ -4193,20 +4193,17 @@ electionRouter.post('/voter/register', async (req, res) => {
 
         const voterId = `V${uuid.v4().replace(/-/g, '').slice(0, 10).toUpperCase()}`;
 
-        // NOTE: only created_at is inserted — your voters table does NOT have updated_at
         const { data: inserted, error: insErr } = await supabase
             .from('voters')
             .insert([{
                 session_id: election.session_id,
                 voter_id: voterId,
-                full_name: String(fullName).trim(),
+                full_name: fullName.trim(),
                 matric_no: matric,
-                phone: String(phone).trim(),
-                department: String(department).trim(),
-                level: String(level).trim(),
-                eligible_to_vote: level !== '100L',
-                has_voted: false,
-                created_at: new Date().toISOString()
+                phone: phone.trim(),
+                department,
+                level,
+                has_voted: false
             }])
             .select()
             .single();
