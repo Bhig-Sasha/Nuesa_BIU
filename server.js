@@ -6064,7 +6064,6 @@ adminTimetableRouter.put('/settings', async (req, res) => {
             if (createErr) throw createErr;
             pkg = created;
         } else {
-            // Build updates only from provided keys — never send undefined
             const updates = { updated_at: new Date().toISOString() };
             if (session  !== undefined) updates.session  = session  || null;
             if (semester !== undefined) updates.semester = semester || null;
@@ -6088,7 +6087,9 @@ adminTimetableRouter.put('/settings', async (req, res) => {
 });
 
 // ---------- LIST + CREATE TIMETABLES ----------
-adminTimetableRouter.get('/timetables', async (req, res) => {
+// Mounted at /api/admin/timetable → GET /api/admin/timetable
+// Mounted at /api/admin/timetables → GET /api/admin/timetables
+adminTimetableRouter.get('/', async (req, res) => {
     try {
         const { status } = req.query;
 
@@ -6119,7 +6120,7 @@ adminTimetableRouter.get('/timetables', async (req, res) => {
     }
 });
 
-adminTimetableRouter.post('/timetables', async (req, res) => {
+adminTimetableRouter.post('/', async (req, res) => {
     try {
         const {
             type = 'class',
@@ -6201,7 +6202,7 @@ adminTimetableRouter.post('/timetables', async (req, res) => {
 });
 
 // ---------- GET / UPDATE / DELETE SINGLE TIMETABLE ----------
-adminTimetableRouter.get('/timetables/:id', async (req, res) => {
+adminTimetableRouter.get('/:id', async (req, res) => {
     try {
         const { data: pkg, error } = await supabase
             .from('timetable_packages')
@@ -6234,11 +6235,10 @@ adminTimetableRouter.get('/timetables/:id', async (req, res) => {
     }
 });
 
-adminTimetableRouter.put('/timetables/:id', async (req, res) => {
+adminTimetableRouter.put('/:id', async (req, res) => {
     try {
         const { title, session, semester, entries, type, pdf_url } = req.body;
 
-        // FIX: require explicit type when entries are being replaced
         if (Array.isArray(entries) && entries.length > 0 && !['class', 'exam'].includes(type)) {
             return res.status(400).json({
                 status: 'error',
@@ -6263,7 +6263,6 @@ adminTimetableRouter.put('/timetables/:id', async (req, res) => {
             .single();
 
         if (pkgErr) {
-            // FIX: 404 instead of 500 when the package does not exist
             if (pkgErr.code === 'PGRST116') {
                 return res.status(404).json({ status: 'error', message: 'Timetable not found' });
             }
@@ -6319,9 +6318,8 @@ adminTimetableRouter.put('/timetables/:id', async (req, res) => {
     }
 });
 
-adminTimetableRouter.delete('/timetables/:id', async (req, res) => {
+adminTimetableRouter.delete('/:id', async (req, res) => {
     try {
-        // FIX: block deleting the currently published timetable
         const { data: pkg, error: fetchErr } = await supabase
             .from('timetable_packages')
             .select('id, is_published')
@@ -6338,7 +6336,6 @@ adminTimetableRouter.delete('/timetables/:id', async (req, res) => {
             });
         }
 
-        // Delete children explicitly in case FKs are not ON DELETE CASCADE
         await supabase.from('timetable_announcements').delete().eq('package_id', pkg.id);
         await supabase.from('timetable_classes').delete().eq('package_id', pkg.id);
         await supabase.from('timetable_exams').delete().eq('package_id', pkg.id);
@@ -6360,9 +6357,8 @@ adminTimetableRouter.delete('/timetables/:id', async (req, res) => {
 });
 
 // ---------- PUBLISH / UNPUBLISH / ARCHIVE ----------
-adminTimetableRouter.post('/timetables/:id/publish', async (req, res) => {
+adminTimetableRouter.post('/:id/publish', async (req, res) => {
     try {
-        // Verify target exists first (prevents wiping the live one for a bad id)
         const { data: target, error: targetErr } = await supabase
             .from('timetable_packages')
             .select('id')
@@ -6400,7 +6396,7 @@ adminTimetableRouter.post('/timetables/:id/publish', async (req, res) => {
     }
 });
 
-adminTimetableRouter.post('/timetables/:id/unpublish', async (req, res) => {
+adminTimetableRouter.post('/:id/unpublish', async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('timetable_packages')
@@ -6424,7 +6420,7 @@ adminTimetableRouter.post('/timetables/:id/unpublish', async (req, res) => {
     }
 });
 
-adminTimetableRouter.post('/timetables/:id/archive', async (req, res) => {
+adminTimetableRouter.post('/:id/archive', async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('timetable_packages')
@@ -6584,7 +6580,7 @@ adminTimetableRouter.delete('/announcements/:id', async (req, res) => {
 
 // Mount the router
 app.use('/api/admin/timetable', adminTimetableRouter);
-app.use('/api/admin/timetables', adminTimetableRouter); 
+app.use('/api/admin/timetables', adminTimetableRouter);
 
 console.log('✅ [ADMIN-TIMETABLE] /api/admin/timetable/* routes registered');
 
