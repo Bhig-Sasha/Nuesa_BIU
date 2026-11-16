@@ -9,7 +9,7 @@
 <style>
 :root{--emerald-50:#ecfdf5;--emerald-100:#d1fae5;--emerald-200:#a7f3d0;--emerald-300:#6ee7b7;--emerald-400:#34d399;--emerald-500:#10b981;--emerald-600:#059669;--emerald-700:#047857;--emerald-800:#065f46;--emerald-900:#064e3b;--teal-700:#0f766e;--amber-100:#fef3c7;--amber-300:#fcd34d;--amber-400:#fbbf24;--amber-500:#f59e0b;--amber-700:#b45309;--blue-50:#eff6ff;--blue-100:#dbeafe;--blue-700:#1d4ed8;--slate-50:#f8fafc;--slate-100:#f1f5f9;--slate-200:#e2e8f0;--slate-300:#cbd5e1;--slate-400:#94a3b8;--slate-500:#64748b;--slate-600:#475569;--slate-700:#334155;--slate-800:#1e293b;--slate-900:#0f172a;--white:#fff;--shadow-md:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -1px rgba(0,0,0,.06);--shadow-lg:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -2px rgba(0,0,0,.05);--shadow-xl:0 20px 25px -5px rgba(0,0,0,.1),0 10px 10px -5px rgba(0,0,0,.04)}
 *{margin:0;padding:0;box-sizing:border-box}
-html{scroll-behavior:smooth;scroll-padding-top:90px}
+html{scroll-behavior:smooth;scroll-padding-top:90px;-webkit-text-size-adjust:100%}
 body{font-family:'Inter',sans-serif;color:var(--slate-800);line-height:1.5;overflow-x:hidden;background:var(--white)}
 body.menu-open{overflow:hidden}
 a{color:inherit}
@@ -71,6 +71,7 @@ h1,h2,h3{font-weight:900;line-height:1.2}
 .hero h2{font-size:clamp(1.25rem,3vw,1.75rem);color:var(--amber-300);margin-bottom:1.5rem}
 .hero p{color:var(--emerald-50);max-width:40rem;margin:0 auto 2.5rem;line-height:1.7}
 .hero-btns{display:flex;flex-wrap:wrap;justify-content:center;gap:1rem}
+@media(max-width:640px){.hero{padding:5rem 0 4rem}.hero-btns{flex-direction:column;align-items:stretch}.hero-btns .btn{width:100%}}
 
 /* INFO STRIP */
 .strip{padding:0 0 1rem;background:var(--white)}
@@ -84,6 +85,7 @@ h1,h2,h3{font-weight:900;line-height:1.2}
 .tt-section{padding:5rem 0}
 .tt-section.alt{background:linear-gradient(135deg,var(--slate-50) 0%,var(--emerald-50) 100%)}
 .tt-section.archived .tt-card{opacity:.85}
+@media(max-width:640px){.tt-section{padding:3rem 0}}
 .sec-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:1rem;margin-bottom:2rem}
 .sec-head h2{font-size:clamp(1.75rem,4vw,2.5rem);margin:.75rem 0 .25rem}
 .status{display:inline-flex;align-items:center;gap:.4rem;padding:.35rem 1rem;border-radius:9999px;font-family:'Roboto Mono',monospace;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
@@ -92,14 +94,17 @@ h1,h2,h3{font-weight:900;line-height:1.2}
 .status.upcoming{background:var(--amber-100);color:var(--amber-700)}
 .status.archived{background:var(--slate-200);color:var(--slate-600)}
 .tt-card{background:var(--white);border:2px solid var(--emerald-200);border-radius:.5rem;padding:1.5rem;box-shadow:var(--shadow-lg)}
+@media(max-width:640px){.tt-card{padding:1rem;border-radius:.5rem}}
 .filters{display:flex;flex-wrap:wrap;align-items:flex-end;gap:1rem;padding-bottom:1.5rem;margin-bottom:1.5rem;border-bottom:1px solid var(--slate-200)}
+.filters>div{flex:1 1 160px;min-width:0}
 .filters label{display:block;font-family:'Roboto Mono',monospace;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--slate-500);margin-bottom:.35rem}
-.filters select{min-width:11rem;padding:.65rem 1rem;font-family:'Inter',sans-serif;font-size:.9rem;border:2px solid var(--emerald-200);border-radius:.5rem;background:#fff;color:var(--slate-800);cursor:pointer}
+.filters select{width:100%;padding:.65rem 1rem;font-family:'Inter',sans-serif;font-size:.9rem;border:2px solid var(--emerald-200);border-radius:.5rem;background:#fff;color:var(--slate-800);cursor:pointer}
 .filters select:focus{outline:none;border-color:var(--emerald-500)}
+@media(max-width:640px){.filters{gap:.65rem;padding-bottom:1rem;margin-bottom:1rem}}
 .preview-title{font-family:'Roboto Mono',monospace;font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--emerald-700);margin-bottom:1rem}
 
 .day{margin-bottom:1.5rem}
-.day-head{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem}
+.day-head{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;flex-wrap:wrap}
 .day-head h3{font-size:1.15rem}
 .count{font-family:'Roboto Mono',monospace;font-size:.7rem;font-weight:700;padding:.2rem .65rem;border-radius:9999px;background:var(--emerald-100);color:var(--emerald-700)}
 .slots{display:grid;grid-template-columns:1fr;gap:1rem}
@@ -111,21 +116,49 @@ h1,h2,h3{font-weight:900;line-height:1.2}
 .meta i{color:var(--emerald-600);width:1rem}
 .meta b{color:var(--slate-800)}
 
-.exam{position:relative;border:2px solid var(--emerald-200);border-radius:.5rem;padding:1.5rem;background:#fff;transition:all .3s}
-.exam:hover{transform:translateY(-.5rem);box-shadow:var(--shadow-xl);border-color:var(--emerald-400)}
-.exam .status-badge{position:absolute;top:-.75rem;left:1.5rem;font-family:'Roboto Mono',monospace;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:.25rem .75rem;border-radius:9999px;background:var(--blue-100);color:var(--blue-700);box-shadow:var(--shadow-md)}
-.exam .code{font-size:1.25rem;font-weight:800;margin-top:.5rem}
-.exam .title{font-size:.9rem;color:var(--slate-600);margin-bottom:1rem}
-.exam-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;padding-top:1rem;border-top:1px solid var(--slate-200)}
-.exam-meta span{display:block;font-family:'Roboto Mono',monospace;font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--slate-500)}
-.exam-meta b{font-size:.95rem;color:var(--slate-800)}
-.exam-grid{display:grid;grid-template-columns:1fr;gap:1.5rem;padding-top:.75rem}
+/* ===== COMPACT EXAM CARD (2-day view) ===== */
+.exam-summary{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;margin-bottom:1.25rem;padding:.75rem 1rem;background:var(--emerald-50);border:1px solid var(--emerald-200);border-radius:.5rem;font-family:'Roboto Mono',monospace;font-size:.75rem;color:var(--emerald-700);font-weight:600}
+.exam-summary .dot{width:.5rem;height:.5rem;border-radius:50%;background:var(--emerald-500)}
+.exam-summary .grow{flex:1}
+.exam-summary strong{color:var(--slate-800)}
 
-.loading-spinner{display:inline-block;width:2rem;height:2rem;border:3px solid var(--emerald-200);border-radius:50%;border-top-color:var(--emerald-600);animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
-.empty{text-align:center;padding:2.5rem 1rem;color:var(--slate-500)}
-.empty i{font-size:2rem;margin-bottom:.75rem;display:block;color:var(--slate-400)}
-.card-foot{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:1rem;margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--slate-200)}
-.note{font-family:'Roboto Mono',monospace;font-size:.75rem;color:var(--slate-500)}
+.exam-days{display:grid;grid-template-columns:1fr;gap:1rem}
+.exam-day{border:2px solid var(--emerald-200);border-radius:.5rem;background:#fff;overflow:hidden;transition:border-color .3s}
+.exam-day:hover{border-color:var(--emerald-400)}
+.exam-day-head{display:flex;justify-content:space-between;align-items:center;gap:.75rem;padding:.75rem 1rem;background:linear-gradient(135deg,var(--emerald-600),var(--emerald-700));color:#fff;flex-wrap:wrap}
+.exam-day-head h3{font-size:.95rem;font-weight:800;color:#fff;letter-spacing:-.01em}
+.exam-day-head h3 small{display:block;font-family:'Roboto Mono',monospace;font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--emerald-100);margin-top:.15rem}
+.exam-day-count{font-family:'Roboto Mono',monospace;font-size:.65rem;font-weight:700;padding:.2rem .6rem;border-radius:9999px;background:rgba(255,255,255,.2);color:#fff}
+.exam-list{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:1fr;gap:0}
+.exam-item{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.75rem;padding:.75rem 1rem;border-bottom:1px solid var(--slate-200);transition:background .2s}
+.exam-item:last-child{border-bottom:none}
+.exam-item:hover{background:var(--emerald-50)}
+.exam-time{display:flex;flex-direction:column;align-items:center;gap:.15rem;min-width:70px;padding:.35rem .5rem;background:var(--amber-100);border-radius:.4rem;font-family:'Roboto Mono',monospace;font-weight:700;color:var(--amber-700)}
+.exam-time .start{font-size:.8rem}
+.exam-time .end{font-size:.6rem;color:var(--amber-500);text-transform:uppercase;letter-spacing:.06em}
+.exam-info{min-width:0}
+.exam-info .ecode{font-size:.9rem;font-weight:800;color:var(--slate-800);line-height:1.2;margin-bottom:.15rem;word-break:break-word}
+.exam-info .etitle{font-size:.75rem;color:var(--slate-500);line-height:1.3;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.exam-type-tag{font-family:'Roboto Mono',monospace;font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;padding:.2rem .5rem;border-radius:9999px;white-space:nowrap}
+.exam-type-tag.written{background:var(--blue-100);color:var(--blue-700)}
+.exam-type-tag.cbt{background:var(--amber-100);color:var(--amber-700)}
+.exam-type-tag.practical{background:var(--emerald-100);color:var(--emerald-700)}
+.exam-type-tag.oral{background:#fce7f3;color:#9d174d}
+.exam-item .evena{font-family:'Roboto Mono',monospace;font-size:.7rem;color:var(--slate-500);display:flex;align-items:center;gap:.35rem;grid-column:1/-1;margin-top:-.15rem}
+.exam-item .evena i{color:var(--emerald-600)}
+@media(min-width:768px){
+ .exam-days{grid-template-columns:repeat(2,1fr)}
+ .exam-list{grid-template-columns:repeat(2,1fr)}
+ .exam-item{border-bottom:1px solid var(--slate-200);border-right:1px solid var(--slate-200)}
+ .exam-item:nth-child(2n){border-right:none}
+ .exam-item:nth-last-child(-n+2){border-bottom:none}
+}
+@media(max-width:640px){
+ .exam-item{grid-template-columns:auto 1fr;gap:.6rem;padding:.65rem .75rem}
+ .exam-type-tag{grid-column:2;justify-self:start;margin-top:.25rem}
+ .exam-day-head{padding:.6rem .8rem}
+ .exam-day-head h3{font-size:.85rem}
+}
 
 /* ANNOUNCEMENTS */
 .ann{display:flex;gap:1rem;padding:1.25rem 1.5rem;border:2px solid var(--amber-300);border-left:6px solid var(--amber-500);border-radius:.5rem;background:#fffbeb;margin-top:1.5rem}
@@ -155,10 +188,15 @@ h1,h2,h3{font-weight:900;line-height:1.2}
 .footer-bottom-links a{font-family:'Roboto Mono',monospace;font-size:.75rem;color:var(--slate-400);text-decoration:none}
 .footer-bottom-links a:hover{color:var(--emerald-400)}
 
+.loading-spinner{display:inline-block;width:2rem;height:2rem;border:3px solid var(--emerald-200);border-radius:50%;border-top-color:var(--emerald-600);animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:2.5rem 1rem;color:var(--slate-500)}
+.empty i{font-size:2rem;margin-bottom:.75rem;display:block;color:var(--slate-400)}
+.card-foot{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:1rem;margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--slate-200)}
+.note{font-family:'Roboto Mono',monospace;font-size:.75rem;color:var(--slate-500)}
+
 @media(min-width:768px){
  .strip-grid{grid-template-columns:repeat(3,1fr)}
  .slots{grid-template-columns:repeat(2,1fr)}
- .exam-grid{grid-template-columns:repeat(2,1fr)}
  .footer-grid{grid-template-columns:repeat(4,1fr)}
  .footer-bottom{flex-direction:row}
 }
@@ -220,17 +258,19 @@ h1,h2,h3{font-weight:900;line-height:1.2}
   </div>
  </div></section>
 
- <!-- 4. EXAMINATION TIMETABLE -->
+ <!-- 4. EXAMINATION TIMETABLE (2-day compact view) -->
  <section class="tt-section alt" id="exam-timetable"><div class="container">
   <div class="sec-head">
-   <div><span class="tag tag-amber">Examinations</span><h2>Examination Timetable</h2><p>Official examination dates, times and venues</p></div>
+   <div><span class="tag tag-amber">Examinations</span><h2>Examination Timetable</h2><p>Next 2 days of exams at a glance</p></div>
    <span class="status" id="examStatus"></span>
   </div>
   <div class="tt-card">
    <div class="filters">
     <div><label for="examLevel">Level</label><select id="examLevel"></select></div>
     <div><label for="examSem">Semester</label><select id="examSem"></select></div>
+    <div><label for="examDay">Start From</label><select id="examDay"></select></div>
    </div>
+   <div id="examSummary" class="exam-summary hidden" style="display:none"></div>
    <div class="preview-title">Examination Schedule Preview</div>
    <div id="examBody"></div>
    <div class="card-foot">
@@ -275,7 +315,7 @@ hamburger.addEventListener('click',function(e){e.preventDefault();e.stopPropagat
 mobileUl.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){toggleMenu(false)})});
 document.addEventListener('keydown',function(e){if(e.key==='Escape')toggleMenu(false)});
 
-/* ===== BACKEND (same API as the dashboard) ===== */
+/* ===== BACKEND ===== */
 var API_BASE_URL='https://nuesa-biu-pjp0.onrender.com';
 var ENDPOINTS={timetable:'/api/timetable',theme:'/api/theme'};
 function fetchAPI(ep){return fetch(API_BASE_URL+ep,{headers:{Accept:'application/json'}}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})}
@@ -286,8 +326,9 @@ function pick(o){for(var i=1;i<arguments.length;i++){var v=o[arguments[i]];if(v!
 function fmtDate(v){if(!v)return 'TBA';var d=new Date(v);if(isNaN(d))return String(v);return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}
 function fmtDay(v){var s=String(v||'');return s.charAt(0).toUpperCase()+s.slice(1).toLowerCase()}
 function statusOf(v){v=String(v||'').toLowerCase();return ['active','upcoming','archived'].indexOf(v)>-1?v:''}
+function isoDate(v){if(!v)return '';var d=new Date(v);if(isNaN(d))return '';return d.toISOString().slice(0,10)}
 
-/* ===== THEME from API (CSS variables / colors object) ===== */
+/* ===== THEME ===== */
 function applyTheme(res){
  var t=(res&&(res.data||res))||{};var colors=t.colors||t.variables||t;
  Object.keys(colors).forEach(function(k){
@@ -316,7 +357,21 @@ function normalise(res){
   return{day:fmtDay(pick(c,'day','weekday')),code:pick(c,'course_code','code'),dept:pick(c,'department','dept','course_title','title'),time:t||'TBA',venue:pick(c,'venue','room')||'TBA',level:String(pick(c,'level')),sem:String(pick(c,'semester','sem'))};
  });
  state.exams=(d.exams||d.exam_timetable||[]).map(function(e){
-  return{code:pick(e,'course_code','code'),title:pick(e,'course_title','title','name'),status:pick(e,'status')||'Scheduled',date:fmtDate(pick(e,'date','exam_date')),time:pick(e,'time','start_time')||'TBA',venue:pick(e,'venue','room')||'TBA',level:String(pick(e,'level')),sem:String(pick(e,'semester','sem'))};
+  var rawDate=pick(e,'date','exam_date');
+  return{
+   code:pick(e,'course_code','code'),
+   title:pick(e,'course_title','title','name'),
+   status:pick(e,'status')||'Scheduled',
+   date:fmtDate(rawDate),
+   dateISO:isoDate(rawDate),
+   start:pick(e,'start_time','time')||'',
+   end:pick(e,'end_time')||'',
+   time:pick(e,'time','start_time')||'TBA',
+   venue:pick(e,'venue','room')||'TBA',
+   examType:String(pick(e,'exam_type','type','examType')||'written').toLowerCase(),
+   level:String(pick(e,'level')),
+   sem:String(pick(e,'semester','sem'))
+  };
  });
  state.announcements=(d.announcements||d.notices||[]).map(function(a){
   return{title:pick(a,'title'),text:pick(a,'message','text','content','body'),by:pick(a,'posted_by','author','by')};
@@ -345,13 +400,97 @@ function renderClasses(){
  });
  document.getElementById('classBody').innerHTML=html||msg('fa-calendar-times',state.classes.length?'No classes found for this selection.':'No class timetable has been published yet.');
 }
+
+/* ===== EXAM: show 2 days starting from a selected date ===== */
+function dayKeyFromISO(iso){
+ if(!iso)return '';
+ var d=new Date(iso+'T00:00:00');
+ if(isNaN(d))return '';
+ return d.toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+}
+function longDayLabel(iso){
+ var d=new Date(iso+'T00:00:00');
+ if(isNaN(d))return iso;
+ return d.toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'long'});
+}
+function addDaysISO(iso,n){
+ var d=new Date(iso+'T00:00:00');d.setDate(d.getDate()+n);
+ return d.toISOString().slice(0,10);
+}
+
+/* Fill the "Start From" dropdown with distinct exam dates */
+function fillExamDaySelect(){
+ var el=document.getElementById('examDay');
+ var cur=el.value;
+ var dates=uniq(state.exams.map(function(e){return e.dateISO}));
+ // Sort ascending by actual date
+ dates.sort(function(a,b){return a<b?-1:a>b?1:0});
+ el.innerHTML=dates.map(function(d){
+  return '<option value="'+esc(d)+'">'+esc(longDayLabel(d))+'</option>';
+ }).join('');
+ // Default: earliest date (the day exams actually begin)
+ if(dates.length){
+  el.value=dates.indexOf(cur)>-1?cur:dates[0];
+ } else {
+  el.innerHTML='<option value="">No dates</option>';
+ }
+}
+
 function renderExams(){
  var l=document.getElementById('examLevel').value,s=document.getElementById('examSem').value;
- var rows=state.exams.filter(function(c){return(!l||c.level===l)&&(!s||c.sem===s)});
- document.getElementById('examBody').innerHTML=rows.length?'<div class="exam-grid">'+rows.map(function(e){
-  return '<div class="exam"><span class="status-badge">'+esc(e.status)+'</span><div class="code">'+esc(e.code)+'</div><div class="title">'+esc(e.title)+'</div><div class="exam-meta"><div><span>Date</span><b>'+esc(e.date)+'</b></div><div><span>Time</span><b>'+esc(e.time)+'</b></div><div><span>Venue</span><b>'+esc(e.venue)+'</b></div></div></div>'}).join('')+'</div>'
-  :msg('fa-file-circle-xmark',state.exams.length?'No examinations found for this selection.':'No examination timetable has been published yet.');
+ var start=document.getElementById('examDay').value;
+ var summary=document.getElementById('examSummary');
+
+ // Filter by level + semester first
+ var pool=state.exams.filter(function(c){return(!l||c.level===l)&&(!s||c.sem===s)&&c.dateISO});
+
+ // If no start date chosen, use the earliest
+ if(!start && pool.length){
+  var dates=uniq(pool.map(function(e){return e.dateISO})).sort();
+  start=dates[0];
+  document.getElementById('examDay').value=start;
+ }
+
+ // Compute 2-day window
+ var day1=start, day2=start?addDaysISO(start,1):'';
+ var rows=pool.filter(function(e){return e.dateISO===day1||e.dateISO===day2});
+
+ // Summary
+ if(start && rows.length){
+  summary.style.display='flex';
+  summary.innerHTML='<span class="dot"></span><span>Showing <strong>'+rows.length+'</strong> exam'+(rows.length===1?'':'s')+' on <strong>'+esc(longDayLabel(day1))+'</strong> &amp; <strong>'+esc(longDayLabel(day2))+'</strong></span><span class="grow"></span><span>'+pool.length+' total in scope</span>';
+ } else {
+  summary.style.display='none';
+ }
+
+ if(!rows.length){
+  document.getElementById('examBody').innerHTML=msg('fa-file-circle-xmark',pool.length?'No examinations on these two days for this selection.':'No examination timetable has been published yet.');
+  return;
+ }
+
+ // Group into two days
+ var groups=[{iso:day1,items:rows.filter(function(e){return e.dateISO===day1})}];
+ if(day2) groups.push({iso:day2,items:rows.filter(function(e){return e.dateISO===day2})});
+
+ var html='<div class="exam-days">'+groups.map(function(g){
+  if(!g.items.length)return '';
+  return '<div class="exam-day"><div class="exam-day-head"><h3>'+esc(longDayLabel(g.iso))+'<small>'+esc(fmtDate(g.iso))+'</small></h3><span class="exam-day-count">'+g.items.length+' exam'+(g.items.length===1?'':'s')+'</span></div><ul class="exam-list">'+
+   g.items.map(function(e){
+    var tCls=['written','cbt','practical','oral'].indexOf(e.examType)>-1?e.examType:'written';
+    var startTime=e.start?e.start:e.time;
+    var endTime=e.end||'';
+    return '<li class="exam-item">'+
+      '<div class="exam-time"><span class="start">'+esc(startTime||'TBA')+'</span>'+(endTime?'<span class="end">'+esc(endTime)+'</span>':'')+'</div>'+
+      '<div class="exam-info"><div class="ecode">'+esc(e.code)+'</div><div class="etitle">'+esc(e.title||'')+'</div></div>'+
+      '<span class="exam-type-tag '+tCls+'">'+esc(e.examType)+'</span>'+
+      '<div class="evena"><i class="fas fa-map-marker-alt"></i>'+esc(e.venue)+'</div>'+
+    '</li>';
+   }).join('')+
+  '</ul></div>';
+ }).join('')+'</div>';
+ document.getElementById('examBody').innerHTML=html;
 }
+
 function render(){
  var m=state.meta;
  document.getElementById('heroSession').textContent=m.session?m.session+' Academic Session':'Academic Session';
@@ -366,6 +505,7 @@ function render(){
  fillSelect('classSem',uniq(state.classes.map(function(c){return c.sem})),'All semesters','');
  fillSelect('examLevel',uniq(state.exams.map(function(c){return c.level})),'All levels',' Level');
  fillSelect('examSem',uniq(state.exams.map(function(c){return c.sem})),'All semesters','');
+ fillExamDaySelect();
  document.getElementById('annBody').innerHTML=state.announcements.length?state.announcements.map(function(a){
   return '<div class="ann"><i class="fas fa-bullhorn"></i><div><h3>'+esc(a.title)+'</h3><p>'+esc(a.text)+'</p>'+(a.by?'<div class="by">Posted by '+esc(a.by)+'</div>':'')+'</div></div>'}).join(''):msg('fa-bell-slash','No announcements at the moment.');
  renderClasses();renderExams();
@@ -376,6 +516,8 @@ function render(){
  document.getElementById(p+'Level').addEventListener('change',fn);
  document.getElementById(p+'Sem').addEventListener('change',fn);
 });
+document.getElementById('examDay').addEventListener('change',renderExams);
+
 document.querySelectorAll('[data-pdf]').forEach(function(b){
  b.addEventListener('click',function(e){
   var u=b.dataset.pdf==='class'?state.meta.classPdf:state.meta.examPdf;
