@@ -1698,8 +1698,6 @@
     const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
     const STORAGE_KEY = 'nuesa_voter_session';
 
-    // Hardcoded fallbacks — used until the API responds, and as a
-    // permanent safety net if the API ever omits these arrays.
     const DEFAULT_DEPARTMENTS = [
         'Electrical/Electronics Engineering',
         'Civil Engineering',
@@ -1712,13 +1710,13 @@
        ============================================================ */
     let POSITIONS = [];
     let CANDIDATES = [];
-    let DEPARTMENTS = [...DEFAULT_DEPARTMENTS];   // seeded, never empty
-    let LEVELS = [...DEFAULT_LEVELS];             // seeded, never empty
+    let DEPARTMENTS = [...DEFAULT_DEPARTMENTS];
+    let LEVELS = [...DEFAULT_LEVELS];
     let election = null;
     let electionPhase = 'closed';
     let resultsPublished = false;
     let resultsReady = false;
-    let electionLoaded = false;                   // true after mapElectionData runs
+    let electionLoaded = false;
     let tallies = {};
     let hasVoted = false;
     let votes = {};
@@ -1815,6 +1813,25 @@
         return /^[0-9+\-\s()]{7,20}$/.test(String(p || '').trim());
     }
 
+    /**
+     * Normalizes a voter record coming from ANY endpoint
+     * (register, verify-by-matric, lookup) into a consistent shape.
+     * Accepts camelCase or snake_case keys.
+     */
+    function normalizeVoterRecord(v) {
+        if (!v) return null;
+        return {
+            voterId:       v.voterId      ?? v.voter_id      ?? '',
+            fullName:      v.fullName     ?? v.full_name     ?? '',
+            matricNumber:  v.matricNumber ?? v.matric_no     ?? '',
+            phone:         v.phone        ?? '',
+            department:    v.department   ?? '',
+            level:         v.level        ?? '',
+            hasVoted:      !!(v.hasVoted  ?? v.has_voted),
+            eligibleToVote:(v.eligibleToVote ?? v.eligible_to_vote) !== false
+        };
+    }
+
     /* ============================================================
        NAVBAR
        ============================================================ */
@@ -1880,10 +1897,6 @@
         } catch { return {}; }
     }
 
-    /**
-     * Normalizes the /active response into local state.
-     * Guarantees DEPARTMENTS and LEVELS are NEVER empty after this runs.
-     */
     function mapElectionData(raw) {
         raw = raw || {};
 
@@ -1906,7 +1919,6 @@
         const derivedLevels = [...new Set(CANDIDATES.map(c => c.level).filter(Boolean))]
             .sort((a, b) => parseInt(a) - parseInt(b));
 
-        // Priority: API → derived from candidates → defaults
         DEPARTMENTS = (
             (Array.isArray(raw.departments) && raw.departments.length) ? raw.departments :
             derivedDepartments.length ? derivedDepartments :
@@ -1963,8 +1975,6 @@
        REGISTER MODAL
        ============================================================ */
     function openRegisterModal() {
-        // Safety net: if somehow still empty, refill with defaults.
-        // (Should never happen now that arrays are seeded.)
         if (!DEPARTMENTS.length) DEPARTMENTS = DEFAULT_DEPARTMENTS.slice();
         if (!LEVELS.length) LEVELS = DEFAULT_LEVELS.slice();
 
@@ -2113,13 +2123,8 @@
                     throw new Error(msg);
                 }
 
-                const voter = data.data;
-                verifiedVoter = {
-                    voterId: voter.voterId,
-                    fullName: voter.fullName,
-                    matricNumber: voter.matricNumber,
-                    hasVoted: !!voter.hasVoted
-                };
+                // FIX #1: store the full record (phone, department, level)
+                verifiedVoter = normalizeVoterRecord(data.data);
                 saveVoterSession(verifiedVoter);
 
                 close();
@@ -2127,8 +2132,8 @@
                 renderVote();
                 showFloatingToast(
                     data.alreadyRegistered
-                        ? `Welcome back, ${voter.fullName}.`
-                        : `Welcome, ${voter.fullName}. You can now nominate and vote.`,
+                        ? `Welcome back, ${verifiedVoter.fullName}.`
+                        : `Welcome, ${verifiedVoter.fullName}. You can now nominate and vote.`,
                     'success'
                 );
             } catch (err) {
@@ -2141,7 +2146,7 @@
     }
 
     openRegisterBtn.addEventListener('click', () => {
-        if (verifiedVoter) return; // End Session handler overrides this
+        if (verifiedVoter) return;
         openRegisterModal();
     });
     document.getElementById('heroRegisterBtn').addEventListener('click', (e) => {
@@ -2250,12 +2255,8 @@
                     throw new Error('You are not eligible to vote in this election.');
                 }
 
-                verifiedVoter = {
-                    voterId: voter.voterId,
-                    fullName: voter.fullName,
-                    matricNumber: voter.matricNumber,
-                    hasVoted: !!voter.hasVoted
-                };
+                // FIX #2: store the full record (phone, department, level)
+                verifiedVoter = normalizeVoterRecord(voter);
                 saveVoterSession(verifiedVoter);
 
                 close();
@@ -2285,14 +2286,8 @@
             throw new Error(data?.message || 'Could not verify your matric number.');
         }
 
-        const v = data.data;
-        return {
-            voterId: v.voterId ?? v.voter_id,
-            fullName: v.fullName ?? v.full_name,
-            matricNumber: v.matricNumber ?? v.matric_no,
-            hasVoted: !!(v.hasVoted ?? v.has_voted),
-            eligibleToVote: (v.eligibleToVote ?? v.eligible_to_vote) !== false
-        };
+        // FIX #3: return the full record via the shared normalizer
+        return normalizeVoterRecord(data.data);
     }
 
     /* ============================================================
@@ -2639,13 +2634,14 @@
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting…';
 
             try {
+                // FIX #4: send real phone / department / level
                 const payload = {
                     nominator: {
                         fullName: verifiedVoter.fullName,
                         matricNumber: verifiedVoter.matricNumber,
-                        phone: '',
-                        department: '',
-                        level: ''
+                        phone: verifiedVoter.phone || '',
+                        department: verifiedVoter.department || '',
+                        level: verifiedVoter.level || ''
                     },
                     nominees
                 };
@@ -2757,12 +2753,8 @@
                     if (voter.hasVoted) throw new Error('You have already cast your vote.');
                     if (voter.eligibleToVote === false) throw new Error('You are not eligible to vote in this election.');
 
-                    verifiedVoter = {
-                        voterId: voter.voterId,
-                        fullName: voter.fullName,
-                        matricNumber: voter.matricNumber,
-                        hasVoted: false
-                    };
+                    // FIX #2 (again): store full record
+                    verifiedVoter = normalizeVoterRecord(voter);
                     saveVoterSession(verifiedVoter);
                     renderRegBanner();
                     renderVote();
@@ -3038,11 +3030,12 @@
                 }
             }
 
+            // FIX #5: rebuild verifiedVoter from the fresh record
             if (verifiedVoter && verifiedVoter.matricNumber) {
                 try {
                     const fresh = await verifyVoterByMatric(verifiedVoter.matricNumber);
                     if (fresh) {
-                        verifiedVoter.hasVoted = fresh.hasVoted;
+                        verifiedVoter = normalizeVoterRecord(fresh);
                         hasVoted = fresh.hasVoted;
                         saveVoterSession(verifiedVoter);
                     }
@@ -3051,8 +3044,6 @@
             renderVote();
         } catch (err) {
             console.error('Election init failed:', err);
-            // NOTE: DEPARTMENTS and LEVELS still hold their defaults, so the
-            // register modal is fully functional even when /active failed.
             infoGrid.innerHTML = '';
             candidatesContent.innerHTML = `
                 <div class="state-box">
