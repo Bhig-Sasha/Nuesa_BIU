@@ -4887,7 +4887,8 @@ adminRouter.get('/elections/nominations', async (req, res) => {
             .from('nominations')
             .select(`
                 id, status, manifesto, created_at,
-                nominee:voters!nominations_nominee_id_fkey (full_name, matric_no, department, level),
+                nominee_name, nominee_matric, nominee_department, nominee_level,
+                nominee:voters!nominations_nominee_id_fkey (id, full_name, matric_no, department, level),
                 position:positions (id, title)
             `)
             .eq('election_id', election.id)

@@ -1601,22 +1601,32 @@ function renderNominations() {
         tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No nominations yet</td></tr>';
         return;
     }
+
     const statusClass = { pending: 'warning', approved: 'success', rejected: 'danger' };
-    tbody.innerHTML = filtered.map(n => `
-        <tr>
-            <td><strong>${escapeHtml(n.nominee?.full_name || '—')}</strong></td>
-            <td>${escapeHtml(n.position?.title || '—')}</td>
-            <td>${escapeHtml(n.nominee?.level || '—')}</td>
-            <td>${escapeHtml((n.nominee?.department || '').split(' ')[0] || '—')}</td>
-            <td><span class="status-badge badge-${statusClass[n.status] || 'info'}">${escapeHtml(n.status)}</span></td>
-            <td>
-                ${n.status === 'pending' ? `
-                    <button class="btn btn-primary btn-sm" onclick="updateNomination('${n.id}','approved')"><i class="fas fa-check"></i></button>
-                    <button class="btn btn-danger btn-sm" onclick="updateNomination('${n.id}','rejected')"><i class="fas fa-times"></i></button>
-                ` : '<span style="color:var(--text-dim);font-size:0.75rem;">—</span>'}
-            </td>
-        </tr>
-    `).join('');
+
+    tbody.innerHTML = filtered.map(n => {
+        // Prefer denormalized fields, fall back to joined voter
+        const name = n.nominee_name || n.nominee?.full_name || '—';
+        const level = n.nominee_level || n.nominee?.level || '—';
+        const dept  = n.nominee_department || n.nominee?.department || '';
+        const positionTitle = n.position?.title || '—';
+
+        return `
+            <tr>
+                <td><strong>${escapeHtml(name)}</strong></td>
+                <td>${escapeHtml(positionTitle)}</td>
+                <td>${escapeHtml(level)}</td>
+                <td>${escapeHtml(dept.split(' ')[0] || '—')}</td>
+                <td><span class="status-badge badge-${statusClass[n.status] || 'info'}">${escapeHtml(n.status)}</span></td>
+                <td>
+                    ${n.status === 'pending' ? `
+                        <button class="btn btn-primary btn-sm" onclick="updateNomination('${n.id}','approved')"><i class="fas fa-check"></i></button>
+                        <button class="btn btn-danger btn-sm" onclick="updateNomination('${n.id}','rejected')"><i class="fas fa-times"></i></button>
+                    ` : '<span style="color:var(--text-dim);font-size:0.75rem;">—</span>'}
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 async function loadVotingActivity() {
