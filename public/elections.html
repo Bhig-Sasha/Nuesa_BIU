@@ -1698,17 +1698,27 @@
     const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
     const STORAGE_KEY = 'nuesa_voter_session';
 
+    // Hardcoded fallbacks — used until the API responds, and as a
+    // permanent safety net if the API ever omits these arrays.
+    const DEFAULT_DEPARTMENTS = [
+        'Electrical/Electronics Engineering',
+        'Civil Engineering',
+        'Mechanical Engineering'
+    ];
+    const DEFAULT_LEVELS = ['100L', '200L', '300L', '400L', '500L'];
+
     /* ============================================================
        STATE
        ============================================================ */
     let POSITIONS = [];
     let CANDIDATES = [];
-    let DEPARTMENTS = [];
-    let LEVELS = [];
+    let DEPARTMENTS = [...DEFAULT_DEPARTMENTS];   // seeded, never empty
+    let LEVELS = [...DEFAULT_LEVELS];             // seeded, never empty
     let election = null;
     let electionPhase = 'closed';
     let resultsPublished = false;
     let resultsReady = false;
+    let electionLoaded = false;                   // true after mapElectionData runs
     let tallies = {};
     let hasVoted = false;
     let votes = {};
@@ -1857,17 +1867,12 @@
         return { election: data.data || null, message: data.message || null };
     }
 
-    /**
-     * Only call the tallies endpoint when results are actually available.
-     * The backend intentionally returns 403 while voting is in progress.
-     */
     async function fetchTallies() {
         if (!resultsReady) return {};
         try {
             const res = await fetch(`${API_BASE_URL}/api/elections/tallies`, {
                 headers: { 'Accept': 'application/json' }
             });
-            // 403 = not ready; treat as empty, no console noise
             if (res.status === 403) return {};
             if (!res.ok) return {};
             const data = await res.json().catch(() => ({}));
@@ -1875,7 +1880,13 @@
         } catch { return {}; }
     }
 
+    /**
+     * Normalizes the /active response into local state.
+     * Guarantees DEPARTMENTS and LEVELS are NEVER empty after this runs.
+     */
     function mapElectionData(raw) {
+        raw = raw || {};
+
         POSITIONS = (raw.positions || []).map(p => ({
             id: p.id, title: p.title, description: p.description || ''
         }));
@@ -1895,24 +1906,28 @@
         const derivedLevels = [...new Set(CANDIDATES.map(c => c.level).filter(Boolean))]
             .sort((a, b) => parseInt(a) - parseInt(b));
 
-        DEPARTMENTS = (raw.departments && raw.departments.length) ? raw.departments
-            : (derivedDepartments.length ? derivedDepartments : [
-                'Electrical/Electronics Engineering',
-                'Mechanical Engineering',
-                'Civil Engineering'
-            ]);
-        LEVELS = (raw.levels && raw.levels.length) ? raw.levels
-            : (derivedLevels.length ? derivedLevels : ['100L', '200L', '300L', '400L', '500L']);
+        // Priority: API → derived from candidates → defaults
+        DEPARTMENTS = (
+            (Array.isArray(raw.departments) && raw.departments.length) ? raw.departments :
+            derivedDepartments.length ? derivedDepartments :
+            DEFAULT_DEPARTMENTS.slice()
+        );
+        LEVELS = (
+            (Array.isArray(raw.levels) && raw.levels.length) ? raw.levels :
+            derivedLevels.length ? derivedLevels :
+            DEFAULT_LEVELS.slice()
+        );
 
         electionPhase = raw.phase || 'closed';
         resultsPublished = !!raw.results_published;
 
-        // Results are considered "ready to fetch" if any of these is true
         const votingEnd = raw.voting_end ? new Date(raw.voting_end).getTime() : null;
         resultsReady =
             resultsPublished === true ||
             electionPhase === 'closed' ||
             (votingEnd !== null && Date.now() > votingEnd);
+
+        electionLoaded = true;
     }
 
     /* ============================================================
@@ -1948,6 +1963,18 @@
        REGISTER MODAL
        ============================================================ */
     function openRegisterModal() {
+        // Safety net: if somehow still empty, refill with defaults.
+        // (Should never happen now that arrays are seeded.)
+        if (!DEPARTMENTS.length) DEPARTMENTS = DEFAULT_DEPARTMENTS.slice();
+        if (!LEVELS.length) LEVELS = DEFAULT_LEVELS.slice();
+
+        const deptOptions = DEPARTMENTS.map(d =>
+            `<option value="${esc(d)}">${esc(d)}</option>`
+        ).join('');
+        const levelOptions = LEVELS.map(l =>
+            `<option value="${esc(l)}">${esc(l)}</option>`
+        ).join('');
+
         const modal = document.createElement('div');
         modal.className = 'modal-backdrop';
         modal.setAttribute('role', 'dialog');
@@ -1995,7 +2022,7 @@
                             <i class="fas fa-building"></i>
                             <select id="regDept" required>
                                 <option value="">Select department</option>
-                                ${DEPARTMENTS.map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join('')}
+                                ${deptOptions}
                             </select>
                         </div>
                         <div class="field-error">Select your department.</div>
@@ -2006,7 +2033,7 @@
                             <i class="fas fa-graduation-cap"></i>
                             <select id="regLevel" required>
                                 <option value="">Select level</option>
-                                ${LEVELS.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('')}
+                                ${levelOptions}
                             </select>
                         </div>
                         <div class="field-error">Select your level.</div>
@@ -2080,7 +2107,6 @@
                 const data = await res.json().catch(() => ({}));
 
                 if (!res.ok || data.status !== 'success' || !data.data) {
-                    // Surface server diagnostic info for 500s
                     let msg = data.message || `Registration failed (${res.status})`;
                     if (data.code)    msg += ` [${data.code}]`;
                     if (data.detail)  msg += `: ${data.detail}`;
@@ -2125,7 +2151,7 @@
     });
 
     /* ============================================================
-       MATRIC PROMPT (used before Nominate and before Vote)
+       MATRIC PROMPT
        ============================================================ */
     function openMatricPrompt(opts) {
         const { mode, onVerified } = opts;
@@ -2403,6 +2429,12 @@
         const positionOptions = POSITIONS.map(p =>
             `<option value="${esc(p.id)}">${esc(p.title)}</option>`
         ).join('');
+        const deptOptions = DEPARTMENTS.map(d =>
+            `<option value="${esc(d)}">${esc(d)}</option>`
+        ).join('');
+        const levelOptions = LEVELS.map(l =>
+            `<option value="${esc(l)}">${esc(l)}</option>`
+        ).join('');
         return `
             <div class="nominee-card" data-nominee-index="${index}">
                 <div class="nominee-card-head">
@@ -2444,7 +2476,7 @@
                         <i class="fas fa-building"></i>
                         <select name="nominee_dept_${index}" required>
                             <option value="">Select department</option>
-                            ${DEPARTMENTS.map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join('')}
+                            ${deptOptions}
                         </select>
                     </div>
                     <div class="field-error">Select a department.</div>
@@ -2455,7 +2487,7 @@
                         <i class="fas fa-graduation-cap"></i>
                         <select name="nominee_level_${index}" required>
                             <option value="">Select level</option>
-                            ${LEVELS.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('')}
+                            ${levelOptions}
                         </select>
                     </div>
                     <div class="field-error">Select a level.</div>
@@ -2823,8 +2855,6 @@
                 const res = await fetch(`${API_BASE_URL}/api/elections/vote`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                    // Include matricNumber so a `requireVoter` middleware can
-                    // resolve the voter if it looks up by matric instead of id
                     body: JSON.stringify({
                         voterId: verifiedVoter.voterId,
                         matricNumber: verifiedVoter.matricNumber,
@@ -2988,8 +3018,8 @@
             }
 
             election = rawElection;
-            mapElectionData(rawElection);   // sets resultsReady
-            tallies = await fetchTallies(); // only fetches if resultsReady
+            mapElectionData(rawElection);
+            tallies = await fetchTallies();
 
             renderStatus();
             renderInfo();
@@ -2998,7 +3028,6 @@
             renderVote();
             renderResults();
 
-            // Nominations closed → disable Access Nomination
             if (!['preparation', 'pending', 'nomination'].includes(electionPhase)) {
                 const ctaButton = document.getElementById('openNominateBtn');
                 if (ctaButton) {
@@ -3009,7 +3038,6 @@
                 }
             }
 
-            // Refresh session voter's hasVoted state
             if (verifiedVoter && verifiedVoter.matricNumber) {
                 try {
                     const fresh = await verifyVoterByMatric(verifiedVoter.matricNumber);
@@ -3023,6 +3051,8 @@
             renderVote();
         } catch (err) {
             console.error('Election init failed:', err);
+            // NOTE: DEPARTMENTS and LEVELS still hold their defaults, so the
+            // register modal is fully functional even when /active failed.
             infoGrid.innerHTML = '';
             candidatesContent.innerHTML = `
                 <div class="state-box">
