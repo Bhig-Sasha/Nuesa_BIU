@@ -3941,6 +3941,71 @@ async function requireVoter(req, res, next) {
     }
 }
 
+// ============================================================
+// ============ VOTER AUTH MIDDLEWARE (must be defined
+// ============ BEFORE any route that uses requireVoter)
+// ============================================================
+//
+// Resolves the voter from:
+//   1. req.body.voterId       (preferred — what the frontend sends)
+//   2. req.body.matricNumber  (fallback)
+//   3. Authorization: Bearer <voterId>   (optional header path)
+//
+// Attaches the full voters row to req.voter, including:
+//   id, voter_id, matric_no, level, eligible_to_vote, has_voted, ...
+async function requireVoter(req, res, next) {
+    try {
+        const election = await getActiveElection();
+        if (!election) {
+            return res.status(400).json({ status: 'error', message: 'No active election' });
+        }
+        if (!election.session_id) {
+            return res.status(500).json({ status: 'error', message: 'Election is misconfigured (no session)' });
+        }
+
+        const bodyVoterId  = req.body?.voterId;
+        const bodyMatric   = req.body?.matricNumber;
+        const authHeader   = req.headers.authorization || '';
+        const bearerToken  = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
+
+        let query = supabase
+            .from('voters')
+            .select('id, voter_id, matric_no, full_name, level, department, phone, eligible_to_vote, has_voted, session_id')
+            .eq('session_id', election.session_id);
+
+        if (bodyVoterId) {
+            query = query.eq('voter_id', String(bodyVoterId).trim());
+        } else if (bodyMatric) {
+            query = query.ilike('matric_no', String(bodyMatric).trim());
+        } else if (bearerToken) {
+            query = query.eq('voter_id', bearerToken);
+        } else {
+            return res.status(401).json({
+                status: 'error',
+                code: 'VOTER_REQUIRED',
+                message: 'You must be a registered voter to perform this action'
+            });
+        }
+
+        const { data: voter, error } = await query.maybeSingle();
+        if (error) throw error;
+        if (!voter) {
+            return res.status(404).json({
+                status: 'error',
+                code: 'VOTER_NOT_FOUND',
+                message: 'Voter not found for this session. Please register first.'
+            });
+        }
+
+        req.voter = voter;
+        req.election = election;
+        next();
+    } catch (err) {
+        logger.error('requireVoter error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Voter authentication failed' });
+    }
+}
+
 // =============== PUBLIC: GET ACTIVE ELECTION ===============
 electionRouter.get('/active', async (req, res) => {
     try {
@@ -3970,7 +4035,7 @@ electionRouter.get('/active', async (req, res) => {
         if (nomErr) throw nomErr;
 
         const candidatesByPosition = {};
-        nominations.forEach(n => {
+        (nominations || []).forEach(n => {
             if (!candidatesByPosition[n.position_id]) candidatesByPosition[n.position_id] = [];
             candidatesByPosition[n.position_id].push({
                 id: n.id,
@@ -4009,12 +4074,12 @@ electionRouter.get('/active', async (req, res) => {
             }
         });
     } catch (err) {
-        logger.error('Election active error:', { requestId: req.id, error: err.message });
+        logger.error('Election active error:', { requestId: req.id, error: err.message, code: err.code });
         res.status(500).json({ status: 'error', message: 'Failed to load election' });
     }
 });
 
-// =============== VERIFY VOTER ===============
+// =============== VERIFY VOTER (matric + phone) ===============
 electionRouter.post('/voter/verify', async (req, res) => {
     try {
         const { matricNumber, phone } = req.body;
@@ -4034,7 +4099,7 @@ electionRouter.post('/voter/verify', async (req, res) => {
             .from('voters')
             .select('*')
             .eq('session_id', election.session_id)
-            .ilike('matric_no', matricNumber.trim())
+            .ilike('matric_no', String(matricNumber).trim())
             .maybeSingle();
 
         if (error) throw error;
@@ -4048,7 +4113,7 @@ electionRouter.post('/voter/verify', async (req, res) => {
         }
 
         const storedPhone = (voter.phone || '').replace(/\s/g, '');
-        const inputPhone  = phone.replace(/\s/g, '');
+        const inputPhone  = String(phone).replace(/\s/g, '');
         if (storedPhone && storedPhone !== 'PENDING' && storedPhone !== inputPhone) {
             return res.status(401).json({
                 status: 'error',
@@ -4067,8 +4132,198 @@ electionRouter.post('/voter/verify', async (req, res) => {
             }
         });
     } catch (err) {
-        logger.error('Voter verify error:', { error: err.message });
+        logger.error('Voter verify error:', { requestId: req.id, error: err.message, code: err.code });
         res.status(500).json({ status: 'error', message: 'Verification failed' });
+    }
+});
+
+// =============== VOTER SELF-REGISTRATION ===============
+electionRouter.post('/voter/register', async (req, res) => {
+    try {
+        const { fullName, matricNumber, phone, department, level } = req.body;
+
+        if (!fullName || !matricNumber || !phone || !department || !level) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'fullName, matricNumber, phone, department and level are required'
+            });
+        }
+
+        const election = await getActiveElection();
+        if (!election) {
+            return res.status(400).json({ status: 'error', message: 'No active election' });
+        }
+
+        if (!election.session_id) {
+            logger.error('Active election has no session_id', { electionId: election.id });
+            return res.status(500).json({
+                status: 'error',
+                message: 'Election is misconfigured (missing session). Contact an admin.'
+            });
+        }
+
+        const matric = String(matricNumber).trim().toUpperCase();
+
+        // Already registered?
+        const { data: existing, error: exErr } = await supabase
+            .from('voters')
+            .select('voter_id, full_name, matric_no, phone, department, level, has_voted, eligible_to_vote')
+            .eq('session_id', election.session_id)
+            .ilike('matric_no', matric)
+            .maybeSingle();
+
+        if (exErr) throw exErr;
+
+        if (existing) {
+            return res.status(200).json({
+                status: 'success',
+                alreadyRegistered: true,
+                data: {
+                    voterId: existing.voter_id,
+                    fullName: existing.full_name,
+                    matricNumber: existing.matric_no,
+                    phone: existing.phone,
+                    department: existing.department,
+                    level: existing.level,
+                    hasVoted: existing.has_voted,
+                    eligibleToVote: existing.eligible_to_vote
+                },
+                message: 'You are already registered. Proceeding to verification.'
+            });
+        }
+
+        const voterId = `V${uuid.v4().replace(/-/g, '').slice(0, 10).toUpperCase()}`;
+
+        // NOTE: only created_at is inserted — your voters table does NOT have updated_at
+        const { data: inserted, error: insErr } = await supabase
+            .from('voters')
+            .insert([{
+                session_id: election.session_id,
+                voter_id: voterId,
+                full_name: String(fullName).trim(),
+                matric_no: matric,
+                phone: String(phone).trim(),
+                department: String(department).trim(),
+                level: String(level).trim(),
+                eligible_to_vote: level !== '100L',
+                has_voted: false,
+                created_at: new Date().toISOString()
+            }])
+            .select()
+            .single();
+
+        if (insErr) {
+            logger.error('Voter insert failed', {
+                requestId: req.id,
+                code: insErr.code,
+                message: insErr.message,
+                details: insErr.details,
+                hint: insErr.hint
+            });
+
+            if (insErr.code === '23505') {
+                return res.status(409).json({
+                    status: 'error',
+                    message: 'This matric number is already registered for this session'
+                });
+            }
+
+            return res.status(500).json({
+                status: 'error',
+                message: 'Registration failed',
+                code: insErr.code || undefined,
+                detail: insErr.message || undefined
+            });
+        }
+
+        logger.info('Voter registered', {
+            requestId: req.id, voterId: inserted.voter_id, matric
+        });
+
+        return res.status(201).json({
+            status: 'success',
+            data: {
+                voterId: inserted.voter_id,
+                fullName: inserted.full_name,
+                matricNumber: inserted.matric_no,
+                phone: inserted.phone,
+                department: inserted.department,
+                level: inserted.level,
+                hasVoted: inserted.has_voted,
+                eligibleToVote: inserted.eligible_to_vote
+            },
+            message: 'Registration successful'
+        });
+    } catch (err) {
+        logger.error('Voter register error:', {
+            requestId: req.id,
+            message: err.message,
+            code: err.code,
+            details: err.details,
+            stack: err.stack
+        });
+        res.status(500).json({
+            status: 'error',
+            message: 'Registration failed',
+            code: err.code || undefined,
+            detail: err.message || undefined
+        });
+    }
+});
+
+// =============== VOTER LOOKUP (by matric OR voter_id) ===============
+electionRouter.get('/voter/:identifier', async (req, res) => {
+    try {
+        const identifier = decodeURIComponent(req.params.identifier).trim();
+        const election = await getActiveElection();
+
+        let data = null;
+
+        // Try matric first, scoped to the active session when available
+        let q = supabase
+            .from('voters')
+            .select('voter_id, full_name, matric_no, phone, department, level, eligible_to_vote, has_voted')
+            .ilike('matric_no', identifier);
+
+        if (election?.session_id) {
+            q = q.eq('session_id', election.session_id);
+        }
+
+        const r1 = await q.maybeSingle();
+        if (r1.error && r1.error.code !== 'PGRST116') throw r1.error;
+        data = r1.data;
+
+        // Fallback to voter_id
+        if (!data) {
+            const r2 = await supabase
+                .from('voters')
+                .select('voter_id, full_name, matric_no, phone, department, level, eligible_to_vote, has_voted')
+                .eq('voter_id', identifier)
+                .maybeSingle();
+            if (r2.error && r2.error.code !== 'PGRST116') throw r2.error;
+            data = r2.data;
+        }
+
+        if (!data) {
+            return res.status(404).json({ status: 'error', message: 'Voter not found' });
+        }
+
+        res.json({
+            status: 'success',
+            data: {
+                voterId: data.voter_id,
+                fullName: data.full_name,
+                matricNumber: data.matric_no,
+                phone: data.phone,
+                department: data.department,
+                level: data.level,
+                hasVoted: data.has_voted,
+                eligibleToVote: data.eligible_to_vote
+            }
+        });
+    } catch (err) {
+        logger.error('Voter lookup error:', { requestId: req.id, error: err.message, code: err.code });
+        res.status(500).json({ status: 'error', message: 'Lookup failed' });
     }
 });
 
@@ -4083,9 +4338,15 @@ electionRouter.post('/nominations/bulk', async (req, res) => {
                 message: 'Nominator and at least one nominee are required'
             });
         }
-        ['fullName', 'matricNumber', 'phone', 'department', 'level'].forEach(k => {
-            if (!nominator[k]) throw new Error(`Nominator ${k} is required`);
-        });
+
+        const missing = ['fullName', 'matricNumber', 'phone', 'department', 'level']
+            .filter(k => !nominator[k]);
+        if (missing.length) {
+            return res.status(400).json({
+                status: 'error',
+                message: `Nominator missing required fields: ${missing.join(', ')}`
+            });
+        }
 
         const election = await getActiveElection();
         if (!election) {
@@ -4098,12 +4359,11 @@ electionRouter.post('/nominations/bulk', async (req, res) => {
             });
         }
 
-        // Nominator must already be a registered voter for this session
         const { data: existingNominator, error: nominatorErr } = await supabase
             .from('voters')
             .select('id, voter_id')
             .eq('session_id', election.session_id)
-            .ilike('matric_no', nominator.matricNumber.trim())
+            .ilike('matric_no', String(nominator.matricNumber).trim())
             .maybeSingle();
 
         if (nominatorErr) throw nominatorErr;
@@ -4121,6 +4381,11 @@ electionRouter.post('/nominations/bulk', async (req, res) => {
         const skipped = [];
 
         for (const nominee of nominees) {
+            if (!nominee || !nominee.positionId || !nominee.matric) {
+                skipped.push({ matric: nominee?.matric || null, reason: 'missing position or matric' });
+                continue;
+            }
+
             const { data: position, error: posErr } = await supabase
                 .from('positions')
                 .select('id')
@@ -4138,7 +4403,7 @@ electionRouter.post('/nominations/bulk', async (req, res) => {
                 .from('voters')
                 .select('id')
                 .eq('session_id', election.session_id)
-                .ilike('matric_no', nominee.matric.trim())
+                .ilike('matric_no', String(nominee.matric).trim())
                 .maybeSingle();
 
             if (nomineeErr) throw nomineeErr;
@@ -4187,6 +4452,7 @@ electionRouter.post('/nominations/bulk', async (req, res) => {
         if (insErr) throw insErr;
 
         logger.info('Bulk nominations submitted', {
+            requestId: req.id,
             count: inserted.length,
             skipped: skipped.length,
             nominatorMatric: nominator.matricNumber
@@ -4203,204 +4469,14 @@ electionRouter.post('/nominations/bulk', async (req, res) => {
             }`
         });
     } catch (err) {
-        logger.error('Bulk nomination error:', { error: err.message });
+        logger.error('Bulk nomination error:', {
+            requestId: req.id, error: err.message, code: err.code, details: err.details
+        });
         res.status(500).json({ status: 'error', message: err.message || 'Failed to submit nominations' });
     }
 });
 
-// =============== VOTER SELF-REGISTRATION ===============
-electionRouter.post('/voter/register', async (req, res) => {
-    try {
-        const { fullName, matricNumber, phone, department, level } = req.body;
-
-        if (!fullName || !matricNumber || !phone || !department || !level) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'fullName, matricNumber, phone, department and level are required'
-            });
-        }
-
-        const election = await getActiveElection();
-        if (!election) {
-            return res.status(400).json({ status: 'error', message: 'No active election' });
-        }
-
-        // GUARD #1 — fail loudly, not with a null-violation 500
-        if (!election.session_id) {
-            logger.error('Active election has no session_id', { electionId: election.id });
-            return res.status(500).json({
-                status: 'error',
-                message: 'Election is misconfigured (missing session). Contact an admin.'
-            });
-        }
-
-        const matric = String(matricNumber).trim().toUpperCase();
-
-        // Already registered? Return 200 so the UI proceeds to verify
-        const { data: existing, error: exErr } = await supabase
-            .from('voters')
-            .select('voter_id, full_name, matric_no, phone, department, level, has_voted, eligible_to_vote')
-            .eq('session_id', election.session_id)
-            .ilike('matric_no', matric)
-            .maybeSingle();
-
-        if (exErr) throw exErr;
-
-        if (existing) {
-            return res.status(200).json({
-                status: 'success',
-                alreadyRegistered: true,
-                data: {
-                    voterId: existing.voter_id,
-                    fullName: existing.full_name,
-                    matricNumber: existing.matric_no,
-                    phone: existing.phone,
-                    department: existing.department,
-                    level: existing.level,
-                    hasVoted: existing.has_voted,
-                    eligibleToVote: existing.eligible_to_vote
-                },
-                message: 'You are already registered. Proceeding to verification.'
-            });
-        }
-
-        // Collision-resistant voter_id (uuid fragment, not time-based)
-        const voterId = `V${uuid.v4().replace(/-/g, '').slice(0, 10).toUpperCase()}`;
-
-        const now = new Date().toISOString();
-        const { data: inserted, error: insErr } = await supabase
-            .from('voters')
-            .insert([{
-                session_id: election.session_id,
-                voter_id: voterId,
-                full_name: String(fullName).trim(),
-                matric_no: matric,
-                phone: String(phone).trim(),
-                department: String(department).trim(),
-                level: String(level).trim(),
-                eligible_to_vote: level !== '100L',
-                has_voted: false,
-                created_at: now,
-                updated_at: now
-            }])
-            .select()
-            .single();
-
-        // GUARD #2 — surface the real Postgres error
-        if (insErr) {
-            logger.error('Voter insert failed', {
-                requestId: req.id,
-                code: insErr.code,
-                message: insErr.message,
-                details: insErr.details,
-                hint: insErr.hint
-            });
-
-            if (insErr.code === '23505') {
-                return res.status(409).json({
-                    status: 'error',
-                    message: 'This matric number is already registered for this session'
-                });
-            }
-            // Put the real reason in the response so you can see it from the browser
-            return res.status(500).json({
-                status: 'error',
-                message: 'Registration failed',
-                code: insErr.code,
-                detail: insErr.message
-            });
-        }
-
-        logger.info('Voter registered', {
-            requestId: req.id, voterId: inserted.voter_id, matric
-        });
-
-        return res.status(201).json({
-            status: 'success',
-            data: {
-                voterId: inserted.voter_id,
-                fullName: inserted.full_name,
-                matricNumber: inserted.matric_no,
-                phone: inserted.phone,
-                department: inserted.department,
-                level: inserted.level,
-                hasVoted: inserted.has_voted,
-                eligibleToVote: inserted.eligible_to_vote
-            },
-            message: 'Registration successful'
-        });
-    } catch (err) {
-        logger.error('Voter register error:', {
-            requestId: req.id,
-            message: err.message,
-            code: err.code,
-            details: err.details,
-            stack: err.stack
-        });
-        res.status(500).json({
-            status: 'error',
-            message: 'Registration failed',
-            code: err.code || undefined,
-            detail: err.message
-        });
-    }
-});
-
-// =============== VOTER LOOKUP ===============
-electionRouter.get('/voter/:identifier', async (req, res) => {
-    try {
-        const identifier = decodeURIComponent(req.params.identifier).trim();
-        const election = await getActiveElection();
-
-        const baseQuery = supabase
-            .from('voters')
-            .select('voter_id, full_name, matric_no, phone, department, level, eligible_to_vote, has_voted');
-
-        // Try matric first (what the register page sends)
-        let { data, error } = await supabase
-            .from('voters')
-            .select('voter_id, full_name, matric_no, phone, department, level, eligible_to_vote, has_voted')
-            .ilike('matric_no', identifier)
-            .eq('session_id', election?.session_id ?? undefined)
-            .maybeSingle();
-
-        if (error && error.code !== 'PGRST116') throw error;
-
-        // Fallback to voter_id
-        if (!data) {
-            const r2 = await supabase
-                .from('voters')
-                .select('voter_id, full_name, matric_no, phone, department, level, eligible_to_vote, has_voted')
-                .eq('voter_id', identifier)
-                .maybeSingle();
-            if (r2.error && r2.error.code !== 'PGRST116') throw r2.error;
-            data = r2.data;
-        }
-
-        if (!data) {
-            return res.status(404).json({ status: 'error', message: 'Voter not found' });
-        }
-
-        res.json({
-            status: 'success',
-            data: {
-                voterId: data.voter_id,
-                fullName: data.full_name,
-                matricNumber: data.matric_no,
-                phone: data.phone,
-                department: data.department,
-                level: data.level,
-                hasVoted: data.has_voted,
-                eligibleToVote: data.eligible_to_vote
-            }
-        });
-    } catch (err) {
-        logger.error('Voter lookup error:', { requestId: req.id, error: err.message });
-        res.status(500).json({ status: 'error', message: 'Lookup failed' });
-    }
-});
-
-// =============== NOMINATIONS ===============
+// =============== SINGLE NOMINATION ===============
 electionRouter.post('/nominate', requireVoter, async (req, res) => {
     try {
         const { positionId, nomineeVoterId, manifesto } = req.body;
@@ -4409,8 +4485,7 @@ electionRouter.post('/nominate', requireVoter, async (req, res) => {
             return res.status(400).json({ status: 'error', message: 'Position and nominee required' });
         }
 
-        const election = await getActiveElection();
-        if (!election) return res.status(400).json({ status: 'error', message: 'No active election' });
+        const election = req.election; // set by requireVoter
 
         if (election.phase !== 'nomination') {
             return res.status(403).json({
@@ -4467,11 +4542,12 @@ electionRouter.post('/nominate', requireVoter, async (req, res) => {
             message: `Nomination submitted for ${nominee.full_name}. Awaiting admin approval.`
         });
     } catch (err) {
-        logger.error('Nomination error:', { requestId: req.id, error: err.message });
+        logger.error('Nomination error:', { requestId: req.id, error: err.message, code: err.code });
         res.status(500).json({ status: 'error', message: 'Nomination failed' });
     }
 });
 
+// =============== LIST APPROVED NOMINATIONS ===============
 electionRouter.get('/nominations', async (req, res) => {
     try {
         const election = await getActiveElection();
@@ -4488,9 +4564,9 @@ electionRouter.get('/nominations', async (req, res) => {
             .eq('status', 'approved');
 
         if (error) throw error;
-        res.json({ status: 'success', data });
+        res.json({ status: 'success', data: data || [] });
     } catch (err) {
-        logger.error('Nominations list error:', { error: err.message });
+        logger.error('Nominations list error:', { requestId: req.id, error: err.message, code: err.code });
         res.status(500).json({ status: 'error', message: 'Failed to load nominations' });
     }
 });
@@ -4504,9 +4580,7 @@ electionRouter.post('/vote', requireVoter, async (req, res) => {
             return res.status(400).json({ status: 'error', message: 'No votes submitted' });
         }
 
-        const election = await getActiveElection();
-        if (!election) return res.status(400).json({ status: 'error', message: 'No active election' });
-
+        const election = req.election;
         if (election.phase !== 'voting') {
             return res.status(403).json({
                 status: 'error',
@@ -4527,6 +4601,10 @@ electionRouter.post('/vote', requireVoter, async (req, res) => {
 
         const voteRows = [];
         for (const [positionId, candidateId] of Object.entries(votes)) {
+            if (!positionId || !candidateId) {
+                return res.status(400).json({ status: 'error', message: 'Invalid vote entry' });
+            }
+
             const { data: nomination } = await supabase
                 .from('nominations')
                 .select('id, position_id')
@@ -4570,7 +4648,7 @@ electionRouter.post('/vote', requireVoter, async (req, res) => {
 
         res.json({ status: 'success', message: 'Your vote has been recorded. Thank you!' });
     } catch (err) {
-        logger.error('Vote error:', { requestId: req.id, error: err.message });
+        logger.error('Vote error:', { requestId: req.id, error: err.message, code: err.code });
         res.status(500).json({ status: 'error', message: 'Voting failed' });
     }
 });
@@ -4581,12 +4659,17 @@ electionRouter.get('/tallies', async (req, res) => {
         const election = await getActiveElection();
         if (!election) return res.json({ status: 'success', data: {} });
 
-        const now = Date.now();
-        const voteEnd = new Date(election.voting_end).getTime();
-        if (now < voteEnd) {
+        // Guard 1: only published results are viewable
+        const resultsPublished = election.results_published === true;
+
+        // Guard 2: voting must have ended
+        const voteEnd = election.voting_end ? new Date(election.voting_end).getTime() : null;
+        const votingOver = voteEnd !== null && Date.now() >= voteEnd;
+
+        if (!resultsPublished || !votingOver) {
             return res.status(403).json({
                 status: 'error',
-                message: 'Results are not yet available. Voting is still in progress.'
+                message: 'Results are not yet available. Voting is still in progress or results have not been published.'
             });
         }
 
@@ -4604,7 +4687,9 @@ electionRouter.get('/tallies', async (req, res) => {
         if (voteErr) throw voteErr;
 
         const tallies = {};
-        votes.forEach(v => { tallies[v.candidate_id] = (tallies[v.candidate_id] || 0) + 1; });
+        (votes || []).forEach(v => {
+            tallies[v.candidate_id] = (tallies[v.candidate_id] || 0) + 1;
+        });
 
         const { data: nominations } = await supabase
             .from('nominations')
@@ -4616,7 +4701,7 @@ electionRouter.get('/tallies', async (req, res) => {
             .eq('status', 'approved');
 
         const detailed = {};
-        nominations?.forEach(n => {
+        (nominations || []).forEach(n => {
             detailed[n.id] = {
                 votes: tallies[n.id] || 0,
                 name: n.nominee?.full_name,
@@ -4636,7 +4721,7 @@ electionRouter.get('/tallies', async (req, res) => {
             }
         });
     } catch (err) {
-        logger.error('Tallies error:', { error: err.message });
+        logger.error('Tallies error:', { requestId: req.id, error: err.message, code: err.code });
         res.status(500).json({ status: 'error', message: 'Failed to load tallies' });
     }
 });

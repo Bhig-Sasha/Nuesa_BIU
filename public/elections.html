@@ -1708,11 +1708,11 @@
     let election = null;
     let electionPhase = 'closed';
     let resultsPublished = false;
+    let resultsReady = false;
     let tallies = {};
     let hasVoted = false;
     let votes = {};
 
-    // Registered voter for this browser session (persisted in sessionStorage)
     let verifiedVoter = loadVoterSession();
 
     const statusTitle = document.getElementById('statusTitle');
@@ -1729,18 +1729,15 @@
     const openRegisterBtn = document.getElementById('openRegisterBtn');
 
     /* ============================================================
-       SESSION STORAGE — keeps the voter logged in across reloads
+       SESSION STORAGE
        ============================================================ */
     function saveVoterSession(voter) {
-        try {
-            sessionStorage.setItem(STORAGE_KEY, JSON.stringify(voter));
-        } catch {}
+        try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(voter)); } catch {}
     }
     function loadVoterSession() {
         try {
             const raw = sessionStorage.getItem(STORAGE_KEY);
-            if (!raw) return null;
-            return JSON.parse(raw);
+            return raw ? JSON.parse(raw) : null;
         } catch { return null; }
     }
     function clearVoterSession() {
@@ -1859,12 +1856,22 @@
         if (!data || data.status !== 'success') throw new Error(data?.message || 'Unexpected server response.');
         return { election: data.data || null, message: data.message || null };
     }
+
+    /**
+     * Only call the tallies endpoint when results are actually available.
+     * The backend intentionally returns 403 while voting is in progress.
+     */
     async function fetchTallies() {
+        if (!resultsReady) return {};
         try {
-            const res = await fetch(`${API_BASE_URL}/api/elections/tallies`, { headers: { 'Accept': 'application/json' } });
+            const res = await fetch(`${API_BASE_URL}/api/elections/tallies`, {
+                headers: { 'Accept': 'application/json' }
+            });
+            // 403 = not ready; treat as empty, no console noise
+            if (res.status === 403) return {};
+            if (!res.ok) return {};
             const data = await res.json().catch(() => ({}));
-            if (!res.ok || data.status !== 'success') return {};
-            return data.data || {};
+            return (data && data.status === 'success') ? (data.data || {}) : {};
         } catch { return {}; }
     }
 
@@ -1899,6 +1906,13 @@
 
         electionPhase = raw.phase || 'closed';
         resultsPublished = !!raw.results_published;
+
+        // Results are considered "ready to fetch" if any of these is true
+        const votingEnd = raw.voting_end ? new Date(raw.voting_end).getTime() : null;
+        resultsReady =
+            resultsPublished === true ||
+            electionPhase === 'closed' ||
+            (votingEnd !== null && Date.now() > votingEnd);
     }
 
     /* ============================================================
@@ -1911,6 +1925,7 @@
                 <p>Register as a voter to nominate and vote. You only need to do this once for this election.</p>`;
             openRegisterBtn.innerHTML = '<i class="fas fa-user-plus"></i> Register as a Voter';
             openRegisterBtn.disabled = false;
+            openRegisterBtn.onclick = null;
         } else {
             regBannerBody.innerHTML = `
                 <h4>You're registered as ${esc(verifiedVoter.fullName)}</h4>
@@ -1930,7 +1945,7 @@
     }
 
     /* ============================================================
-       REGISTER MODAL (one-time voter registration)
+       REGISTER MODAL
        ============================================================ */
     function openRegisterModal() {
         const modal = document.createElement('div');
@@ -2026,7 +2041,6 @@
                 level: document.getElementById('regLevel').value
             };
 
-            // Client-side validation
             const fields = [
                 { key: 'fullName', el: document.getElementById('regName') },
                 { key: 'matricNumber', el: document.getElementById('regMatric') },
@@ -2058,9 +2072,6 @@
             this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registering…';
 
             try {
-                // Backend endpoint that registers a voter for the active election.
-                // If your backend requires OTP, add a second request here to verify
-                // the OTP before accepting the voter.
                 const res = await fetch(`${API_BASE_URL}/api/elections/voter/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
@@ -2069,14 +2080,11 @@
                 const data = await res.json().catch(() => ({}));
 
                 if (!res.ok || data.status !== 'success' || !data.data) {
-                    // Friendly messages for the most common failures
-                    if (res.status === 409) {
-                        throw new Error(data.message || 'This matric number is already registered.');
-                    }
-                    if (res.status === 404) {
-                        throw new Error(data.message || 'Registration endpoint unavailable. Please try again later.');
-                    }
-                    throw new Error(data.message || `Registration failed (${res.status})`);
+                    // Surface server diagnostic info for 500s
+                    let msg = data.message || `Registration failed (${res.status})`;
+                    if (data.code)    msg += ` [${data.code}]`;
+                    if (data.detail)  msg += `: ${data.detail}`;
+                    throw new Error(msg);
                 }
 
                 const voter = data.data;
@@ -2092,7 +2100,9 @@
                 renderRegBanner();
                 renderVote();
                 showFloatingToast(
-                    `Welcome, ${voter.fullName}. You can now nominate and vote.`,
+                    data.alreadyRegistered
+                        ? `Welcome back, ${voter.fullName}.`
+                        : `Welcome, ${voter.fullName}. You can now nominate and vote.`,
                     'success'
                 );
             } catch (err) {
@@ -2105,7 +2115,7 @@
     }
 
     openRegisterBtn.addEventListener('click', () => {
-        if (verifiedVoter) return; // handled by end-session binding above
+        if (verifiedVoter) return; // End Session handler overrides this
         openRegisterModal();
     });
     document.getElementById('heroRegisterBtn').addEventListener('click', (e) => {
@@ -2118,7 +2128,7 @@
        MATRIC PROMPT (used before Nominate and before Vote)
        ============================================================ */
     function openMatricPrompt(opts) {
-        const { mode, onVerified } = opts; // mode: 'nominate' | 'vote'
+        const { mode, onVerified } = opts;
 
         const titles = {
             nominate: {
@@ -2214,7 +2224,6 @@
                     throw new Error('You are not eligible to vote in this election.');
                 }
 
-                // Persist this voter for the session
                 verifiedVoter = {
                     voterId: voter.voterId,
                     fullName: voter.fullName,
@@ -2225,8 +2234,6 @@
 
                 close();
                 renderRegBanner();
-
-                // Hand off to the next stage
                 onVerified(verifiedVoter);
             } catch (err) {
                 errorText.textContent = err.message || 'Could not verify your matric number.';
@@ -2239,10 +2246,6 @@
 
     /* ============================================================
        VERIFY VOTER BY MATRIC
-       ------------------------------------------------------------
-       Calls the backend voter lookup. Returns the voter record or
-       null if the matric is not registered. If you add OTP later,
-       insert the OTP verification here before returning `voter`.
        ============================================================ */
     async function verifyVoterByMatric(matric) {
         const res = await fetch(`${API_BASE_URL}/api/elections/voter/${encodeURIComponent(matric)}`, {
@@ -2256,14 +2259,13 @@
             throw new Error(data?.message || 'Could not verify your matric number.');
         }
 
-        // Normalize for callers
         const v = data.data;
         return {
-            voterId: v.voter_id,
-            fullName: v.full_name,
-            matricNumber: v.matric_no,
-            hasVoted: !!v.has_voted,
-            eligibleToVote: v.eligible_to_vote !== false
+            voterId: v.voterId ?? v.voter_id,
+            fullName: v.fullName ?? v.full_name,
+            matricNumber: v.matricNumber ?? v.matric_no,
+            hasVoted: !!(v.hasVoted ?? v.has_voted),
+            eligibleToVote: (v.eligibleToVote ?? v.eligible_to_vote) !== false
         };
     }
 
@@ -2393,7 +2395,7 @@
     }
 
     /* ============================================================
-       NOMINATE — modal (post-verification)
+       NOMINATE
        ============================================================ */
     let nomineeCount = 0;
 
@@ -2638,7 +2640,6 @@
         });
     }
 
-    // "Access Nomination" — always ask for matric first
     document.getElementById('openNominateBtn').addEventListener('click', () => {
         if (!verifiedVoter) {
             openMatricPrompt({
@@ -2720,15 +2721,9 @@
                 try {
                     const voter = await verifyVoterByMatric(matric);
 
-                    if (!voter) {
-                        throw new Error('Please register as a voter before voting.');
-                    }
-                    if (voter.hasVoted) {
-                        throw new Error('You have already cast your vote.');
-                    }
-                    if (voter.eligibleToVote === false) {
-                        throw new Error('You are not eligible to vote in this election.');
-                    }
+                    if (!voter) throw new Error('Please register as a voter before voting.');
+                    if (voter.hasVoted) throw new Error('You have already cast your vote.');
+                    if (voter.eligibleToVote === false) throw new Error('You are not eligible to vote in this election.');
 
                     verifiedVoter = {
                         voterId: voter.voterId,
@@ -2749,7 +2744,6 @@
             return;
         }
 
-        // Verified: show ballot
         const positions = positionsWithCandidates();
         if (!positions.length) {
             voteContent.innerHTML = `
@@ -2829,13 +2823,21 @@
                 const res = await fetch(`${API_BASE_URL}/api/elections/vote`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                    body: JSON.stringify({ voterId: verifiedVoter.voterId, votes })
+                    // Include matricNumber so a `requireVoter` middleware can
+                    // resolve the voter if it looks up by matric instead of id
+                    body: JSON.stringify({
+                        voterId: verifiedVoter.voterId,
+                        matricNumber: verifiedVoter.matricNumber,
+                        votes
+                    })
                 });
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok || data.status !== 'success') {
                     throw new Error(data?.message || `Vote submission failed (${res.status})`);
                 }
                 hasVoted = true;
+                verifiedVoter.hasVoted = true;
+                saveVoterSession(verifiedVoter);
                 renderVote();
             } catch (err) {
                 errorBox.textContent = err.message || 'Vote submission failed. Please try again.';
@@ -2859,7 +2861,7 @@
                 </div>`;
             return;
         }
-        if (!CANDIDATES.length) {
+        if (!CANDIDATES.length || !Object.keys(tallies).length) {
             resultsContent.innerHTML = `
                 <div class="state-box">
                     <div class="state-box-icon"><i class="fas fa-chart-bar"></i></div>
@@ -2869,7 +2871,7 @@
             return;
         }
 
-        const totalVotes = Object.values(tallies).reduce((a, b) => a + b, 0);
+        const totalVotes = Object.values(tallies).reduce((a, b) => a + (b?.votes || 0), 0);
         let html = `
             <div class="results-hero">
                 <div class="results-hero-icon"><i class="fas fa-trophy"></i></div>
@@ -2880,8 +2882,8 @@
         POSITIONS.forEach(position => {
             const list = candidatesFor(position.id);
             if (!list.length) return;
-            const posTotal = list.reduce((s, c) => s + (tallies[c.id] || 0), 0);
-            const sorted = [...list].sort((a, b) => (tallies[b.id] || 0) - (tallies[a.id] || 0));
+            const posTotal = list.reduce((s, c) => s + (tallies[c.id]?.votes || 0), 0);
+            const sorted = [...list].sort((a, b) => (tallies[b.id]?.votes || 0) - (tallies[a.id]?.votes || 0));
             const leader = sorted[0];
             html += `
                 <div class="result-position">
@@ -2890,7 +2892,7 @@
                         <span class="result-position-total">${posTotal} vote${posTotal === 1 ? '' : 's'}</span>
                     </div>
                     ${sorted.map(c => {
-                        const count = tallies[c.id] || 0;
+                        const count = tallies[c.id]?.votes || 0;
                         const pct = posTotal > 0 ? ((count / posTotal) * 100) : 0;
                         const isLeader = c.id === leader.id && count > 0;
                         return `
@@ -2980,13 +2982,14 @@
                         </button>
                     </div>`;
                 voteContent.innerHTML = '';
+                resultsContent.innerHTML = '';
                 renderStatus();
                 return;
             }
 
             election = rawElection;
-            mapElectionData(rawElection);
-            tallies = await fetchTallies();
+            mapElectionData(rawElection);   // sets resultsReady
+            tallies = await fetchTallies(); // only fetches if resultsReady
 
             renderStatus();
             renderInfo();
@@ -2995,7 +2998,7 @@
             renderVote();
             renderResults();
 
-            // Nominations are closed → disable the Access button
+            // Nominations closed → disable Access Nomination
             if (!['preparation', 'pending', 'nomination'].includes(electionPhase)) {
                 const ctaButton = document.getElementById('openNominateBtn');
                 if (ctaButton) {
@@ -3006,7 +3009,7 @@
                 }
             }
 
-            // If the session voter is already registered, keep their hasVoted state fresh
+            // Refresh session voter's hasVoted state
             if (verifiedVoter && verifiedVoter.matricNumber) {
                 try {
                     const fresh = await verifyVoterByMatric(verifiedVoter.matricNumber);
