@@ -132,6 +132,31 @@ a{color:inherit;text-decoration:none}button{font-family:inherit}
 .preview h4{font-family:var(--font-mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-gold);margin:10px 0 6px}
 .preview img{max-width:100%;border-radius:var(--r)}
 .hidden{display:none!important}
+
+/* ---------- expandable rows ---------- */
+.expander{width:22px;height:22px;border-radius:var(--r-sm);border:1px solid var(--border-strong);background:var(--surface);color:var(--text-muted);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:.65rem;transition:all var(--dur-fast) var(--ease);margin-right:8px;flex-shrink:0;vertical-align:middle}
+.expander:hover{background:var(--primary-tint);color:var(--primary);border-color:var(--primary-tint)}
+.expander.open{background:var(--primary);color:var(--accent);border-color:var(--primary);transform:rotate(90deg)}
+.row-flex{display:flex;align-items:center;gap:2px}
+.detail-row td{padding:0!important;background:var(--surface-muted)}
+.detail-wrap{padding:14px 18px 18px 48px;animation:slideInUp 220ms var(--ease) both}
+.detail-wrap h5{font-family:var(--font-mono);font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-gold);margin-bottom:8px}
+.detail-table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;font-size:.8125rem}
+.detail-table th{background:var(--primary-tint);padding:8px 12px;text-align:left;font-family:var(--font-mono);font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-gold);border-bottom:1px solid var(--border)}
+.detail-table td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text)}
+.detail-table tr:last-child td{border-bottom:none}
+.detail-table tr:hover td{background:var(--surface-muted)}
+.detail-empty{padding:12px;font-size:.8125rem;color:var(--text-dim);font-style:italic;background:var(--surface);border:1px dashed var(--border-strong);border-radius:var(--r)}
+
+/* ---------- bulk paste ---------- */
+.bulk-help{background:var(--accent-tint);border:1px solid var(--accent);border-radius:var(--r);padding:12px 14px;margin-bottom:12px;font-size:.8125rem;color:var(--text-gold);line-height:1.5}
+.bulk-help code{background:var(--surface);padding:2px 6px;border-radius:4px;font-family:var(--font-mono);font-size:.75rem;border:1px solid var(--border-strong)}
+#bulkText{width:100%;min-height:220px;font-family:var(--font-mono);font-size:.8125rem;line-height:1.6;padding:12px;border:1px solid var(--border-strong);border-radius:var(--r);background:var(--surface);color:var(--text);resize:vertical;white-space:pre;overflow-wrap:normal;overflow-x:auto}
+#bulkText:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-tint)}
+.bulk-status{margin-top:10px;padding:10px 12px;border-radius:var(--r);font-size:.8125rem;font-weight:600}
+.bulk-status.ok{background:var(--success-tint);color:var(--success)}
+.bulk-status.err{background:var(--danger-tint);color:var(--danger)}
+.bulk-status.warn{background:var(--warning-tint);color:var(--warning)}
 </style>
 </head>
 <body>
@@ -167,7 +192,7 @@ a{color:inherit;text-decoration:none}button{font-family:inherit}
 
   <main class="main-area">
    <div class="page-header">
-    <div><h1 class="page-title">Timetable Management</h1><p class="page-subtitle">Manage class schedules, examination dates, timetable publications and academic announcements.</p></div>
+    <div><h1 class="page-title">Timetable Management</h1><p class="page-subtitle">Manage class schedules, examination dates and timetable publications.</p></div>
     <div class="head-btns">
      <button class="btn btn-secondary" id="openSettings" type="button"><i class="fas fa-sliders"></i> Academic Settings</button>
      <button class="btn btn-secondary" data-act="create" data-type="class"><i class="fas fa-plus"></i> Class Schedule</button>
@@ -190,20 +215,8 @@ a{color:inherit;text-decoration:none}button{font-family:inherit}
 
    <!-- Exam timetables -->
    <div class="content-card">
-    <div class="card-header"><div><h3 class="card-title"><i class="fas fa-file-pen"></i> Examination Timetables</h3><p class="card-sub">Exam dates, times and venues for the selected semester.</p></div><button class="btn btn-gold btn-sm" data-act="create" data-type="exam"><i class="fas fa-plus"></i> Add timetable</button></div>
+    <div class="card-header"><div><h3 class="card-title"><i class="fas fa-file-pen"></i> Examination Timetables</h3><p class="card-sub">Exam dates, times and venues for the selected semester. Click a row to see its courses.</p></div><button class="btn btn-gold btn-sm" data-act="create" data-type="exam"><i class="fas fa-plus"></i> Add timetable</button></div>
     <div class="table-container"><table class="data-table"><thead><tr><th>Timetable</th><th>Format</th><th>Status</th><th>Last Modified</th><th>Actions</th></tr></thead><tbody id="examRows"></tbody></table></div>
-   </div>
-
-   <!-- Announcements -->
-   <div class="content-card">
-    <div class="card-header"><h3 class="card-title"><i class="fas fa-bullhorn"></i> Announcements Management</h3></div>
-    <div class="form-grid">
-     <div class="field"><label for="anTitle">Announcement title</label><input id="anTitle" maxlength="120"></div>
-     <div class="field"><label for="anCat">Announcement category</label><select id="anCat"><option value="">Select category</option><option>General</option><option>Class Timetable</option><option>Examination</option><option>Venue Change</option><option>Correction</option></select></div>
-    </div>
-    <div class="field" style="margin-bottom:14px"><label for="anMsg">Announcement message</label><textarea id="anMsg"></textarea></div>
-    <button class="btn btn-primary" id="anPublish"><i class="fas fa-paper-plane"></i> Publish Announcement</button>
-    <div class="table-container" style="margin-top:20px"><table class="data-table"><thead><tr><th>Title</th><th>Category</th><th>Posted</th><th>Actions</th></tr></thead><tbody id="annRows"></tbody></table></div>
    </div>
 
    <!-- History -->
@@ -224,6 +237,27 @@ a{color:inherit;text-decoration:none}button{font-family:inherit}
   <button class="btn btn-secondary" id="edPreviewBtn" type="button"><i class="fas fa-eye"></i> Preview</button>
   <button class="btn btn-secondary" id="edDraft" type="button">Save as Draft</button>
   <button class="btn btn-primary" id="edPublish" type="button">Publish</button>
+ </div>
+</div></div>
+
+<!-- Bulk paste modal -->
+<div class="modal" id="bulkModal"><div class="modal-content wide">
+ <div class="modal-header"><h3 class="modal-title"><i class="fas fa-paste"></i> Paste Bulk Timetable</h3><button class="modal-close" data-close="bulkModal" aria-label="Close">&times;</button></div>
+ <div class="modal-body">
+  <div class="bulk-help">
+   <strong>How to use:</strong> Copy rows from your source (Word, Excel, PDF, website) where each row is tab-separated. Supported column orders:
+   <br>• <code>Date • Code • Title • Time • Venue</code> (exam)
+   <br>• <code>Date • Code • Title • Time</code> (exam, no venue)
+   <br>• <code>Day • Code • Title • Time • Venue</code> (class)
+   <br>Time accepts <code>9:00 AM–12:00 PM</code>, <code>9:00-12:00</code>, <code>09:00–12:00</code>, etc. Date accepts <code>26 Nov 2026 (Thu)</code>, <code>2026-11-26</code>, <code>26/11/2026</code>.
+  </div>
+  <textarea id="bulkText" placeholder="26 Nov 2026 (Thu)	CVE 515	Drainage &amp; Irrigation Engineering (E)	9:00 AM–12:00 PM	B115&#10;26 Nov 2026 (Thu)	CVE 519	Advanced Pavement Design (E)	9:00 AM–12:00 PM	B118"></textarea>
+  <div id="bulkStatus" class="bulk-status hidden"></div>
+ </div>
+ <div class="modal-footer">
+  <button class="btn btn-secondary" data-close="bulkModal" type="button">Cancel</button>
+  <button class="btn btn-secondary" id="bulkParseBtn" type="button"><i class="fas fa-magnifying-glass"></i> Parse &amp; Preview</button>
+  <button class="btn btn-primary" id="bulkAddBtn" type="button"><i class="fas fa-plus"></i> Add All Entries</button>
  </div>
 </div></div>
 
@@ -254,17 +288,16 @@ const API_BASE_URL = '';
 const $ = id => document.getElementById(id);
 const LEVELS = ['100','200','300','400','500'];
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-const PRIORITIES = ['low','normal','high','urgent'];
 
 let currentUser = null;
 let settings = { session: '', semester: '', phase: '' };
 let tts = [];
-let anns = [];
 let ed = null;
-let editingAnnId = null;
 let loadFailed = false;
 let confirmFn = null;
 let levelFilter = sessionStorage.getItem('ttLevelFilter') || 'all';
+let expanded = new Set();
+let bulkParsed = []; // parsed entries from bulk paste, pending add
 
 /* ---------- helpers ---------- */
 function showLoading(){ $('loadingOverlay').classList.add('active'); }
@@ -301,7 +334,6 @@ const fmtDate = d => {
   const x = new Date(d);
   return isNaN(x) ? d : x.toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
 };
-const isExpired = a => a.expires_at && new Date(a.expires_at) < new Date();
 
 async function api(method, ep, body, isForm){
   const o = { method, credentials:'include', headers:{ Accept:'application/json' } };
@@ -348,7 +380,7 @@ function updateUserInfo(){
 
 async function doLogout(){
   try { showLoading(); await fetch(`${API_BASE_URL}/api/admin/logout`, { method:'POST', credentials:'include' }); } catch {}
-  tts = []; anns = []; settings = { session:'', semester:'', phase:'' }; currentUser = null;
+  tts = []; settings = { session:'', semester:'', phase:'' }; currentUser = null; expanded.clear();
   hideModal('confirmModal');
   showToast('Logged out','success');
   setTimeout(() => window.location.replace('adlog.html'), 700);
@@ -393,8 +425,6 @@ function norm(t){
 }
 
 async function hydrateEntries(list){
-  // The list endpoint returns only packages; fetch full detail for those with a class/exam count > 0
-  // to populate entries for the in-place editor. Skip entries already present.
   await Promise.all(list.map(async t => {
     if(t.entries.length > 0) return;
     if(!((t.class_count || 0) + (t.exam_count || 0))) return;
@@ -416,7 +446,7 @@ async function hydrateEntries(list){
         lecturer: e.lecturer || '',
         exam_type: e.exam_type || ''
       }));
-    } catch { /* leave entries empty; editor will still load the package */ }
+    } catch { /* leave entries empty */ }
   }));
 }
 
@@ -434,36 +464,14 @@ async function loadTimetables(){
 }
 
 async function loadAll(){
-  const [s, a] = await Promise.allSettled([
-    api('GET', '/api/admin/timetable/settings'),
-    api('GET', '/api/admin/timetable/announcements')
-  ]);
-  if(s.status === 'fulfilled'){
-    const d = s.value.data || {};
-    settings = {
-      session: d.session || '',
-      semester: d.semester || '',
-      phase: d.phase || d.status || ''
-    };
+  const s = await Promise.allSettled([api('GET', '/api/admin/timetable/settings')]);
+  if(s[0].status === 'fulfilled'){
+    const d = s[0].value.data || {};
+    settings = { session: d.session || '', semester: d.semester || '', phase: d.phase || d.status || '' };
   } else {
     showToast('Could not load academic settings','error');
   }
-  anns = a.status === 'fulfilled' ? (a.value.data || []).map(normAnn) : [];
   await loadTimetables();
-}
-
-function normAnn(a){
-  return {
-    id: a.id,
-    title: a.title || '',
-    body: a.body || a.message || '',
-    priority: (a.priority || 'normal').toLowerCase(),
-    category: a.category || '',
-    is_active: a.is_active !== false,
-    expires_at: a.expires_at || null,
-    package_id: a.package_id || null,
-    created_at: a.created_at || null
-  };
 }
 
 /* ---------- render ---------- */
@@ -472,7 +480,7 @@ const period = t => `${esc(t.session || settings.session || '—')} · ${esc(t.s
 const inPeriod = t => t.status !== 'archived' && (!settings.session || (t.session === settings.session && t.semester === settings.semester));
 const nameOf = t => t.title || (t.type === 'class' ? `${t.level} Level` : 'Examination Schedule');
 
-function acts(t, ctx='grid'){
+function acts(t){
   const b = (a, i, l, extra='') => `<button class="icon-btn" title="${l}" data-act="${a}" data-id="${esc(t.id)}" ${extra}><i class="fas fa-${i}"></i></button>`;
   return `<div class="actions">
     ${b('edit','pen','Edit')}
@@ -482,12 +490,51 @@ function acts(t, ctx='grid'){
   </div>`;
 }
 
+function detailTable(t){
+  if(t.mode === 'upload'){
+    const url = t.file_url;
+    if(!url) return `<div class="detail-empty">No file attached to this uploaded timetable.</div>`;
+    const isImg = /\.(png|jpe?g|webp|gif)(\?|$)/i.test(url);
+    return `<h5>Uploaded file</h5>` + (isImg
+      ? `<img src="${esc(url)}" alt="Timetable" style="max-width:100%;border-radius:8px;border:1px solid var(--border)">`
+      : `<a href="${esc(url)}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm"><i class="fas fa-file-pdf"></i> Open document</a>`);
+  }
+  if(!t.entries.length){
+    return `<div class="detail-empty">No ${t.type === 'exam' ? 'exams' : 'courses'} loaded for this timetable. Open the editor to add them.</div>`;
+  }
+  const isExam = t.type === 'exam';
+  const sorted = [...t.entries].sort((a, b) =>
+    isExam
+      ? String(a.date).localeCompare(b.date) || String(a.start_time).localeCompare(b.start_time)
+      : (DAYS.indexOf(a.day) - DAYS.indexOf(b.day)) || String(a.start_time).localeCompare(b.start_time)
+  );
+  const head = isExam
+    ? `<tr><th>Course</th><th>Date</th><th>Time</th><th>Venue</th><th>Type</th></tr>`
+    : `<tr><th>Course</th><th>Day</th><th>Time</th><th>Venue</th><th>Lecturer</th></tr>`;
+  const rows = sorted.map(e => isExam
+    ? `<tr>
+        <td><strong>${esc(e.course_code)}</strong>${e.course_title ? ' · ' + esc(e.course_title) : ''}</td>
+        <td>${e.date ? esc(fmtDate(e.date)) : '<span class="text-muted">—</span>'}</td>
+        <td>${esc(fmtTime(e.start_time))}${e.end_time ? ' – ' + esc(fmtTime(e.end_time)) : ''}</td>
+        <td>${esc(e.venue || 'TBA')}</td>
+        <td>${esc(e.exam_type || '—')}</td>
+      </tr>`
+    : `<tr>
+        <td><strong>${esc(e.course_code)}</strong>${e.course_title ? ' · ' + esc(e.course_title) : ''}</td>
+        <td>${esc(e.day || '—')}</td>
+        <td>${esc(fmtTime(e.start_time))}${e.end_time ? ' – ' + esc(fmtTime(e.end_time)) : ''}</td>
+        <td>${esc(e.venue || 'TBA')}</td>
+        <td>${esc(e.lecturer || '—')}</td>
+      </tr>`).join('');
+  return `<h5>${t.entries.length} ${isExam ? 'exam' : 'course'}${t.entries.length === 1 ? '' : 's'}</h5>
+    <table class="detail-table"><thead>${head}</thead><tbody>${rows}</tbody></table>`;
+}
+
 function renderAll(){
   $('setSession').value = settings.session;
   $('setSemester').value = settings.semester;
   if($('setPhase')) $('setPhase').value = settings.phase;
 
-  // Stats
   const cls = tts.filter(t => t.type === 'class' && t.status !== 'archived');
   const exm = tts.filter(t => t.type === 'exam' && t.status !== 'archived');
   $('stClass').textContent = cls.length;
@@ -495,7 +542,6 @@ function renderAll(){
   $('stPub').textContent = tts.filter(t => t.status === 'published').length;
   $('stDraft').textContent = tts.filter(t => t.status === 'draft').length;
 
-  // Level grid (filtered)
   const cur = tts.filter(t => t.type === 'class' && inPeriod(t) && (levelFilter === 'all' || String(t.level) === levelFilter));
   $('levelGrid').innerHTML = (levelFilter === 'all' ? LEVELS : [levelFilter]).map(l => {
     const t = cur.find(x => String(x.level) === l);
@@ -513,7 +559,6 @@ function renderAll(){
       </div>`;
   }).join('');
 
-  // Level filter control (render into a known container if present)
   const lf = $('levelFilter');
   if(lf && !lf.dataset.built){
     lf.innerHTML = `<option value="all">All levels</option>` + LEVELS.map(l => `<option value="${l}">${l} Level</option>`).join('');
@@ -521,7 +566,6 @@ function renderAll(){
     lf.dataset.built = '1';
   }
 
-  // Exam list grouped by level
   if(!exm.length){
     $('examRows').innerHTML = `<tr class="empty-row"><td colspan="5">${loadFailed ? 'Unable to load timetables' : 'No examination timetable yet'}</td></tr>`;
   } else {
@@ -531,35 +575,29 @@ function renderAll(){
     const sortedKeys = Object.keys(groups).sort((a, b) => order.indexOf(a) - order.indexOf(b));
     $('examRows').innerHTML = sortedKeys.map(lvl => {
       const head = `<tr class="group-row"><td colspan="5"><strong>${esc(lvl)} Level</strong></td></tr>`;
-      const rows = groups[lvl].map(t => `<tr>
-        <td><strong>${esc(nameOf(t))}</strong><br><span class="text-muted">${period(t)}</span></td>
-        <td>${t.mode === 'upload' ? 'Upload' : t.entries.length + ' exam(s)'}</td>
-        <td>${badge(t.status)}</td>
-        <td class="text-muted">${formatDateTime(t.updated_at)}</td>
-        <td>${acts(t)}</td>
-      </tr>`).join('');
+      const rows = groups[lvl].map(t => {
+        const isOpen = expanded.has(String(t.id));
+        const row = `<tr data-row-id="${esc(t.id)}">
+          <td>
+            <div class="row-flex">
+              <button class="expander ${isOpen ? 'open' : ''}" data-expand="${esc(t.id)}" title="${isOpen ? 'Hide courses' : 'Show courses'}" aria-expanded="${isOpen}">
+                <i class="fas fa-chevron-right"></i>
+              </button>
+              <div><strong>${esc(nameOf(t))}</strong><br><span class="text-muted">${period(t)}</span></div>
+            </div>
+          </td>
+          <td>${t.mode === 'upload' ? 'Upload' : t.entries.length + ' exam(s)'}</td>
+          <td>${badge(t.status)}</td>
+          <td class="text-muted">${formatDateTime(t.updated_at)}</td>
+          <td>${acts(t)}</td>
+        </tr>`;
+        if(!isOpen) return row;
+        return row + `<tr class="detail-row"><td colspan="5"><div class="detail-wrap">${detailTable(t)}</div></td></tr>`;
+      }).join('');
       return head + rows;
     }).join('');
   }
 
-  // Announcements
-  $('annRows').innerHTML = anns.length ? anns.map(a => {
-    const expired = isExpired(a);
-    const titleCell = `<strong style="${expired ? 'text-decoration:line-through;opacity:.6' : ''}">${esc(a.title)}</strong>${expired ? ' <span class="status-badge badge-info">Expired</span>' : ''}`;
-    return `<tr>
-      <td>${titleCell}</td>
-      <td><span class="status-badge badge-gold">${esc(a.priority || 'normal')}</span></td>
-      <td class="text-muted">${formatDateTime(a.created_at)}</td>
-      <td>
-        <div class="actions">
-          <button class="icon-btn" title="Edit" data-act="editann" data-id="${esc(a.id)}"><i class="fas fa-pen"></i></button>
-          <button class="icon-btn" title="Delete" data-act="delann" data-id="${esc(a.id)}"><i class="fas fa-trash"></i></button>
-        </div>
-      </td>
-    </tr>`;
-  }).join('') : `<tr class="empty-row"><td colspan="4">No announcements yet</td></tr>`;
-
-  // History
   const hist = [...tts].sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
   $('histRows').innerHTML = hist.length ? hist.map(t => `<tr>
     <td>${t.type === 'class' ? 'Class' : 'Exam'}</td>
@@ -569,6 +607,151 @@ function renderAll(){
     <td class="text-muted">${formatDateTime(t.updated_at)}</td>
     <td>${acts(t)}</td>
   </tr>`).join('') : `<tr class="empty-row"><td colspan="6">${loadFailed ? 'Unable to load history' : 'No timetables yet'}</td></tr>`;
+}
+
+/* ---------- bulk paste parser ---------- */
+const MONTHS = { jan:1, feb:2, mar:3, apr:4, may:5, jun:6, jul:7, aug:8, sep:9, oct:10, nov:11, dec:12 };
+
+function parseDate(raw){
+  if(!raw) return '';
+  let s = String(raw).trim();
+  // Remove weekday part like "(Thu)" or "(Thursday)"
+  s = s.replace(/\([^)]*\)/g, '').trim();
+  // ISO: 2026-11-26
+  let m = s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/);
+  if(m) return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+  // 26/11/2026 or 26-11-2026
+  m = s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/);
+  if(m) return `${m[3]}-${String(m[2]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;
+  // 26 Nov 2026 or 26 November 2026
+  m = s.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/);
+  if(m){
+    const mon = MONTHS[m[2].toLowerCase().slice(0,3)];
+    if(mon) return `${m[3]}-${String(mon).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;
+  }
+  // Nov 26, 2026
+  m = s.match(/^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})$/);
+  if(m){
+    const mon = MONTHS[m[1].toLowerCase().slice(0,3)];
+    if(mon) return `${m[3]}-${String(mon).padStart(2,'0')}-${String(m[2]).padStart(2,'0')}`;
+  }
+  return '';
+}
+
+function parseTimeRange(raw){
+  if(!raw) return { start:'', end:'' };
+  const s = String(raw).replace(/–|—|-/g, '-').trim();
+  // Try "9:00 AM-12:00 PM"
+  let m = s.match(/(\d{1,2})(?::(\d{2}))?\s*(AM|PM|am|pm)?\s*-\s*(\d{1,2})(?::(\d{2}))?\s*(AM|PM|am|pm)?/i);
+  if(!m) return { start:'', end:'' };
+  let [, h1, m1, ap1, h2, m2, ap2] = m;
+  let H1 = parseInt(h1,10), M1 = m1 ? parseInt(m1,10) : 0;
+  let H2 = parseInt(h2,10), M2 = m2 ? parseInt(m2,10) : 0;
+  // Infer missing AM/PM: if only one is given, infer the other
+  if(ap1 && !ap2) ap2 = ap1;
+  if(ap2 && !ap1) ap1 = ap2;
+  if(ap1){
+    const a1 = ap1.toLowerCase(), a2 = ap2.toLowerCase();
+    if(a1 === 'pm' && H1 !== 12) H1 += 12;
+    if(a1 === 'am' && H1 === 12) H1 = 0;
+    if(a2 === 'pm' && H2 !== 12) H2 += 12;
+    if(a2 === 'am' && H2 === 12) H2 = 0;
+  }
+  const start = `${String(H1).padStart(2,'0')}:${String(M1).padStart(2,'0')}`;
+  const end = `${String(H2).padStart(2,'0')}:${String(M2).padStart(2,'0')}`;
+  return { start, end };
+}
+
+function parseBulk(text){
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  const out = [];
+  const errors = [];
+
+  lines.forEach((rawLine, idx) => {
+    // Split by tab first; if no tabs, try 2+ spaces; if none, fallback to single spaces around code
+    let parts;
+    if(rawLine.includes('\t')) parts = rawLine.split('\t');
+    else if(/\s{2,}/.test(rawLine)) parts = rawLine.split(/\s{2,}/);
+    else parts = [rawLine]; // single-cell, will fail to parse but counted
+
+    // Try also: split on multiple whitespace to catch "26 Nov 2026 (Thu)" + rest
+    if(parts.length === 1){
+      const m = rawLine.match(/^(.+?)\s{2,}(.+)$/);
+      if(m) parts = [m[1], m[2]];
+    }
+
+    parts = parts.map(p => p.trim()).filter((p, i, arr) => p !== '' || (i > 0 && i < arr.length - 1));
+
+    if(parts.length < 3){
+      errors.push(`Line ${idx+1}: not enough columns`);
+      return;
+    }
+
+    // Match date or day in col 0
+    const col0 = parts[0];
+    const date = parseDate(col0);
+    let day = '';
+    const isDay = /^(mon|tue|wed|thu|fri|sat|sun)/i.test(col0.replace(/[^A-Za-z]/g,''));
+    if(!date && isDay){
+      day = col0.replace(/[^A-Za-z]/g,'');
+      day = day.charAt(0).toUpperCase() + day.slice(1).toLowerCase();
+      // Normalize to full day names
+      if(/^mon/i.test(day)) day = 'Monday';
+      else if(/^tue/i.test(day)) day = 'Tuesday';
+      else if(/^wed/i.test(day)) day = 'Wednesday';
+      else if(/^thu/i.test(day)) day = 'Thursday';
+      else if(/^fri/i.test(day)) day = 'Friday';
+      else if(/^sat/i.test(day)) day = 'Saturday';
+      else day = 'Monday';
+    }
+
+    if(!date && !day){
+      errors.push(`Line ${idx+1}: unrecognized date/day "${col0}"`);
+      return;
+    }
+
+    // Course code is next
+    const code = (parts[1] || '').toUpperCase().trim();
+    if(!code){
+      errors.push(`Line ${idx+1}: missing course code`);
+      return;
+    }
+
+    // Remaining columns: title, time, venue (in some order)
+    const rest = parts.slice(2);
+    let title = '', timeStr = '', venue = '';
+    rest.forEach(r => {
+      if(/\d{1,2}[:.]\d{2}\s*(AM|PM)?\s*[-–—]\s*\d{1,2}/i.test(r)){
+        timeStr = r;
+      } else if(/^[A-Z]{1,3}\d{2,4}$/i.test(r) || r === '—' || r === '-'){
+        venue = r;
+      } else if(!title){
+        title = r;
+      } else if(!venue){
+        venue = r;
+      }
+    });
+
+    const { start, end } = parseTimeRange(timeStr);
+    if(!start){
+      errors.push(`Line ${idx+1}: could not parse time "${timeStr}"`);
+      return;
+    }
+
+    out.push({
+      course_code: code,
+      course_title: title,
+      date: date,
+      day: day,
+      start_time: start,
+      end_time: end,
+      venue: venue === '—' || venue === '-' ? '' : venue,
+      level: '', // filled in by caller
+      exam_type: ''
+    });
+  });
+
+  return { entries: out, errors };
 }
 
 /* ---------- editor ---------- */
@@ -581,7 +764,8 @@ function openEditor(type, tt, level){
     mode: tt ? tt.mode : 'structured',
     entries: tt ? tt.entries.map(x => ({ ...x })) : [],
     file: null,
-    fileUrl: tt ? tt.file_url : ''
+    fileUrl: tt ? tt.file_url : '',
+    level: level || (tt ? tt.level : '')
   };
   $('editorTitle').textContent = `${tt ? 'Edit' : 'Create'} ${isC ? 'Class' : 'Examination'} Timetable`;
   $('edPublish').textContent = tt && ed.status === 'published' ? 'Save changes' : (ed.status === 'published' ? 'Update' : 'Publish');
@@ -592,7 +776,7 @@ function openEditor(type, tt, level){
 
   $('editorBody').innerHTML = `
     <div class="form-grid">
-      ${isC ? `<div class="field"><label>Level</label><select id="edLevel">${lvlOpts}</select></div>` : ''}
+      <div class="field"><label>Level</label><select id="edLevel">${lvlOpts}</select></div>
       <div class="field"><label>Title (optional)</label><input id="edTitle"></div>
     </div>
     <p class="hint" style="margin:0">${esc(settings.session || 'No session set')} · ${esc(settings.semester || 'No semester set')} Semester</p>
@@ -602,6 +786,10 @@ function openEditor(type, tt, level){
     </div>
     <div id="paneS">
       <div class="entry-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+          <strong style="font-size:.875rem">${isC ? 'Add courses' : 'Add exams'}</strong>
+          <button class="btn btn-secondary btn-sm" id="openBulk" type="button"><i class="fas fa-paste"></i> Paste bulk</button>
+        </div>
         <div class="form-grid">
           ${isC ? '' : `<div class="field"><label>Level</label><select id="enLevel">${lvlOpts}</select></div>`}
           <div class="field"><label>Course Code</label><input id="enCode"></div>
@@ -628,7 +816,7 @@ function openEditor(type, tt, level){
     </div>
     <div class="preview hidden" id="edPreview"></div>`;
 
-  if(isC) $('edLevel').value = tt ? String(tt.level) : (level || '');
+  $('edLevel').value = tt ? String(tt.level) : (level || '');
   $('edTitle').value = tt ? (tt.title || '') : '';
   $('edDesc').value = tt ? (tt.description || '') : '';
 
@@ -723,9 +911,9 @@ function buildPreview(){
 
 async function saveEditor(publish){
   const isC = ed.type === 'class';
-  const level = isC ? $('edLevel').value : '';
+  const level = $('edLevel').value;
 
-  if(isC && !level) return showToast('Select a level','warning');
+  if(!level) return showToast('Select a level','warning');
   if(!settings.session || !settings.semester) return showToast('Save the academic settings first','warning');
   if(ed.mode === 'structured' && !ed.entries.length) return showToast('Add at least one entry','warning');
   if(ed.mode === 'upload' && !ed.file && !ed.fileUrl) return showToast('Choose a PDF or image to upload','warning');
@@ -756,20 +944,12 @@ async function saveEditor(publish){
       res = await api(m, ep, { ...base, entries: ed.entries });
     }
     const id = (res.data && res.data.id) || ed.id;
-
-    // Save-changes path: skip republish if it was already published
     const wasPublished = ed.status === 'published';
     if(publish && id && !wasPublished){
       await api('POST', `/api/admin/timetables/${id}/publish`);
     }
-
     hideModal('editorModal');
-    showToast(
-      publish
-        ? (wasPublished ? 'Timetable updated' : 'Timetable published')
-        : 'Draft saved',
-      'success'
-    );
+    showToast(publish ? (wasPublished ? 'Timetable updated' : 'Timetable published') : 'Draft saved','success');
     await loadTimetables();
   } catch(e){
     if(e.message !== 'Unauthorized') showToast(e.message || 'Could not save timetable','error');
@@ -798,31 +978,6 @@ function handleAct(btn){
   const t = tts.find(x => String(x.id) === String(id));
 
   if(act === 'create') return openEditor(btn.dataset.type, null, btn.dataset.level);
-
-  if(act === 'editann'){
-    const a = anns.find(x => String(x.id) === String(id));
-    if(!a) return;
-    editingAnnId = a.id;
-    $('anTitle').value = a.title;
-    $('anMsg').value = a.body;
-    if($('anPriority')) $('anPriority').value = a.priority || 'normal';
-    if($('anPublish')) $('anPublish').innerHTML = '<i class="fas fa-save"></i> Update announcement';
-    showToast('Editing announcement — press Update to save','info');
-    $('anTitle').scrollIntoView({ behavior:'smooth', block:'center' });
-    return;
-  }
-
-  if(act === 'delann'){
-    return confirmDialog('Delete announcement','This announcement will be removed from the public page.','Delete', async () => {
-      try {
-        await api('DELETE', `/api/admin/timetable/announcements/${id}`);
-        anns = anns.filter(a => String(a.id) !== String(id));
-        renderAll();
-        showToast('Announcement deleted','success');
-      } catch(e){ showToast(e.message,'error'); }
-    });
-  }
-
   if(!t) return;
 
   if(act === 'edit') return openEditor(t.type, t);
@@ -858,7 +1013,7 @@ function setupSidebar(){
   }, true);
   ov.addEventListener('click', close);
   document.addEventListener('keydown', e => {
-    if(e.key === 'Escape'){ close(); ['editorModal','confirmModal','settingsModal'].forEach(hideModal); }
+    if(e.key === 'Escape'){ close(); ['editorModal','confirmModal','settingsModal','bulkModal'].forEach(hideModal); }
   });
   document.querySelectorAll('.nav-item').forEach(l => l.addEventListener('click', () => { if(innerWidth <= 900) close(); }));
   window.addEventListener('scroll', () => $('mainHeader').classList.toggle('scrolled', scrollY > 8), { passive:true });
@@ -867,6 +1022,13 @@ function setupSidebar(){
 document.addEventListener('click', e => {
   const c = e.target.closest('[data-close]');
   if(c) return hideModal(c.dataset.close);
+
+  const exp = e.target.closest('[data-expand]');
+  if(exp){
+    const id = String(exp.dataset.expand);
+    if(expanded.has(id)) expanded.delete(id); else expanded.add(id);
+    return renderAll();
+  }
 
   const a = e.target.closest('[data-act]');
   if(a && !a.closest('#entryList')) return handleAct(a);
@@ -891,6 +1053,65 @@ document.addEventListener('click', e => {
   }
 
   if(e.target.closest('#enAdd')) addEntry();
+
+  // Bulk paste
+  if(e.target.closest('#openBulk')){
+    if(!$('edLevel').value){
+      return showToast('Select the level first, then paste','warning');
+    }
+    $('bulkText').value = '';
+    $('bulkStatus').classList.add('hidden');
+    bulkParsed = [];
+    return showModal('bulkModal');
+  }
+
+  if(e.target.closest('#bulkParseBtn')){
+    const text = $('bulkText').value;
+    if(!text.trim()){
+      $('bulkStatus').className = 'bulk-status err';
+      $('bulkStatus').textContent = 'Paste some rows first.';
+      $('bulkStatus').classList.remove('hidden');
+      return;
+    }
+    const { entries, errors } = parseBulk(text);
+    bulkParsed = entries;
+    const status = $('bulkStatus');
+    if(!entries.length){
+      status.className = 'bulk-status err';
+      status.textContent = errors.length ? `Could not parse any rows. ${errors[0]}` : 'Could not parse any rows.';
+    } else {
+      status.className = errors.length ? 'bulk-status warn' : 'bulk-status ok';
+      status.textContent = `Parsed ${entries.length} row${entries.length === 1 ? '' : 's'}${errors.length ? ' — ' + errors.length + ' line(s) had issues: ' + errors.slice(0,3).join('; ') : ''}. Click "Add All Entries" to insert.`;
+    }
+    status.classList.remove('hidden');
+    return;
+  }
+
+  if(e.target.closest('#bulkAddBtn')){
+    if(!bulkParsed.length){
+      showToast('Parse first to see the entries','warning');
+      return;
+    }
+    const level = $('edLevel').value;
+    bulkParsed.forEach(e => {
+      const row = { ...e, level };
+      // For class timetables, map date → day
+      if(ed.type === 'class'){
+        row.day = e.day || (e.date ? new Date(e.date).toLocaleDateString('en-US', { weekday:'long' }) : 'Monday');
+        delete row.date;
+      } else {
+        row.date = e.date || e.day;
+        delete row.day;
+      }
+      ed.entries.push(row);
+    });
+    const n = bulkParsed.length;
+    bulkParsed = [];
+    hideModal('bulkModal');
+    renderEntries();
+    showToast(`${n} entr${n === 1 ? 'y' : 'ies'} added — review and save`,'success');
+    return;
+  }
 });
 
 document.addEventListener('change', e => {
@@ -914,7 +1135,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('edDraft').addEventListener('click', () => saveEditor(false));
   $('edPublish').addEventListener('click', () => saveEditor(true));
 
-  // Open settings modal
   $('openSettings').addEventListener('click', () => { renderAll(); showModal('settingsModal'); });
 
   $('saveSettings').addEventListener('click', async () => {
@@ -938,38 +1158,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       if(err.message !== 'Unauthorized') showToast(err.message || 'Could not save settings','error');
     } finally {
       btn.disabled = false;
-      hideLoading();
-    }
-  });
-
-  $('anPublish').addEventListener('click', async () => {
-    const payload = {
-      title: $('anTitle').value.trim(),
-      body: $('anMsg').value.trim(),
-      priority: $('anPriority') ? $('anPriority').value : 'normal'
-    };
-    if(!payload.title || !payload.body) return showToast('Add a title and message','warning');
-
-    try {
-      showLoading();
-      if(editingAnnId){
-        const r = await api('PUT', `/api/admin/timetable/announcements/${editingAnnId}`, payload);
-        const i = anns.findIndex(a => String(a.id) === String(editingAnnId));
-        if(i >= 0) anns[i] = normAnn({ ...anns[i], ...payload, ...(r.data || {}) });
-        editingAnnId = null;
-        $('anPublish').innerHTML = '<i class="fas fa-bullhorn"></i> Publish announcement';
-        showToast('Announcement updated','success');
-      } else {
-        const r = await api('POST','/api/admin/timetable/announcements', payload);
-        anns.unshift(normAnn(r.data || { ...payload, created_at: new Date().toISOString() }));
-        showToast('Announcement published','success');
-      }
-      ['anTitle','anMsg'].forEach(id => $(id).value = '');
-      if($('anPriority')) $('anPriority').value = 'normal';
-      renderAll();
-    } catch(err){
-      if(err.message !== 'Unauthorized') showToast(err.message || 'Could not publish announcement','error');
-    } finally {
       hideLoading();
     }
   });
