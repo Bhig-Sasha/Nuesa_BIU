@@ -244,240 +244,719 @@ a{color:inherit;text-decoration:none}button{font-family:inherit}
 </div></div>
 
 <script>
-const API_BASE_URL='';
-const $=id=>document.getElementById(id);
-const LEVELS=['100','200','300','400','500'];
-const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-let currentUser=null,settings={session:'',semester:'',phase:''},tts=[],anns=[],ed=null,loadFailed=false,confirmFn=null;
+const API_BASE_URL = '';
+const $ = id => document.getElementById(id);
+const LEVELS = ['100','200','300','400','500'];
+const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const PRIORITIES = ['low','normal','high','urgent'];
 
-/* ---------- helpers (same as dashboard) ---------- */
-function showLoading(){$('loadingOverlay').classList.add('active')}
-function hideLoading(){$('loadingOverlay').classList.remove('active')}
-function showModal(id){const e=$(id);if(e){e.classList.add('active');document.body.style.overflow='hidden'}}
-function hideModal(id){const e=$(id);if(e){e.classList.remove('active');document.body.style.overflow=''}}
-function escapeHtml(s){return s==null?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
-const esc=escapeHtml;
-function showToast(message,type='info',duration=4500){
- document.querySelectorAll('.toast').forEach(t=>t.remove());
- const t=document.createElement('div');t.className=`toast toast-${type}`;
- const icons={success:'check-circle',error:'exclamation-circle',warning:'exclamation-triangle',info:'info-circle'};
- t.innerHTML=`<div class="toast-icon"><i class="fas fa-${icons[type]||'info-circle'}"></i></div><div class="toast-content">${escapeHtml(message)}</div><button class="toast-close" aria-label="Close">&times;</button>`;
- document.body.appendChild(t);requestAnimationFrame(()=>t.classList.add('show'));
- const rm=()=>{t.classList.remove('show');setTimeout(()=>t.remove(),300)};
- t.querySelector('.toast-close').onclick=rm;setTimeout(()=>t.parentElement&&rm(),duration);
+let currentUser = null;
+let settings = { session: '', semester: '', phase: '' };
+let tts = [];
+let anns = [];
+let ed = null;
+let editingAnnId = null;
+let loadFailed = false;
+let confirmFn = null;
+let levelFilter = sessionStorage.getItem('ttLevelFilter') || 'all';
+
+/* ---------- helpers ---------- */
+function showLoading(){ $('loadingOverlay').classList.add('active'); }
+function hideLoading(){ $('loadingOverlay').classList.remove('active'); }
+function showModal(id){ const e=$(id); if(e){ e.classList.add('active'); document.body.style.overflow='hidden'; } }
+function hideModal(id){ const e=$(id); if(e){ e.classList.remove('active'); document.body.style.overflow=''; } }
+function escapeHtml(s){ return s==null?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+const esc = escapeHtml;
+
+function showToast(message, type='info', duration=4500){
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  const icons = { success:'check-circle', error:'exclamation-circle', warning:'exclamation-triangle', info:'info-circle' };
+  t.innerHTML = `<div class="toast-icon"><i class="fas fa-${icons[type]||'info-circle'}"></i></div><div class="toast-content">${escapeHtml(message)}</div><button class="toast-close" aria-label="Close">&times;</button>`;
+  document.body.appendChild(t);
+  requestAnimationFrame(() => t.classList.add('show'));
+  const rm = () => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); };
+  t.querySelector('.toast-close').onclick = rm;
+  setTimeout(() => t.parentElement && rm(), duration);
 }
-function formatDateTime(s){if(!s)return '—';const d=new Date(s);return isNaN(d)?s:d.toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'})}
-const fmtTime=t=>{if(!t)return '';const[h,m]=t.split(':').map(Number);return `${h%12||12}:${String(m).padStart(2,'0')} ${h<12?'AM':'PM'}`};
-const fmtDate=d=>{const x=new Date(d);return isNaN(x)?d:x.toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric'})};
-async function api(method,ep,body,isForm){
- const o={method,credentials:'include',headers:{Accept:'application/json'}};
- if(body){if(isForm)o.body=body;else{o.headers['Content-Type']='application/json';o.body=JSON.stringify(body)}}
- const res=await fetch(`${API_BASE_URL}${ep}`,o);
- if(res.status===401){showToast('Session expired','warning');setTimeout(()=>window.location.replace('adlog.html'),1200);throw new Error('Unauthorized')}
- let j=null;try{j=await res.json()}catch{}
- if(!res.ok)throw new Error((j&&j.message)||`HTTP ${res.status}`);
- return j||{};
+
+function formatDateTime(s){
+  if(!s) return '—';
+  const d = new Date(s);
+  return isNaN(d) ? s : d.toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+const fmtTime = t => {
+  if(!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${h < 12 ? 'AM' : 'PM'}`;
+};
+const fmtDate = d => {
+  const x = new Date(d);
+  return isNaN(x) ? d : x.toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
+};
+const isExpired = a => a.expires_at && new Date(a.expires_at) < new Date();
+
+async function api(method, ep, body, isForm){
+  const o = { method, credentials:'include', headers:{ Accept:'application/json' } };
+  if(body){
+    if(isForm) o.body = body;
+    else { o.headers['Content-Type'] = 'application/json'; o.body = JSON.stringify(body); }
+  }
+  const res = await fetch(`${API_BASE_URL}${ep}`, o);
+  if(res.status === 401){
+    showToast('Session expired','warning');
+    setTimeout(() => window.location.replace('adlog.html'), 1200);
+    throw new Error('Unauthorized');
+  }
+  let j = null; try { j = await res.json(); } catch {}
+  if(!res.ok) throw new Error((j && j.message) || `HTTP ${res.status}`);
+  return j || {};
 }
 
 /* ---------- auth ---------- */
 async function checkAuth(){
- try{
-  showLoading();
-  const res=await fetch(`${API_BASE_URL}/api/admin/session`,{credentials:'include',headers:{Accept:'application/json'}});
-  if(res.status===200){const d=await res.json();if(d.status==='success'&&d.data){currentUser=d.data;updateUserInfo();return true}}
-  showToast('Please login to continue','info');setTimeout(()=>window.location.replace('adlog.html'),1200);return false;
- }catch(e){showToast('Connection error — please check your network','error');return false}
- finally{hideLoading()}
+  try{
+    showLoading();
+    const res = await fetch(`${API_BASE_URL}/api/admin/session`, { credentials:'include', headers:{ Accept:'application/json' } });
+    if(res.status === 200){
+      const d = await res.json();
+      if(d.status === 'success' && d.data){ currentUser = d.data; updateUserInfo(); return true; }
+    }
+    showToast('Please login to continue','info');
+    setTimeout(() => window.location.replace('adlog.html'), 1200);
+    return false;
+  } catch(e){
+    showToast('Connection error — please check your network','error');
+    return false;
+  } finally { hideLoading(); }
 }
+
 function updateUserInfo(){
- const name=currentUser.fullName||currentUser.full_name||'Administrator',role=currentUser.role||'admin';
- $('userName').textContent=name;$('userRole').textContent=role.charAt(0).toUpperCase()+role.slice(1);$('userAvatar').textContent=name.charAt(0).toUpperCase();
+  const name = currentUser.fullName || currentUser.full_name || 'Administrator';
+  const role = currentUser.role || 'admin';
+  $('userName').textContent = name;
+  $('userRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
+  $('userAvatar').textContent = name.charAt(0).toUpperCase();
 }
+
 async function doLogout(){
- try{showLoading();await fetch(`${API_BASE_URL}/api/admin/logout`,{method:'POST',credentials:'include'})}catch{}
- hideModal('confirmModal');showToast('Logged out','success');setTimeout(()=>window.location.replace('adlog.html'),700);
+  try { showLoading(); await fetch(`${API_BASE_URL}/api/admin/logout`, { method:'POST', credentials:'include' }); } catch {}
+  tts = []; anns = []; settings = { session:'', semester:'', phase:'' }; currentUser = null;
+  hideModal('confirmModal');
+  showToast('Logged out','success');
+  setTimeout(() => window.location.replace('adlog.html'), 700);
 }
-function confirmDialog(title,msg,label,fn){$('confirmTitle').textContent=title;$('confirmMsg').textContent=msg;$('confirmOk').textContent=label;confirmFn=fn;showModal('confirmModal')}
+
+function confirmDialog(title, msg, label, fn){
+  $('confirmTitle').textContent = title;
+  $('confirmMsg').textContent = msg;
+  $('confirmOk').textContent = label;
+  confirmFn = fn;
+  showModal('confirmModal');
+}
 
 /* ---------- data ---------- */
-const norm=t=>({...t,type:t.type||t.kind||'class',mode:t.mode||(t.file_url||t.fileUrl?'upload':'structured'),status:t.status||'draft',entries:t.entries||t.courses||[],file_url:t.file_url||t.fileUrl||''});
-async function loadTimetables(){
- try{tts=((await api('GET','/api/admin/timetables')).data||[]).map(norm);loadFailed=false}
- catch(e){tts=[];loadFailed=true;showToast('Could not load timetables','error')}
- renderAll();
+function norm(t){
+  const isUpload = !!(t.file_url || t.fileUrl || t.mode === 'upload');
+  return {
+    ...t,
+    id: t.id ?? t.uuid ?? null,
+    type: (t.type || t.kind || 'class').toLowerCase(),
+    mode: t.mode || (isUpload ? 'upload' : 'structured'),
+    status: (t.status || 'draft').toLowerCase(),
+    level: t.level != null ? String(t.level) : '',
+    session: t.session || '',
+    semester: t.semester || '',
+    title: t.title || '',
+    description: t.description || '',
+    file_url: t.file_url || t.fileUrl || '',
+    entries: Array.isArray(t.entries) ? t.entries : (Array.isArray(t.courses) ? t.courses : []),
+    created_at: t.created_at || t.createdAt || null,
+    updated_at: t.updated_at || t.updatedAt || t.created_at || t.createdAt || null
+  };
 }
+
+async function hydrateEntries(list){
+  // The list endpoint returns only packages; fetch full detail for those with a class/exam count > 0
+  // to populate entries for the in-place editor. Skip entries already present.
+  await Promise.all(list.map(async t => {
+    if(t.entries.length > 0) return;
+    if(!((t.class_count || 0) + (t.exam_count || 0))) return;
+    try {
+      const r = await api('GET', `/api/admin/timetables/${t.id}`);
+      const d = r.data || {};
+      const rows = (t.type === 'exam' ? d.exams : d.classes) || [];
+      t.entries = rows.map(e => ({
+        course_code: e.course_code || '',
+        course_title: e.course_title || '',
+        level: e.level || t.level || '',
+        semester: e.semester || t.semester || '',
+        day: e.day_of_week || '',
+        date: e.exam_date || '',
+        start_time: e.start_time || '',
+        end_time: e.end_time || '',
+        venue: e.venue || '',
+        lecturer: e.lecturer || '',
+        exam_type: e.exam_type || ''
+      }));
+    } catch { /* leave entries empty; editor will still load the package */ }
+  }));
+}
+
+async function loadTimetables(){
+  try {
+    const r = await api('GET', '/api/admin/timetables');
+    tts = (r.data || []).map(norm);
+    await hydrateEntries(tts);
+    loadFailed = false;
+  } catch(e){
+    tts = []; loadFailed = true;
+    showToast('Could not load timetables','error');
+  }
+  renderAll();
+}
+
 async function loadAll(){
- const [s,a]=await Promise.allSettled([api('GET','/api/admin/timetable/settings'),api('GET','/api/admin/timetable/announcements')]);
- if(s.status==='fulfilled'){const d=s.value.data||{};settings={session:d.session||'',semester:d.semester||'',phase:d.phase||''}}else showToast('Could not load academic settings','error');
- anns=a.status==='fulfilled'?(a.value.data||[]):[];
- await loadTimetables();
+  const [s, a] = await Promise.allSettled([
+    api('GET', '/api/admin/timetable/settings'),
+    api('GET', '/api/admin/timetable/announcements')
+  ]);
+  if(s.status === 'fulfilled'){
+    const d = s.value.data || {};
+    settings = {
+      session: d.session || '',
+      semester: d.semester || '',
+      phase: d.phase || d.status || ''
+    };
+  } else {
+    showToast('Could not load academic settings','error');
+  }
+  anns = a.status === 'fulfilled' ? (a.value.data || []).map(normAnn) : [];
+  await loadTimetables();
+}
+
+function normAnn(a){
+  return {
+    id: a.id,
+    title: a.title || '',
+    body: a.body || a.message || '',
+    priority: (a.priority || 'normal').toLowerCase(),
+    category: a.category || '',
+    is_active: a.is_active !== false,
+    expires_at: a.expires_at || null,
+    package_id: a.package_id || null,
+    created_at: a.created_at || null
+  };
 }
 
 /* ---------- render ---------- */
-const badge=s=>`<span class="status-badge ${{published:'badge-success',draft:'badge-warning',archived:'badge-info'}[s]||'badge-gold'}">${esc(s)}</span>`;
-const period=t=>`${esc(t.session||settings.session||'—')} · ${esc(t.semester||settings.semester||'—')} Semester`;
-const inPeriod=t=>t.status!=='archived'&&(!settings.session||(t.session===settings.session&&t.semester===settings.semester));
-const nameOf=t=>t.title||(t.type==='class'?`${t.level} Level`:'Examination Schedule');
-function acts(t){
- const b=(a,i,l)=>`<button class="icon-btn" title="${l}" data-act="${a}" data-id="${esc(t.id)}"><i class="fas fa-${i}"></i></button>`;
- return `<div class="actions">${b('edit','pen','Edit')}${t.status==='published'?b('unpublish','eye-slash','Unpublish'):b('publish','upload','Publish')}${t.status!=='archived'?b('archive','box-archive','Archive'):''}${b('delete','trash','Delete')}</div>`;
+const badge = s => `<span class="status-badge ${{published:'badge-success',draft:'badge-warning',archived:'badge-info'}[s]||'badge-gold'}">${esc(s)}</span>`;
+const period = t => `${esc(t.session || settings.session || '—')} · ${esc(t.semester || settings.semester || '—')} Semester`;
+const inPeriod = t => t.status !== 'archived' && (!settings.session || (t.session === settings.session && t.semester === settings.semester));
+const nameOf = t => t.title || (t.type === 'class' ? `${t.level} Level` : 'Examination Schedule');
+
+function acts(t, ctx='grid'){
+  const b = (a, i, l, extra='') => `<button class="icon-btn" title="${l}" data-act="${a}" data-id="${esc(t.id)}" ${extra}><i class="fas fa-${i}"></i></button>`;
+  return `<div class="actions">
+    ${b('edit','pen','Edit')}
+    ${t.status === 'published' ? b('unpublish','eye-slash','Unpublish') : b('publish','upload','Publish')}
+    ${t.status !== 'archived' ? b('archive','box-archive','Archive') : ''}
+    ${b('delete','trash','Delete')}
+  </div>`;
 }
+
 function renderAll(){
- $('setSession').value=settings.session;$('setSemester').value=settings.semester;$('setPhase').value=settings.phase;
- const cls=tts.filter(t=>t.type==='class'&&t.status!=='archived'),exm=tts.filter(t=>t.type==='exam'&&inPeriod(t));
- $('stClass').textContent=cls.length;$('stExam').textContent=exm.length;
- $('stPub').textContent=tts.filter(t=>t.status==='published').length;$('stDraft').textContent=tts.filter(t=>t.status==='draft').length;
- const cur=tts.filter(t=>t.type==='class'&&inPeriod(t));
- $('levelGrid').innerHTML=LEVELS.map(l=>{
-  const t=cur.find(x=>String(x.level)===l);
-  if(!t)return `<div class="level-card empty"><div class="level-name">${l} Level</div><div class="level-meta">${loadFailed?'Unable to load':'No timetable yet'}</div><button class="btn btn-secondary btn-sm" data-act="create" data-type="class" data-level="${l}"><i class="fas fa-plus"></i> Create</button></div>`;
-  return `<div class="level-card"><div class="level-top"><div class="level-name">${l} Level</div>${badge(t.status)}</div><div class="level-meta">${period(t)}<br>${t.mode==='upload'?'Uploaded file':t.entries.length+' course'+(t.entries.length===1?'':'s')}</div>${acts(t)}</div>`;
- }).join('');
- $('examRows').innerHTML=exm.length?exm.map(t=>`<tr><td><strong>${esc(nameOf(t))}</strong><br><span class="text-muted">${period(t)}</span></td><td>${t.mode==='upload'?'Upload':t.entries.length+' exam(s)'}</td><td>${badge(t.status)}</td><td class="text-muted">${formatDateTime(t.updated_at||t.created_at)}</td><td>${acts(t)}</td></tr>`).join(''):`<tr class="empty-row"><td colspan="5">${loadFailed?'Unable to load timetables':'No examination timetable yet'}</td></tr>`;
- $('annRows').innerHTML=anns.length?anns.map(a=>`<tr><td><strong>${esc(a.title)}</strong></td><td><span class="status-badge badge-gold">${esc(a.category||'General')}</span></td><td class="text-muted">${formatDateTime(a.created_at)}</td><td><div class="actions"><button class="icon-btn" title="Delete" data-act="delann" data-id="${esc(a.id)}"><i class="fas fa-trash"></i></button></div></td></tr>`).join(''):'<tr class="empty-row"><td colspan="4">No announcements yet</td></tr>';
- const hist=[...tts].sort((a,b)=>new Date(b.updated_at||b.created_at||0)-new Date(a.updated_at||a.created_at||0));
- $('histRows').innerHTML=hist.length?hist.map(t=>`<tr><td>${t.type==='class'?'Class':'Exam'}</td><td><strong>${esc(nameOf(t))}</strong></td><td class="text-muted">${period(t)}</td><td>${badge(t.status)}</td><td class="text-muted">${formatDateTime(t.updated_at||t.created_at)}</td><td>${acts(t)}</td></tr>`).join(''):`<tr class="empty-row"><td colspan="6">${loadFailed?'Unable to load history':'No timetables yet'}</td></tr>`;
+  $('setSession').value = settings.session;
+  $('setSemester').value = settings.semester;
+  if($('setPhase')) $('setPhase').value = settings.phase;
+
+  // Stats
+  const cls = tts.filter(t => t.type === 'class' && t.status !== 'archived');
+  const exm = tts.filter(t => t.type === 'exam' && inPeriod(t));
+  $('stClass').textContent = cls.length;
+  $('stExam').textContent = exm.length;
+  $('stPub').textContent = tts.filter(t => t.status === 'published').length;
+  $('stDraft').textContent = tts.filter(t => t.status === 'draft').length;
+
+  // Level grid (filtered)
+  const cur = tts.filter(t => t.type === 'class' && inPeriod(t) && (levelFilter === 'all' || String(t.level) === levelFilter));
+  $('levelGrid').innerHTML = (levelFilter === 'all' ? LEVELS : [levelFilter]).map(l => {
+    const t = cur.find(x => String(x.level) === l);
+    if(!t) return `<div class="level-card empty">
+        <div class="level-name">${l} Level</div>
+        <div class="level-meta">${loadFailed ? 'Unable to load' : 'No timetable yet'}</div>
+        <button class="btn btn-secondary btn-sm" data-act="create" data-type="class" data-level="${l}">
+          <i class="fas fa-plus"></i> Create
+        </button>
+      </div>`;
+    return `<div class="level-card">
+        <div class="level-top"><div class="level-name">${l} Level</div>${badge(t.status)}</div>
+        <div class="level-meta">${period(t)}<br>${t.mode === 'upload' ? 'Uploaded file' : t.entries.length + ' course' + (t.entries.length === 1 ? '' : 's')}</div>
+        ${acts(t)}
+      </div>`;
+  }).join('');
+
+  // Level filter control (render into a known container if present)
+  const lf = $('levelFilter');
+  if(lf && !lf.dataset.built){
+    lf.innerHTML = `<option value="all">All levels</option>` + LEVELS.map(l => `<option value="${l}">${l} Level</option>`).join('');
+    lf.value = levelFilter;
+    lf.dataset.built = '1';
+  }
+
+  // Exam list grouped by level
+  if(!exm.length){
+    $('examRows').innerHTML = `<tr class="empty-row"><td colspan="5">${loadFailed ? 'Unable to load timetables' : 'No examination timetable yet'}</td></tr>`;
+  } else {
+    const groups = {};
+    exm.forEach(t => { const k = t.level || 'General'; (groups[k] ||= []).push(t); });
+    const order = ['100','200','300','400','500','General'];
+    const sortedKeys = Object.keys(groups).sort((a, b) => order.indexOf(a) - order.indexOf(b));
+    $('examRows').innerHTML = sortedKeys.map(lvl => {
+      const head = `<tr class="group-row"><td colspan="5"><strong>${esc(lvl)} Level</strong></td></tr>`;
+      const rows = groups[lvl].map(t => `<tr>
+        <td><strong>${esc(nameOf(t))}</strong><br><span class="text-muted">${period(t)}</span></td>
+        <td>${t.mode === 'upload' ? 'Upload' : t.entries.length + ' exam(s)'}</td>
+        <td>${badge(t.status)}</td>
+        <td class="text-muted">${formatDateTime(t.updated_at)}</td>
+        <td>${acts(t)}</td>
+      </tr>`).join('');
+      return head + rows;
+    }).join('');
+  }
+
+  // Announcements
+  $('annRows').innerHTML = anns.length ? anns.map(a => {
+    const expired = isExpired(a);
+    const titleCell = `<strong style="${expired ? 'text-decoration:line-through;opacity:.6' : ''}">${esc(a.title)}</strong>${expired ? ' <span class="status-badge badge-info">Expired</span>' : ''}`;
+    return `<tr>
+      <td>${titleCell}</td>
+      <td><span class="status-badge badge-gold">${esc(a.priority || 'normal')}</span></td>
+      <td class="text-muted">${formatDateTime(a.created_at)}</td>
+      <td>
+        <div class="actions">
+          <button class="icon-btn" title="Edit" data-act="editann" data-id="${esc(a.id)}"><i class="fas fa-pen"></i></button>
+          <button class="icon-btn" title="Delete" data-act="delann" data-id="${esc(a.id)}"><i class="fas fa-trash"></i></button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('') : `<tr class="empty-row"><td colspan="4">No announcements yet</td></tr>`;
+
+  // History
+  const hist = [...tts].sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
+  $('histRows').innerHTML = hist.length ? hist.map(t => `<tr>
+    <td>${t.type === 'class' ? 'Class' : 'Exam'}</td>
+    <td><strong>${esc(nameOf(t))}</strong></td>
+    <td class="text-muted">${period(t)}</td>
+    <td>${badge(t.status)}</td>
+    <td class="text-muted">${formatDateTime(t.updated_at)}</td>
+    <td>${acts(t)}</td>
+  </tr>`).join('') : `<tr class="empty-row"><td colspan="6">${loadFailed ? 'Unable to load history' : 'No timetables yet'}</td></tr>`;
 }
 
 /* ---------- editor ---------- */
-function openEditor(type,tt,level){
- const isC=type==='class';
- ed={type,id:tt?tt.id:null,status:tt?tt.status:'draft',mode:tt?tt.mode:'structured',entries:tt?tt.entries.map(x=>({...x})):[],file:null,fileUrl:tt?tt.file_url:''};
- $('editorTitle').textContent=`${tt?'Edit':'Create'} ${isC?'Class':'Examination'} Timetable`;
- $('edPublish').textContent=ed.status==='published'?'Update':'Publish';
- $('edDraft').classList.toggle('hidden',ed.status==='published');
- const opts=a=>a.map(v=>`<option value="${v}">${v}</option>`).join('');
- const lvlOpts=`<option value="">Select level</option>${LEVELS.map(l=>`<option value="${l}">${l} Level</option>`).join('')}`;
- $('editorBody').innerHTML=`
-  <div class="form-grid">${isC?`<div class="field"><label>Level</label><select id="edLevel">${lvlOpts}</select></div>`:''}<div class="field"><label>Title (optional)</label><input id="edTitle"></div></div>
-  <p class="hint" style="margin:0">${esc(settings.session||'No session set')} · ${esc(settings.semester||'No semester set')} Semester</p>
-  <div class="seg"><button type="button" data-mode="structured">Structured builder</button><button type="button" data-mode="upload">Upload PDF / image</button></div>
-  <div id="paneS"><div class="entry-box"><div class="form-grid">
-   ${isC?'':`<div class="field"><label>Level</label><select id="enLevel">${lvlOpts}</select></div>`}
-   <div class="field"><label>Course Code</label><input id="enCode"></div>
-   <div class="field"><label>Course Title</label><input id="enTitle"></div>
-   <div class="field"><label>${isC?'Day':'Examination Date'}</label>${isC?`<select id="enWhen">${opts(DAYS)}</select>`:'<input type="date" id="enWhen">'}</div>
-   <div class="field"><label>${isC?'Venue':'Examination Venue'}</label><input id="enVenue"></div>
-   <div class="field"><label>Start time</label><input type="time" id="enStart"></div>
-   <div class="field"><label>End time</label><input type="time" id="enEnd"></div></div>
-   <button class="btn btn-gold btn-sm" id="enAdd" type="button"><i class="fas fa-plus"></i> ${isC?'Add Course to Timetable':'Add Examination'}</button></div>
-   <div id="entryList"></div></div>
-  <div id="paneU"><div class="form-grid"><div class="field"><label>PDF or image</label><input type="file" id="edFile" accept=".pdf,image/*"></div></div>
-   <div class="field"><label>Description</label><textarea id="edDesc"></textarea></div>
-   ${ed.fileUrl?`<p class="hint">Current file: <a href="${esc(ed.fileUrl)}" target="_blank" rel="noopener" style="color:var(--info);font-weight:600">view uploaded file</a>. Choose a new file to replace it.</p>`:''}</div>
-  <div class="preview hidden" id="edPreview"></div>`;
- if(isC)$('edLevel').value=tt?String(tt.level):(level||'');
- $('edTitle').value=tt?(tt.title||''):'';$('edDesc').value=tt?(tt.description||''):'';
- setMode(ed.mode);renderEntries();showModal('editorModal');
+function openEditor(type, tt, level){
+  const isC = type === 'class';
+  ed = {
+    type,
+    id: tt ? tt.id : null,
+    status: tt ? tt.status : 'draft',
+    mode: tt ? tt.mode : 'structured',
+    entries: tt ? tt.entries.map(x => ({ ...x })) : [],
+    file: null,
+    fileUrl: tt ? tt.file_url : ''
+  };
+  $('editorTitle').textContent = `${tt ? 'Edit' : 'Create'} ${isC ? 'Class' : 'Examination'} Timetable`;
+  $('edPublish').textContent = tt && ed.status === 'published' ? 'Save changes' : (ed.status === 'published' ? 'Update' : 'Publish');
+  $('edDraft').classList.toggle('hidden', ed.status === 'published');
+
+  const opts = a => a.map(v => `<option value="${v}">${v}</option>`).join('');
+  const lvlOpts = `<option value="">Select level</option>` + LEVELS.map(l => `<option value="${l}">${l} Level</option>`).join('');
+
+  $('editorBody').innerHTML = `
+    <div class="form-grid">
+      ${isC ? `<div class="field"><label>Level</label><select id="edLevel">${lvlOpts}</select></div>` : ''}
+      <div class="field"><label>Title (optional)</label><input id="edTitle"></div>
+    </div>
+    <p class="hint" style="margin:0">${esc(settings.session || 'No session set')} · ${esc(settings.semester || 'No semester set')} Semester</p>
+    <div class="seg">
+      <button type="button" data-mode="structured">Structured builder</button>
+      <button type="button" data-mode="upload">Upload PDF / image</button>
+    </div>
+    <div id="paneS">
+      <div class="entry-box">
+        <div class="form-grid">
+          ${isC ? '' : `<div class="field"><label>Level</label><select id="enLevel">${lvlOpts}</select></div>`}
+          <div class="field"><label>Course Code</label><input id="enCode"></div>
+          <div class="field"><label>Course Title</label><input id="enTitle"></div>
+          <div class="field"><label>${isC ? 'Day' : 'Examination Date'}</label>
+            ${isC ? `<select id="enWhen">${opts(DAYS)}</select>` : '<input type="date" id="enWhen">'}
+          </div>
+          <div class="field"><label>${isC ? 'Venue' : 'Examination Venue'}</label><input id="enVenue"></div>
+          <div class="field"><label>Start time</label><input type="time" id="enStart"></div>
+          <div class="field"><label>End time</label><input type="time" id="enEnd"></div>
+        </div>
+        <button class="btn btn-gold btn-sm" id="enAdd" type="button">
+          <i class="fas fa-plus"></i> ${isC ? 'Add Course to Timetable' : 'Add Examination'}
+        </button>
+      </div>
+      <div id="entryList"></div>
+    </div>
+    <div id="paneU">
+      <div class="form-grid">
+        <div class="field"><label>PDF or image</label><input type="file" id="edFile" accept=".pdf,image/*"></div>
+      </div>
+      <div class="field"><label>Description</label><textarea id="edDesc"></textarea></div>
+      <div id="uploadPreview" class="preview"></div>
+    </div>
+    <div class="preview hidden" id="edPreview"></div>`;
+
+  if(isC) $('edLevel').value = tt ? String(tt.level) : (level || '');
+  $('edTitle').value = tt ? (tt.title || '') : '';
+  $('edDesc').value = tt ? (tt.description || '') : '';
+
+  setMode(ed.mode);
+  renderEntries();
+  renderUploadPreview();
+  showModal('editorModal');
 }
+
 function setMode(m){
- ed.mode=m;$('paneS').classList.toggle('hidden',m!=='structured');$('paneU').classList.toggle('hidden',m!=='upload');
- document.querySelectorAll('.seg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===m));
+  ed.mode = m;
+  $('paneS').classList.toggle('hidden', m !== 'structured');
+  $('paneU').classList.toggle('hidden', m !== 'upload');
+  document.querySelectorAll('.seg button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
 }
-const sortEntries=()=>ed.entries.sort((a,b)=>ed.type==='class'?(DAYS.indexOf(a.day)-DAYS.indexOf(b.day))||String(a.start_time).localeCompare(b.start_time):(String(a.date).localeCompare(b.date))||String(a.start_time).localeCompare(b.start_time));
-const entryLine=e=>`${ed.type==='class'?esc(e.day):esc(fmtDate(e.date))} · ${fmtTime(e.start_time)}${e.end_time?' – '+fmtTime(e.end_time):''} · ${esc(e.venue||'TBA')}${e.level?' · '+esc(e.level)+' Level':''}`;
+
+const sortEntries = () => ed.entries.sort((a, b) =>
+  ed.type === 'class'
+    ? (DAYS.indexOf(a.day) - DAYS.indexOf(b.day)) || String(a.start_time).localeCompare(b.start_time)
+    : (String(a.date).localeCompare(b.date)) || String(a.start_time).localeCompare(b.start_time)
+);
+
+const entryLine = e => `${ed.type === 'class' ? esc(e.day) : esc(fmtDate(e.date))} · ${fmtTime(e.start_time)}${e.end_time ? ' – ' + fmtTime(e.end_time) : ''} · ${esc(e.venue || 'TBA')}${e.level ? ' · ' + esc(e.level) + ' Level' : ''}`;
+
 function renderEntries(){
- sortEntries();
- $('entryList').innerHTML=ed.entries.length?ed.entries.map((e,i)=>`<div class="entry"><div><strong>${esc(e.course_code)}</strong> · ${esc(e.course_title||'')}<br><small>${entryLine(e)}</small></div><div class="actions"><button class="icon-btn" type="button" data-ei="${i}" data-ea="edit" title="Edit"><i class="fas fa-pen"></i></button><button class="icon-btn" type="button" data-ei="${i}" data-ea="del" data-act="delete" title="Remove"><i class="fas fa-xmark"></i></button></div></div>`).join(''):'<p class="hint">No entries added yet.</p>';
+  sortEntries();
+  $('entryList').innerHTML = ed.entries.length ? ed.entries.map((e, i) => `<div class="entry">
+    <div><strong>${esc(e.course_code)}</strong> · ${esc(e.course_title || '')}<br><small>${entryLine(e)}</small></div>
+    <div class="actions">
+      <button class="icon-btn" type="button" data-ei="${i}" data-ea="edit" title="Edit"><i class="fas fa-pen"></i></button>
+      <button class="icon-btn" type="button" data-ei="${i}" data-ea="del" title="Remove"><i class="fas fa-xmark"></i></button>
+    </div>
+  </div>`).join('') : '<p class="hint">No entries added yet.</p>';
 }
+
+function renderUploadPreview(){
+  const box = $('uploadPreview');
+  if(!box) return;
+  if(ed.mode !== 'upload'){ box.innerHTML = ''; return; }
+  const src = ed.file ? URL.createObjectURL(ed.file) : ed.fileUrl;
+  if(!src){ box.innerHTML = '<p class="hint">No file selected.</p>'; return; }
+  const isImg = ed.file ? ed.file.type.startsWith('image/') : /\.(png|jpe?g|webp|gif)(\?|$)/i.test(ed.fileUrl);
+  box.innerHTML = isImg
+    ? `<img src="${esc(src)}" alt="Preview" style="max-width:100%;border-radius:8px">`
+    : `<a href="${esc(src)}" target="_blank" rel="noopener" style="color:var(--info);font-weight:600"><i class="fas fa-file-pdf"></i> Open document</a>`;
+}
+
 function addEntry(){
- const isC=ed.type==='class',v=id=>$(id).value.trim();
- const e={course_code:v('enCode').toUpperCase(),course_title:v('enTitle'),venue:v('enVenue'),start_time:v('enStart'),end_time:v('enEnd')};
- if(isC)e.day=v('enWhen');else{e.date=v('enWhen');e.level=v('enLevel')}
- if(!e.course_code||!e.start_time||(!isC&&(!e.date||!e.level)))return showToast(isC?'Course code and start time are required':'Level, course code, date and start time are required','warning');
- if(e.end_time&&e.end_time<=e.start_time)return showToast('End time must be after start time','warning');
- ed.entries.push(e);renderEntries();['enCode','enTitle','enVenue','enStart','enEnd'].forEach(id=>$(id).value='');
+  const isC = ed.type === 'class';
+  const v = id => $(id).value.trim();
+  const e = {
+    course_code: v('enCode').toUpperCase(),
+    course_title: v('enTitle'),
+    venue: v('enVenue'),
+    start_time: v('enStart'),
+    end_time: v('enEnd')
+  };
+  if(isC) e.day = v('enWhen'); else { e.date = v('enWhen'); e.level = v('enLevel'); }
+
+  if(!e.course_code || !e.start_time || (!isC && (!e.date || !e.level))){
+    return showToast(isC ? 'Course code and start time are required' : 'Level, course code, date and start time are required','warning');
+  }
+  if(e.end_time && e.end_time <= e.start_time){
+    return showToast('End time must be after start time','warning');
+  }
+  ed.entries.push(e);
+  renderEntries();
+  ['enCode','enTitle','enVenue','enStart','enEnd'].forEach(id => $(id).value = '');
 }
+
 function buildPreview(){
- const box=$('edPreview');box.classList.remove('hidden');
- if(ed.mode==='upload'){
-  const url=ed.file?URL.createObjectURL(ed.file):ed.fileUrl,isImg=ed.file?ed.file.type.startsWith('image/'):/\.(png|jpe?g|webp|gif)(\?|$)/i.test(ed.fileUrl);
-  box.innerHTML=url?(isImg?`<img src="${esc(url)}" alt="Preview">`:`<a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--info);font-weight:600"><i class="fas fa-file-pdf"></i> Open document</a>`):'<p class="hint">No file selected.</p>';return;
- }
- if(!ed.entries.length){box.innerHTML='<p class="hint">Nothing to preview yet.</p>';return}
- if(ed.type==='class')box.innerHTML=DAYS.map(d=>{const r=ed.entries.filter(e=>e.day===d);return r.length?`<h4>${d}</h4>`+r.map(e=>`<div class="entry"><div><strong>${esc(e.course_code)}</strong> · ${esc(e.course_title||'')}<br><small>${fmtTime(e.start_time)} – ${fmtTime(e.end_time)} · ${esc(e.venue||'TBA')}</small></div></div>`).join(''):''}).join('');
- else box.innerHTML=ed.entries.map(e=>`<div class="entry"><div><strong>${esc(e.course_code)}</strong> · ${esc(e.course_title||'')}<br><small>${entryLine(e)}</small></div></div>`).join('');
+  const box = $('edPreview');
+  box.classList.remove('hidden');
+  if(ed.mode === 'upload'){
+    const url = ed.file ? URL.createObjectURL(ed.file) : ed.fileUrl;
+    const isImg = ed.file ? ed.file.type.startsWith('image/') : /\.(png|jpe?g|webp|gif)(\?|$)/i.test(ed.fileUrl);
+    box.innerHTML = url
+      ? (isImg ? `<img src="${esc(url)}" alt="Preview">` : `<a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--info);font-weight:600"><i class="fas fa-file-pdf"></i> Open document</a>`)
+      : '<p class="hint">No file selected.</p>';
+    return;
+  }
+  if(!ed.entries.length){ box.innerHTML = '<p class="hint">Nothing to preview yet.</p>'; return; }
+  if(ed.type === 'class'){
+    box.innerHTML = DAYS.map(d => {
+      const r = ed.entries.filter(e => e.day === d);
+      return r.length ? `<h4>${d}</h4>` + r.map(e => `<div class="entry"><div><strong>${esc(e.course_code)}</strong> · ${esc(e.course_title || '')}<br><small>${fmtTime(e.start_time)} – ${fmtTime(e.end_time)} · ${esc(e.venue || 'TBA')}</small></div></div>`).join('') : '';
+    }).join('');
+  } else {
+    box.innerHTML = ed.entries.map(e => `<div class="entry"><div><strong>${esc(e.course_code)}</strong> · ${esc(e.course_title || '')}<br><small>${entryLine(e)}</small></div></div>`).join('');
+  }
 }
+
 async function saveEditor(publish){
- const isC=ed.type==='class',level=isC?$('edLevel').value:'';
- if(isC&&!level)return showToast('Select a level','warning');
- if(!settings.session||!settings.semester)return showToast('Save the academic settings first','warning');
- if(ed.mode==='structured'&&!ed.entries.length)return showToast('Add at least one entry','warning');
- if(ed.mode==='upload'&&!ed.file&&!ed.fileUrl)return showToast('Choose a PDF or image to upload','warning');
- const base={type:ed.type,mode:ed.mode,level,title:$('edTitle').value.trim(),description:$('edDesc').value.trim(),session:settings.session,semester:settings.semester};
- const ep='/api/admin/timetables'+(ed.id?'/'+ed.id:''),m=ed.id?'PUT':'POST';
- try{
-  showLoading();let res;
-  if(ed.mode==='upload'){const f=new FormData();Object.entries(base).forEach(([k,v])=>f.append(k,v));if(ed.file)f.append('file',ed.file);res=await api(m,ep,f,true)}
-  else res=await api(m,ep,{...base,entries:ed.entries});
-  const id=(res.data&&res.data.id)||ed.id;
-  if(publish&&id)await api('POST',`/api/admin/timetables/${id}/publish`);
-  hideModal('editorModal');showToast(publish?(ed.status==='published'?'Timetable updated':'Timetable published'):'Draft saved','success');
-  await loadTimetables();
- }catch(e){if(e.message!=='Unauthorized')showToast(e.message||'Could not save timetable','error')}
- finally{hideLoading()}
+  const isC = ed.type === 'class';
+  const level = isC ? $('edLevel').value : '';
+
+  if(isC && !level) return showToast('Select a level','warning');
+  if(!settings.session || !settings.semester) return showToast('Save the academic settings first','warning');
+  if(ed.mode === 'structured' && !ed.entries.length) return showToast('Add at least one entry','warning');
+  if(ed.mode === 'upload' && !ed.file && !ed.fileUrl) return showToast('Choose a PDF or image to upload','warning');
+
+  const base = {
+    type: ed.type,
+    mode: ed.mode,
+    level,
+    title: $('edTitle').value.trim(),
+    description: $('edDesc').value.trim(),
+    session: settings.session,
+    semester: settings.semester
+  };
+  const ep = '/api/admin/timetables' + (ed.id ? '/' + ed.id : '');
+  const m = ed.id ? 'PUT' : 'POST';
+
+  try {
+    showLoading();
+    let res;
+    if(ed.mode === 'upload'){
+      const f = new FormData();
+      Object.entries(base).forEach(([k, v]) => f.append(k, v));
+      if(ed.file) f.append('file', ed.file);
+      res = await api(m, ep, f, true);
+    } else {
+      res = await api(m, ep, { ...base, entries: ed.entries });
+    }
+    const id = (res.data && res.data.id) || ed.id;
+
+    // Save-changes path: skip republish if it was already published
+    const wasPublished = ed.status === 'published';
+    if(publish && id && !wasPublished){
+      await api('POST', `/api/admin/timetables/${id}/publish`);
+    }
+
+    hideModal('editorModal');
+    showToast(
+      publish
+        ? (wasPublished ? 'Timetable updated' : 'Timetable published')
+        : 'Draft saved',
+      'success'
+    );
+    await loadTimetables();
+  } catch(e){
+    if(e.message !== 'Unauthorized') showToast(e.message || 'Could not save timetable','error');
+  } finally {
+    hideLoading();
+  }
 }
 
 /* ---------- actions ---------- */
-async function timetableAction(act,id){
- try{showLoading();await api('POST',`/api/admin/timetables/${id}/${act}`);showToast({publish:'Timetable published',unpublish:'Timetable unpublished',archive:'Timetable archived'}[act],'success');await loadTimetables()}
- catch(e){if(e.message!=='Unauthorized')showToast(e.message||'Action failed','error')}finally{hideLoading()}
+async function timetableAction(act, id){
+  try {
+    showLoading();
+    await api('POST', `/api/admin/timetables/${id}/${act}`);
+    showToast({ publish:'Timetable published', unpublish:'Timetable unpublished', archive:'Timetable archived' }[act], 'success');
+    await loadTimetables();
+  } catch(e){
+    if(e.message !== 'Unauthorized') showToast(e.message || 'Action failed','error');
+  } finally {
+    hideLoading();
+  }
 }
+
 function handleAct(btn){
- const act=btn.dataset.act,id=btn.dataset.id,t=tts.find(x=>String(x.id)===String(id));
- if(act==='create')return openEditor(btn.dataset.type,null,btn.dataset.level);
- if(act==='delann')return confirmDialog('Delete announcement','This announcement will be removed from the public page.','Delete',async()=>{try{await api('DELETE',`/api/admin/timetable/announcements/${id}`);anns=anns.filter(a=>String(a.id)!==String(id));renderAll();showToast('Announcement deleted','success')}catch(e){showToast(e.message,'error')}});
- if(!t)return;
- if(act==='edit')return openEditor(t.type,t);
- if(act==='delete')return confirmDialog('Delete timetable',`Delete "${nameOf(t)}"? This cannot be undone.`,'Delete',async()=>{try{await api('DELETE',`/api/admin/timetables/${id}`);showToast('Timetable deleted','success');await loadTimetables()}catch(e){showToast(e.message,'error')}});
- if(act==='archive')return confirmDialog('Archive timetable','It will be kept for reference and shown as archived on the public page.','Archive',()=>timetableAction('archive',id));
- timetableAction(act,id);
+  const act = btn.dataset.act;
+  const id = btn.dataset.id;
+  const t = tts.find(x => String(x.id) === String(id));
+
+  if(act === 'create') return openEditor(btn.dataset.type, null, btn.dataset.level);
+
+  if(act === 'editann'){
+    const a = anns.find(x => String(x.id) === String(id));
+    if(!a) return;
+    editingAnnId = a.id;
+    $('anTitle').value = a.title;
+    $('anMsg').value = a.body;
+    if($('anPriority')) $('anPriority').value = a.priority || 'normal';
+    if($('anPublish')) $('anPublish').innerHTML = '<i class="fas fa-save"></i> Update announcement';
+    showToast('Editing announcement — press Update to save','info');
+    $('anTitle').scrollIntoView({ behavior:'smooth', block:'center' });
+    return;
+  }
+
+  if(act === 'delann'){
+    return confirmDialog('Delete announcement','This announcement will be removed from the public page.','Delete', async () => {
+      try {
+        await api('DELETE', `/api/admin/timetable/announcements/${id}`);
+        anns = anns.filter(a => String(a.id) !== String(id));
+        renderAll();
+        showToast('Announcement deleted','success');
+      } catch(e){ showToast(e.message,'error'); }
+    });
+  }
+
+  if(!t) return;
+
+  if(act === 'edit') return openEditor(t.type, t);
+
+  if(act === 'delete'){
+    if(t.status === 'published'){
+      return showToast('Unpublish this timetable before deleting it','warning');
+    }
+    return confirmDialog('Delete timetable', `Delete "${nameOf(t)}"? This cannot be undone.`, 'Delete', async () => {
+      try {
+        await api('DELETE', `/api/admin/timetables/${id}`);
+        showToast('Timetable deleted','success');
+        await loadTimetables();
+      } catch(e){ showToast(e.message,'error'); }
+    });
+  }
+
+  if(act === 'archive'){
+    return confirmDialog('Archive timetable','It will be kept for reference and shown as archived on the public page.','Archive', () => timetableAction('archive', id));
+  }
+
+  timetableAction(act, id);
 }
 
 /* ---------- init ---------- */
 function setupSidebar(){
- const sb=$('sidebar'),ov=$('mobileOverlay');
- const close=()=>{sb.classList.remove('open');ov.classList.remove('active');document.body.style.overflow=''};
- $('mobileMenuToggle').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();if(sb.classList.contains('open'))close();else{sb.classList.add('open');ov.classList.add('active');document.body.style.overflow='hidden'}},true);
- ov.addEventListener('click',close);
- document.addEventListener('keydown',e=>{if(e.key==='Escape'){close();['editorModal','confirmModal'].forEach(hideModal)}});
- document.querySelectorAll('.nav-item').forEach(l=>l.addEventListener('click',()=>{if(innerWidth<=900)close()}));
- window.addEventListener('scroll',()=>$('mainHeader').classList.toggle('scrolled',scrollY>8),{passive:true});
+  const sb = $('sidebar'), ov = $('mobileOverlay');
+  const close = () => { sb.classList.remove('open'); ov.classList.remove('active'); document.body.style.overflow = ''; };
+  $('mobileMenuToggle').addEventListener('click', e => {
+    e.preventDefault(); e.stopPropagation();
+    if(sb.classList.contains('open')) close();
+    else { sb.classList.add('open'); ov.classList.add('active'); document.body.style.overflow = 'hidden'; }
+  }, true);
+  ov.addEventListener('click', close);
+  document.addEventListener('keydown', e => {
+    if(e.key === 'Escape'){ close(); ['editorModal','confirmModal'].forEach(hideModal); }
+  });
+  document.querySelectorAll('.nav-item').forEach(l => l.addEventListener('click', () => { if(innerWidth <= 900) close(); }));
+  window.addEventListener('scroll', () => $('mainHeader').classList.toggle('scrolled', scrollY > 8), { passive:true });
 }
-document.addEventListener('click',e=>{
- const c=e.target.closest('[data-close]');if(c)return hideModal(c.dataset.close);
- const a=e.target.closest('[data-act]');if(a&&!a.closest('#entryList'))return handleAct(a);
- const m=e.target.closest('.seg button');if(m)return setMode(m.dataset.mode);
- const en=e.target.closest('[data-ei]');if(en){const i=+en.dataset.ei,x=ed.entries[i];
-  if(en.dataset.ea==='del'){ed.entries.splice(i,1);return renderEntries()}
-  ed.entries.splice(i,1);renderEntries();
-  $('enCode').value=x.course_code||'';$('enTitle').value=x.course_title||'';$('enVenue').value=x.venue||'';$('enStart').value=x.start_time||'';$('enEnd').value=x.end_time||'';
-  $('enWhen').value=ed.type==='class'?x.day:x.date;if($('enLevel'))$('enLevel').value=x.level||'';return}
- if(e.target.closest('#enAdd'))addEntry();
+
+document.addEventListener('click', e => {
+  const c = e.target.closest('[data-close]');
+  if(c) return hideModal(c.dataset.close);
+
+  const a = e.target.closest('[data-act]');
+  if(a && !a.closest('#entryList')) return handleAct(a);
+
+  const m = e.target.closest('.seg button');
+  if(m) return setMode(m.dataset.mode);
+
+  const en = e.target.closest('[data-ei]');
+  if(en){
+    const i = +en.dataset.ei, x = ed.entries[i];
+    if(en.dataset.ea === 'del'){ ed.entries.splice(i, 1); return renderEntries(); }
+    ed.entries.splice(i, 1);
+    renderEntries();
+    $('enCode').value = x.course_code || '';
+    $('enTitle').value = x.course_title || '';
+    $('enVenue').value = x.venue || '';
+    $('enStart').value = x.start_time || '';
+    $('enEnd').value = x.end_time || '';
+    $('enWhen').value = ed.type === 'class' ? x.day : x.date;
+    if($('enLevel')) $('enLevel').value = x.level || '';
+    return;
+  }
+
+  if(e.target.closest('#enAdd')) addEntry();
 });
-document.addEventListener('change',e=>{if(e.target.id==='edFile'){ed.file=e.target.files[0]||null}});
-document.addEventListener('DOMContentLoaded',async()=>{
- setupSidebar();
- $('logoutBtn').addEventListener('click',()=>confirmDialog('Confirm Logout','Are you sure you want to end your admin session?','Logout',doLogout));
- $('confirmOk').addEventListener('click',()=>{const f=confirmFn;hideModal('confirmModal');if(f)f()});
- $('edPreviewBtn').addEventListener('click',buildPreview);
- $('edDraft').addEventListener('click',()=>saveEditor(false));
- $('edPublish').addEventListener('click',()=>saveEditor(true));
- $('saveSettings').addEventListener('click',async()=>{
-  const s={session:$('setSession').value.trim(),semester:$('setSemester').value,phase:$('setPhase').value};
-  if(!/^\d{4}\/\d{4}$/.test(s.session))return showToast('Enter the session like 2026/2027','warning');
-  if(!s.semester||!s.phase)return showToast('Select the semester and timetable status','warning');
-  try{showLoading();await api('PUT','/api/admin/timetable/settings',s);settings=s;renderAll();showToast('Academic settings saved','success')}
-  catch(err){if(err.message!=='Unauthorized')showToast(err.message||'Could not save settings','error')}finally{hideLoading()}
- });
- $('anPublish').addEventListener('click',async()=>{
-  const b={title:$('anTitle').value.trim(),message:$('anMsg').value.trim(),category:$('anCat').value};
-  if(!b.title||!b.message||!b.category)return showToast('Add a title, message and category','warning');
-  try{showLoading();const r=await api('POST','/api/admin/timetable/announcements',b);anns.unshift(r.data||{...b,created_at:new Date().toISOString()});
-   ['anTitle','anMsg','anCat'].forEach(id=>$(id).value='');renderAll();showToast('Announcement published','success')}
-  catch(err){if(err.message!=='Unauthorized')showToast(err.message||'Could not publish announcement','error')}finally{hideLoading()}
- });
- if(await checkAuth()){showLoading();await loadAll();hideLoading()}
+
+document.addEventListener('change', e => {
+  if(e.target.id === 'edFile'){
+    ed.file = e.target.files[0] || null;
+    renderUploadPreview();
+  }
+  if(e.target.id === 'levelFilter'){
+    levelFilter = e.target.value || 'all';
+    sessionStorage.setItem('ttLevelFilter', levelFilter);
+    renderAll();
+  }
+});
+
+document.addEventListener('DOMContentLoaded', async () => {
+  setupSidebar();
+
+  $('logoutBtn').addEventListener('click', () => confirmDialog('Confirm Logout','Are you sure you want to end your admin session?','Logout',doLogout));
+  $('confirmOk').addEventListener('click', () => { const f = confirmFn; hideModal('confirmModal'); if(f) f(); });
+  $('edPreviewBtn').addEventListener('click', buildPreview);
+  $('edDraft').addEventListener('click', () => saveEditor(false));
+  $('edPublish').addEventListener('click', () => saveEditor(true));
+
+  $('saveSettings').addEventListener('click', async () => {
+    const s = {
+      session: $('setSession').value.trim(),
+      semester: $('setSemester').value,
+      phase: $('setPhase') ? $('setPhase').value : ''
+    };
+    if(!/^\d{4}\/\d{4}$/.test(s.session)) return showToast('Enter the session like 2026/2027','warning');
+    if(!s.semester || (s.phase !== undefined && !s.phase)) return showToast('Select the semester and timetable status','warning');
+    const btn = $('saveSettings');
+    btn.disabled = true;
+    try {
+      showLoading();
+      await api('PUT','/api/admin/timetable/settings', s);
+      settings = { ...settings, ...s };
+      renderAll();
+      showToast('Academic settings saved','success');
+    } catch(err){
+      if(err.message !== 'Unauthorized') showToast(err.message || 'Could not save settings','error');
+    } finally {
+      btn.disabled = false;
+      hideLoading();
+    }
+  });
+
+  $('anPublish').addEventListener('click', async () => {
+    const payload = {
+      title: $('anTitle').value.trim(),
+      body: $('anMsg').value.trim(),
+      priority: $('anPriority') ? $('anPriority').value : 'normal'
+    };
+    if(!payload.title || !payload.body) return showToast('Add a title and message','warning');
+
+    try {
+      showLoading();
+      if(editingAnnId){
+        const r = await api('PUT', `/api/admin/timetable/announcements/${editingAnnId}`, payload);
+        const i = anns.findIndex(a => String(a.id) === String(editingAnnId));
+        if(i >= 0) anns[i] = normAnn({ ...anns[i], ...payload, ...(r.data || {}) });
+        editingAnnId = null;
+        $('anPublish').innerHTML = '<i class="fas fa-bullhorn"></i> Publish announcement';
+        showToast('Announcement updated','success');
+      } else {
+        const r = await api('POST','/api/admin/timetable/announcements', payload);
+        anns.unshift(normAnn(r.data || { ...payload, created_at: new Date().toISOString() }));
+        showToast('Announcement published','success');
+      }
+      ['anTitle','anMsg'].forEach(id => $(id).value = '');
+      if($('anPriority')) $('anPriority').value = 'normal';
+      renderAll();
+    } catch(err){
+      if(err.message !== 'Unauthorized') showToast(err.message || 'Could not publish announcement','error');
+    } finally {
+      hideLoading();
+    }
+  });
+
+  if(await checkAuth()){
+    showLoading();
+    await loadAll();
+    hideLoading();
+  }
 });
 </script>
 </body>

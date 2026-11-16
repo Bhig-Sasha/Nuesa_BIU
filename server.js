@@ -6001,8 +6001,6 @@ adminRouter.delete('/awards/judges/:id', async (req, res) => {
     }
 });
 
-console.log('✅ [AWARD-ADMIN] /api/admin/awards/* routes registered');
-
 // ============================================================
 // ================ ADMIN TIMETABLE MANAGEMENT ================
 // ============================================================
@@ -6026,8 +6024,10 @@ adminTimetableRouter.get('/settings', async (req, res) => {
         res.json({
             status: 'success',
             data: data || {
+                id: null,
                 session: null,
                 semester: null,
+                title: null,
                 status: 'draft',
                 is_published: false
             }
@@ -6042,7 +6042,6 @@ adminTimetableRouter.put('/settings', async (req, res) => {
     try {
         const { session, semester, title } = req.body;
 
-        // Find the current (latest) package or create one
         let { data: pkg } = await supabase
             .from('timetable_packages')
             .select('id')
@@ -6065,14 +6064,15 @@ adminTimetableRouter.put('/settings', async (req, res) => {
             if (createErr) throw createErr;
             pkg = created;
         } else {
+            // Build updates only from provided keys — never send undefined
+            const updates = { updated_at: new Date().toISOString() };
+            if (session  !== undefined) updates.session  = session  || null;
+            if (semester !== undefined) updates.semester = semester || null;
+            if (title    !== undefined) updates.title    = title;
+
             const { data: updated, error: updErr } = await supabase
                 .from('timetable_packages')
-                .update({
-                    session: session ?? undefined,
-                    semester: semester ?? undefined,
-                    title: title ?? undefined,
-                    updated_at: new Date().toISOString()
-                })
+                .update(updates)
                 .eq('id', pkg.id)
                 .select()
                 .single();
@@ -6090,7 +6090,7 @@ adminTimetableRouter.put('/settings', async (req, res) => {
 // ---------- LIST + CREATE TIMETABLES ----------
 adminTimetableRouter.get('/timetables', async (req, res) => {
     try {
-        const { type, level, status } = req.query; // type = class | exam
+        const { status } = req.query;
 
         let query = supabase
             .from('timetable_packages')
@@ -6106,7 +6106,6 @@ adminTimetableRouter.get('/timetables', async (req, res) => {
         const { data, error } = await query;
         if (error) throw error;
 
-        // Flatten counts
         const mapped = (data || []).map(p => ({
             ...p,
             class_count: p.class_count?.[0]?.count || 0,
@@ -6123,12 +6122,12 @@ adminTimetableRouter.get('/timetables', async (req, res) => {
 adminTimetableRouter.post('/timetables', async (req, res) => {
     try {
         const {
-            type = 'class',          // class | exam
+            type = 'class',
             level,
             session,
             semester,
             title,
-            entries = [],            // array of class/exam rows
+            entries = [],
             pdf_url = null
         } = req.body;
 
@@ -6136,7 +6135,6 @@ adminTimetableRouter.post('/timetables', async (req, res) => {
             return res.status(400).json({ status: 'error', message: 'type must be class or exam' });
         }
 
-        // Create package
         const { data: pkg, error: pkgErr } = await supabase
             .from('timetable_packages')
             .insert([{
@@ -6153,7 +6151,6 @@ adminTimetableRouter.post('/timetables', async (req, res) => {
 
         if (pkgErr) throw pkgErr;
 
-        // Insert entries if provided
         if (Array.isArray(entries) && entries.length) {
             if (type === 'class') {
                 const rows = entries.map(e => ({
@@ -6190,6 +6187,8 @@ adminTimetableRouter.post('/timetables', async (req, res) => {
             }
         }
 
+        await cacheManager.invalidate('timetable*');
+
         res.status(201).json({
             status: 'success',
             data: pkg,
@@ -6215,8 +6214,10 @@ adminTimetableRouter.get('/timetables/:id', async (req, res) => {
         }
 
         const [classesRes, examsRes] = await Promise.all([
-            supabase.from('timetable_classes').select('*').eq('package_id', pkg.id).order('day_of_week').order('start_time'),
-            supabase.from('timetable_exams').select('*').eq('package_id', pkg.id).order('exam_date').order('start_time')
+            supabase.from('timetable_classes').select('*').eq('package_id', pkg.id)
+                .order('day_of_week').order('start_time'),
+            supabase.from('timetable_exams').select('*').eq('package_id', pkg.id)
+                .order('exam_date').order('start_time')
         ]);
 
         res.json({
@@ -6237,15 +6238,21 @@ adminTimetableRouter.put('/timetables/:id', async (req, res) => {
     try {
         const { title, session, semester, entries, type, pdf_url } = req.body;
 
-        const updates = {
-            updated_at: new Date().toISOString()
-        };
-        if (title !== undefined) updates.title = title;
-        if (session !== undefined) updates.session = session;
-        if (semester !== undefined) updates.semester = semester;
-        if (pdf_url !== undefined) {
-            if (type === 'exam') updates.exam_pdf_url = pdf_url;
-            else updates.class_pdf_url = pdf_url;
+        // FIX: require explicit type when entries are being replaced
+        if (Array.isArray(entries) && entries.length > 0 && !['class', 'exam'].includes(type)) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'type (class|exam) is required when sending entries'
+            });
+        }
+
+        const updates = { updated_at: new Date().toISOString() };
+        if (title    !== undefined) updates.title    = title;
+        if (session  !== undefined) updates.session  = session  || null;
+        if (semester !== undefined) updates.semester = semester || null;
+        if (pdf_url  !== undefined) {
+            if (type === 'exam') updates.exam_pdf_url  = pdf_url;
+            else                 updates.class_pdf_url = pdf_url;
         }
 
         const { data: pkg, error: pkgErr } = await supabase
@@ -6255,11 +6262,16 @@ adminTimetableRouter.put('/timetables/:id', async (req, res) => {
             .select()
             .single();
 
-        if (pkgErr) throw pkgErr;
+        if (pkgErr) {
+            // FIX: 404 instead of 500 when the package does not exist
+            if (pkgErr.code === 'PGRST116') {
+                return res.status(404).json({ status: 'error', message: 'Timetable not found' });
+            }
+            throw pkgErr;
+        }
 
-        // Optional: replace all entries
         if (Array.isArray(entries)) {
-            if (type === 'class' || !type) {
+            if (type === 'class') {
                 await supabase.from('timetable_classes').delete().eq('package_id', pkg.id);
                 if (entries.length) {
                     const rows = entries.map(e => ({
@@ -6278,8 +6290,7 @@ adminTimetableRouter.put('/timetables/:id', async (req, res) => {
                     }));
                     await supabase.from('timetable_classes').insert(rows);
                 }
-            }
-            if (type === 'exam') {
+            } else if (type === 'exam') {
                 await supabase.from('timetable_exams').delete().eq('package_id', pkg.id);
                 if (entries.length) {
                     const rows = entries.map(e => ({
@@ -6299,6 +6310,8 @@ adminTimetableRouter.put('/timetables/:id', async (req, res) => {
             }
         }
 
+        await cacheManager.invalidate('timetable*');
+
         res.json({ status: 'success', data: pkg, message: 'Timetable updated' });
     } catch (err) {
         logger.error('Update timetable error:', { requestId: req.id, error: err.message });
@@ -6308,12 +6321,36 @@ adminTimetableRouter.put('/timetables/:id', async (req, res) => {
 
 adminTimetableRouter.delete('/timetables/:id', async (req, res) => {
     try {
+        // FIX: block deleting the currently published timetable
+        const { data: pkg, error: fetchErr } = await supabase
+            .from('timetable_packages')
+            .select('id, is_published')
+            .eq('id', req.params.id)
+            .maybeSingle();
+
+        if (fetchErr) throw fetchErr;
+        if (!pkg) return res.status(404).json({ status: 'error', message: 'Timetable not found' });
+
+        if (pkg.is_published) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Unpublish this timetable before deleting it'
+            });
+        }
+
+        // Delete children explicitly in case FKs are not ON DELETE CASCADE
+        await supabase.from('timetable_announcements').delete().eq('package_id', pkg.id);
+        await supabase.from('timetable_classes').delete().eq('package_id', pkg.id);
+        await supabase.from('timetable_exams').delete().eq('package_id', pkg.id);
+
         const { error } = await supabase
             .from('timetable_packages')
             .delete()
-            .eq('id', req.params.id);
+            .eq('id', pkg.id);
 
         if (error) throw error;
+
+        await cacheManager.invalidate('timetable*');
 
         res.json({ status: 'success', message: 'Timetable deleted' });
     } catch (err) {
@@ -6325,7 +6362,16 @@ adminTimetableRouter.delete('/timetables/:id', async (req, res) => {
 // ---------- PUBLISH / UNPUBLISH / ARCHIVE ----------
 adminTimetableRouter.post('/timetables/:id/publish', async (req, res) => {
     try {
-        // Unpublish any currently published package first (only one live at a time)
+        // Verify target exists first (prevents wiping the live one for a bad id)
+        const { data: target, error: targetErr } = await supabase
+            .from('timetable_packages')
+            .select('id')
+            .eq('id', req.params.id)
+            .maybeSingle();
+
+        if (targetErr) throw targetErr;
+        if (!target) return res.status(404).json({ status: 'error', message: 'Timetable not found' });
+
         await supabase
             .from('timetable_packages')
             .update({ is_published: false, status: 'draft', updated_at: new Date().toISOString() })
@@ -6345,7 +6391,6 @@ adminTimetableRouter.post('/timetables/:id/publish', async (req, res) => {
 
         if (error) throw error;
 
-        // Invalidate public cache
         await cacheManager.invalidate('timetable*');
 
         res.json({ status: 'success', data, message: 'Timetable published' });
@@ -6359,16 +6404,17 @@ adminTimetableRouter.post('/timetables/:id/unpublish', async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('timetable_packages')
-            .update({
-                is_published: false,
-                status: 'draft',
-                updated_at: new Date().toISOString()
-            })
+            .update({ is_published: false, status: 'draft', updated_at: new Date().toISOString() })
             .eq('id', req.params.id)
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            if (error.code === 'PGRST116') {
+                return res.status(404).json({ status: 'error', message: 'Timetable not found' });
+            }
+            throw error;
+        }
         await cacheManager.invalidate('timetable*');
 
         res.json({ status: 'success', data, message: 'Timetable unpublished' });
@@ -6382,16 +6428,17 @@ adminTimetableRouter.post('/timetables/:id/archive', async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('timetable_packages')
-            .update({
-                is_published: false,
-                status: 'archived',
-                updated_at: new Date().toISOString()
-            })
+            .update({ is_published: false, status: 'archived', updated_at: new Date().toISOString() })
             .eq('id', req.params.id)
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            if (error.code === 'PGRST116') {
+                return res.status(404).json({ status: 'error', message: 'Timetable not found' });
+            }
+            throw error;
+        }
         await cacheManager.invalidate('timetable*');
 
         res.json({ status: 'success', data, message: 'Timetable archived' });
@@ -6402,6 +6449,8 @@ adminTimetableRouter.post('/timetables/:id/archive', async (req, res) => {
 });
 
 // ---------- ANNOUNCEMENTS ----------
+const ANNOUNCEMENT_PRIORITIES = ['low', 'normal', 'high', 'urgent'];
+
 adminTimetableRouter.get('/announcements', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -6424,8 +6473,13 @@ adminTimetableRouter.post('/announcements', async (req, res) => {
         if (!title) {
             return res.status(400).json({ status: 'error', message: 'title is required' });
         }
+        if (!ANNOUNCEMENT_PRIORITIES.includes(priority)) {
+            return res.status(400).json({
+                status: 'error',
+                message: `priority must be one of: ${ANNOUNCEMENT_PRIORITIES.join(', ')}`
+            });
+        }
 
-        // If no package_id given, attach to the latest package
         let pkgId = package_id;
         if (!pkgId) {
             const { data: latest } = await supabase
@@ -6452,6 +6506,8 @@ adminTimetableRouter.post('/announcements', async (req, res) => {
 
         if (error) throw error;
 
+        await cacheManager.invalidate('timetable*');
+
         res.status(201).json({ status: 'success', data, message: 'Announcement created' });
     } catch (err) {
         logger.error('Create announcement error:', { requestId: req.id, error: err.message });
@@ -6459,14 +6515,66 @@ adminTimetableRouter.post('/announcements', async (req, res) => {
     }
 });
 
+adminTimetableRouter.put('/announcements/:id', async (req, res) => {
+    try {
+        const { title, body, priority, is_active, expires_at } = req.body;
+
+        const updates = {};
+        if (title      !== undefined) updates.title      = title;
+        if (body       !== undefined) updates.body       = body || null;
+        if (is_active  !== undefined) updates.is_active  = !!is_active;
+        if (expires_at !== undefined) updates.expires_at = expires_at || null;
+        if (priority   !== undefined) {
+            if (!ANNOUNCEMENT_PRIORITIES.includes(priority)) {
+                return res.status(400).json({
+                    status: 'error',
+                    message: `priority must be one of: ${ANNOUNCEMENT_PRIORITIES.join(', ')}`
+                });
+            }
+            updates.priority = priority;
+        }
+
+        if (Object.keys(updates).length === 0) {
+            return res.status(400).json({ status: 'error', message: 'No fields to update' });
+        }
+
+        const { data, error } = await supabase
+            .from('timetable_announcements')
+            .update(updates)
+            .eq('id', req.params.id)
+            .select()
+            .single();
+
+        if (error) {
+            if (error.code === 'PGRST116') {
+                return res.status(404).json({ status: 'error', message: 'Announcement not found' });
+            }
+            throw error;
+        }
+
+        await cacheManager.invalidate('timetable*');
+
+        res.json({ status: 'success', data, message: 'Announcement updated' });
+    } catch (err) {
+        logger.error('Update announcement error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to update announcement' });
+    }
+});
+
 adminTimetableRouter.delete('/announcements/:id', async (req, res) => {
     try {
-        const { error } = await supabase
+        const { data, error } = await supabase
             .from('timetable_announcements')
             .delete()
-            .eq('id', req.params.id);
+            .eq('id', req.params.id)
+            .select('id')
+            .maybeSingle();
 
         if (error) throw error;
+        if (!data) return res.status(404).json({ status: 'error', message: 'Announcement not found' });
+
+        await cacheManager.invalidate('timetable*');
+
         res.json({ status: 'success', message: 'Announcement deleted' });
     } catch (err) {
         logger.error('Delete announcement error:', { requestId: req.id, error: err.message });
@@ -6476,7 +6584,7 @@ adminTimetableRouter.delete('/announcements/:id', async (req, res) => {
 
 // Mount the router
 app.use('/api/admin/timetable', adminTimetableRouter);
-app.use('/api/admin/timetables', adminTimetableRouter); // alias for convenience
+app.use('/api/admin/timetables', adminTimetableRouter); 
 
 console.log('✅ [ADMIN-TIMETABLE] /api/admin/timetable/* routes registered');
 
