@@ -4225,9 +4225,18 @@ electionRouter.post('/voter/register', async (req, res) => {
             return res.status(400).json({ status: 'error', message: 'No active election' });
         }
 
-        const matric = matricNumber.trim().toUpperCase();
+        // GUARD #1 — fail loudly, not with a null-violation 500
+        if (!election.session_id) {
+            logger.error('Active election has no session_id', { electionId: election.id });
+            return res.status(500).json({
+                status: 'error',
+                message: 'Election is misconfigured (missing session). Contact an admin.'
+            });
+        }
 
-        // Already registered? Return 200 so the UI can proceed to verify
+        const matric = String(matricNumber).trim().toUpperCase();
+
+        // Already registered? Return 200 so the UI proceeds to verify
         const { data: existing, error: exErr } = await supabase
             .from('voters')
             .select('voter_id, full_name, matric_no, phone, department, level, has_voted, eligible_to_vote')
@@ -4255,36 +4264,51 @@ electionRouter.post('/voter/register', async (req, res) => {
             });
         }
 
-        // 100L not eligible
-        const eligible = level !== '100L';
+        // Collision-resistant voter_id (uuid fragment, not time-based)
+        const voterId = `V${uuid.v4().replace(/-/g, '').slice(0, 10).toUpperCase()}`;
 
-        // Generate a voter_id (adjust to your schema/format)
-        const voterId = `V${Date.now().toString(36).toUpperCase()}${Math.floor(Math.random()*1000)}`;
-
+        const now = new Date().toISOString();
         const { data: inserted, error: insErr } = await supabase
             .from('voters')
             .insert([{
                 session_id: election.session_id,
                 voter_id: voterId,
-                full_name: fullName.trim(),
+                full_name: String(fullName).trim(),
                 matric_no: matric,
-                phone: phone.trim(),
-                department,
-                level,
-                eligible_to_vote: eligible,
-                has_voted: false
+                phone: String(phone).trim(),
+                department: String(department).trim(),
+                level: String(level).trim(),
+                eligible_to_vote: level !== '100L',
+                has_voted: false,
+                created_at: now,
+                updated_at: now
             }])
             .select()
             .single();
 
+        // GUARD #2 — surface the real Postgres error
         if (insErr) {
+            logger.error('Voter insert failed', {
+                requestId: req.id,
+                code: insErr.code,
+                message: insErr.message,
+                details: insErr.details,
+                hint: insErr.hint
+            });
+
             if (insErr.code === '23505') {
                 return res.status(409).json({
                     status: 'error',
                     message: 'This matric number is already registered for this session'
                 });
             }
-            throw insErr;
+            // Put the real reason in the response so you can see it from the browser
+            return res.status(500).json({
+                status: 'error',
+                message: 'Registration failed',
+                code: insErr.code,
+                detail: insErr.message
+            });
         }
 
         logger.info('Voter registered', {
@@ -4306,13 +4330,23 @@ electionRouter.post('/voter/register', async (req, res) => {
             message: 'Registration successful'
         });
     } catch (err) {
-        logger.error('Voter register error:', { requestId: req.id, error: err.message });
-        res.status(500).json({ status: 'error', message: 'Registration failed' });
+        logger.error('Voter register error:', {
+            requestId: req.id,
+            message: err.message,
+            code: err.code,
+            details: err.details,
+            stack: err.stack
+        });
+        res.status(500).json({
+            status: 'error',
+            message: 'Registration failed',
+            code: err.code || undefined,
+            detail: err.message
+        });
     }
 });
 
 // =============== VOTER LOOKUP ===============
-// =============== VOTER LOOKUP (by matric OR voter_id) ===============
 electionRouter.get('/voter/:identifier', async (req, res) => {
     try {
         const identifier = decodeURIComponent(req.params.identifier).trim();
