@@ -4335,12 +4335,11 @@ electionRouter.post('/nominations/bulk', async (req, res) => {
             });
         }
 
-        const missing = ['fullName', 'matricNumber', 'phone', 'department', 'level']
-            .filter(k => !nominator[k]);
-        if (missing.length) {
+        // Only require the fields actually used for lookup
+        if (!nominator.fullName || !nominator.matricNumber) {
             return res.status(400).json({
                 status: 'error',
-                message: `Nominator missing required fields: ${missing.join(', ')}`
+                message: 'Nominator fullName and matricNumber are required'
             });
         }
 
@@ -4483,11 +4482,6 @@ electionRouter.post('/nominations/bulk', async (req, res) => {
 });
 
 // =============== SINGLE NOMINATION ===============
-//
-// Accepts nominees who are NOT registered voters. Identity lives on the
-// nomination row itself. If the nominee's matric happens to match a
-// registered voter for this session, we link nominee_id so downstream
-// joins keep working — but that link is optional.
 electionRouter.post('/nominate', requireVoter, async (req, res) => {
     try {
         const {
