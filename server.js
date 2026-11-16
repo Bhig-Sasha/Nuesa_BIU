@@ -4355,6 +4355,7 @@ electionRouter.post('/nominations/bulk', async (req, res) => {
             });
         }
 
+        // Nominator still must be registered
         const { data: existingNominator, error: nominatorErr } = await supabase
             .from('voters')
             .select('id, voter_id')
@@ -4363,7 +4364,6 @@ electionRouter.post('/nominations/bulk', async (req, res) => {
             .maybeSingle();
 
         if (nominatorErr) throw nominatorErr;
-
         if (!existingNominator) {
             return res.status(404).json({
                 status: 'error',
@@ -4377,8 +4377,18 @@ electionRouter.post('/nominations/bulk', async (req, res) => {
         const skipped = [];
 
         for (const nominee of nominees) {
-            if (!nominee || !nominee.positionId || !nominee.matric) {
-                skipped.push({ matric: nominee?.matric || null, reason: 'missing position or matric' });
+            if (
+                !nominee ||
+                !nominee.positionId ||
+                !nominee.matric ||
+                !nominee.name ||
+                !nominee.department ||
+                !nominee.level
+            ) {
+                skipped.push({
+                    matric: nominee?.matric || null,
+                    reason: 'missing nominee details (name, matric, department, level, position)'
+                });
                 continue;
             }
 
@@ -4395,26 +4405,22 @@ electionRouter.post('/nominations/bulk', async (req, res) => {
                 continue;
             }
 
-            const { data: existingNominee, error: nomineeErr } = await supabase
+            const nomineeMatric = String(nominee.matric).trim().toUpperCase();
+
+            // Optional link if the nominee happens to be registered
+            const { data: linkedVoter } = await supabase
                 .from('voters')
                 .select('id')
                 .eq('session_id', election.session_id)
-                .ilike('matric_no', String(nominee.matric).trim())
+                .ilike('matric_no', nomineeMatric)
                 .maybeSingle();
-
-            if (nomineeErr) throw nomineeErr;
-
-            if (!existingNominee) {
-                skipped.push({ matric: nominee.matric, reason: 'nominee not registered' });
-                continue;
-            }
 
             const { data: dup } = await supabase
                 .from('nominations')
                 .select('id')
                 .eq('election_id', election.id)
                 .eq('position_id', nominee.positionId)
-                .eq('nominee_id', existingNominee.id)
+                .ilike('nominee_matric', nomineeMatric)
                 .maybeSingle();
 
             if (dup) {
@@ -4425,7 +4431,11 @@ electionRouter.post('/nominations/bulk', async (req, res) => {
             rows.push({
                 election_id: election.id,
                 position_id: nominee.positionId,
-                nominee_id: existingNominee.id,
+                nominee_id: linkedVoter?.id || null,
+                nominee_name: String(nominee.name || '').trim(),
+                nominee_matric: nomineeMatric,
+                nominee_department: String(nominee.department || '').trim() || null,
+                nominee_level: String(nominee.level || '').trim() || null,
                 nominated_by: nominatorVoterId,
                 manifesto: nominee.reason || null,
                 status: 'pending'
@@ -4473,44 +4483,77 @@ electionRouter.post('/nominations/bulk', async (req, res) => {
 });
 
 // =============== SINGLE NOMINATION ===============
+//
+// Accepts nominees who are NOT registered voters. Identity lives on the
+// nomination row itself. If the nominee's matric happens to match a
+// registered voter for this session, we link nominee_id so downstream
+// joins keep working — but that link is optional.
 electionRouter.post('/nominate', requireVoter, async (req, res) => {
     try {
-        const { positionId, nomineeVoterId, manifesto } = req.body;
+        const {
+            positionId,
+            nomineeName,
+            nomineeMatric,
+            nomineeDepartment,
+            nomineeLevel,
+            manifesto
+        } = req.body;
 
-        if (!positionId || !nomineeVoterId) {
-            return res.status(400).json({ status: 'error', message: 'Position and nominee required' });
+        if (!positionId || !nomineeMatric || !nomineeName) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'positionId, nomineeName and nomineeMatric are required'
+            });
         }
 
-        const election = req.election; // set by requireVoter
+        const election = req.election;
 
         if (election.phase !== 'nomination') {
             return res.status(403).json({
                 status: 'error',
-                message: `Nominations are ${election.phase === 'voting' ? 'closed (voting in progress)' : 'closed'}. Current phase: ${election.phase}`
+                message: `Nominations are ${
+                    election.phase === 'voting'
+                        ? 'closed (voting in progress)'
+                        : 'closed'
+                }. Current phase: ${election.phase}`
             });
         }
 
         const { data: position } = await supabase
-            .from('positions').select('id')
-            .eq('id', positionId).eq('election_id', election.id).maybeSingle();
+            .from('positions')
+            .select('id')
+            .eq('id', positionId)
+            .eq('election_id', election.id)
+            .maybeSingle();
 
-        if (!position) return res.status(404).json({ status: 'error', message: 'Position not found' });
+        if (!position) {
+            return res.status(404).json({ status: 'error', message: 'Position not found' });
+        }
 
-        const { data: nominee } = await supabase
-            .from('voters').select('id, full_name')
-            .eq('voter_id', nomineeVoterId).eq('session_id', election.session_id).maybeSingle();
+        const matric = String(nomineeMatric).trim().toUpperCase();
 
-        if (!nominee) return res.status(404).json({ status: 'error', message: 'Nominee not found in this session' });
+        // OPTIONAL: link to a registered voter if one exists.
+        const { data: linkedVoter } = await supabase
+            .from('voters')
+            .select('id')
+            .eq('session_id', election.session_id)
+            .ilike('matric_no', matric)
+            .maybeSingle();
 
+        // Duplicate check by matric + position + election
         const { data: existing } = await supabase
-            .from('nominations').select('id')
+            .from('nominations')
+            .select('id')
             .eq('election_id', election.id)
             .eq('position_id', positionId)
-            .eq('nominee_id', nominee.id)
+            .ilike('nominee_matric', matric)
             .maybeSingle();
 
         if (existing) {
-            return res.status(409).json({ status: 'error', message: 'This person is already nominated for this position' });
+            return res.status(409).json({
+                status: 'error',
+                message: 'This person is already nominated for this position'
+            });
         }
 
         const { data, error } = await supabase
@@ -4518,7 +4561,11 @@ electionRouter.post('/nominate', requireVoter, async (req, res) => {
             .insert([{
                 election_id: election.id,
                 position_id: positionId,
-                nominee_id: nominee.id,
+                nominee_id: linkedVoter?.id || null,
+                nominee_name: String(nomineeName).trim(),
+                nominee_matric: matric,
+                nominee_department: nomineeDepartment ? String(nomineeDepartment).trim() : null,
+                nominee_level: nomineeLevel ? String(nomineeLevel).trim() : null,
                 nominated_by: req.voter.id,
                 manifesto: manifesto || null,
                 status: 'pending'
@@ -4529,16 +4576,25 @@ electionRouter.post('/nominate', requireVoter, async (req, res) => {
         if (error) throw error;
 
         logger.info('Nomination submitted', {
-            requestId: req.id, nominationId: data.id, nominee: nominee.full_name, nominatedBy: req.voter.voter_id
+            requestId: req.id,
+            nominationId: data.id,
+            nominee: nomineeName,
+            nomineeMatric: matric,
+            linkedVoterId: linkedVoter?.id || null,
+            nominatedBy: req.voter.voter_id
         });
 
         res.status(201).json({
             status: 'success',
             data,
-            message: `Nomination submitted for ${nominee.full_name}. Awaiting admin approval.`
+            message: `Nomination submitted for ${nomineeName}. Awaiting admin approval.`
         });
     } catch (err) {
-        logger.error('Nomination error:', { requestId: req.id, error: err.message, code: err.code });
+        logger.error('Nomination error:', {
+            requestId: req.id,
+            error: err.message,
+            code: err.code
+        });
         res.status(500).json({ status: 'error', message: 'Nomination failed' });
     }
 });
@@ -4553,16 +4609,40 @@ electionRouter.get('/nominations', async (req, res) => {
             .from('nominations')
             .select(`
                 id, position_id, manifesto, status, created_at,
-                nominee:voters!nominations_nominee_id_fkey (id, full_name, matric_no, department, level),
+                nominee_name, nominee_matric, nominee_department, nominee_level,
+                nominee:voters!nominations_nominee_id_fkey (
+                    id, full_name, matric_no, department, level
+                ),
                 position:positions (id, title)
             `)
             .eq('election_id', election.id)
             .eq('status', 'approved');
 
         if (error) throw error;
-        res.json({ status: 'success', data: data || [] });
+
+        const shaped = (data || []).map(n => ({
+            id: n.id,
+            position_id: n.position_id,
+            manifesto: n.manifesto,
+            status: n.status,
+            created_at: n.created_at,
+            nominee: {
+                id: n.nominee?.id || null,
+                full_name: n.nominee_name || n.nominee?.full_name || 'Unknown',
+                matric_no: n.nominee_matric || n.nominee?.matric_no || '',
+                department: n.nominee_department || n.nominee?.department || '',
+                level: n.nominee_level || n.nominee?.level || ''
+            },
+            position: n.position
+        }));
+
+        res.json({ status: 'success', data: shaped });
     } catch (err) {
-        logger.error('Nominations list error:', { requestId: req.id, error: err.message, code: err.code });
+        logger.error('Nominations list error:', {
+            requestId: req.id,
+            error: err.message,
+            code: err.code
+        });
         res.status(500).json({ status: 'error', message: 'Failed to load nominations' });
     }
 });
@@ -4577,6 +4657,7 @@ electionRouter.post('/vote', requireVoter, async (req, res) => {
         }
 
         const election = req.election;
+
         if (election.phase !== 'voting') {
             return res.status(403).json({
                 status: 'error',
@@ -4628,7 +4709,10 @@ electionRouter.post('/vote', requireVoter, async (req, res) => {
         const { error: voteErr } = await supabase.from('votes').insert(voteRows);
         if (voteErr) {
             if (voteErr.code === '23505') {
-                return res.status(409).json({ status: 'error', message: 'You have already voted for one or more positions' });
+                return res.status(409).json({
+                    status: 'error',
+                    message: 'You have already voted for one or more positions'
+                });
             }
             throw voteErr;
         }
@@ -4639,12 +4723,18 @@ electionRouter.post('/vote', requireVoter, async (req, res) => {
             .eq('id', req.voter.id);
 
         logger.info('Vote submitted', {
-            requestId: req.id, voterId: req.voter.voter_id, positionsVoted: Object.keys(votes).length
+            requestId: req.id,
+            voterId: req.voter.voter_id,
+            positionsVoted: Object.keys(votes).length
         });
 
         res.json({ status: 'success', message: 'Your vote has been recorded. Thank you!' });
     } catch (err) {
-        logger.error('Vote error:', { requestId: req.id, error: err.message, code: err.code });
+        logger.error('Vote error:', {
+            requestId: req.id,
+            error: err.message,
+            code: err.code
+        });
         res.status(500).json({ status: 'error', message: 'Voting failed' });
     }
 });
@@ -4655,10 +4745,7 @@ electionRouter.get('/tallies', async (req, res) => {
         const election = await getActiveElection();
         if (!election) return res.json({ status: 'success', data: {} });
 
-        // Guard 1: only published results are viewable
         const resultsPublished = election.results_published === true;
-
-        // Guard 2: voting must have ended
         const voteEnd = election.voting_end ? new Date(election.voting_end).getTime() : null;
         const votingOver = voteEnd !== null && Date.now() >= voteEnd;
 
@@ -4670,14 +4757,16 @@ electionRouter.get('/tallies', async (req, res) => {
         }
 
         const { data: positions, error: posErr } = await supabase
-            .from('positions').select('id, title')
+            .from('positions')
+            .select('id, title')
             .eq('election_id', election.id)
             .order('display_order');
 
         if (posErr) throw posErr;
 
         const { data: votes, error: voteErr } = await supabase
-            .from('votes').select('position_id, candidate_id')
+            .from('votes')
+            .select('position_id, candidate_id')
             .eq('election_id', election.id);
 
         if (voteErr) throw voteErr;
@@ -4687,22 +4776,27 @@ electionRouter.get('/tallies', async (req, res) => {
             tallies[v.candidate_id] = (tallies[v.candidate_id] || 0) + 1;
         });
 
-        const { data: nominations } = await supabase
+        const { data: nominations, error: nomErr } = await supabase
             .from('nominations')
             .select(`
                 id, position_id,
-                nominee:voters!nominations_nominee_id_fkey (full_name, department, level)
+                nominee_name, nominee_department, nominee_level,
+                nominee:voters!nominations_nominee_id_fkey (
+                    full_name, department, level
+                )
             `)
             .eq('election_id', election.id)
             .eq('status', 'approved');
+
+        if (nomErr) throw nomErr;
 
         const detailed = {};
         (nominations || []).forEach(n => {
             detailed[n.id] = {
                 votes: tallies[n.id] || 0,
-                name: n.nominee?.full_name,
-                department: n.nominee?.department,
-                level: n.nominee?.level,
+                name: n.nominee_name || n.nominee?.full_name || 'Unknown',
+                department: n.nominee_department || n.nominee?.department || '',
+                level: n.nominee_level || n.nominee?.level || '',
                 position_id: n.position_id
             };
         });
@@ -4717,7 +4811,11 @@ electionRouter.get('/tallies', async (req, res) => {
             }
         });
     } catch (err) {
-        logger.error('Tallies error:', { requestId: req.id, error: err.message, code: err.code });
+        logger.error('Tallies error:', {
+            requestId: req.id,
+            error: err.message,
+            code: err.code
+        });
         res.status(500).json({ status: 'error', message: 'Failed to load tallies' });
     }
 });
