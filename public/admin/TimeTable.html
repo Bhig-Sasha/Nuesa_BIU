@@ -83,6 +83,7 @@ a{color:inherit;text-decoration:none}button{font-family:inherit}
 .data-table th{background:var(--surface-muted);padding:12px 18px;text-align:left;font-family:var(--font-mono);font-weight:700;font-size:.6875rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border);white-space:nowrap}
 .data-table td{padding:14px 18px;border-bottom:1px solid var(--border);font-size:.875rem;vertical-align:middle}
 .data-table tbody tr:hover{background:var(--surface-muted)}.data-table tbody tr:last-child td{border-bottom:none}
+.data-table tr.group-row td{background:var(--primary-tint);padding:8px 18px;font-size:.75rem;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.08em;color:var(--text-gold)}
 .text-muted{color:var(--text-muted)}
 .empty-row td{text-align:center;padding:40px 20px!important;color:var(--text-dim);font-style:italic}
 .status-badge{padding:4px 10px;border-radius:999px;font-size:.6875rem;font-weight:700;font-family:var(--font-mono);letter-spacing:.05em;text-transform:uppercase;display:inline-flex;align-items:center;white-space:nowrap}
@@ -168,6 +169,7 @@ a{color:inherit;text-decoration:none}button{font-family:inherit}
    <div class="page-header">
     <div><h1 class="page-title">Timetable Management</h1><p class="page-subtitle">Manage class schedules, examination dates, timetable publications and academic announcements.</p></div>
     <div class="head-btns">
+     <button class="btn btn-secondary" id="openSettings" type="button"><i class="fas fa-sliders"></i> Academic Settings</button>
      <button class="btn btn-secondary" data-act="create" data-type="class"><i class="fas fa-plus"></i> Class Schedule</button>
      <button class="btn btn-primary" data-act="create" data-type="exam"><i class="fas fa-plus"></i> Exam Schedule</button>
     </div>
@@ -178,17 +180,6 @@ a{color:inherit;text-decoration:none}button{font-family:inherit}
     <div class="stat-card"><div class="stat-icon icon-gold"><i class="fas fa-file-pen"></i></div><div class="stat-value" id="stExam">0</div><div class="stat-label">Exam Timetables</div><div class="stat-change">Current semester</div></div>
     <div class="stat-card"><div class="stat-icon icon-blue"><i class="fas fa-globe"></i></div><div class="stat-value" id="stPub">0</div><div class="stat-label">Published</div><div class="stat-change">Available publicly</div></div>
     <div class="stat-card"><div class="stat-icon icon-red"><i class="fas fa-pen-ruler"></i></div><div class="stat-value" id="stDraft">0</div><div class="stat-label">Drafts</div><div class="stat-change">Not yet published</div></div>
-   </div>
-
-   <!-- Academic settings -->
-   <div class="content-card">
-    <div class="card-header"><div><h3 class="card-title"><i class="fas fa-sliders"></i> Academic Configuration</h3><p class="card-sub">The status decides which timetable is highlighted as current on the public page. Nothing is deleted or hidden.</p></div></div>
-    <div class="form-grid">
-     <div class="field"><label for="setSession">Academic Session</label><input id="setSession" placeholder="2026/2027"></div>
-     <div class="field"><label for="setSemester">Semester</label><select id="setSemester"><option value="">Select semester</option><option>First</option><option>Second</option></select></div>
-     <div class="field"><label for="setPhase">Academic Timetable Status</label><select id="setPhase"><option value="">Select status</option><option value="lectures">Lectures Ongoing</option><option value="examinations">Examinations</option><option value="break">Break / Vacation</option></select></div>
-    </div>
-    <button class="btn btn-primary" id="saveSettings"><i class="fas fa-floppy-disk"></i> Save Academic Settings</button>
    </div>
 
    <!-- Class timetables -->
@@ -241,6 +232,21 @@ a{color:inherit;text-decoration:none}button{font-family:inherit}
  <div class="modal-header"><h3 class="modal-title" id="confirmTitle">Confirm</h3><button class="modal-close" data-close="confirmModal" aria-label="Close">&times;</button></div>
  <div class="modal-body"><p id="confirmMsg"></p></div>
  <div class="modal-footer"><button class="btn btn-secondary" data-close="confirmModal" type="button">Cancel</button><button class="btn btn-primary" id="confirmOk" type="button">Confirm</button></div>
+</div></div>
+
+<!-- Settings modal -->
+<div class="modal" id="settingsModal"><div class="modal-content">
+ <div class="modal-header"><h3 class="modal-title">Academic Configuration</h3><button class="modal-close" data-close="settingsModal" aria-label="Close">&times;</button></div>
+ <div class="modal-body">
+  <p class="hint" style="margin:0 0 14px">The status decides which timetable is highlighted as current on the public page. Nothing is deleted or hidden.</p>
+  <div class="field" style="margin-bottom:14px"><label for="setSession">Academic Session</label><input id="setSession" placeholder="2026/2027"></div>
+  <div class="field" style="margin-bottom:14px"><label for="setSemester">Semester</label><select id="setSemester"><option value="">Select semester</option><option>First</option><option>Second</option></select></div>
+  <div class="field"><label for="setPhase">Academic Timetable Status</label><select id="setPhase"><option value="">Select status</option><option value="lectures">Lectures Ongoing</option><option value="examinations">Examinations</option><option value="break">Break / Vacation</option></select></div>
+ </div>
+ <div class="modal-footer">
+  <button class="btn btn-secondary" data-close="settingsModal" type="button">Cancel</button>
+  <button class="btn btn-primary" id="saveSettings" type="button"><i class="fas fa-floppy-disk"></i> Save Settings</button>
+ </div>
 </div></div>
 
 <script>
@@ -357,12 +363,21 @@ function confirmDialog(title, msg, label, fn){
 }
 
 /* ---------- data ---------- */
+function detectType(t){
+  const raw = String(t.type || t.kind || t.timetable_type || t.package_type || t.category || '').toLowerCase();
+  if(raw.includes('exam')) return 'exam';
+  if(raw.includes('class') || raw.includes('lecture')) return 'class';
+  if((t.exam_count || 0) > 0 && !(t.class_count || 0)) return 'exam';
+  if(/exam/i.test(t.title || '')) return 'exam';
+  return 'class';
+}
+
 function norm(t){
   const isUpload = !!(t.file_url || t.fileUrl || t.mode === 'upload');
   return {
     ...t,
     id: t.id ?? t.uuid ?? null,
-    type: (t.type || t.kind || 'class').toLowerCase(),
+    type: detectType(t),
     mode: t.mode || (isUpload ? 'upload' : 'structured'),
     status: (t.status || 'draft').toLowerCase(),
     level: t.level != null ? String(t.level) : '',
@@ -386,7 +401,8 @@ async function hydrateEntries(list){
     try {
       const r = await api('GET', `/api/admin/timetables/${t.id}`);
       const d = r.data || {};
-      const rows = (t.type === 'exam' ? d.exams : d.classes) || [];
+      const rows = (d.exams && d.exams.length ? d.exams : d.classes) || [];
+      if(d.exams && d.exams.length && !(d.classes && d.classes.length)) t.type = 'exam';
       t.entries = rows.map(e => ({
         course_code: e.course_code || '',
         course_title: e.course_title || '',
@@ -473,7 +489,7 @@ function renderAll(){
 
   // Stats
   const cls = tts.filter(t => t.type === 'class' && t.status !== 'archived');
-  const exm = tts.filter(t => t.type === 'exam' && inPeriod(t));
+  const exm = tts.filter(t => t.type === 'exam' && t.status !== 'archived');
   $('stClass').textContent = cls.length;
   $('stExam').textContent = exm.length;
   $('stPub').textContent = tts.filter(t => t.status === 'published').length;
@@ -716,6 +732,8 @@ async function saveEditor(publish){
 
   const base = {
     type: ed.type,
+    timetable_type: ed.type,
+    kind: ed.type,
     mode: ed.mode,
     level,
     title: $('edTitle').value.trim(),
@@ -840,7 +858,7 @@ function setupSidebar(){
   }, true);
   ov.addEventListener('click', close);
   document.addEventListener('keydown', e => {
-    if(e.key === 'Escape'){ close(); ['editorModal','confirmModal'].forEach(hideModal); }
+    if(e.key === 'Escape'){ close(); ['editorModal','confirmModal','settingsModal'].forEach(hideModal); }
   });
   document.querySelectorAll('.nav-item').forEach(l => l.addEventListener('click', () => { if(innerWidth <= 900) close(); }));
   window.addEventListener('scroll', () => $('mainHeader').classList.toggle('scrolled', scrollY > 8), { passive:true });
@@ -896,6 +914,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('edDraft').addEventListener('click', () => saveEditor(false));
   $('edPublish').addEventListener('click', () => saveEditor(true));
 
+  // Open settings modal
+  $('openSettings').addEventListener('click', () => { renderAll(); showModal('settingsModal'); });
+
   $('saveSettings').addEventListener('click', async () => {
     const s = {
       session: $('setSession').value.trim(),
@@ -911,6 +932,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       await api('PUT','/api/admin/timetable/settings', s);
       settings = { ...settings, ...s };
       renderAll();
+      hideModal('settingsModal');
       showToast('Academic settings saved','success');
     } catch(err){
       if(err.message !== 'Unauthorized') showToast(err.message || 'Could not save settings','error');
