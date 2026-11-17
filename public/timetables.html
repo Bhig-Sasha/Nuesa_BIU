@@ -286,10 +286,10 @@ h1,h2,h3{font-weight:900;line-height:1.2}
   <div class="info-card"><div class="info-icon"><i class="fas fa-circle-check"></i></div><div><div class="info-label">Schedule Status</div><div class="info-value" id="infoStatus">—</div></div></div>
  </div></div></section>
 
- <!-- 3. CLASS TIMETABLE — weekly schedule, API-driven -->
+ <!-- 3. CLASS TIMETABLE — weekly schedule, API-driven, weekdays only, per-level conflict detection -->
  <section class="tt-section" id="class-timetable"><div class="container">
   <div class="sec-head">
-   <div><span class="tag tag-emerald">Lectures &amp; Practicals</span><h2>Class Timetable</h2><p>Weekly lecture and practical schedule — all levels</p></div>
+   <div><span class="tag tag-emerald">Lectures &amp; Practicals</span><h2>Class Timetable</h2><p>Weekly lecture and practical schedule — weekdays, all levels</p></div>
    <span class="status" id="classStatus"></span>
   </div>
   <div class="tt-card">
@@ -431,14 +431,10 @@ function fmtDate(iso){
   return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
 }
 
-/* ===== CORRECTED TIME HELPERS =====
-   Handles both "13:00" (24-hour) and "1:00 PM" (12-hour with AM/PM).
-   Fixes "1:00 AM instead of 1:00 PM" when the API returns 12-hour strings. */
+/* ===== CORRECTED TIME HELPERS ===== */
 function prettyTime(t){
   if(!t) return '';
   var s = String(t).trim();
-
-  // 12-hour with AM/PM → clean output
   var m12 = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)$/i);
   if(m12){
     var h = parseInt(m12[1], 10);
@@ -448,8 +444,6 @@ function prettyTime(t){
     if(h > 12) h = h - 12;
     return h + ':' + mm + ' ' + ap;
   }
-
-  // 24-hour → convert to 12-hour
   var m24 = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?/);
   if(m24){
     var hh = parseInt(m24[1], 10);
@@ -458,15 +452,12 @@ function prettyTime(t){
     var h12 = hh % 12 || 12;
     return h12 + ':' + mm2 + ' ' + ap2;
   }
-
   return s;
 }
 
 function timeKey(t){
   if(!t) return '99:99';
   var s = String(t).trim();
-
-  // 12-hour with AM/PM
   var m12 = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)$/i);
   if(m12){
     var h = parseInt(m12[1], 10);
@@ -476,8 +467,6 @@ function timeKey(t){
     if(ap === 'PM' && h < 12) h += 12;
     return String(h).padStart(2,'0') + ':' + mm;
   }
-
-  // 24-hour
   var m24 = s.match(/(\d{1,2}):(\d{2})/);
   if(!m24) return '99:99';
   var hh = parseInt(m24[1], 10);
@@ -549,7 +538,8 @@ function normalise(res){
 }
 
 /* ===== RENDER ===== */
-var DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+/* Weekdays only — weekends removed from the class timetable. */
+var WEEKDAYS=['Monday','Tuesday','Wednesday','Thursday','Friday'];
 function uniq(arr){return arr.filter(function(v,i){return v&&arr.indexOf(v)===i}).sort()}
 function fillSelect(id,values,allLabel,suffix){
  var el=document.getElementById(id),cur=el.value;
@@ -559,7 +549,7 @@ function fillSelect(id,values,allLabel,suffix){
 function setStatus(id,s){var el=document.getElementById(id);if(s){el.className='status '+s;el.textContent=s;el.style.display=''}else el.style.display='none'}
 function msg(icon,text){return '<div class="empty"><i class="fas '+icon+'"></i>'+text+'</div>'}
 
-/* ===== WEEKLY SCHEDULE RENDERERS (pure API) ===== */
+/* ===== WEEKLY SCHEDULE RENDERERS ===== */
 function toMin(t){
   var k=timeKey(t);
   if(k==='99:99') return 0;
@@ -578,20 +568,44 @@ function dayList(rows, day){
   });
 }
 
+/* Conflict detection scoped PER LEVEL — a warning only appears when two
+   entries with the SAME level overlap in time. Classes from different levels
+   scheduled at the same time are not flagged. */
 function detectConflicts(rows){
   var out=[];
-  DAYS.forEach(function(d){
-    var list=dayList(rows,d);
-    for(var i=0;i<list.length;i++){
-      for(var j=i+1;j<list.length;j++){
-        var ai=toMin(list[i].start||list[i].time), ae=toMin(list[i].end||list[i].time);
-        var bi=toMin(list[j].start||list[j].time), be=toMin(list[j].end||list[j].time);
-        if(ai<be && bi<ae) out.push({day:d, a:list[i], b:list[j]});
+  var byLevel={};
+  rows.forEach(function(c){
+    var lvl = c.level || '__';
+    (byLevel[lvl] = byLevel[lvl] || []).push(c);
+  });
+  Object.keys(byLevel).forEach(function(lvl){
+    var list = byLevel[lvl];
+    WEEKDAYS.forEach(function(d){
+      var dayItems = list.filter(function(c){return c.day===d});
+      dayItems.sort(function(a,b){
+        return (a.start?timeKey(a.start):timeKey(a.time)).localeCompare(b.start?timeKey(b.start):timeKey(b.time));
+      });
+      for(var i=0;i<dayItems.length;i++){
+        for(var j=i+1;j<dayItems.length;j++){
+          var ai=toMin(dayItems[i].start||dayItems[i].time), ae=toMin(dayItems[i].end||dayItems[i].time);
+          var bi=toMin(dayItems[j].start||dayItems[j].time), be=toMin(dayItems[j].end||dayItems[j].time);
+          if(ai<be && bi<ae) out.push({level:lvl, day:d, a:dayItems[i], b:dayItems[j]});
+        }
       }
-    }
+    });
   });
   return out;
 }
+
+function buildClashSet(conflicts){
+  var s={};
+  conflicts.forEach(function(c){
+    s[c.a.code+'|'+c.a.start+'|'+c.a.day+'|'+c.a.level]=true;
+    s[c.b.code+'|'+c.b.start+'|'+c.b.day+'|'+c.b.level]=true;
+  });
+  return s;
+}
+function clashKey(c){return c.code+'|'+c.start+'|'+c.day+'|'+c.level;}
 
 function renderWeeklyGrid(rows){
   var minH=8,maxH=18;
@@ -602,9 +616,7 @@ function renderWeeklyGrid(rows){
   });
   var hours=maxH-minH, cols=hours*2, origin=minH*60;
   var bg='background-size:calc(100% / '+hours+') 100%';
-  var conflicts=detectConflicts(rows);
-  var clashSet={};
-  conflicts.forEach(function(c){clashSet[c.a.code+'|'+c.a.start+'|'+c.a.day]=true;clashSet[c.b.code+'|'+c.b.start+'|'+c.b.day]=true;});
+  var clashSet=buildClashSet(detectConflicts(rows));
 
   var head='<div class="ws-head">'
     +'<div class="ws-corner">Day / Time</div>'
@@ -614,7 +626,7 @@ function renderWeeklyGrid(rows){
 
   var todayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date().getDay()];
 
-  var body=DAYS.map(function(day){
+  var body=WEEKDAYS.map(function(day){
     var list=dayList(rows,day);
     var isToday=day===todayName;
     var laneEnds=[], placed=[];
@@ -630,7 +642,7 @@ function renderWeeklyGrid(rows){
     var lanes=Math.max(1,laneEnds.length);
     var cells = placed.length ? placed.map(function(p){
       var c=p.c;
-      var clash=clashSet[c.code+'|'+c.start+'|'+c.day];
+      var clash=clashSet[clashKey(c)];
       return '<div class="ws-slot '+(c.type==='test'?'t-test':'t-class')+' '+(clash?'clash':'')+'" style="grid-column:'+p.colStart+' / '+p.colEnd+';grid-row:'+(p.lane+1)+'">'
         +'<div class="ws-slot-time"><span>'+prettyTime(c.start||c.time)+' - '+prettyTime(c.end||c.time)+'</span>'+(clash?'<i class="fas fa-triangle-exclamation"></i>':'')+'</div>'
         +'<div class="ws-slot-code">'+esc(c.code)+'</div>'
@@ -649,19 +661,17 @@ function renderWeeklyGrid(rows){
 }
 
 function renderWeeklyList(rows){
-  var conflicts=detectConflicts(rows);
-  var clashSet={};
-  conflicts.forEach(function(c){clashSet[c.a.code+'|'+c.a.start+'|'+c.a.day]=true;clashSet[c.b.code+'|'+c.b.start+'|'+c.b.day]=true;});
+  var clashSet=buildClashSet(detectConflicts(rows));
 
   var html='<div class="ws-list">';
-  DAYS.forEach(function(day){
+  WEEKDAYS.forEach(function(day){
     var list=dayList(rows,day);
     if(!list.length) return;
     html+='<div class="ws-list-day">'
       +'<div class="ws-list-day-head"><h3>'+day+'</h3><span class="count">'+list.length+(list.length===1?' class':' classes')+'</span></div>'
       +'<div class="ws-list-items">'
       +list.map(function(c){
-        var clash=clashSet[c.code+'|'+c.start+'|'+c.day];
+        var clash=clashSet[clashKey(c)];
         return '<div class="ws-list-item '+(clash?'clash':'')+'">'
           +'<div class="ws-list-time"><span class="start">'+prettyTime(c.start||c.time)+'</span><span class="end">'+prettyTime(c.end||c.time)+'</span></div>'
           +'<div class="ws-list-info"><div class="code">'+esc(c.code)+(clash?' <span class="clash-tag"><i class="fas fa-triangle-exclamation"></i> Conflict</span>':'')+'</div><div class="title">'+esc(c.dept)+'</div></div>'
