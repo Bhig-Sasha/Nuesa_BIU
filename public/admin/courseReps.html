@@ -2608,26 +2608,36 @@
         const filename = `rep-${Date.now()}.jpg`;
         const formData = new FormData();
         formData.append('file', blob, filename);
-        formData.append('title', filename);
-        formData.append('type', 'picture');
+        formData.append('title', '');
+        formData.append('description', '');
+        formData.append('alt_text', '');
+        formData.append('tags', JSON.stringify([]));
 
-        const res = await fetch(`${API_BASE_URL}/api/admin/media/upload`, {
+        const res = await fetch(`${API_BASE_URL}/api/admin/media`, {
             method: 'POST',
             credentials: 'include',
+            headers: { 'Accept': 'application/json' },
             body: formData
         });
+
         if (res.status === 401) {
             showToast('Session expired', 'warning');
             setTimeout(() => window.location.replace('adlog.html'), 1200);
             throw new Error('Unauthorized');
         }
+
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.message || `Upload failed (HTTP ${res.status})`);
-        const item = data.data || data;
-        if (!item?.url) throw new Error('Upload succeeded but no URL was returned');
 
-        if (item.type === 'picture') allMedia.unshift(item);
-        return item.url;
+        // Be tolerant of the response shape
+        const item = data.data?.media || data.data || data.media || data;
+        const url = item.url || item.file_url || item.path;
+        if (!url) {
+            console.warn('Upload response had no URL:', data);
+            throw new Error('Upload succeeded but no URL was returned');
+        }
+
+        return url;
     }
 
     function cropToBlob() {
