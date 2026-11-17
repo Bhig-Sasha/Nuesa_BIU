@@ -286,7 +286,7 @@ h1,h2,h3{font-weight:900;line-height:1.2}
   <div class="info-card"><div class="info-icon"><i class="fas fa-circle-check"></i></div><div><div class="info-label">Schedule Status</div><div class="info-value" id="infoStatus">—</div></div></div>
  </div></div></section>
 
- <!-- 3. CLASS TIMETABLE — replaced with weekly schedule -->
+ <!-- 3. CLASS TIMETABLE — weekly schedule, API-driven -->
  <section class="tt-section" id="class-timetable"><div class="container">
   <div class="sec-head">
    <div><span class="tag tag-emerald">Lectures &amp; Practicals</span><h2>Class Timetable</h2><p>Weekly lecture and practical schedule — all levels</p></div>
@@ -430,21 +430,59 @@ function fmtDate(iso){
   var d=new Date(p.y,p.m-1,p.d);
   return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
 }
+
+/* ===== CORRECTED TIME HELPERS =====
+   Handles both "13:00" (24-hour) and "1:00 PM" (12-hour with AM/PM).
+   Fixes "1:00 AM instead of 1:00 PM" when the API returns 12-hour strings. */
 function prettyTime(t){
-  if(!t)return '';
-  var m=String(t).match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
-  if(!m)return String(t);
-  var h=parseInt(m[1],10),mm=m[2],ap=h<12?'AM':'PM',h12=h%12||12;
-  return h12+':'+mm+' '+ap;
+  if(!t) return '';
+  var s = String(t).trim();
+
+  // 12-hour with AM/PM → clean output
+  var m12 = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)$/i);
+  if(m12){
+    var h = parseInt(m12[1], 10);
+    var mm = m12[2];
+    var ap = m12[3].toUpperCase();
+    if(h === 0) h = 12;
+    if(h > 12) h = h - 12;
+    return h + ':' + mm + ' ' + ap;
+  }
+
+  // 24-hour → convert to 12-hour
+  var m24 = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?/);
+  if(m24){
+    var hh = parseInt(m24[1], 10);
+    var mm2 = m24[2];
+    var ap2 = hh < 12 ? 'AM' : 'PM';
+    var h12 = hh % 12 || 12;
+    return h12 + ':' + mm2 + ' ' + ap2;
+  }
+
+  return s;
 }
+
 function timeKey(t){
-  if(!t)return '99:99';
-  var m=String(t).match(/(\d{1,2}):(\d{2})/);
-  if(!m)return '99:99';
-  var h=parseInt(m[1],10),mm=parseInt(m[2],10);
-  if(/pm/i.test(t)&&h<12)h+=12;
-  if(/am/i.test(t)&&h===12)h=0;
-  return String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0');
+  if(!t) return '99:99';
+  var s = String(t).trim();
+
+  // 12-hour with AM/PM
+  var m12 = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)$/i);
+  if(m12){
+    var h = parseInt(m12[1], 10);
+    var mm = m12[2];
+    var ap = m12[3].toUpperCase();
+    if(ap === 'AM' && h === 12) h = 0;
+    if(ap === 'PM' && h < 12) h += 12;
+    return String(h).padStart(2,'0') + ':' + mm;
+  }
+
+  // 24-hour
+  var m24 = s.match(/(\d{1,2}):(\d{2})/);
+  if(!m24) return '99:99';
+  var hh = parseInt(m24[1], 10);
+  var mm2 = m24[2];
+  return String(hh).padStart(2,'0') + ':' + mm2;
 }
 
 /* ===== NORMALISE ===== */
@@ -463,7 +501,23 @@ function normalise(res){
  };
  state.classes=(d.classes||d.class_timetable||[]).map(function(c){
   var t=pick(c,'time');if(!t){var a=pick(c,'start_time'),b=pick(c,'end_time');t=a&&b?prettyTime(a)+' – '+prettyTime(b):prettyTime(a)}
-  return{day:fmtDay(pick(c,'day','weekday')),code:pick(c,'course_code','code'),dept:pick(c,'department','dept','course_title','title'),time:t||'TBA',venue:pick(c,'venue','room')||'TBA',level:String(pick(c,'level')),sem:String(pick(c,'semester','sem'))};
+  var start=pick(c,'start_time'),end=pick(c,'end_time');
+  if(!start || !end){
+    var m = String(t||'').match(/(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\s*[-–—]\s*(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)/);
+    if(m){ start = m[1]; end = m[2]; }
+  }
+  return{
+    day:fmtDay(pick(c,'day','weekday')),
+    code:pick(c,'course_code','code'),
+    dept:pick(c,'department','dept','course_title','title'),
+    time:t||'TBA',
+    start:start,
+    end:end,
+    venue:pick(c,'venue','room')||'TBA',
+    level:String(pick(c,'level')),
+    sem:String(pick(c,'semester','sem')),
+    type:pick(c,'type')||'class'
+  };
  });
  state.exams=(d.exams||d.exam_timetable||[]).map(function(e){
   var rawDate=pick(e,'date','exam_date');
@@ -494,23 +548,6 @@ function normalise(res){
  });
 }
 
-/* ===== WEEKLY SCHEDULE DATA (400L 1st Semester) =====
-   These entries mirror the exact weekly schedule you provided.
-   Day names, start/end times, course codes, titles, and venues.
-   The "type" is 'class' or 'test' (for tutorial).
-   These are used when the API returns no classes for level 400. */
-var WEEKLY_400_1ST = [
-  {day:'Monday',start:'08:00',end:'10:00',code:'CHE 401',title:'Chemical Reaction Engineering',venue:'LT 2',type:'class'},
-  {day:'Monday',start:'09:00',end:'11:00',code:'CHE 403',title:'Process Control',venue:'LT 1',type:'class'},
-  {day:'Monday',start:'14:00',end:'16:00',code:'ENG 405',title:'Engineering Management',venue:'LT 3',type:'class'},
-  {day:'Tuesday',start:'10:00',end:'12:00',code:'CHE 405',title:'Plant Design',venue:'Design Studio',type:'class'},
-  {day:'Wednesday',start:'08:00',end:'10:00',code:'CHE 407',title:'Mass Transfer II',venue:'LT 2',type:'class'},
-  {day:'Wednesday',start:'12:00',end:'13:00',code:'CHE 407',title:'Mass Transfer II Tutorial',venue:'LT 2',type:'test'},
-  {day:'Wednesday',start:'14:00',end:'16:00',code:'ENG 401',title:'Technical Writing',venue:'LT 4',type:'class'},
-  {day:'Thursday',start:'08:00',end:'11:00',code:'CHE 409',title:'Process Lab',venue:'Chem Lab',type:'class'},
-  {day:'Friday',start:'10:00',end:'12:00',code:'CHE 411',title:'Petroleum Refining',venue:'LT 1',type:'class'}
-];
-
 /* ===== RENDER ===== */
 var DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 function uniq(arr){return arr.filter(function(v,i){return v&&arr.indexOf(v)===i}).sort()}
@@ -522,24 +559,21 @@ function fillSelect(id,values,allLabel,suffix){
 function setStatus(id,s){var el=document.getElementById(id);if(s){el.className='status '+s;el.textContent=s;el.style.display=''}else el.style.display='none'}
 function msg(icon,text){return '<div class="empty"><i class="fas '+icon+'"></i>'+text+'</div>'}
 
-/* ===== WEEKLY SCHEDULE RENDERERS ===== */
-function toMin(t){var m=String(t).match(/(\d{1,2}):(\d{2})/);if(!m)return 0;return parseInt(m[1],10)*60+parseInt(m[2],10);}
+/* ===== WEEKLY SCHEDULE RENDERERS (pure API) ===== */
+function toMin(t){
+  var k=timeKey(t);
+  if(k==='99:99') return 0;
+  var p=k.split(':');
+  return parseInt(p[0],10)*60 + parseInt(p[1],10);
+}
 
 function filterSchedule(level,sem){
-  var rows = state.classes.filter(function(c){return(!level||c.level===level)&&(!sem||c.sem===sem)});
-  /* If no API data for 400L/1st, fall back to the provided weekly schedule */
-  if(!rows.length && (!level||level==='400') && (!sem||sem==='1st')){
-    rows = WEEKLY_400_1ST.map(function(r){
-      return {day:r.day, code:r.code, dept:r.title, time:prettyTime(r.start)+' – '+prettyTime(r.end),
-              start:r.start, end:r.end, venue:r.venue, level:'400', sem:'1st', type:r.type};
-    });
-  }
-  return rows;
+  return state.classes.filter(function(c){return(!level||c.level===level)&&(!sem||c.sem===sem)});
 }
 
 function dayList(rows, day){
   return rows.filter(function(c){return c.day===day}).sort(function(a,b){
-    var ta=a.start||timeKey(a.time), tb=b.start||timeKey(b.time);
+    var ta=a.start?timeKey(a.start):timeKey(a.time), tb=b.start?timeKey(b.start):timeKey(b.time);
     return ta.localeCompare(tb);
   });
 }
@@ -563,8 +597,8 @@ function renderWeeklyGrid(rows){
   var minH=8,maxH=18;
   rows.forEach(function(c){
     var s=toMin(c.start||c.time), e=toMin(c.end||c.time);
-    minH=Math.min(minH,Math.floor(s/60));
-    maxH=Math.max(maxH,Math.ceil(e/60));
+    if(s>0) minH=Math.min(minH,Math.floor(s/60));
+    if(e>0) maxH=Math.max(maxH,Math.ceil(e/60));
   });
   var hours=maxH-minH, cols=hours*2, origin=minH*60;
   var bg='background-size:calc(100% / '+hours+') 100%';
@@ -653,7 +687,7 @@ function renderClasses(){
   document.getElementById('classBody').innerHTML = view==='list' ? renderWeeklyList(rows) : renderWeeklyGrid(rows);
 }
 
-/* ===== EXAM RENDERERS (unchanged) ===== */
+/* ===== EXAM RENDERERS ===== */
 function fillExamDaySelect(){
  var el=document.getElementById('examDay');
  var cur=el.value;
@@ -771,8 +805,8 @@ function render(){
  setStatus('classStatus',m.classStatus);setStatus('examStatus',m.examStatus);
  document.getElementById('class-timetable').classList.toggle('archived',m.classStatus==='archived');
  document.getElementById('exam-timetable').classList.toggle('archived',m.examStatus==='archived');
- fillSelect('classLevel',uniq(state.classes.map(function(c){return c.level}).concat(['100','200','300','400','500'])),'All levels',' Level');
- fillSelect('classSem',uniq(state.classes.map(function(c){return c.sem}).concat(['1st','2nd'])),'All semesters','');
+ fillSelect('classLevel',uniq(state.classes.map(function(c){return c.level})),'All levels',' Level');
+ fillSelect('classSem',uniq(state.classes.map(function(c){return c.sem})),'All semesters','');
  fillSelect('examLevel',uniq(state.exams.map(function(c){return c.level})),'All levels',' Level');
  fillSelect('examSem',uniq(state.exams.map(function(c){return c.sem})),'All semesters','');
  fillExamDaySelect();
