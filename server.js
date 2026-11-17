@@ -1596,18 +1596,26 @@ app.get('/api/course-reps', cacheMiddleware(120, ['course-reps']), async (req, r
                     level: lvl,
                     gen_rep: 'Not Assigned',
                     asst_gen_rep: 'Not Assigned',
+                    gen_rep_image: '',
+                    asst_gen_rep_image: '',
                     departments: []
                 };
             }
 
+            // Normalise the picture field once
+            const picture = rep.profile_picture || rep.image || rep.photo || '';
+
             if (rep.rep_type === 'general') {
                 byLevel[lvl].gen_rep = rep.full_name || rep.gen_rep || 'Not Assigned';
+                byLevel[lvl].gen_rep_image = picture;
             } else if (rep.rep_type === 'assistant') {
                 byLevel[lvl].asst_gen_rep = rep.full_name || 'Not Assigned';
+                byLevel[lvl].asst_gen_rep_image = picture;
             } else if (rep.rep_type === 'departmental') {
                 byLevel[lvl].departments.push({
                     name: rep.department_name || 'Unknown Department',
-                    rep: rep.full_name || 'Pending'
+                    rep: rep.full_name || 'Pending',
+                    image: picture          // <-- NEW: picture now included
                 });
             }
         }

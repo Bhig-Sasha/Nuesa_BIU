@@ -384,6 +384,28 @@ document.addEventListener('click', e => {
 document.addEventListener('keydown', e => { if (e.key === 'Escape') toggleMobile(false); });
 
 /* ===== DATA ===== */
+
+// Normalise a picture value from the API into something <img> can use.
+// Handles: full URLs, Supabase public paths, relative paths, null/empty.
+function resolveImage(raw) {
+  if (!raw || typeof raw !== 'string') return '';
+  const val = raw.trim();
+  if (!val) return '';
+  if (/^(https?:)?\/\//i.test(val) || val.startsWith('data:') || val.startsWith('blob:')) return val;
+  // Fallback: treat as a path appended to the API base (change if you use a CDN/Supabase bucket)
+  return `${API_BASE_URL}/${val.replace(/^\/+/, '')}`;
+}
+
+// Pick the first non-empty value from a list of possible field names.
+function pickImage(obj, keys) {
+  if (!obj) return '';
+  for (const k of keys) {
+    const v = obj[k];
+    if (v && typeof v === 'string' && v.trim()) return resolveImage(v);
+  }
+  return '';
+}
+
 function processApiResponse(result) {
   if (result && result.status === 'success' && Array.isArray(result.data) && result.data.length) {
     levelsData = result.data.map(rep => {
@@ -392,15 +414,32 @@ function processApiResponse(result) {
         try { departments = JSON.parse(departments); } catch (e) { departments = []; }
       }
       departments = Array.isArray(departments) ? departments : [];
+
+      // Accept every plausible field name the backend might emit.
+      const genImg = pickImage(rep, [
+        'gen_rep_image', 'gen_rep_photo', 'gen_rep_img',
+        'general_rep_image', 'general_rep_picture', 'profile_picture'
+      ]);
+      const asstImg = pickImage(rep, [
+        'asst_gen_rep_image', 'asst_gen_rep_photo', 'asst_gen_rep_img',
+        'assistant_rep_image', 'asst_profile_picture', 'asst_gen_picture'
+      ]);
+
+      // Normalise each department's image too.
+      const normalisedDepts = departments.map(d => ({
+        name: d.name || d.department_name || 'Unknown Department',
+        rep: d.rep || d.representative_name || d.full_name || 'Pending',
+        image: pickImage(d, ['image', 'photo', 'img', 'profile_picture', 'representative_picture', 'rep_image'])
+      }));
+
       return {
         level: rep.level,
-        genRep: rep.gen_rep || 'Not Assigned',
-        asstGenRep: rep.asst_gen_rep || 'Not Assigned',
-        // change these field names if your API uses different ones
-        genImg: rep.gen_rep_image || rep.gen_rep_photo || rep.gen_rep_img || '',
-        asstImg: rep.asst_gen_rep_image || rep.asst_gen_rep_photo || rep.asst_gen_rep_img || '',
-        deptCount: departments.length,
-        departments
+        genRep: rep.gen_rep || rep.general_rep || rep.general_representative || 'Not Assigned',
+        asstGenRep: rep.asst_gen_rep || rep.assistant_rep || rep.assistant_general_representative || 'Not Assigned',
+        genImg,
+        asstImg,
+        deptCount: normalisedDepts.length,
+        departments: normalisedDepts
       };
     });
     sessionTitle.textContent = `${sessionSelect.value} Course Representatives`;
@@ -434,15 +473,21 @@ async function fetchCourseReps() {
   const session = sessionSelect.value;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30000);
+
   try {
-    const response = await fetch(`${API_BASE_URL}/api/course-reps?session=${encodeURIComponent(session)}`, { signal: controller.signal });
+    const response = await fetch(
+      `${API_BASE_URL}/api/course-reps?session=${encodeURIComponent(session)}`,
+      { signal: controller.signal }
+    );
     clearTimeout(timeoutId);
 
-    if (!response.ok && response.status === 404) {
+    // Fallback: some backends slugify the session (e.g. "2025-2026")
+    if (response.status === 404) {
       const alt = await fetch(`${API_BASE_URL}/api/course-reps?session=${encodeURIComponent(session.replace('/', '-'))}`);
       if (alt.ok) { processApiResponse(await alt.json()); return; }
     }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
     processApiResponse(await response.json());
   } catch (error) {
     clearTimeout(timeoutId);
@@ -512,25 +557,38 @@ function filterAndRender() {
 }
 
 /* ===== RENDER ===== */
-const img = (src, name) => src ? `<img src="${esc(src)}" alt="${esc(name)}" loading="lazy">` : '';
-const deptImg = d => d.image || d.photo || d.img || '';
+
+// Render an <img>, with a graceful initial-letter placeholder when no src is present
+// or the image fails to load. This is what prevents "broken image" icons on the page.
+function avatar(src, name, extraClass) {
+  const safeName = esc(name || '');
+  const initial = (name || '?').trim().charAt(0).toUpperCase() || '?';
+  if (src) {
+    return `<img src="${esc(src)}" alt="${safeName}" loading="lazy" class="${extraClass || ''}"
+              onerror="this.style.display='none'; this.nextElementSibling && (this.nextElementSibling.style.display='flex');">
+            <span class="img-placeholder ${extraClass || ''}" style="display:none">${esc(initial)}</span>`;
+  }
+  return `<span class="img-placeholder ${extraClass || ''}" style="display:flex">${esc(initial)}</span>`;
+}
 
 function leaderTile(tag, name, src, asst) {
   const none = !name || name === 'Not Assigned';
   return `
     <div class="rc-leader">
-      <div class="rc-photo">${img(src, name)}<span class="rc-tag ${asst ? 'asst' : ''}">${tag}</span></div>
+      <div class="rc-photo">${avatar(src, name)}<span class="rc-tag ${asst ? 'asst' : ''}">${tag}</span></div>
       <div class="rc-info"><div class="rc-name ${none ? 'not-assigned' : ''}">${esc(name || 'Not Assigned')}</div></div>
     </div>`;
 }
 
 function deptCards(level) {
-  if (!level.departments.length) return `<div class="rc-dept"><div class="rc-dept-text"><div class="rc-dept-name">No departmental reps</div></div></div>`;
+  if (!level.departments.length) {
+    return `<div class="rc-dept"><div class="rc-dept-text"><div class="rc-dept-name">No departmental reps</div></div></div>`;
+  }
   return level.departments.map(d => {
     const rep = d.rep || 'Pending';
     return `
       <div class="rc-dept">
-        <div class="rc-dept-photo">${img(deptImg(d), rep)}</div>
+        <div class="rc-dept-photo">${avatar(d.image, rep)}</div>
         <div class="rc-dept-text">
           <div class="rc-dept-name">${esc(d.name || 'Unknown Department')}</div>
           <div class="rc-dept-rep ${rep === 'Pending' ? 'pending' : ''}">${esc(rep)}</div>
@@ -563,8 +621,8 @@ function renderGrid(levels) {
 function listPerson(label, name, src) {
   return `
     <span class="list-person">
-      ${src ? img(src, name) : '<span class="ph"></span>'}
-      <span><small>${label}</small><strong>${esc(name)}</strong></span>
+      ${avatar(src, name)}
+      <span><small>${label}</small><strong>${esc(name || 'Not Assigned')}</strong></span>
     </span>`;
 }
 
@@ -627,12 +685,12 @@ searchInput.addEventListener('input', e => {
   searchTimeout = setTimeout(() => { searchQuery = e.target.value; filterAndRender(); }, 300);
 });
 
-sessionSelect.addEventListener('change', () => {
+sessionSelect.addEventListener('change', async () => {
   expandedLevel = null; expandedListItem = null; selectedLevel = 'all';
   gridContainer.style.opacity = '0'; listContainer.style.opacity = '0';
-  setTimeout(() => {
-    fetchCourseReps().then(() => { gridContainer.style.opacity = '1'; listContainer.style.opacity = '1'; });
-  }, 200);
+  await new Promise(r => setTimeout(r, 200));
+  await fetchCourseReps();     // proper await — no .then() chain
+  gridContainer.style.opacity = '1'; listContainer.style.opacity = '1';
 });
 
 (async function init() {
