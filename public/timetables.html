@@ -286,7 +286,7 @@ h1,h2,h3{font-weight:900;line-height:1.2}
   <div class="info-card"><div class="info-icon"><i class="fas fa-circle-check"></i></div><div><div class="info-label">Schedule Status</div><div class="info-value" id="infoStatus">—</div></div></div>
  </div></div></section>
 
- <!-- 3. CLASS TIMETABLE — weekly schedule, API-driven, weekdays only, per-level conflict detection -->
+ <!-- 3. CLASS TIMETABLE -->
  <section class="tt-section" id="class-timetable"><div class="container">
   <div class="sec-head">
    <div><span class="tag tag-emerald">Lectures &amp; Practicals</span><h2>Class Timetable</h2><p>Weekly lecture and practical schedule — weekdays, all levels</p></div>
@@ -375,7 +375,7 @@ function pick(o){for(var i=1;i<arguments.length;i++){var v=o[arguments[i]];if(v!
 function fmtDay(v){var s=String(v||'');return s.charAt(0).toUpperCase()+s.slice(1).toLowerCase()}
 function statusOf(v){v=String(v||'').toLowerCase();return ['active','upcoming','archived'].indexOf(v)>-1?v:''}
 
-/* ===== DATE HELPERS (timezone-safe, pure math) ===== */
+/* ===== DATE HELPERS ===== */
 var MONTHS_MAP={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
 function isoDate(v){
   if(!v)return '';
@@ -474,6 +474,21 @@ function timeKey(t){
   return String(hh).padStart(2,'0') + ':' + mm2;
 }
 
+/* ===== COURSE GROUP PARSER =====
+   Extracts the "group letter" (A, B, C, ...) from a course code like
+   "GEN 213 A" or "GEN 214 B". Codes without a trailing single letter
+   return an empty string — meaning they're treated as their own group. */
+function courseGroup(code){
+  var s = String(code||'').trim().toUpperCase();
+  var m = s.match(/\b([A-Z])\s*$/);
+  if(m && /\d/.test(s)) return m[1];
+  return '';
+}
+/* Strips the trailing group letter for display grouping if needed */
+function courseBase(code){
+  return String(code||'').trim().toUpperCase().replace(/\s+[A-Z]\s*$/,'');
+}
+
 /* ===== NORMALISE ===== */
 function normalise(res){
  var d=res.data||res;
@@ -492,8 +507,8 @@ function normalise(res){
   var t=pick(c,'time');if(!t){var a=pick(c,'start_time'),b=pick(c,'end_time');t=a&&b?prettyTime(a)+' – '+prettyTime(b):prettyTime(a)}
   var start=pick(c,'start_time'),end=pick(c,'end_time');
   if(!start || !end){
-    var m = String(t||'').match(/(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\s*[-–—]\s*(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)/);
-    if(m){ start = m[1]; end = m[2]; }
+    var mm = String(t||'').match(/(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\s*[-–—]\s*(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)/);
+    if(mm){ start = mm[1]; end = mm[2]; }
   }
   return{
     day:fmtDay(pick(c,'day','weekday')),
@@ -538,7 +553,6 @@ function normalise(res){
 }
 
 /* ===== RENDER ===== */
-/* Weekdays only — weekends removed from the class timetable. */
 var WEEKDAYS=['Monday','Tuesday','Wednesday','Thursday','Friday'];
 function uniq(arr){return arr.filter(function(v,i){return v&&arr.indexOf(v)===i}).sort()}
 function fillSelect(id,values,allLabel,suffix){
@@ -568,18 +582,26 @@ function dayList(rows, day){
   });
 }
 
-/* Conflict detection scoped PER LEVEL — a warning only appears when two
-   entries with the SAME level overlap in time. Classes from different levels
-   scheduled at the same time are not flagged. */
+/* Conflict detection is scoped by LEVEL **and** COURSE GROUP.
+   Two entries clash only if:
+     - they share the same level (e.g. 200)
+     - they share the same course group letter (e.g. both are "A" or both "B")
+     - and their times overlap on the same weekday.
+   So "GEN 213 A" and "GEN 214 B" at 1:00 PM do NOT clash — different groups.
+   "GEN 213 A" and "GEN 213 A" (same course, same group) at overlapping times DO clash. */
 function detectConflicts(rows){
   var out=[];
-  var byLevel={};
+  var buckets={};   // key = level + "|" + group
   rows.forEach(function(c){
     var lvl = c.level || '__';
-    (byLevel[lvl] = byLevel[lvl] || []).push(c);
+    var grp = courseGroup(c.code) || '—';
+    var key = lvl + '|' + grp;
+    (buckets[key] = buckets[key] || []).push(c);
   });
-  Object.keys(byLevel).forEach(function(lvl){
-    var list = byLevel[lvl];
+  Object.keys(buckets).forEach(function(key){
+    var parts = key.split('|');
+    var lvl = parts[0], grp = parts[1];
+    var list = buckets[key];
     WEEKDAYS.forEach(function(d){
       var dayItems = list.filter(function(c){return c.day===d});
       dayItems.sort(function(a,b){
@@ -589,7 +611,7 @@ function detectConflicts(rows){
         for(var j=i+1;j<dayItems.length;j++){
           var ai=toMin(dayItems[i].start||dayItems[i].time), ae=toMin(dayItems[i].end||dayItems[i].time);
           var bi=toMin(dayItems[j].start||dayItems[j].time), be=toMin(dayItems[j].end||dayItems[j].time);
-          if(ai<be && bi<ae) out.push({level:lvl, day:d, a:dayItems[i], b:dayItems[j]});
+          if(ai<be && bi<ae) out.push({level:lvl, group:grp, day:d, a:dayItems[i], b:dayItems[j]});
         }
       }
     });
