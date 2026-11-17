@@ -116,7 +116,7 @@ h1,h2,h3{font-weight:900;line-height:1.2}
 .meta i{color:var(--emerald-600);width:1rem}
 .meta b{color:var(--slate-800)}
 
-/* ===== COMPACT EXAM CARD (2-day view) ===== */
+/* ===== COMPACT EXAM CARDS ===== */
 .exam-summary{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;margin-bottom:1.25rem;padding:.75rem 1rem;background:var(--emerald-50);border:1px solid var(--emerald-200);border-radius:.5rem;font-family:'Roboto Mono',monospace;font-size:.75rem;color:var(--emerald-700);font-weight:600}
 .exam-summary .dot{width:.5rem;height:.5rem;border-radius:50%;background:var(--emerald-500)}
 .exam-summary .grow{flex:1}
@@ -133,12 +133,13 @@ h1,h2,h3{font-weight:900;line-height:1.2}
 .exam-item{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.75rem;padding:.75rem 1rem;border-bottom:1px solid var(--slate-200);transition:background .2s}
 .exam-item:last-child{border-bottom:none}
 .exam-item:hover{background:var(--emerald-50)}
-.exam-time{display:flex;flex-direction:column;align-items:center;gap:.15rem;min-width:70px;padding:.35rem .5rem;background:var(--amber-100);border-radius:.4rem;font-family:'Roboto Mono',monospace;font-weight:700;color:var(--amber-700)}
-.exam-time .start{font-size:.8rem}
-.exam-time .end{font-size:.6rem;color:var(--amber-500);text-transform:uppercase;letter-spacing:.06em}
+.exam-time{display:flex;flex-direction:column;align-items:center;gap:.15rem;min-width:76px;padding:.35rem .5rem;background:var(--amber-100);border-radius:.4rem;font-family:'Roboto Mono',monospace;font-weight:700;color:var(--amber-700);text-align:center}
+.exam-time .start{font-size:.8rem;line-height:1.1}
+.exam-time .end{font-size:.6rem;color:var(--amber-500);text-transform:uppercase;letter-spacing:.04em}
 .exam-info{min-width:0}
 .exam-info .ecode{font-size:.9rem;font-weight:800;color:var(--slate-800);line-height:1.2;margin-bottom:.15rem;word-break:break-word}
 .exam-info .etitle{font-size:.75rem;color:var(--slate-500);line-height:1.3;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.exam-info .elevel{display:inline-block;margin-top:.25rem;font-family:'Roboto Mono',monospace;font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:.1rem .4rem;background:var(--slate-100);color:var(--slate-600);border-radius:9999px}
 .exam-type-tag{font-family:'Roboto Mono',monospace;font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;padding:.2rem .5rem;border-radius:9999px;white-space:nowrap}
 .exam-type-tag.written{background:var(--blue-100);color:var(--blue-700)}
 .exam-type-tag.cbt{background:var(--amber-100);color:var(--amber-700)}
@@ -148,10 +149,7 @@ h1,h2,h3{font-weight:900;line-height:1.2}
 .exam-item .evena i{color:var(--emerald-600)}
 @media(min-width:768px){
  .exam-days{grid-template-columns:repeat(2,1fr)}
- .exam-list{grid-template-columns:repeat(2,1fr)}
- .exam-item{border-bottom:1px solid var(--slate-200);border-right:1px solid var(--slate-200)}
- .exam-item:nth-child(2n){border-right:none}
- .exam-item:nth-last-child(-n+2){border-bottom:none}
+ .exam-list{grid-template-columns:1fr}
 }
 @media(max-width:640px){
  .exam-item{grid-template-columns:auto 1fr;gap:.6rem;padding:.65rem .75rem}
@@ -258,10 +256,10 @@ h1,h2,h3{font-weight:900;line-height:1.2}
   </div>
  </div></section>
 
- <!-- 4. EXAMINATION TIMETABLE (2-day compact view) -->
+ <!-- 4. EXAMINATION TIMETABLE -->
  <section class="tt-section alt" id="exam-timetable"><div class="container">
   <div class="sec-head">
-   <div><span class="tag tag-amber">Examinations</span><h2>Examination Timetable</h2><p>Next 2 days of exams at a glance</p></div>
+   <div><span class="tag tag-amber">Examinations</span><h2>Examination Timetable</h2><p>Next 2 days of exams — all levels together</p></div>
    <span class="status" id="examStatus"></span>
   </div>
   <div class="tt-card">
@@ -270,7 +268,7 @@ h1,h2,h3{font-weight:900;line-height:1.2}
     <div><label for="examSem">Semester</label><select id="examSem"></select></div>
     <div><label for="examDay">Start From</label><select id="examDay"></select></div>
    </div>
-   <div id="examSummary" class="exam-summary hidden" style="display:none"></div>
+   <div id="examSummary" class="exam-summary" style="display:none"></div>
    <div class="preview-title">Examination Schedule Preview</div>
    <div id="examBody"></div>
    <div class="card-foot">
@@ -326,7 +324,54 @@ function pick(o){for(var i=1;i<arguments.length;i++){var v=o[arguments[i]];if(v!
 function fmtDate(v){if(!v)return 'TBA';var d=new Date(v);if(isNaN(d))return String(v);return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}
 function fmtDay(v){var s=String(v||'');return s.charAt(0).toUpperCase()+s.slice(1).toLowerCase()}
 function statusOf(v){v=String(v||'').toLowerCase();return ['active','upcoming','archived'].indexOf(v)>-1?v:''}
-function isoDate(v){if(!v)return '';var d=new Date(v);if(isNaN(d))return '';return d.toISOString().slice(0,10)}
+
+/* Robust date normaliser */
+var MONTHS_MAP={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+function isoDate(v){
+  if(!v)return '';
+  if(v instanceof Date && !isNaN(v))return v.toISOString().slice(0,10);
+  var s=String(v).trim();if(!s)return '';
+  var d=new Date(s);
+  if(!isNaN(d))return d.toISOString().slice(0,10);
+  d=new Date(s.replace(/\s*\(.*?\)\s*/g,'').replace(/Z$/,''));
+  if(!isNaN(d))return d.toISOString().slice(0,10);
+  var t=s.replace(/\([^)]*\)/g,'').trim();
+  var m=t.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
+  if(m){var mon=MONTHS_MAP[m[2].toLowerCase().slice(0,3)];if(mon)return m[3]+'-'+String(mon).padStart(2,'0')+'-'+String(m[1]).padStart(2,'0');}
+  m=t.match(/^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})/);
+  if(m){var mon2=MONTHS_MAP[m[1].toLowerCase().slice(0,3)];if(mon2)return m[3]+'-'+String(mon2).padStart(2,'0')+'-'+String(m[2]).padStart(2,'0');}
+  m=t.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/);
+  if(m)return m[3]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[1]).padStart(2,'0');
+  m=t.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/);
+  if(m)return m[1]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[3]).padStart(2,'0');
+  return '';
+}
+function longDayLabel(iso){
+  if(!iso)return '';
+  var d=new Date(iso+'T00:00:00');
+  if(isNaN(d))return iso;
+  return d.toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'long'});
+}
+function addDaysISO(iso,n){
+  var d=new Date(iso+'T00:00:00');d.setDate(d.getDate()+n);
+  return d.toISOString().slice(0,10);
+}
+function prettyTime(t){
+  if(!t)return '';
+  var m=String(t).match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if(!m)return String(t);
+  var h=parseInt(m[1],10),mm=m[2],ap=h<12?'AM':'PM',h12=h%12||12;
+  return h12+':'+mm+' '+ap;
+}
+function timeKey(t){
+  if(!t)return '99:99';
+  var m=String(t).match(/(\d{1,2}):(\d{2})/);
+  if(!m)return '99:99';
+  var h=parseInt(m[1],10),mm=parseInt(m[2],10);
+  if(/pm/i.test(t)&&h<12)h+=12;
+  if(/am/i.test(t)&&h===12)h=0;
+  return String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0');
+}
 
 /* ===== THEME ===== */
 function applyTheme(res){
@@ -353,20 +398,29 @@ function normalise(res){
   examPdf:pick(m,'exam_pdf','exam_pdf_url','examPdf')
  };
  state.classes=(d.classes||d.class_timetable||[]).map(function(c){
-  var t=pick(c,'time');if(!t){var a=pick(c,'start_time'),b=pick(c,'end_time');t=a&&b?a+' – '+b:a}
+  var t=pick(c,'time');if(!t){var a=pick(c,'start_time'),b=pick(c,'end_time');t=a&&b?prettyTime(a)+' – '+prettyTime(b):prettyTime(a)}
   return{day:fmtDay(pick(c,'day','weekday')),code:pick(c,'course_code','code'),dept:pick(c,'department','dept','course_title','title'),time:t||'TBA',venue:pick(c,'venue','room')||'TBA',level:String(pick(c,'level')),sem:String(pick(c,'semester','sem'))};
  });
  state.exams=(d.exams||d.exam_timetable||[]).map(function(e){
   var rawDate=pick(e,'date','exam_date');
+  var startRaw=pick(e,'start_time','time');
+  var endRaw=pick(e,'end_time');
+  // If time is a range like "10:00 - 12:00", split it
+  var start=startRaw, end=endRaw;
+  if(!end && startRaw && /[-–—]/.test(startRaw)){
+    var parts=startRaw.split(/[-–—]/);
+    start=parts[0].trim();
+    end=parts[1]?parts[1].trim():'';
+  }
   return{
    code:pick(e,'course_code','code'),
    title:pick(e,'course_title','title','name'),
    status:pick(e,'status')||'Scheduled',
    date:fmtDate(rawDate),
    dateISO:isoDate(rawDate),
-   start:pick(e,'start_time','time')||'',
-   end:pick(e,'end_time')||'',
-   time:pick(e,'time','start_time')||'TBA',
+   start:start,
+   end:end,
+   time:startRaw||'TBA',
    venue:pick(e,'venue','room')||'TBA',
    examType:String(pick(e,'exam_type','type','examType')||'written').toLowerCase(),
    level:String(pick(e,'level')),
@@ -401,34 +455,15 @@ function renderClasses(){
  document.getElementById('classBody').innerHTML=html||msg('fa-calendar-times',state.classes.length?'No classes found for this selection.':'No class timetable has been published yet.');
 }
 
-/* ===== EXAM: show 2 days starting from a selected date ===== */
-function dayKeyFromISO(iso){
- if(!iso)return '';
- var d=new Date(iso+'T00:00:00');
- if(isNaN(d))return '';
- return d.toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
-}
-function longDayLabel(iso){
- var d=new Date(iso+'T00:00:00');
- if(isNaN(d))return iso;
- return d.toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'long'});
-}
-function addDaysISO(iso,n){
- var d=new Date(iso+'T00:00:00');d.setDate(d.getDate()+n);
- return d.toISOString().slice(0,10);
-}
-
 /* Fill the "Start From" dropdown with distinct exam dates */
 function fillExamDaySelect(){
  var el=document.getElementById('examDay');
  var cur=el.value;
- var dates=uniq(state.exams.map(function(e){return e.dateISO}));
- // Sort ascending by actual date
+ var dates=uniq(state.exams.map(function(e){return e.dateISO}).filter(Boolean));
  dates.sort(function(a,b){return a<b?-1:a>b?1:0});
  el.innerHTML=dates.map(function(d){
   return '<option value="'+esc(d)+'">'+esc(longDayLabel(d))+'</option>';
  }).join('');
- // Default: earliest date (the day exams actually begin)
  if(dates.length){
   el.value=dates.indexOf(cur)>-1?cur:dates[0];
  } else {
@@ -436,58 +471,86 @@ function fillExamDaySelect(){
  }
 }
 
+function renderExamItem(e){
+  var tCls=['written','cbt','practical','oral'].indexOf(e.examType)>-1?e.examType:'written';
+  var startTime=prettyTime(e.start||e.time)||'TBA';
+  var endTime=prettyTime(e.end);
+  return '<li class="exam-item">'
+       + '<div class="exam-time">'
+       + '<span class="start">'+esc(startTime)+'</span>'
+       + (endTime?'<span class="end">'+esc(endTime)+'</span>':'')
+       + '</div>'
+       + '<div class="exam-info">'
+       + '<div class="ecode">'+esc(e.code)+'</div>'
+       + '<div class="etitle">'+esc(e.title||'')+'</div>'
+       + (e.level?'<span class="elevel">'+esc(e.level)+' Level</span>':'')
+       + '</div>'
+       + '<span class="exam-type-tag '+tCls+'">'+esc(e.examType)+'</span>'
+       + '<div class="evena"><i class="fas fa-map-marker-alt"></i>'+esc(e.venue)+'</div>'
+       + '</li>';
+}
+
 function renderExams(){
- var l=document.getElementById('examLevel').value,s=document.getElementById('examSem').value;
+ var l=document.getElementById('examLevel').value;
+ var s=document.getElementById('examSem').value;
  var start=document.getElementById('examDay').value;
  var summary=document.getElementById('examSummary');
 
- // Filter by level + semester first
- var pool=state.exams.filter(function(c){return(!l||c.level===l)&&(!s||c.sem===s)&&c.dateISO});
+ // Default: show ALL levels (no level filter applied)
+ var pool=state.exams.filter(function(c){return(!l||c.level===l)&&(!s||c.sem===s)});
+ var validPool=pool.filter(function(e){return !!e.dateISO});
+ var missingDates=pool.length-validPool.length;
 
- // If no start date chosen, use the earliest
- if(!start && pool.length){
-  var dates=uniq(pool.map(function(e){return e.dateISO})).sort();
+ if(!start && validPool.length){
+  var dates=uniq(validPool.map(function(e){return e.dateISO})).sort();
   start=dates[0];
   document.getElementById('examDay').value=start;
  }
 
- // Compute 2-day window
- var day1=start, day2=start?addDaysISO(start,1):'';
- var rows=pool.filter(function(e){return e.dateISO===day1||e.dateISO===day2});
+ var day1=start;
+ var day2=start?addDaysISO(start,1):'';
 
- // Summary
- if(start && rows.length){
+ var rows1=validPool.filter(function(e){return e.dateISO===day1});
+ var rows2=day2?validPool.filter(function(e){return e.dateISO===day2}):[];
+
+ rows1.sort(function(a,b){return timeKey(a.start||a.time).localeCompare(timeKey(b.start||b.time))});
+ rows2.sort(function(a,b){return timeKey(a.start||a.time).localeCompare(timeKey(b.start||b.time))});
+
+ if(start && (rows1.length+rows2.length)){
   summary.style.display='flex';
-  summary.innerHTML='<span class="dot"></span><span>Showing <strong>'+rows.length+'</strong> exam'+(rows.length===1?'':'s')+' on <strong>'+esc(longDayLabel(day1))+'</strong> &amp; <strong>'+esc(longDayLabel(day2))+'</strong></span><span class="grow"></span><span>'+pool.length+' total in scope</span>';
+  var parts=[];
+  if(rows1.length)parts.push('<strong>'+rows1.length+'</strong> on <strong>'+esc(longDayLabel(day1))+'</strong>');
+  if(rows2.length)parts.push('<strong>'+rows2.length+'</strong> on <strong>'+esc(longDayLabel(day2))+'</strong>');
+  summary.innerHTML='<span class="dot"></span><span>Showing '+parts.join(' &amp; ')+'</span><span class="grow"></span><span>'+validPool.length+' total'+(missingDates>0?' ('+missingDates+' undated)':'')+'</span>';
  } else {
   summary.style.display='none';
  }
 
- if(!rows.length){
-  document.getElementById('examBody').innerHTML=msg('fa-file-circle-xmark',pool.length?'No examinations on these two days for this selection.':'No examination timetable has been published yet.');
+ if(!rows1.length && !rows2.length){
+  document.getElementById('examBody').innerHTML=msg('fa-file-circle-xmark',validPool.length?'No examinations on these two days for this selection.':'No examination timetable has been published yet.');
   return;
  }
 
- // Group into two days
- var groups=[{iso:day1,items:rows.filter(function(e){return e.dateISO===day1})}];
- if(day2) groups.push({iso:day2,items:rows.filter(function(e){return e.dateISO===day2})});
-
- var html='<div class="exam-days">'+groups.map(function(g){
-  if(!g.items.length)return '';
-  return '<div class="exam-day"><div class="exam-day-head"><h3>'+esc(longDayLabel(g.iso))+'<small>'+esc(fmtDate(g.iso))+'</small></h3><span class="exam-day-count">'+g.items.length+' exam'+(g.items.length===1?'':'s')+'</span></div><ul class="exam-list">'+
-   g.items.map(function(e){
-    var tCls=['written','cbt','practical','oral'].indexOf(e.examType)>-1?e.examType:'written';
-    var startTime=e.start?e.start:e.time;
-    var endTime=e.end||'';
-    return '<li class="exam-item">'+
-      '<div class="exam-time"><span class="start">'+esc(startTime||'TBA')+'</span>'+(endTime?'<span class="end">'+esc(endTime)+'</span>':'')+'</div>'+
-      '<div class="exam-info"><div class="ecode">'+esc(e.code)+'</div><div class="etitle">'+esc(e.title||'')+'</div></div>'+
-      '<span class="exam-type-tag '+tCls+'">'+esc(e.examType)+'</span>'+
-      '<div class="evena"><i class="fas fa-map-marker-alt"></i>'+esc(e.venue)+'</div>'+
-    '</li>';
-   }).join('')+
-  '</ul></div>';
- }).join('')+'</div>';
+ var html='<div class="exam-days">';
+ if(rows1.length){
+  html+='<div class="exam-day">'
+      + '<div class="exam-day-head">'
+      + '<h3>'+esc(longDayLabel(day1))+'<small>'+esc(fmtDate(day1))+'</small></h3>'
+      + '<span class="exam-day-count">'+rows1.length+' exam'+(rows1.length===1?'':'s')+'</span>'
+      + '</div>'
+      + '<ul class="exam-list">'+rows1.map(renderExamItem).join('')+'</ul>'
+      + '</div>';
+ }
+ if(rows2.length){
+  html+='<div class="exam-day">'
+      + '<div class="exam-day-head">'
+      + '<h3>'+esc(longDayLabel(day2))+'<small>'+esc(fmtDate(day2))+'</small></h3>'
+      + '<span class="exam-day-count">'+rows2.length+' exam'+(rows2.length===1?'':'s')+'</span>'
+      + '</div>'
+      + '<ul class="exam-list">'+rows2.map(renderExamItem).join('')+'</ul>'
+      + '</div>';
+ }
+ html+='</div>';
  document.getElementById('examBody').innerHTML=html;
 }
 
