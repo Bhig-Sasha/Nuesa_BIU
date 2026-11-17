@@ -1564,18 +1564,74 @@ app.get('/api/course-reps/levels', cacheMiddleware(300, ['course-reps']), async 
     }
 });
 
-app.get('/api/course-reps', async (req, res) => {
+app.get('/api/course-reps', cacheMiddleware(120, ['course-reps']), async (req, res) => {
     try {
         const { session = '2025/2026', level } = req.query;
-        let query = supabase.from('course_representatives').select('*').eq('session', session);
-        if (level && level !== 'all') query = query.eq('level', level);
 
-        const { data, error } = await query.order('level');
+        let query = supabase
+            .from('course_representatives')
+            .select('*')
+            .eq('session', session)
+            .order('level');
+
+        if (level && level !== 'all') {
+            query = query.eq('level', level);
+        }
+
+        const { data: reps, error } = await query;
         if (error) throw error;
-        res.json({ status: 'success', data, count: data.length });
+
+        if (!reps || reps.length === 0) {
+            return res.json({ status: 'success', data: [], count: 0 });
+        }
+
+        // Group by level
+        const byLevel = {};
+
+        for (const rep of reps) {
+            const lvl = rep.level || 'Unknown';
+
+            if (!byLevel[lvl]) {
+                byLevel[lvl] = {
+                    level: lvl,
+                    gen_rep: 'Not Assigned',
+                    asst_gen_rep: 'Not Assigned',
+                    departments: []
+                };
+            }
+
+            if (rep.rep_type === 'general') {
+                byLevel[lvl].gen_rep = rep.full_name || rep.gen_rep || 'Not Assigned';
+            } else if (rep.rep_type === 'assistant') {
+                byLevel[lvl].asst_gen_rep = rep.full_name || 'Not Assigned';
+            } else if (rep.rep_type === 'departmental') {
+                byLevel[lvl].departments.push({
+                    name: rep.department_name || 'Unknown Department',
+                    rep: rep.full_name || 'Pending'
+                });
+            }
+        }
+
+        const transformed = Object.values(byLevel).map(item => ({
+            ...item,
+            deptCount: item.departments.length
+        }));
+
+        // Sort levels numerically
+        transformed.sort((a, b) => {
+            const na = parseInt(a.level, 10) || 0;
+            const nb = parseInt(b.level, 10) || 0;
+            return na - nb;
+        });
+
+        res.json({
+            status: 'success',
+            data: transformed,
+            count: transformed.length
+        });
     } catch (error) {
         logger.error('Error fetching course reps:', { requestId: req.id, error: error.message });
-        res.status(500).json({ status: 'error', message: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch course representatives' });
     }
 });
 
