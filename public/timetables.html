@@ -315,7 +315,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')toggleMenu(f
 
 /* ===== BACKEND ===== */
 var API_BASE_URL='https://nuesa-biu-pjp0.onrender.com';
-var ENDPOINTS={timetable:'/api/timetable',theme:'/api/theme'};
+var ENDPOINTS={timetable:'/api/timetable'};
 function fetchAPI(ep){return fetch(API_BASE_URL+ep,{headers:{Accept:'application/json'}}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})}
 
 var state={classes:[],exams:[],announcements:[],meta:{}};
@@ -598,7 +598,7 @@ function showError(){
 }
 function load(){
  ['classBody','examBody','annBody'].forEach(function(id){document.getElementById(id).innerHTML=LOADING});
- fetchAPI(ENDPOINTS.theme).then(applyTheme).catch(function(){});
+ var ENDPOINTS={timetable:'/api/timetable'};
  fetchAPI(ENDPOINTS.timetable).then(function(res){normalise(res);render()}).catch(showError);
 }
 load();

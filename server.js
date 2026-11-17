@@ -6709,107 +6709,136 @@ app.use('/api', publicMediaRouter);
 console.log('✅ [PUBLIC-MEDIA] /api/gallery and /api/media/placements/* registered');
 
 // ============================================================
-// ================ PUBLIC TIMETABLE + THEME ==================
+// ================ PUBLIC TIMETABLE ==========================
 // ============================================================
-
-/**
- * GET /api/timetable
- * Returns the current published timetable package:
- * - session + semester metadata
- * - class timetable
- * - exam timetable
- * - announcements
- * - available levels & semesters (for filters)
- */
 app.get('/api/timetable', cacheMiddleware(60, ['timetable']), async (req, res) => {
     try {
-        // 1. Get the active / published timetable package
-        const { data: packageData, error: pkgErr } = await supabase
+        // 1. Most recent published package = source of session / semester settings
+        const { data: latestRows, error: latestErr } = await supabase
             .from('timetable_packages')
-            .select('*')
+            .select('session, semester, status, is_published, published_at, updated_at, class_pdf_url, exam_pdf_url')
             .eq('is_published', true)
             .order('updated_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+            .limit(1);
 
+        if (latestErr) throw latestErr;
+
+        const latest = (latestRows && latestRows[0]) || {};
+        const session  = latest.session  || null;
+        const semester = latest.semester || null;
+
+        // 2. Fetch ALL published packages for the current session/semester
+        let pkgQuery = supabase
+            .from('timetable_packages')
+            .select('id, level, session, semester, title, status, is_published, class_pdf_url, exam_pdf_url, updated_at, published_at')
+            .eq('is_published', true);
+
+        if (session)  pkgQuery = pkgQuery.eq('session', session);
+        if (semester) pkgQuery = pkgQuery.eq('semester', semester);
+
+        const { data: packages, error: pkgErr } = await pkgQuery;
         if (pkgErr) throw pkgErr;
 
-        if (!packageData) {
+        // 3. No published packages → empty result
+        if (!packages || packages.length === 0) {
             return res.json({
                 status: 'success',
-                data: null,
-                message: 'No timetable has been published yet'
+                data: {
+                    session, semester,
+                    is_published: false,
+                    status: 'draft',
+                    updated_at: null,
+                    available_levels: [],
+                    available_semesters: semester ? [semester] : [],
+                    classes: [],
+                    exams: [],
+                    announcements: []
+                }
             });
         }
 
-        // 2. Fetch related data in parallel
-        const [classesRes, examsRes, announcementsRes] = await Promise.all([
+        const pkgIds = packages.map(p => p.id);
+
+        // 4. Pull classes, exams, announcements for ALL published packages
+        const [classesRes, examsRes, annsRes] = await Promise.all([
             supabase
                 .from('timetable_classes')
                 .select('*')
-                .eq('package_id', packageData.id)
+                .in('package_id', pkgIds)
                 .order('day_of_week', { ascending: true })
                 .order('start_time', { ascending: true }),
 
             supabase
                 .from('timetable_exams')
                 .select('*')
-                .eq('package_id', packageData.id)
+                .in('package_id', pkgIds)
                 .order('exam_date', { ascending: true })
                 .order('start_time', { ascending: true }),
 
             supabase
                 .from('timetable_announcements')
                 .select('*')
-                .eq('package_id', packageData.id)
+                .in('package_id', pkgIds)
                 .eq('is_active', true)
                 .order('created_at', { ascending: false })
         ]);
 
         if (classesRes.error) throw classesRes.error;
         if (examsRes.error) throw examsRes.error;
-        if (announcementsRes.error) throw announcementsRes.error;
+        if (annsRes.error) throw annsRes.error;
 
-        const classes = classesRes.data || [];
-        const exams = examsRes.data || [];
-        const announcements = announcementsRes.data || [];
+        // 5. Backfill level on each row from its parent package when missing
+        const levelByPkg = {};
+        packages.forEach(p => { levelByPkg[p.id] = p.level || ''; });
 
-        // 3. Build dynamic filter options
-        const levels = [...new Set(classes.map(c => c.level).filter(Boolean))].sort();
-        const semesters = [...new Set([
-            packageData.semester,
-            ...classes.map(c => c.semester).filter(Boolean)
+        const classes = (classesRes.data || []).map(c => ({
+            ...c,
+            level: c.level || levelByPkg[c.package_id] || ''
+        }));
+        const exams = (examsRes.data || []).map(e => ({
+            ...e,
+            level: e.level || levelByPkg[e.package_id] || ''
+        }));
+
+        // 6. Build filter options across all packages
+        const availableLevels = [...new Set(
+            packages.map(p => p.level).filter(Boolean)
+        )].sort();
+
+        const availableSemesters = [...new Set([
+            semester,
+            ...packages.map(p => p.semester).filter(Boolean)
         ])].filter(Boolean);
 
-        // 4. Shape the response the frontend expects
-        const response = {
+        // 7. PDF links — take the first non-null from any package
+        const classPdf = packages.find(p => p.class_pdf_url)?.class_pdf_url || null;
+        const examPdf  = packages.find(p => p.exam_pdf_url)?.exam_pdf_url  || null;
+
+        // 8. Shape response (compatible with existing frontend)
+        res.json({
             status: 'success',
             data: {
-                // Meta
-                id: packageData.id,
-                session: packageData.session || packageData.academic_session || null,
-                semester: packageData.semester || null,
-                title: packageData.title || null,
-                is_published: packageData.is_published,
-                published_at: packageData.published_at || packageData.updated_at,
-                updated_at: packageData.updated_at,
-                status: packageData.status || (packageData.is_published ? 'published' : 'draft'),
+                session,
+                semester,
+                is_published: true,
+                status: 'published',
+                published_at: latest.published_at || latest.updated_at || null,
+                updated_at: latest.updated_at || null,
 
-                // PDF links (if you store them)
-                class_pdf_url: packageData.class_pdf_url || null,
-                exam_pdf_url: packageData.exam_pdf_url || null,
+                class_pdf_url: classPdf,
+                exam_pdf_url: examPdf,
 
-                // Filter options
-                available_levels: levels,
-                available_semesters: semesters,
+                available_levels: availableLevels,
+                available_semesters: availableSemesters,
+                packages_count: packages.length,
 
-                // Actual data
                 classes: classes.map(c => ({
                     id: c.id,
+                    package_id: c.package_id,
                     course_code: c.course_code || c.code || null,
                     course_title: c.course_title || c.title || null,
                     level: c.level || null,
-                    semester: c.semester || packageData.semester || null,
+                    semester: c.semester || semester || null,
                     department: c.department || null,
                     day: c.day_of_week || c.day || null,
                     start_time: c.start_time || null,
@@ -6821,10 +6850,11 @@ app.get('/api/timetable', cacheMiddleware(60, ['timetable']), async (req, res) =
 
                 exams: exams.map(e => ({
                     id: e.id,
+                    package_id: e.package_id,
                     course_code: e.course_code || e.code || null,
                     course_title: e.course_title || e.title || null,
                     level: e.level || null,
-                    semester: e.semester || packageData.semester || null,
+                    semester: e.semester || semester || null,
                     exam_date: e.exam_date || null,
                     start_time: e.start_time || null,
                     end_time: e.end_time || null,
@@ -6832,8 +6862,9 @@ app.get('/api/timetable', cacheMiddleware(60, ['timetable']), async (req, res) =
                     exam_type: e.exam_type || 'written'
                 })),
 
-                announcements: announcements.map(a => ({
+                announcements: (annsRes.data || []).map(a => ({
                     id: a.id,
+                    package_id: a.package_id,
                     title: a.title,
                     body: a.body || a.content || null,
                     priority: a.priority || 'normal',
@@ -6841,9 +6872,7 @@ app.get('/api/timetable', cacheMiddleware(60, ['timetable']), async (req, res) =
                     expires_at: a.expires_at || null
                 }))
             }
-        };
-
-        res.json(response);
+        });
     } catch (err) {
         logger.error('Timetable fetch error:', { requestId: req.id, error: err.message });
         res.status(500).json({
@@ -6853,72 +6882,7 @@ app.get('/api/timetable', cacheMiddleware(60, ['timetable']), async (req, res) =
     }
 });
 
-
-/**
- * GET /api/theme
- * Returns CSS variable values so the public pages stay in sync with the dashboard theme.
- */
-app.get('/api/theme', cacheMiddleware(300, ['theme']), async (req, res) => {
-    try {
-        const { data, error } = await supabase
-            .from('site_settings')
-            .select('key, value')
-            .in('key', [
-                'primary_color',
-                'accent_color',
-                'background_color',
-                'text_color',
-                'surface_color',
-                'success_color',
-                'warning_color',
-                'danger_color'
-            ]);
-
-        if (error) throw error;
-
-        // Convert rows → object of CSS variables
-        const theme = {};
-        (data || []).forEach(row => {
-            if (row.key && row.value) {
-                // e.g. primary_color → --primary
-                const cssVar = '--' + row.key.replace(/_color$/, '').replace(/_/g, '-');
-                theme[cssVar] = row.value;
-            }
-        });
-
-        // Sensible defaults if nothing is configured yet
-        const defaults = {
-            '--primary': '#102B27',
-            '--accent': '#D5A83B',
-            '--bg': '#F4F6F3',
-            '--text': '#102B27',
-            '--surface': '#FFFFFF',
-            '--success': '#1E8E5A',
-            '--warning': '#B8761E',
-            '--danger': '#B7402F'
-        };
-
-        res.json({
-            status: 'success',
-            data: { ...defaults, ...theme }
-        });
-    } catch (err) {
-        logger.error('Theme fetch error:', { requestId: req.id, error: err.message });
-        // Still return defaults so the page doesn't break
-        res.json({
-            status: 'success',
-            data: {
-                '--primary': '#102B27',
-                '--accent': '#D5A83B',
-                '--bg': '#F4F6F3',
-                '--text': '#102B27',
-                '--surface': '#FFFFFF'
-            }
-        });
-    }
-});
-
-console.log('✅ [TIMETABLE] /api/timetable and /api/theme registered');
+console.log('✅ [TIMETABLE] /api/timetable registered');
 
 // ============================================================
 // ================== SECTION 5: FILE MANAGEMENT ==============
