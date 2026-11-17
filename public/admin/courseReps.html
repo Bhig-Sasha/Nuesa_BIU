@@ -1828,8 +1828,8 @@
         </div>
     </div>
 
-    <script>
-    // ============================================================
+<script>
+// ============================================================
     // CONFIG
     // ============================================================
     const API_BASE_URL = '';
@@ -2036,6 +2036,27 @@
             created_at: r.created_at || null,
             updated_at: r.updated_at || null,
             history: Array.isArray(r.history) ? r.history : []
+        };
+    }
+
+    // Builds the full PUT body for a rep, so partial updates (e.g. picture only)
+    // don't get rejected or ignored by backends that expect the whole record.
+    function buildRepPayload(r, overrides = {}) {
+        return {
+            full_name: r.full_name,
+            matric_no: r.matric_no,
+            email: r.email,
+            phone: r.phone,
+            department: r.department || null,
+            level: r.level,
+            session: r.session,
+            rep_type: r.rep_type,
+            representative_type: r.rep_type,
+            status: r.status,
+            appointment_date: r.appointment_date ? toDateInput(r.appointment_date) : null,
+            notes: r.notes,
+            profile_picture: r.profile_picture || null,
+            ...overrides
         };
     }
 
@@ -2372,14 +2393,9 @@
         pmState.offsetX = 0;
         pmState.offsetY = 0;
 
-        const existing = context === 'drawer'
-            ? viewingRep?.profile_picture
-            : selectedPicture?.url;
-        if (existing) {
-            loadImageFromUrl(existing);
-        } else {
-            resetPmCropStage();
-        }
+        // Always start clean: preloading the current remote picture can taint the
+        // canvas (CORS) and would enable "Save" before a new image is chosen.
+        resetPmCropStage();
 
         document.getElementById('pmErrorBox').classList.remove('active');
         document.getElementById('pictureModalTitle').textContent =
@@ -2419,13 +2435,15 @@
 
     function updatePmSaveButton() {
         const saveBtn = document.getElementById('pmSaveBtn');
+        const label = document.getElementById('pmSaveLabel');
+        if (!saveBtn) return;
         const canSave = pmState.mode === 'library'
             ? !!pmState.pickerItem
             : !!pmState.image;
         saveBtn.disabled = !canSave;
-        document.getElementById('pmSaveLabel').textContent = pmState.mode === 'library'
-            ? 'Use this picture'
-            : 'Save picture';
+        if (label) {
+            label.textContent = pmState.mode === 'library' ? 'Use this picture' : 'Save picture';
+        }
     }
 
     function handleFile(file) {
@@ -2465,7 +2483,6 @@
             });
         };
         img.onerror = () => {
-            // If existing picture fails to load, fall back to the dropzone
             resetPmCropStage();
             showPmError('Could not load that image. Try uploading another file.');
         };
@@ -2561,9 +2578,16 @@
 
     async function savePicture() {
         const saveBtn = document.getElementById('pmSaveBtn');
-        const original = saveBtn.innerHTML;
+        const label = document.getElementById('pmSaveLabel');
+        const icon = saveBtn.querySelector('i');
+        const prevIcon = icon ? icon.className : '';
+        const prevLabel = label ? label.textContent : '';
+
+        // Change only the icon class and label text. Never overwrite the button's
+        // innerHTML: that would delete #pmSaveLabel and crash the next open.
         saveBtn.disabled = true;
-        saveBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Saving…';
+        if (icon) icon.className = 'fas fa-circle-notch fa-spin';
+        if (label) label.textContent = 'Saving…';
 
         try {
             let url;
@@ -2575,7 +2599,10 @@
             }
 
             if (pmState.contextTarget === 'drawer' && viewingRep) {
-                await apiPut(`/api/admin/course-reps/${viewingRep.id}`, { profile_picture: url });
+                await apiPut(
+                    `/api/admin/course-reps/${viewingRep.id}`,
+                    buildRepPayload(viewingRep, { profile_picture: url })
+                );
                 await loadReps();
                 updateStats();
                 applyFilters();
@@ -2589,15 +2616,17 @@
             } else {
                 selectedPicture = { url };
                 showPicturePreview(url);
-                showToast('Picture ready — save the rep to apply', 'success');
+                showToast('Picture ready — click "Save Representative" to apply', 'success');
             }
 
             hideModal('pictureModal');
         } catch (err) {
             console.error('Picture save error:', err);
             showPmError(err.message || 'Failed to save picture');
-            saveBtn.disabled = false;
-            saveBtn.innerHTML = original;
+        } finally {
+            if (icon) icon.className = prevIcon;
+            if (label) label.textContent = prevLabel;
+            updatePmSaveButton();
         }
     }
 
@@ -2629,7 +2658,6 @@
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.message || `Upload failed (HTTP ${res.status})`);
 
-        // Be tolerant of the response shape
         const item = data.data?.media || data.data || data.media || data;
         const url = item.url || item.file_url || item.path;
         if (!url) {
@@ -2661,14 +2689,22 @@
             const k = outSize / size;
             ctx.drawImage(img, x * k, y * k, w * k, h * k);
 
-            out.toBlob(blob => resolve(blob), 'image/jpeg', 0.9);
+            try {
+                out.toBlob(blob => resolve(blob), 'image/jpeg', 0.9);
+            } catch (err) {
+                console.error('toBlob failed (tainted canvas?):', err);
+                resolve(null);
+            }
         });
     }
 
     async function removeCurrentPicture() {
         if (pmState.contextTarget === 'drawer' && viewingRep) {
             try {
-                await apiPut(`/api/admin/course-reps/${viewingRep.id}`, { profile_picture: null });
+                await apiPut(
+                    `/api/admin/course-reps/${viewingRep.id}`,
+                    buildRepPayload(viewingRep, { profile_picture: null })
+                );
                 await loadReps();
                 updateStats();
                 applyFilters();
@@ -2873,9 +2909,12 @@
     }
 
     function closeProfileDrawer() {
+        const drawer = document.getElementById('profileDrawer');
+        // Move focus out before hiding to avoid the aria-hidden warning
+        if (drawer.contains(document.activeElement)) document.activeElement.blur();
         document.getElementById('profileOverlay').classList.remove('active');
-        document.getElementById('profileDrawer').classList.remove('active');
-        document.getElementById('profileDrawer').setAttribute('aria-hidden', 'true');
+        drawer.classList.remove('active');
+        drawer.setAttribute('aria-hidden', 'true');
         document.body.style.overflow = '';
         viewingRep = null;
     }
@@ -2884,7 +2923,10 @@
         if (!viewingRep) return;
         const newStatus = viewingRep.status === 'active' ? 'inactive' : 'active';
         try {
-            await apiPut(`/api/admin/course-reps/${viewingRep.id}`, { status: newStatus });
+            await apiPut(
+                `/api/admin/course-reps/${viewingRep.id}`,
+                buildRepPayload(viewingRep, { status: newStatus })
+            );
             showToast(`Representative ${newStatus === 'active' ? 'reactivated' : 'deactivated'}`, 'success');
             closeProfileDrawer();
             await loadReps();
@@ -2972,7 +3014,14 @@
     function showLoading() { document.getElementById('loadingOverlay').classList.add('active'); }
     function hideLoading() { document.getElementById('loadingOverlay').classList.remove('active'); }
     function showModal(id) { const el = document.getElementById(id); if (el) { el.classList.add('active'); document.body.style.overflow = 'hidden'; } }
-    function hideModal(id) { const el = document.getElementById(id); if (el) { el.classList.remove('active'); document.body.style.overflow = ''; } }
+    function hideModal(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.remove('active');
+        // Keep scrolling locked if the profile drawer is still open underneath
+        const drawerOpen = document.getElementById('profileDrawer')?.classList.contains('active');
+        document.body.style.overflow = drawerOpen ? 'hidden' : '';
+    }
 
     function showToast(message, type = 'info', duration = 4000) {
         document.querySelectorAll('.toast').forEach(t => t.remove());
@@ -3127,7 +3176,7 @@
             });
         });
 
-        // Picture tile (opens the new modal)
+        // Picture tile (opens the picture modal)
         const pictureTile = document.getElementById('picturePicker');
         pictureTile.addEventListener('click', () => openPictureModal('form'));
         pictureTile.addEventListener('keydown', (e) => {
@@ -3143,6 +3192,7 @@
         const dropzone = document.getElementById('pmDropzone');
         const fileInput = document.getElementById('pmFileInput');
         dropzone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('click', (e) => e.stopPropagation());
         fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
         ['dragenter', 'dragover'].forEach(ev =>
             dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.add('dragover'); }));
@@ -3260,16 +3310,16 @@
             }
         });
 
-        // Escape
+        // Escape: close the top-most layer only (picture modal first)
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                ['repModal', 'pictureModal', 'removeModal', 'logoutModal'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el && el.classList.contains('active')) hideModal(id);
-                });
-                if (document.getElementById('profileDrawer').classList.contains('active')) {
-                    closeProfileDrawer();
-                }
+            if (e.key !== 'Escape') return;
+            const order = ['pictureModal', 'repModal', 'removeModal', 'logoutModal'];
+            for (const id of order) {
+                const el = document.getElementById(id);
+                if (el && el.classList.contains('active')) { hideModal(id); return; }
+            }
+            if (document.getElementById('profileDrawer').classList.contains('active')) {
+                closeProfileDrawer();
             }
         });
 
@@ -3289,6 +3339,6 @@
     window.openProfileDrawer = openProfileDrawer;
     window.openRepModal = openRepModal;
     window.openRemoveModal = openRemoveModal;
-    </script>
+</script>
 </body>
 </html>
