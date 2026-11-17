@@ -474,17 +474,8 @@ function timeKey(t){
   return String(hh).padStart(2,'0') + ':' + mm2;
 }
 
-/* ===== COURSE GROUP / DEPARTMENT PARSERS =====
-   The timetable mixes two kinds of courses:
-     1. GENERAL courses (GST, GEN, ENT, CHM, PHY, MTH, COS, BIO, ...)
-        — taken by everyone; they should only clash with themselves.
-     2. DEPARTMENT courses (CVE, MEE, EEE, CHE, ...)
-        — taken only by students of that department; they should only
-          clash with other courses from the SAME department at the same level.
-   We also honour a trailing group letter (e.g. GEN 213 A vs GEN 213 B). */
-
-/* Prefixes that are university-wide general courses. */
-var GENERAL_PREFIXES = ['GST','GEN','ENT','CHM','PHY','MTH','COS','BIO','STA','GEO','LAW','ENG','ACC','ECO','BUS','FRE','IGB','YOR','HIS','GNS','GST','CHM','PHY','MTH'];
+/* ===== COURSE GROUP / DEPARTMENT PARSERS ===== */
+var GENERAL_PREFIXES = ['GST','GEN','ENT','CHM','PHY','MTH','COS','BIO','STA','GEO','LAW','ENG','ACC','ECO','BUS','FRE','IGB','YOR','HIS','GNS'];
 
 function coursePrefix(code){
   var m = String(code||'').trim().toUpperCase().match(/^([A-Z]{2,4})/);
@@ -494,19 +485,11 @@ function courseGroupLetter(code){
   var m = String(code||'').trim().toUpperCase().match(/\b([A-Z])\s*$/);
   return m ? m[1] : '';
 }
-/* Returns a key that identifies the "ownership bucket" of a course.
-   - General course → 'GEN:' + prefix + ':' + groupLetter
-       (so GST 312 only clashes with other GST 312 sections)
-   - Department course → 'DEP:' + prefix + ':' + groupLetter
-       (so CVE 311 only clashes with other CVE courses at the same level)
-   The level is included separately by the caller. */
 function courseBucket(c){
   var prefix = coursePrefix(c.code);
   var group = courseGroupLetter(c.code);
   var isGeneral = GENERAL_PREFIXES.indexOf(prefix) !== -1;
   var kind = isGeneral ? 'GEN' : 'DEP';
-  // For general courses, bucket by exact prefix + group letter
-  // For department courses, bucket by department prefix + group letter
   return kind + ':' + prefix + ':' + (group || '—');
 }
 
@@ -603,22 +586,14 @@ function dayList(rows, day){
   });
 }
 
-/* Conflict detection is now scoped by LEVEL + COURSE OWNERSHIP.
-   Two entries clash only if:
-     - they share the same level (e.g. 200)
-     - they share the same ownership bucket:
-         * GENERAL course (GST/GEN/ENT/CHM/...) → same prefix + same group letter
-           e.g. GST 312 only clashes with GST 312; GEN 213 A only with GEN 213 A
-         * DEPARTMENT course (CVE/MEE/EEE/...) → same department prefix + same group letter
-           e.g. CVE 311 only with CVE 311; MEE 419 only with MEE 419
-     - and their times overlap on the same weekday.
-
-   So GST 312 (general) and CVE 311 (Civil) at 8:00 AM do NOT clash.
-   GST 312 and GEN 216 A at 8:00 AM do NOT clash (different general prefixes).
-   Two GEN 213 A entries at overlapping times DO clash. */
+/* Conflict detection is scoped by LEVEL + COURSE OWNERSHIP.
+   Two entries clash only if they share the same level AND the same
+   ownership bucket (course prefix + group letter). Because level is part
+   of the bucket key, MEE 312 (300L) and MEE 413 (400L) at the same time
+   are NEVER flagged — they belong to different levels. */
 function detectConflicts(rows){
   var out=[];
-  var buckets={};   // key = level + "|" + bucket
+  var buckets={};
   rows.forEach(function(c){
     var lvl = c.level || '__';
     var key = lvl + '|' + courseBucket(c);
