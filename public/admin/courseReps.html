@@ -86,9 +86,6 @@
         a { color: inherit; text-decoration: none; }
         button { font-family: inherit; }
 
-        /* ============================================================
-           ANIMATIONS
-           ============================================================ */
         @keyframes pageFadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes fadeIn     { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideInUp  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
@@ -97,9 +94,7 @@
         @keyframes toastIn    { from { opacity: 0; transform: translateX(calc(100% + 40px)); } to { opacity: 1; transform: translateX(0); } }
         @keyframes rowReveal  { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* ============================================================
-           LOADING OVERLAY
-           ============================================================ */
+        /* LOADING */
         .loading-overlay {
             position: fixed; inset: 0;
             background: rgba(244, 246, 243, 0.92);
@@ -126,9 +121,7 @@
             color: var(--text-muted);
         }
 
-        /* ============================================================
-           TOASTS
-           ============================================================ */
+        /* TOASTS */
         .toast {
             position: fixed; top: 24px; right: 24px;
             background: var(--surface);
@@ -161,14 +154,10 @@
         }
         .toast-close:hover { color: var(--text); background: var(--surface-muted); }
 
-        /* ============================================================
-           SHELL
-           ============================================================ */
+        /* SHELL */
         .dashboard-container { display: flex; min-height: 100vh; }
 
-        /* ============================================================
-           SIDEBAR
-           ============================================================ */
+        /* SIDEBAR */
         .sidebar {
             width: var(--sidebar-w);
             background: var(--primary);
@@ -300,9 +289,7 @@
         }
         .logout-btn:active { transform: scale(0.98); }
 
-        /* ============================================================
-           MOBILE OVERLAY
-           ============================================================ */
+        /* MOBILE OVERLAY */
         .mobile-overlay {
             position: fixed; inset: 0;
             background: rgba(16, 43, 39, 0.45);
@@ -313,9 +300,7 @@
         }
         .mobile-overlay.active { opacity: 1; visibility: visible; }
 
-        /* ============================================================
-           MAIN CONTENT
-           ============================================================ */
+        /* MAIN */
         .main-content {
             flex: 1;
             margin-left: var(--sidebar-w);
@@ -325,9 +310,7 @@
         }
         @media (max-width: 900px) { .main-content { margin-left: 0; } }
 
-        /* ============================================================
-           HEADER
-           ============================================================ */
+        /* HEADER */
         .header {
             height: var(--header-h);
             background: rgba(255, 255, 255, 0.92);
@@ -413,9 +396,7 @@
         }
         @media (max-width: 640px) { .user-details { display: none; } }
 
-        /* ============================================================
-           MAIN AREA
-           ============================================================ */
+        /* MAIN AREA */
         .main-area {
             padding: 28px;
             max-width: 1600px;
@@ -446,7 +427,6 @@
             .page-header-actions .btn { flex: 1; justify-content: center; }
         }
 
-        /* Session selector */
         .session-selector {
             display: flex; align-items: center; gap: 8px;
             background: var(--surface);
@@ -478,9 +458,7 @@
         }
         .session-selector select:focus { outline: none; background: var(--primary-tint); }
 
-        /* ============================================================
-           BUTTONS
-           ============================================================ */
+        /* BUTTONS */
         .btn {
             padding: 9px 16px;
             border-radius: var(--r);
@@ -544,9 +522,7 @@
             border-color: var(--danger);
         }
 
-        /* ============================================================
-           STATS GRID
-           ============================================================ */
+        /* STATS */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -597,9 +573,7 @@
             font-size: 0.8125rem; font-weight: 600;
         }
 
-        /* ============================================================
-           DIRECTORY TABLE
-           ============================================================ */
+        /* DIRECTORY */
         .content-card {
             background: var(--surface);
             border-radius: var(--r-lg);
@@ -847,9 +821,7 @@
         .page-btn.active { background: var(--primary); color: var(--text-invert); border-color: var(--primary); }
         .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-        /* ============================================================
-           MODAL
-           ============================================================ */
+        /* MODAL */
         .modal {
             position: fixed; inset: 0;
             background: rgba(16, 43, 39, 0.5);
@@ -909,9 +881,7 @@
             .modal-footer .btn { flex: 1; justify-content: center; }
         }
 
-        /* ============================================================
-           FORM
-           ============================================================ */
+        /* FORM */
         .form-step { margin-bottom: 24px; }
         .form-step:last-child { margin-bottom: 0; }
         .form-step-header {
@@ -977,7 +947,6 @@
             margin-top: 4px;
         }
 
-        /* Rep type selector */
         .rep-type-selector {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -1018,7 +987,9 @@
             line-height: 1.4;
         }
 
-        /* Picture picker */
+        /* ============================================================
+           PICTURE TILE (compact, inside Add/Edit form)
+           ============================================================ */
         .picture-picker {
             display: flex; align-items: center; gap: 14px;
             padding: 14px;
@@ -1028,7 +999,11 @@
             cursor: pointer;
             transition: all var(--dur-fast) var(--ease);
         }
-        .picture-picker:hover { border-color: var(--accent); background: var(--accent-tint); }
+        .picture-picker:hover, .picture-picker:focus-visible {
+            border-color: var(--accent);
+            background: var(--accent-tint);
+            outline: none;
+        }
         .picture-preview {
             width: 64px; height: 64px;
             border-radius: 50%;
@@ -1038,8 +1013,19 @@
             font-size: 1.5rem;
             flex-shrink: 0;
             overflow: hidden;
+            position: relative;
         }
         .picture-preview img { width: 100%; height: 100%; object-fit: cover; }
+        .picture-preview .pp-overlay {
+            position: absolute; inset: 0;
+            background: rgba(16, 43, 39, 0.55);
+            color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem;
+            opacity: 0;
+            transition: opacity var(--dur-fast) var(--ease);
+        }
+        .picture-picker:hover .pp-overlay { opacity: 1; }
         .picture-info { flex: 1; min-width: 0; }
         .picture-info-title { font-weight: 700; font-size: 0.875rem; margin-bottom: 2px; }
         .picture-info-hint { font-size: 0.75rem; color: var(--text-muted); }
@@ -1058,11 +1044,111 @@
         .warning-box.active { display: flex; gap: 8px; align-items: flex-start; }
 
         /* ============================================================
-           MEDIA PICKER MODAL
+           PICTURE / CROP MODAL
            ============================================================ */
+        .pm-tabs {
+            display: flex; gap: 6px; margin-bottom: 16px;
+            padding: 4px; border-radius: var(--r);
+            background: var(--surface-muted);
+            border: 1px solid var(--border);
+        }
+        .pm-tab {
+            flex: 1;
+            padding: 9px 12px;
+            border: none; background: transparent;
+            border-radius: var(--r-sm);
+            font-size: 0.8125rem; font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .pm-tab:hover { color: var(--text); }
+        .pm-tab.active { background: var(--surface); color: var(--primary); box-shadow: var(--shadow-sm); }
+        .pm-tab.active i { color: var(--accent); }
+
+        .pm-pane { animation: fadeIn var(--dur) var(--ease); }
+        .pm-pane.hidden { display: none; }
+
+        .pm-dropzone {
+            border: 2px dashed var(--border-strong);
+            border-radius: var(--r-lg);
+            padding: 32px 20px;
+            text-align: center;
+            cursor: pointer;
+            background: var(--surface-muted);
+            transition: all var(--dur) var(--ease);
+        }
+        .pm-dropzone:hover, .pm-dropzone.dragover {
+            border-color: var(--accent);
+            background: var(--accent-tint);
+            transform: translateY(-2px);
+        }
+        .pm-dropzone i { font-size: 2rem; color: var(--accent); margin-bottom: 10px; display: block; }
+        .pm-dropzone h4 { font-size: 0.9375rem; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+        .pm-dropzone p { font-size: 0.75rem; color: var(--text-muted); }
+        .pm-dropzone p strong { color: var(--primary); }
+
+        .pm-crop-stage { display: flex; flex-direction: column; gap: 14px; }
+        .pm-crop-viewport {
+            position: relative;
+            width: 100%;
+            max-width: 320px;
+            aspect-ratio: 1 / 1;
+            margin: 0 auto;
+            border-radius: 50%;
+            overflow: hidden;
+            background: var(--surface-muted);
+            box-shadow: var(--shadow-md);
+            cursor: grab;
+            touch-action: none;
+        }
+        .pm-crop-viewport:active { cursor: grabbing; }
+        .pm-crop-viewport canvas {
+            position: absolute; inset: 0;
+            width: 100%; height: 100%;
+            display: block;
+        }
+        .pm-crop-overlay {
+            position: absolute; inset: 0;
+            pointer-events: none;
+            box-shadow: inset 0 0 0 9999px rgba(16, 43, 39, 0.25);
+        }
+        .pm-crop-ring {
+            position: absolute; inset: 0;
+            border-radius: 50%;
+            border: 2px dashed rgba(255, 255, 255, 0.6);
+        }
+
+        .pm-crop-controls {
+            display: flex; align-items: center; gap: 12px;
+            flex-wrap: wrap;
+        }
+        .pm-control {
+            flex: 1;
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 14px;
+            background: var(--surface-muted);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            color: var(--text-muted);
+            min-width: 200px;
+        }
+        .pm-control input[type="range"] {
+            flex: 1; accent-color: var(--accent); cursor: pointer;
+        }
+        .pm-crop-actions { display: flex; gap: 8px; margin-left: auto; }
+        .pm-crop-hint {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            text-align: center;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+
+        /* MEDIA LIBRARY PICKER GRID */
         .media-picker-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
             gap: 10px;
             max-height: 400px;
             overflow-y: auto;
@@ -1148,8 +1234,27 @@
             margin-bottom: 12px;
             border: 3px solid var(--accent-soft);
             overflow: hidden;
+            cursor: pointer;
+            position: relative;
+            transition: transform var(--dur) var(--ease-spring);
         }
+        .drawer-avatar:hover { transform: scale(1.05); }
         .drawer-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .drawer-avatar .da-edit {
+            position: absolute; inset: auto 0 0 0;
+            background: rgba(16, 43, 39, 0.6);
+            color: #fff;
+            font-size: 0.625rem;
+            padding: 4px 0;
+            text-align: center;
+            opacity: 0;
+            transition: opacity var(--dur-fast) var(--ease);
+            font-family: var(--font-mono);
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .drawer-avatar:hover .da-edit { opacity: 1; }
         .drawer-name { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
         .drawer-role {
             font-size: 0.75rem;
@@ -1226,9 +1331,6 @@
 
         @media (max-width: 420px) { .drawer { max-width: 100%; } }
 
-        /* ============================================================
-           REDUCED MOTION
-           ============================================================ */
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after {
                 animation-duration: 0.01ms !important;
@@ -1507,23 +1609,21 @@
                         </div>
                     </div>
 
-                    <!-- STEP D: Profile Picture -->
+                    <!-- STEP D: Profile Picture (opens #pictureModal) -->
                     <div class="form-step">
                         <div class="form-step-header">
                             <div class="form-step-num">D</div>
                             <div class="form-step-title">Profile Picture</div>
                         </div>
-                        <div class="picture-picker" id="picturePicker">
+                        <div class="picture-picker" id="picturePicker" role="button" tabindex="0">
                             <div class="picture-preview" id="picturePreview">
                                 <i class="far fa-user"></i>
+                                <div class="pp-overlay"><i class="fas fa-camera"></i></div>
                             </div>
                             <div class="picture-info">
                                 <div class="picture-info-title" id="pictureTitle">No picture selected</div>
-                                <div class="picture-info-hint" id="pictureHint">Choose from Media Library or upload</div>
+                                <div class="picture-info-hint" id="pictureHint">Tap to upload, crop, or pick from the Media Library</div>
                             </div>
-                            <button type="button" class="btn btn-secondary btn-sm" id="browseMediaBtn">
-                                <i class="far fa-images"></i> Choose
-                            </button>
                         </div>
                     </div>
 
@@ -1573,30 +1673,80 @@
         </div>
     </div>
 
-    <!-- ============ MEDIA PICKER MODAL ============ -->
-    <div class="modal" id="mediaPickerModal">
-        <div class="modal-content">
+    <!-- ============ PICTURE / CROP MODAL ============ -->
+    <div class="modal" id="pictureModal">
+        <div class="modal-content modal-lg">
             <div class="modal-header">
-                <h3 class="modal-title"><i class="far fa-images"></i> Select Profile Picture</h3>
-                <button class="modal-close" onclick="hideModal('mediaPickerModal')" aria-label="Close">&times;</button>
+                <h3 class="modal-title"><i class="fas fa-crop-alt"></i> <span id="pictureModalTitle">Profile Picture</span></h3>
+                <button class="modal-close" onclick="hideModal('pictureModal')" aria-label="Close">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="search-wrapper" style="margin-bottom: 14px;">
-                    <input type="text" class="search-input" id="mediaSearch" placeholder="Search pictures…">
-                    <i class="fas fa-search"></i>
+                <!-- Tabs -->
+                <div class="pm-tabs">
+                    <button type="button" class="pm-tab active" data-tab="upload">
+                        <i class="fas fa-upload"></i> Upload New
+                    </button>
+                    <button type="button" class="pm-tab" data-tab="library">
+                        <i class="far fa-images"></i> Media Library
+                    </button>
                 </div>
-                <div class="media-picker-grid" id="mediaPickerGrid">
-                    <div class="empty-state" style="grid-column: 1 / -1;">
-                        <div class="empty-state-icon"><i class="fas fa-circle-notch fa-spin"></i></div>
-                        <h3>Loading pictures…</h3>
+
+                <!-- TAB: Upload + Crop -->
+                <div class="pm-pane" id="pmPaneUpload">
+                    <div class="pm-dropzone" id="pmDropzone">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <h4>Drag &amp; drop an image here</h4>
+                        <p>or <strong>click to browse</strong> &middot; PNG, JPG, WEBP &middot; max 5&nbsp;MB</p>
+                        <input type="file" id="pmFileInput" accept="image/png,image/jpeg,image/webp" hidden>
+                    </div>
+
+                    <div class="pm-crop-stage" id="pmCropStage" hidden>
+                        <div class="pm-crop-viewport" id="pmCropViewport">
+                            <canvas id="pmCanvas"></canvas>
+                            <div class="pm-crop-overlay">
+                                <div class="pm-crop-ring"></div>
+                            </div>
+                        </div>
+                        <div class="pm-crop-controls">
+                            <label class="pm-control">
+                                <i class="fas fa-search-minus"></i>
+                                <input type="range" id="pmZoom" min="1" max="3" step="0.01" value="1">
+                                <i class="fas fa-search-plus"></i>
+                            </label>
+                            <div class="pm-crop-actions">
+                                <button type="button" class="btn btn-secondary btn-sm" id="pmChangeImage">
+                                    <i class="fas fa-exchange-alt"></i> Change image
+                                </button>
+                            </div>
+                        </div>
+                        <p class="pm-crop-hint"><i class="fas fa-info-circle"></i> Drag the image to reposition. Scroll or use the slider to zoom. Square crop (1:1).</p>
                     </div>
                 </div>
+
+                <!-- TAB: Media Library -->
+                <div class="pm-pane hidden" id="pmPaneLibrary">
+                    <div class="search-wrapper" style="margin-bottom: 14px;">
+                        <input type="text" class="search-input" id="pmLibrarySearch" placeholder="Search pictures…">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <div class="media-picker-grid" id="pmLibraryGrid"></div>
+                </div>
+
+                <div class="warning-box" id="pmErrorBox">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span id="pmErrorText"></span>
+                </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="hideModal('mediaPickerModal')" type="button">Cancel</button>
-                <button class="btn btn-primary" id="selectPictureBtn" type="button" disabled>
-                    <i class="fas fa-check"></i> Select Picture
+            <div class="modal-footer" style="justify-content: space-between;">
+                <button type="button" class="btn btn-danger btn-sm" id="pmRemoveBtn">
+                    <i class="fas fa-trash-alt"></i> Remove picture
                 </button>
+                <div style="display:flex; gap:10px; margin-left:auto;">
+                    <button type="button" class="btn btn-secondary" onclick="hideModal('pictureModal')">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="pmSaveBtn" disabled>
+                        <i class="fas fa-check"></i> <span id="pmSaveLabel">Save picture</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1606,7 +1756,7 @@
     <aside class="drawer" id="profileDrawer" aria-hidden="true">
         <div class="drawer-header">
             <button class="drawer-close" onclick="closeProfileDrawer()" aria-label="Close">&times;</button>
-            <div class="drawer-avatar" id="profileAvatar">A</div>
+            <div class="drawer-avatar" id="profileAvatar" role="button" tabindex="0" title="Change picture">A</div>
             <div class="drawer-name" id="profileName">Loading…</div>
             <div class="drawer-role" id="profileRole">—</div>
             <div class="drawer-matric" id="profileMatric">—</div>
@@ -1712,7 +1862,6 @@
     // Form state
     let selectedPicture = null;
     let selectedRepType = 'general';
-    let pickerSelectedMedia = null;
 
     // ============================================================
     // AUTH
@@ -1914,13 +2063,11 @@
         const deptsFromReps = allReps.map(r => r.department).filter(Boolean);
         departments = [...new Set([...DEFAULT_DEPARTMENTS, ...deptsFromReps])].sort();
 
-        // Filter dropdowns
         document.getElementById('filterLevel').innerHTML = '<option value="">Academic Level</option>' +
             levels.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join('');
         document.getElementById('filterDepartment').innerHTML = '<option value="">Department</option>' +
             departments.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
 
-        // Form dropdowns
         document.getElementById('rLevel').innerHTML = '<option value="">Select level</option>' +
             levels.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l.replace('L', ' Level'))}</option>`).join('');
         document.getElementById('rDepartment').innerHTML = '<option value="">Select department</option>' +
@@ -1935,7 +2082,6 @@
         const general = sessionReps.filter(r => r.rep_type === 'general' && r.status === 'active');
         const departmental = sessionReps.filter(r => r.rep_type === 'departmental' && r.status === 'active');
 
-        // Vacant = total potential positions − active filled
         const totalGeneralPositions = levels.length;
         const totalDeptPositions = levels.length * departments.length;
         const totalPositions = totalGeneralPositions + totalDeptPositions;
@@ -1988,7 +2134,6 @@
             return true;
         });
 
-        // Sort: active first, then by name
         filteredReps.sort((a, b) => {
             if (a.status === 'active' && b.status !== 'active') return -1;
             if (a.status !== 'active' && b.status === 'active') return 1;
@@ -2202,67 +2347,349 @@
     }
 
     // ============================================================
-    // PICTURE PICKER
+    // PICTURE / CROP MODAL
     // ============================================================
-    function resetPicturePreview() {
-        document.getElementById('picturePreview').innerHTML = '<i class="far fa-user"></i>';
-        document.getElementById('pictureTitle').textContent = 'No picture selected';
-        document.getElementById('pictureHint').textContent = 'Choose from Media Library or upload';
-        selectedPicture = null;
+    let pmState = {
+        mode: 'upload',
+        pickerItem: null,
+        image: null,
+        imgW: 0, imgH: 0,
+        scale: 1,
+        offsetX: 0, offsetY: 0,
+        dragging: false,
+        dragStartX: 0, dragStartY: 0,
+        dragBaseX: 0, dragBaseY: 0,
+        viewportSize: 320,
+        contextTarget: null
+    };
+
+    function openPictureModal(context = 'form') {
+        pmState.contextTarget = context;
+        pmState.mode = 'upload';
+        pmState.pickerItem = null;
+        pmState.image = null;
+        pmState.scale = 1;
+        pmState.offsetX = 0;
+        pmState.offsetY = 0;
+
+        const existing = context === 'drawer'
+            ? viewingRep?.profile_picture
+            : selectedPicture?.url;
+        if (existing) {
+            loadImageFromUrl(existing);
+        } else {
+            resetPmCropStage();
+        }
+
+        document.getElementById('pmErrorBox').classList.remove('active');
+        document.getElementById('pictureModalTitle').textContent =
+            context === 'drawer' ? 'Change Profile Picture' : 'Profile Picture';
+        switchPmTab('upload');
+        refreshLibraryPicker();
+        updatePmSaveButton();
+
+        showModal('pictureModal');
     }
 
-    function showPicturePreview(url) {
-        document.getElementById('picturePreview').innerHTML = `<img src="${escapeHtml(url)}" alt="">`;
-        document.getElementById('pictureTitle').textContent = 'Profile picture selected';
-        document.getElementById('pictureHint').textContent = 'Click Choose to change';
+    function switchPmTab(tab) {
+        pmState.mode = tab;
+        document.querySelectorAll('.pm-tab').forEach(t => {
+            t.classList.toggle('active', t.dataset.tab === tab);
+        });
+        document.getElementById('pmPaneUpload').classList.toggle('hidden', tab !== 'upload');
+        document.getElementById('pmPaneLibrary').classList.toggle('hidden', tab !== 'library');
+        updatePmSaveButton();
     }
 
-    function openMediaPicker() {
-        pickerSelectedMedia = null;
-        document.getElementById('selectPictureBtn').disabled = true;
-        document.getElementById('mediaSearch').value = '';
-        renderMediaPicker(allMedia);
-        showModal('mediaPickerModal');
+    function resetPmCropStage() {
+        pmState.image = null;
+        document.getElementById('pmDropzone').hidden = false;
+        document.getElementById('pmCropStage').hidden = true;
+        document.getElementById('pmFileInput').value = '';
+        const canvas = document.getElementById('pmCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
 
-    function renderMediaPicker(items) {
-        const grid = document.getElementById('mediaPickerGrid');
-        if (items.length === 0) {
+    function showPmError(msg) {
+        const box = document.getElementById('pmErrorBox');
+        document.getElementById('pmErrorText').textContent = msg;
+        box.classList.add('active');
+    }
+
+    function updatePmSaveButton() {
+        const saveBtn = document.getElementById('pmSaveBtn');
+        const canSave = pmState.mode === 'library'
+            ? !!pmState.pickerItem
+            : !!pmState.image;
+        saveBtn.disabled = !canSave;
+        document.getElementById('pmSaveLabel').textContent = pmState.mode === 'library'
+            ? 'Use this picture'
+            : 'Save picture';
+    }
+
+    function handleFile(file) {
+        if (!file) return;
+        if (!/^image\/(png|jpe?g|webp)$/i.test(file.type)) {
+            showPmError('Please choose a PNG, JPG, or WEBP image.');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            showPmError('Image is too large (max 5 MB).');
+            return;
+        }
+        document.getElementById('pmErrorBox').classList.remove('active');
+
+        const reader = new FileReader();
+        reader.onload = e => loadImageFromUrl(e.target.result);
+        reader.readAsDataURL(file);
+    }
+
+    function loadImageFromUrl(url) {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+            pmState.image = img;
+            pmState.imgW = img.naturalWidth;
+            pmState.imgH = img.naturalHeight;
+            pmState.scale = 1;
+            pmState.offsetX = 0;
+            pmState.offsetY = 0;
+            document.getElementById('pmDropzone').hidden = true;
+            document.getElementById('pmCropStage').hidden = false;
+            document.getElementById('pmZoom').value = 1;
+            requestAnimationFrame(() => {
+                setupCanvasSize();
+                drawCropCanvas();
+                updatePmSaveButton();
+            });
+        };
+        img.onerror = () => {
+            // If existing picture fails to load, fall back to the dropzone
+            resetPmCropStage();
+            showPmError('Could not load that image. Try uploading another file.');
+        };
+        img.src = url;
+    }
+
+    function setupCanvasSize() {
+        const viewport = document.getElementById('pmCropViewport');
+        const canvas = document.getElementById('pmCanvas');
+        const size = viewport.clientWidth || 320;
+        pmState.viewportSize = size;
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = size * dpr;
+        canvas.height = size * dpr;
+        canvas.style.width = size + 'px';
+        canvas.style.height = size + 'px';
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function drawCropCanvas() {
+        if (!pmState.image) return;
+        const canvas = document.getElementById('pmCanvas');
+        const ctx = canvas.getContext('2d');
+        const size = pmState.viewportSize;
+        const img = pmState.image;
+
+        const baseScale = Math.max(size / img.naturalWidth, size / img.naturalHeight);
+        const drawScale = baseScale * pmState.scale;
+        const w = img.naturalWidth * drawScale;
+        const h = img.naturalHeight * drawScale;
+        const x = (size - w) / 2 + pmState.offsetX;
+        const y = (size - h) / 2 + pmState.offsetY;
+
+        ctx.clearRect(0, 0, size, size);
+        ctx.fillStyle = '#F4F6F3';
+        ctx.fillRect(0, 0, size, size);
+        ctx.drawImage(img, x, y, w, h);
+    }
+
+    function clampCropOffsets() {
+        if (!pmState.image) return;
+        const size = pmState.viewportSize;
+        const img = pmState.image;
+        const baseScale = Math.max(size / img.naturalWidth, size / img.naturalHeight);
+        const drawScale = baseScale * pmState.scale;
+        const w = img.naturalWidth * drawScale;
+        const h = img.naturalHeight * drawScale;
+        const maxX = Math.max(0, (w - size) / 2);
+        const maxY = Math.max(0, (h - size) / 2);
+        pmState.offsetX = Math.min(maxX, Math.max(-maxX, pmState.offsetX));
+        pmState.offsetY = Math.min(maxY, Math.max(-maxY, pmState.offsetY));
+    }
+
+    function refreshLibraryPicker() {
+        const grid = document.getElementById('pmLibraryGrid');
+        const q = (document.getElementById('pmLibrarySearch').value || '').trim().toLowerCase();
+        const items = q
+            ? allMedia.filter(m =>
+                (m.title || '').toLowerCase().includes(q) ||
+                (m.tags || []).some(t => String(t).toLowerCase().includes(q)))
+            : allMedia;
+
+        if (!items.length) {
             grid.innerHTML = `
                 <div class="empty-state" style="grid-column: 1 / -1;">
                     <div class="empty-state-icon"><i class="far fa-images"></i></div>
-                    <h3>No pictures available</h3>
-                    <p>Upload pictures to the Media Library first.</p>
+                    <h3>${allMedia.length ? 'No matches' : 'No pictures in library'}</h3>
+                    <p>${allMedia.length ? 'Try a different search.' : 'Upload pictures in the Media Library first.'}</p>
                 </div>`;
             return;
         }
 
-        grid.innerHTML = items.map(m => `
-            <div class="media-picker-item" data-media-id="${escapeHtml(m.id)}">
-                ${m.url ? `<img src="${escapeHtml(m.url)}" alt="${escapeHtml(m.title || '')}" loading="lazy">`
+        grid.innerHTML = items.map(m => {
+            const selected = pmState.pickerItem && String(pmState.pickerItem.id) === String(m.id);
+            return `
+                <div class="media-picker-item ${selected ? 'selected' : ''}" data-media-id="${escapeHtml(m.id)}">
+                    ${m.url
+                        ? `<img src="${escapeHtml(m.url)}" alt="${escapeHtml(m.title || '')}" loading="lazy">`
                         : `<div class="placeholder"><i class="far fa-image"></i></div>`}
-            </div>
-        `).join('');
+                </div>`;
+        }).join('');
 
         grid.querySelectorAll('.media-picker-item').forEach(el => {
             el.addEventListener('click', () => {
                 grid.querySelectorAll('.media-picker-item').forEach(x => x.classList.remove('selected'));
                 el.classList.add('selected');
-                pickerSelectedMedia = allMedia.find(m => String(m.id) === String(el.dataset.mediaId));
-                document.getElementById('selectPictureBtn').disabled = !pickerSelectedMedia;
+                pmState.pickerItem = allMedia.find(m => String(m.id) === String(el.dataset.mediaId));
+                updatePmSaveButton();
             });
         });
     }
 
-    function filterMediaPicker() {
-        const q = document.getElementById('mediaSearch').value.trim().toLowerCase();
-        const filtered = q
-            ? allMedia.filter(m =>
-                (m.title || '').toLowerCase().includes(q) ||
-                (m.tags || []).some(t => String(t).toLowerCase().includes(q))
-              )
-            : allMedia;
-        renderMediaPicker(filtered);
+    async function savePicture() {
+        const saveBtn = document.getElementById('pmSaveBtn');
+        const original = saveBtn.innerHTML;
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Saving…';
+
+        try {
+            let url;
+            if (pmState.mode === 'library') {
+                url = pmState.pickerItem?.url;
+                if (!url) throw new Error('No picture selected');
+            } else {
+                url = await uploadCroppedImage();
+            }
+
+            if (pmState.contextTarget === 'drawer' && viewingRep) {
+                await apiPut(`/api/admin/course-reps/${viewingRep.id}`, { profile_picture: url });
+                await loadReps();
+                updateStats();
+                applyFilters();
+                const refreshed = allReps.find(r => String(r.id) === String(viewingRep.id));
+                if (refreshed) {
+                    viewingRep = refreshed;
+                    document.getElementById('profileAvatar').innerHTML =
+                        renderAvatar(refreshed) + '<div class="da-edit">Change</div>';
+                }
+                showToast('Picture updated', 'success');
+            } else {
+                selectedPicture = { url };
+                showPicturePreview(url);
+                showToast('Picture ready — save the rep to apply', 'success');
+            }
+
+            hideModal('pictureModal');
+        } catch (err) {
+            console.error('Picture save error:', err);
+            showPmError(err.message || 'Failed to save picture');
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = original;
+        }
+    }
+
+    async function uploadCroppedImage() {
+        const blob = await cropToBlob();
+        if (!blob) throw new Error('Could not crop the image');
+
+        const filename = `rep-${Date.now()}.jpg`;
+        const formData = new FormData();
+        formData.append('file', blob, filename);
+        formData.append('title', filename);
+        formData.append('type', 'picture');
+
+        const res = await fetch(`${API_BASE_URL}/api/admin/media/upload`, {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+        });
+        if (res.status === 401) {
+            showToast('Session expired', 'warning');
+            setTimeout(() => window.location.replace('adlog.html'), 1200);
+            throw new Error('Unauthorized');
+        }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || `Upload failed (HTTP ${res.status})`);
+        const item = data.data || data;
+        if (!item?.url) throw new Error('Upload succeeded but no URL was returned');
+
+        if (item.type === 'picture') allMedia.unshift(item);
+        return item.url;
+    }
+
+    function cropToBlob() {
+        return new Promise((resolve) => {
+            if (!pmState.image) return resolve(null);
+            const outSize = 512;
+            const out = document.createElement('canvas');
+            out.width = outSize;
+            out.height = outSize;
+            const ctx = out.getContext('2d');
+
+            const size = pmState.viewportSize;
+            const img = pmState.image;
+            const baseScale = Math.max(size / img.naturalWidth, size / img.naturalHeight);
+            const drawScale = baseScale * pmState.scale;
+            const w = img.naturalWidth * drawScale;
+            const h = img.naturalHeight * drawScale;
+            const x = (size - w) / 2 + pmState.offsetX;
+            const y = (size - h) / 2 + pmState.offsetY;
+
+            const k = outSize / size;
+            ctx.drawImage(img, x * k, y * k, w * k, h * k);
+
+            out.toBlob(blob => resolve(blob), 'image/jpeg', 0.9);
+        });
+    }
+
+    async function removeCurrentPicture() {
+        if (pmState.contextTarget === 'drawer' && viewingRep) {
+            try {
+                await apiPut(`/api/admin/course-reps/${viewingRep.id}`, { profile_picture: null });
+                await loadReps();
+                updateStats();
+                applyFilters();
+                viewingRep = allReps.find(r => String(r.id) === String(viewingRep.id)) || viewingRep;
+                document.getElementById('profileAvatar').innerHTML =
+                    renderAvatar(viewingRep) + '<div class="da-edit">Change</div>';
+                showToast('Picture removed', 'success');
+                hideModal('pictureModal');
+            } catch (err) {
+                showPmError(err.message || 'Failed to remove picture');
+            }
+        } else {
+            selectedPicture = null;
+            resetPicturePreview();
+            hideModal('pictureModal');
+        }
+    }
+
+    function resetPicturePreview() {
+        document.getElementById('picturePreview').innerHTML =
+            '<i class="far fa-user"></i><div class="pp-overlay"><i class="fas fa-camera"></i></div>';
+        document.getElementById('pictureTitle').textContent = 'No picture selected';
+        document.getElementById('pictureHint').textContent = 'Tap to upload, crop, or pick from the Media Library';
+        selectedPicture = null;
+    }
+
+    function showPicturePreview(url) {
+        document.getElementById('picturePreview').innerHTML =
+            `<img src="${escapeHtml(url)}" alt=""><div class="pp-overlay"><i class="fas fa-camera"></i></div>`;
+        document.getElementById('pictureTitle').textContent = 'Profile picture selected';
+        document.getElementById('pictureHint').textContent = 'Tap to change';
     }
 
     // ============================================================
@@ -2278,7 +2705,6 @@
         const status = document.getElementById('rStatus').value;
         const dept = selectedRepType === 'departmental' ? document.getElementById('rDepartment').value : null;
 
-        // Validation
         if (!fullName) {
             showToast('Full name is required', 'warning');
             document.getElementById('rFullName').focus();
@@ -2305,7 +2731,6 @@
             return;
         }
 
-        // Duplicate matric check
         const dupMatric = allReps.find(r =>
             String(r.id) !== String(editingRepId || '') &&
             r.matric_no.toLowerCase() === matric.toLowerCase() &&
@@ -2316,7 +2741,6 @@
             return;
         }
 
-        // Duplicate position check
         const dupPosition = allReps.find(r =>
             String(r.id) !== String(editingRepId || '') &&
             r.status === 'active' &&
@@ -2382,7 +2806,8 @@
         if (!r) return;
         viewingRep = r;
 
-        document.getElementById('profileAvatar').innerHTML = renderAvatar(r);
+        document.getElementById('profileAvatar').innerHTML =
+            renderAvatar(r) + '<div class="da-edit">Change</div>';
         document.getElementById('profileName').textContent = r.full_name || '—';
         document.getElementById('profileRole').textContent = r.rep_type === 'general'
             ? `${r.level} General Course Rep`
@@ -2692,22 +3117,104 @@
             });
         });
 
-        // Picture picker
-        document.getElementById('browseMediaBtn').addEventListener('click', (e) => {
-            e.stopPropagation();
-            openMediaPicker();
-        });
-        document.getElementById('picturePicker').addEventListener('click', (e) => {
-            if (!e.target.closest('#browseMediaBtn')) openMediaPicker();
+        // Picture tile (opens the new modal)
+        const pictureTile = document.getElementById('picturePicker');
+        pictureTile.addEventListener('click', () => openPictureModal('form'));
+        pictureTile.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPictureModal('form'); }
         });
 
-        // Media picker
-        document.getElementById('mediaSearch').addEventListener('input', filterMediaPicker);
-        document.getElementById('selectPictureBtn').addEventListener('click', () => {
-            if (!pickerSelectedMedia) return;
-            selectedPicture = { url: pickerSelectedMedia.url, id: pickerSelectedMedia.id };
-            showPicturePreview(pickerSelectedMedia.url);
-            hideModal('mediaPickerModal');
+        // Picture modal tabs
+        document.querySelectorAll('.pm-tab').forEach(tab => {
+            tab.addEventListener('click', () => switchPmTab(tab.dataset.tab));
+        });
+
+        // Dropzone → file input
+        const dropzone = document.getElementById('pmDropzone');
+        const fileInput = document.getElementById('pmFileInput');
+        dropzone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+        ['dragenter', 'dragover'].forEach(ev =>
+            dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.add('dragover'); }));
+        ['dragleave', 'drop'].forEach(ev =>
+            dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.remove('dragover'); }));
+        dropzone.addEventListener('drop', (e) => {
+            const file = e.dataTransfer?.files?.[0];
+            if (file) handleFile(file);
+        });
+
+        document.getElementById('pmChangeImage').addEventListener('click', () => {
+            fileInput.value = '';
+            fileInput.click();
+        });
+
+        // Crop interactions
+        const viewport = document.getElementById('pmCropViewport');
+        const zoomSlider = document.getElementById('pmZoom');
+
+        zoomSlider.addEventListener('input', () => {
+            pmState.scale = parseFloat(zoomSlider.value);
+            clampCropOffsets();
+            drawCropCanvas();
+        });
+
+        function startDrag(clientX, clientY) {
+            pmState.dragging = true;
+            pmState.dragStartX = clientX;
+            pmState.dragStartY = clientY;
+            pmState.dragBaseX = pmState.offsetX;
+            pmState.dragBaseY = pmState.offsetY;
+        }
+        function moveDrag(clientX, clientY) {
+            if (!pmState.dragging) return;
+            pmState.offsetX = pmState.dragBaseX + (clientX - pmState.dragStartX);
+            pmState.offsetY = pmState.dragBaseY + (clientY - pmState.dragStartY);
+            clampCropOffsets();
+            drawCropCanvas();
+        }
+        function endDrag() { pmState.dragging = false; }
+
+        viewport.addEventListener('mousedown', (e) => { e.preventDefault(); startDrag(e.clientX, e.clientY); });
+        window.addEventListener('mousemove', (e) => moveDrag(e.clientX, e.clientY));
+        window.addEventListener('mouseup', endDrag);
+        viewport.addEventListener('touchstart', (e) => {
+            if (e.touches[0]) startDrag(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: true });
+        window.addEventListener('touchmove', (e) => {
+            if (pmState.dragging && e.touches[0]) {
+                moveDrag(e.touches[0].clientX, e.touches[0].clientY);
+                e.preventDefault();
+            }
+        }, { passive: false });
+        window.addEventListener('touchend', endDrag);
+
+        viewport.addEventListener('wheel', (e) => {
+            if (!pmState.image) return;
+            e.preventDefault();
+            const factor = e.deltaY > 0 ? -0.08 : 0.08;
+            pmState.scale = Math.min(3, Math.max(1, pmState.scale + factor));
+            zoomSlider.value = pmState.scale;
+            clampCropOffsets();
+            drawCropCanvas();
+        }, { passive: false });
+
+        // Library search
+        document.getElementById('pmLibrarySearch').addEventListener('input', refreshLibraryPicker);
+
+        // Save / remove
+        document.getElementById('pmSaveBtn').addEventListener('click', savePicture);
+        document.getElementById('pmRemoveBtn').addEventListener('click', removeCurrentPicture);
+
+        // Drawer avatar → open picture modal
+        const drawerAvatar = document.getElementById('profileAvatar');
+        drawerAvatar.addEventListener('click', () => {
+            if (viewingRep) openPictureModal('drawer');
+        });
+        drawerAvatar.addEventListener('keydown', (e) => {
+            if ((e.key === 'Enter' || e.key === ' ') && viewingRep) {
+                e.preventDefault();
+                openPictureModal('drawer');
+            }
         });
 
         // Filters
@@ -2746,7 +3253,7 @@
         // Escape
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                ['repModal', 'mediaPickerModal', 'removeModal', 'logoutModal'].forEach(id => {
+                ['repModal', 'pictureModal', 'removeModal', 'logoutModal'].forEach(id => {
                     const el = document.getElementById(id);
                     if (el && el.classList.contains('active')) hideModal(id);
                 });
