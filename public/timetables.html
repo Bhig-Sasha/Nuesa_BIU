@@ -474,19 +474,40 @@ function timeKey(t){
   return String(hh).padStart(2,'0') + ':' + mm2;
 }
 
-/* ===== COURSE GROUP PARSER =====
-   Extracts the "group letter" (A, B, C, ...) from a course code like
-   "GEN 213 A" or "GEN 214 B". Codes without a trailing single letter
-   return an empty string — meaning they're treated as their own group. */
-function courseGroup(code){
-  var s = String(code||'').trim().toUpperCase();
-  var m = s.match(/\b([A-Z])\s*$/);
-  if(m && /\d/.test(s)) return m[1];
-  return '';
+/* ===== COURSE GROUP / DEPARTMENT PARSERS =====
+   The timetable mixes two kinds of courses:
+     1. GENERAL courses (GST, GEN, ENT, CHM, PHY, MTH, COS, BIO, ...)
+        — taken by everyone; they should only clash with themselves.
+     2. DEPARTMENT courses (CVE, MEE, EEE, CHE, ...)
+        — taken only by students of that department; they should only
+          clash with other courses from the SAME department at the same level.
+   We also honour a trailing group letter (e.g. GEN 213 A vs GEN 213 B). */
+
+/* Prefixes that are university-wide general courses. */
+var GENERAL_PREFIXES = ['GST','GEN','ENT','CHM','PHY','MTH','COS','BIO','STA','GEO','LAW','ENG','ACC','ECO','BUS','FRE','IGB','YOR','HIS','GNS','GST','CHM','PHY','MTH'];
+
+function coursePrefix(code){
+  var m = String(code||'').trim().toUpperCase().match(/^([A-Z]{2,4})/);
+  return m ? m[1] : '';
 }
-/* Strips the trailing group letter for display grouping if needed */
-function courseBase(code){
-  return String(code||'').trim().toUpperCase().replace(/\s+[A-Z]\s*$/,'');
+function courseGroupLetter(code){
+  var m = String(code||'').trim().toUpperCase().match(/\b([A-Z])\s*$/);
+  return m ? m[1] : '';
+}
+/* Returns a key that identifies the "ownership bucket" of a course.
+   - General course → 'GEN:' + prefix + ':' + groupLetter
+       (so GST 312 only clashes with other GST 312 sections)
+   - Department course → 'DEP:' + prefix + ':' + groupLetter
+       (so CVE 311 only clashes with other CVE courses at the same level)
+   The level is included separately by the caller. */
+function courseBucket(c){
+  var prefix = coursePrefix(c.code);
+  var group = courseGroupLetter(c.code);
+  var isGeneral = GENERAL_PREFIXES.indexOf(prefix) !== -1;
+  var kind = isGeneral ? 'GEN' : 'DEP';
+  // For general courses, bucket by exact prefix + group letter
+  // For department courses, bucket by department prefix + group letter
+  return kind + ':' + prefix + ':' + (group || '—');
 }
 
 /* ===== NORMALISE ===== */
@@ -582,25 +603,28 @@ function dayList(rows, day){
   });
 }
 
-/* Conflict detection is scoped by LEVEL **and** COURSE GROUP.
+/* Conflict detection is now scoped by LEVEL + COURSE OWNERSHIP.
    Two entries clash only if:
      - they share the same level (e.g. 200)
-     - they share the same course group letter (e.g. both are "A" or both "B")
+     - they share the same ownership bucket:
+         * GENERAL course (GST/GEN/ENT/CHM/...) → same prefix + same group letter
+           e.g. GST 312 only clashes with GST 312; GEN 213 A only with GEN 213 A
+         * DEPARTMENT course (CVE/MEE/EEE/...) → same department prefix + same group letter
+           e.g. CVE 311 only with CVE 311; MEE 419 only with MEE 419
      - and their times overlap on the same weekday.
-   So "GEN 213 A" and "GEN 214 B" at 1:00 PM do NOT clash — different groups.
-   "GEN 213 A" and "GEN 213 A" (same course, same group) at overlapping times DO clash. */
+
+   So GST 312 (general) and CVE 311 (Civil) at 8:00 AM do NOT clash.
+   GST 312 and GEN 216 A at 8:00 AM do NOT clash (different general prefixes).
+   Two GEN 213 A entries at overlapping times DO clash. */
 function detectConflicts(rows){
   var out=[];
-  var buckets={};   // key = level + "|" + group
+  var buckets={};   // key = level + "|" + bucket
   rows.forEach(function(c){
     var lvl = c.level || '__';
-    var grp = courseGroup(c.code) || '—';
-    var key = lvl + '|' + grp;
+    var key = lvl + '|' + courseBucket(c);
     (buckets[key] = buckets[key] || []).push(c);
   });
   Object.keys(buckets).forEach(function(key){
-    var parts = key.split('|');
-    var lvl = parts[0], grp = parts[1];
     var list = buckets[key];
     WEEKDAYS.forEach(function(d){
       var dayItems = list.filter(function(c){return c.day===d});
@@ -611,7 +635,7 @@ function detectConflicts(rows){
         for(var j=i+1;j<dayItems.length;j++){
           var ai=toMin(dayItems[i].start||dayItems[i].time), ae=toMin(dayItems[i].end||dayItems[i].time);
           var bi=toMin(dayItems[j].start||dayItems[j].time), be=toMin(dayItems[j].end||dayItems[j].time);
-          if(ai<be && bi<ae) out.push({level:lvl, group:grp, day:d, a:dayItems[i], b:dayItems[j]});
+          if(ai<be && bi<ae) out.push({day:d, a:dayItems[i], b:dayItems[j]});
         }
       }
     });
