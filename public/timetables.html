@@ -158,6 +158,56 @@ h1,h2,h3{font-weight:900;line-height:1.2}
  .exam-day-head h3{font-size:.85rem}
 }
 
+/* ===== WEEKLY SCHEDULE GRID ===== */
+.ws-wrap{overflow-x:auto}
+.ws-grid{--label:96px;--hour:112px;min-width:calc(96px + 10 * 112px)}
+.ws-head,.ws-row{display:grid;grid-template-columns:var(--label) 1fr}
+.ws-head{border-bottom:1px solid var(--slate-200);background:var(--slate-50)}
+.ws-corner,.ws-day{position:sticky;left:0;z-index:3}
+.ws-corner{background:var(--slate-100);padding:.75rem 1rem;font-family:'Roboto Mono',monospace;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--slate-500);border-right:1px solid var(--slate-200)}
+.ws-hours{display:grid}
+.ws-hours span{padding:.75rem 0 .75rem .5rem;font-family:'Roboto Mono',monospace;font-size:.65rem;color:var(--slate-500);border-left:1px solid var(--slate-200)}
+.ws-row{border-top:1px solid var(--slate-200)}
+.ws-row:first-of-type{border-top:none}
+.ws-row.today{background:rgba(16,185,129,.04)}
+.ws-day{background:#fff;border-right:1px solid var(--slate-200);padding:1rem;display:flex;flex-direction:column;gap:.35rem;justify-content:center;font-family:'Roboto Mono',monospace;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500)}
+.ws-row.today .ws-day{background:var(--emerald-50);color:var(--emerald-700)}
+.ws-track{display:grid;gap:.5rem 0;padding:.75rem 0;min-height:80px;align-items:stretch;background-image:linear-gradient(to right,var(--slate-200) 1px,transparent 1px)}
+.ws-slot{margin:0 3px;padding:.65rem .75rem;border-radius:.5rem;border:1px solid var(--slate-200);border-left:4px solid var(--emerald-500);background:#fff;box-shadow:var(--shadow-md);min-width:0;overflow:hidden;transition:box-shadow .2s}
+.ws-slot:hover{box-shadow:var(--shadow-xl)}
+.ws-slot.clash{box-shadow:0 0 0 2px var(--amber-500)}
+.ws-slot-time{font-family:'Roboto Mono',monospace;font-size:.6rem;font-weight:700;color:var(--slate-700);margin-bottom:.25rem;display:flex;justify-content:space-between;align-items:center;gap:.35rem;white-space:nowrap}
+.ws-slot-time i{color:var(--amber-500)}
+.ws-slot-code{font-weight:800;font-size:.8rem;color:var(--slate-800);line-height:1.2;margin-bottom:.15rem}
+.ws-slot-title{font-size:.68rem;color:var(--slate-500);line-height:1.2;margin-bottom:.35rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ws-slot-venue{font-family:'Roboto Mono',monospace;font-size:.6rem;color:var(--slate-500);display:flex;align-items:center;gap:.25rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ws-slot-venue i{color:var(--emerald-600)}
+.ws-free{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:.5rem;font-family:'Roboto Mono',monospace;font-size:.7rem;color:var(--slate-300)}
+
+/* ===== LIST VIEW ===== */
+.ws-list{display:grid;gap:1.5rem}
+.ws-list-day{border:2px solid var(--emerald-200);border-radius:.5rem;overflow:hidden;background:#fff}
+.ws-list-day-head{display:flex;justify-content:space-between;align-items:center;gap:.75rem;padding:.75rem 1rem;background:linear-gradient(135deg,var(--emerald-600),var(--emerald-700));color:#fff;flex-wrap:wrap}
+.ws-list-day-head h3{font-size:.95rem;font-weight:800;color:#fff}
+.ws-list-day-head .count{background:rgba(255,255,255,.2);color:#fff}
+.ws-list-items{display:grid;gap:0}
+.ws-list-item{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.75rem;padding:.75rem 1rem;border-bottom:1px solid var(--slate-200)}
+.ws-list-item:last-child{border-bottom:none}
+.ws-list-item.clash{background:var(--amber-100)}
+.ws-list-time{display:flex;flex-direction:column;align-items:center;gap:.1rem;min-width:80px;padding:.35rem .5rem;background:var(--emerald-100);border-radius:.4rem;font-family:'Roboto Mono',monospace;font-weight:700;color:var(--emerald-700);text-align:center}
+.ws-list-time .start{font-size:.8rem;line-height:1.1}
+.ws-list-time .end{font-size:.6rem;color:var(--emerald-500)}
+.ws-list-info{min-width:0}
+.ws-list-info .code{font-size:.9rem;font-weight:800;color:var(--slate-800);line-height:1.2;margin-bottom:.15rem;display:flex;align-items:center;gap:.35rem;flex-wrap:wrap}
+.ws-list-info .title{font-size:.75rem;color:var(--slate-500);line-height:1.3}
+.ws-list-venue{font-family:'Roboto Mono',monospace;font-size:.7rem;color:var(--slate-500);display:flex;align-items:center;gap:.35rem;grid-column:1/-1;margin-top:-.15rem}
+.ws-list-venue i{color:var(--emerald-600)}
+.clash-tag{background:var(--amber-100);color:var(--amber-700);font-family:'Roboto Mono',monospace;font-size:.6rem;font-weight:800;text-transform:uppercase;padding:.15rem .4rem;border-radius:9999px;display:inline-flex;align-items:center;gap:.25rem}
+@media(max-width:640px){
+ .ws-list-item{grid-template-columns:auto 1fr;gap:.6rem;padding:.65rem .75rem}
+ .ws-list-item .ws-list-type{grid-column:2;justify-self:start;margin-top:.25rem}
+}
+
 /* ANNOUNCEMENTS */
 .ann{display:flex;gap:1rem;padding:1.25rem 1.5rem;border:2px solid var(--amber-300);border-left:6px solid var(--amber-500);border-radius:.5rem;background:#fffbeb;margin-top:1.5rem}
 .ann i{color:var(--amber-500);font-size:1.25rem;margin-top:.2rem}
@@ -236,7 +286,7 @@ h1,h2,h3{font-weight:900;line-height:1.2}
   <div class="info-card"><div class="info-icon"><i class="fas fa-circle-check"></i></div><div><div class="info-label">Schedule Status</div><div class="info-value" id="infoStatus">—</div></div></div>
  </div></div></section>
 
- <!-- 3. CLASS TIMETABLE -->
+ <!-- 3. CLASS TIMETABLE — replaced with weekly schedule -->
  <section class="tt-section" id="class-timetable"><div class="container">
   <div class="sec-head">
    <div><span class="tag tag-emerald">Lectures &amp; Practicals</span><h2>Class Timetable</h2><p>Weekly lecture and practical schedule — all levels</p></div>
@@ -246,6 +296,7 @@ h1,h2,h3{font-weight:900;line-height:1.2}
    <div class="filters">
     <div><label for="classLevel">Level</label><select id="classLevel"></select></div>
     <div><label for="classSem">Semester</label><select id="classSem"></select></div>
+    <div><label for="classView">View</label><select id="classView"><option value="grid">Grid</option><option value="list">List</option></select></div>
    </div>
    <div class="preview-title">Weekly Schedule Preview</div>
    <div id="classBody"></div>
@@ -443,6 +494,23 @@ function normalise(res){
  });
 }
 
+/* ===== WEEKLY SCHEDULE DATA (400L 1st Semester) =====
+   These entries mirror the exact weekly schedule you provided.
+   Day names, start/end times, course codes, titles, and venues.
+   The "type" is 'class' or 'test' (for tutorial).
+   These are used when the API returns no classes for level 400. */
+var WEEKLY_400_1ST = [
+  {day:'Monday',start:'08:00',end:'10:00',code:'CHE 401',title:'Chemical Reaction Engineering',venue:'LT 2',type:'class'},
+  {day:'Monday',start:'09:00',end:'11:00',code:'CHE 403',title:'Process Control',venue:'LT 1',type:'class'},
+  {day:'Monday',start:'14:00',end:'16:00',code:'ENG 405',title:'Engineering Management',venue:'LT 3',type:'class'},
+  {day:'Tuesday',start:'10:00',end:'12:00',code:'CHE 405',title:'Plant Design',venue:'Design Studio',type:'class'},
+  {day:'Wednesday',start:'08:00',end:'10:00',code:'CHE 407',title:'Mass Transfer II',venue:'LT 2',type:'class'},
+  {day:'Wednesday',start:'12:00',end:'13:00',code:'CHE 407',title:'Mass Transfer II Tutorial',venue:'LT 2',type:'test'},
+  {day:'Wednesday',start:'14:00',end:'16:00',code:'ENG 401',title:'Technical Writing',venue:'LT 4',type:'class'},
+  {day:'Thursday',start:'08:00',end:'11:00',code:'CHE 409',title:'Process Lab',venue:'Chem Lab',type:'class'},
+  {day:'Friday',start:'10:00',end:'12:00',code:'CHE 411',title:'Petroleum Refining',venue:'LT 1',type:'class'}
+];
+
 /* ===== RENDER ===== */
 var DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 function uniq(arr){return arr.filter(function(v,i){return v&&arr.indexOf(v)===i}).sort()}
@@ -454,18 +522,138 @@ function fillSelect(id,values,allLabel,suffix){
 function setStatus(id,s){var el=document.getElementById(id);if(s){el.className='status '+s;el.textContent=s;el.style.display=''}else el.style.display='none'}
 function msg(icon,text){return '<div class="empty"><i class="fas '+icon+'"></i>'+text+'</div>'}
 
-function renderClasses(){
- var l=document.getElementById('classLevel').value,s=document.getElementById('classSem').value;
- var rows=state.classes.filter(function(c){return(!l||c.level===l)&&(!s||c.sem===s)});
- var html='';
- DAYS.forEach(function(d){
-  var r=rows.filter(function(c){return c.day===d});if(!r.length)return;
-  html+='<div class="day"><div class="day-head"><h3>'+d+'</h3><span class="count">'+r.length+(r.length>1?' classes':' class')+'</span></div><div class="slots">'+
-  r.map(function(c){return '<div class="slot"><div class="code">'+esc(c.code)+'</div><div class="dept">'+esc(c.dept)+'</div><div class="meta"><i class="fas fa-clock"></i><b>'+esc(c.time)+'</b></div><div class="meta"><i class="fas fa-map-marker-alt"></i>'+esc(c.venue)+'</div></div>'}).join('')+'</div></div>';
- });
- document.getElementById('classBody').innerHTML=html||msg('fa-calendar-times',state.classes.length?'No classes found for this selection.':'No class timetable has been published yet.');
+/* ===== WEEKLY SCHEDULE RENDERERS ===== */
+function toMin(t){var m=String(t).match(/(\d{1,2}):(\d{2})/);if(!m)return 0;return parseInt(m[1],10)*60+parseInt(m[2],10);}
+
+function filterSchedule(level,sem){
+  var rows = state.classes.filter(function(c){return(!level||c.level===level)&&(!sem||c.sem===sem)});
+  /* If no API data for 400L/1st, fall back to the provided weekly schedule */
+  if(!rows.length && (!level||level==='400') && (!sem||sem==='1st')){
+    rows = WEEKLY_400_1ST.map(function(r){
+      return {day:r.day, code:r.code, dept:r.title, time:prettyTime(r.start)+' – '+prettyTime(r.end),
+              start:r.start, end:r.end, venue:r.venue, level:'400', sem:'1st', type:r.type};
+    });
+  }
+  return rows;
 }
 
+function dayList(rows, day){
+  return rows.filter(function(c){return c.day===day}).sort(function(a,b){
+    var ta=a.start||timeKey(a.time), tb=b.start||timeKey(b.time);
+    return ta.localeCompare(tb);
+  });
+}
+
+function detectConflicts(rows){
+  var out=[];
+  DAYS.forEach(function(d){
+    var list=dayList(rows,d);
+    for(var i=0;i<list.length;i++){
+      for(var j=i+1;j<list.length;j++){
+        var ai=toMin(list[i].start||list[i].time), ae=toMin(list[i].end||list[i].time);
+        var bi=toMin(list[j].start||list[j].time), be=toMin(list[j].end||list[j].time);
+        if(ai<be && bi<ae) out.push({day:d, a:list[i], b:list[j]});
+      }
+    }
+  });
+  return out;
+}
+
+function renderWeeklyGrid(rows){
+  var minH=8,maxH=18;
+  rows.forEach(function(c){
+    var s=toMin(c.start||c.time), e=toMin(c.end||c.time);
+    minH=Math.min(minH,Math.floor(s/60));
+    maxH=Math.max(maxH,Math.ceil(e/60));
+  });
+  var hours=maxH-minH, cols=hours*2, origin=minH*60;
+  var bg='background-size:calc(100% / '+hours+') 100%';
+  var conflicts=detectConflicts(rows);
+  var clashSet={};
+  conflicts.forEach(function(c){clashSet[c.a.code+'|'+c.a.start+'|'+c.a.day]=true;clashSet[c.b.code+'|'+c.b.start+'|'+c.b.day]=true;});
+
+  var head='<div class="ws-head">'
+    +'<div class="ws-corner">Day / Time</div>'
+    +'<div class="ws-hours" style="grid-template-columns:repeat('+hours+',1fr)">'
+    +Array.from({length:hours},function(_,i){return '<span>'+prettyTime(String(minH+i).padStart(2,'0')+':00')+'</span>'}).join('')
+    +'</div></div>';
+
+  var todayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date().getDay()];
+
+  var body=DAYS.map(function(day){
+    var list=dayList(rows,day);
+    var isToday=day===todayName;
+    var laneEnds=[], placed=[];
+    list.forEach(function(c){
+      var s=toMin(c.start||c.time), e=toMin(c.end||c.time);
+      var lane=laneEnds.findIndex(function(end){return end<=s});
+      if(lane===-1) lane=laneEnds.length;
+      laneEnds[lane]=e;
+      var colStart=Math.floor((s-origin)/30)+1;
+      var colEnd=Math.max(colStart+1,Math.ceil((e-origin)/30)+1);
+      placed.push({c:c,lane:lane,colStart:colStart,colEnd:colEnd});
+    });
+    var lanes=Math.max(1,laneEnds.length);
+    var cells = placed.length ? placed.map(function(p){
+      var c=p.c;
+      var clash=clashSet[c.code+'|'+c.start+'|'+c.day];
+      return '<div class="ws-slot '+(c.type==='test'?'t-test':'t-class')+' '+(clash?'clash':'')+'" style="grid-column:'+p.colStart+' / '+p.colEnd+';grid-row:'+(p.lane+1)+'">'
+        +'<div class="ws-slot-time"><span>'+prettyTime(c.start||c.time)+' - '+prettyTime(c.end||c.time)+'</span>'+(clash?'<i class="fas fa-triangle-exclamation"></i>':'')+'</div>'
+        +'<div class="ws-slot-code">'+esc(c.code)+'</div>'
+        +'<div class="ws-slot-title">'+esc(c.dept)+'</div>'
+        +'<div class="ws-slot-venue"><i class="fas fa-map-marker-alt"></i> '+esc(c.venue)+'</div>'
+        +'</div>';
+    }).join('') : '<div class="ws-free"><i class="fas fa-book-open"></i> Free</div>';
+
+    return '<div class="ws-row '+(isToday?'today':'')+'">'
+      +'<div class="ws-day"><span>'+day.slice(0,3)+(isToday?' <i class="fas fa-circle" style="font-size:.4rem;color:var(--emerald-500)"></i>':'')+'</span><span style="font-weight:400;font-size:.65rem;text-transform:none;letter-spacing:0">'+day+'</span></div>'
+      +'<div class="ws-track" style="grid-template-columns:repeat('+cols+',1fr);grid-template-rows:repeat('+lanes+',auto);'+bg+'">'+cells+'</div>'
+      +'</div>';
+  }).join('');
+
+  return '<div class="ws-wrap"><div class="ws-grid">'+head+body+'</div></div>';
+}
+
+function renderWeeklyList(rows){
+  var conflicts=detectConflicts(rows);
+  var clashSet={};
+  conflicts.forEach(function(c){clashSet[c.a.code+'|'+c.a.start+'|'+c.a.day]=true;clashSet[c.b.code+'|'+c.b.start+'|'+c.b.day]=true;});
+
+  var html='<div class="ws-list">';
+  DAYS.forEach(function(day){
+    var list=dayList(rows,day);
+    if(!list.length) return;
+    html+='<div class="ws-list-day">'
+      +'<div class="ws-list-day-head"><h3>'+day+'</h3><span class="count">'+list.length+(list.length===1?' class':' classes')+'</span></div>'
+      +'<div class="ws-list-items">'
+      +list.map(function(c){
+        var clash=clashSet[c.code+'|'+c.start+'|'+c.day];
+        return '<div class="ws-list-item '+(clash?'clash':'')+'">'
+          +'<div class="ws-list-time"><span class="start">'+prettyTime(c.start||c.time)+'</span><span class="end">'+prettyTime(c.end||c.time)+'</span></div>'
+          +'<div class="ws-list-info"><div class="code">'+esc(c.code)+(clash?' <span class="clash-tag"><i class="fas fa-triangle-exclamation"></i> Conflict</span>':'')+'</div><div class="title">'+esc(c.dept)+'</div></div>'
+          +'<div class="ws-list-venue"><i class="fas fa-map-marker-alt"></i> '+esc(c.venue)+'</div>'
+          +'</div>';
+      }).join('')
+      +'</div></div>';
+  });
+  html+='</div>';
+  return html;
+}
+
+function renderClasses(){
+  var l=document.getElementById('classLevel').value;
+  var s=document.getElementById('classSem').value;
+  var view=document.getElementById('classView').value;
+  var rows=filterSchedule(l,s);
+
+  if(!rows.length){
+    document.getElementById('classBody').innerHTML=msg('fa-calendar-times',state.classes.length?'No classes found for this selection.':'No class timetable has been published yet.');
+    return;
+  }
+  document.getElementById('classBody').innerHTML = view==='list' ? renderWeeklyList(rows) : renderWeeklyGrid(rows);
+}
+
+/* ===== EXAM RENDERERS (unchanged) ===== */
 function fillExamDaySelect(){
  var el=document.getElementById('examDay');
  var cur=el.value;
@@ -583,8 +771,8 @@ function render(){
  setStatus('classStatus',m.classStatus);setStatus('examStatus',m.examStatus);
  document.getElementById('class-timetable').classList.toggle('archived',m.classStatus==='archived');
  document.getElementById('exam-timetable').classList.toggle('archived',m.examStatus==='archived');
- fillSelect('classLevel',uniq(state.classes.map(function(c){return c.level})),'All levels',' Level');
- fillSelect('classSem',uniq(state.classes.map(function(c){return c.sem})),'All semesters','');
+ fillSelect('classLevel',uniq(state.classes.map(function(c){return c.level}).concat(['100','200','300','400','500'])),'All levels',' Level');
+ fillSelect('classSem',uniq(state.classes.map(function(c){return c.sem}).concat(['1st','2nd'])),'All semesters','');
  fillSelect('examLevel',uniq(state.exams.map(function(c){return c.level})),'All levels',' Level');
  fillSelect('examSem',uniq(state.exams.map(function(c){return c.sem})),'All semesters','');
  fillExamDaySelect();
@@ -598,6 +786,7 @@ function render(){
  document.getElementById(p+'Level').addEventListener('change',fn);
  document.getElementById(p+'Sem').addEventListener('change',fn);
 });
+document.getElementById('classView').addEventListener('change',renderClasses);
 document.getElementById('examDay').addEventListener('change',renderExams);
 
 document.querySelectorAll('[data-pdf]').forEach(function(b){
