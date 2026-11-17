@@ -315,46 +315,69 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')toggleMenu(f
 
 /* ===== BACKEND ===== */
 var API_BASE_URL='https://nuesa-biu-pjp0.onrender.com';
-var ENDPOINTS={timetable:'/api/timetable'};
+var TIMETABLE_ENDPOINT='/api/timetable';
 function fetchAPI(ep){return fetch(API_BASE_URL+ep,{headers:{Accept:'application/json'}}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})}
 
 var state={classes:[],exams:[],announcements:[],meta:{}};
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function pick(o){for(var i=1;i<arguments.length;i++){var v=o[arguments[i]];if(v!=null&&v!=='')return v}return ''}
-function fmtDate(v){if(!v)return 'TBA';var d=new Date(v);if(isNaN(d))return String(v);return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}
 function fmtDay(v){var s=String(v||'');return s.charAt(0).toUpperCase()+s.slice(1).toLowerCase()}
 function statusOf(v){v=String(v||'').toLowerCase();return ['active','upcoming','archived'].indexOf(v)>-1?v:''}
 
-/* Robust date normaliser */
+/* ===== DATE HELPERS (timezone-safe, pure math) ===== */
 var MONTHS_MAP={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
 function isoDate(v){
   if(!v)return '';
-  if(v instanceof Date && !isNaN(v))return v.toISOString().slice(0,10);
+  if(v instanceof Date && !isNaN(v)){
+    return v.getFullYear()+'-'+String(v.getMonth()+1).padStart(2,'0')+'-'+String(v.getDate()).padStart(2,'0');
+  }
   var s=String(v).trim();if(!s)return '';
   var d=new Date(s);
-  if(!isNaN(d))return d.toISOString().slice(0,10);
-  d=new Date(s.replace(/\s*\(.*?\)\s*/g,'').replace(/Z$/,''));
-  if(!isNaN(d))return d.toISOString().slice(0,10);
-  var t=s.replace(/\([^)]*\)/g,'').trim();
-  var m=t.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
+  if(!isNaN(d)) return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  var t=s.replace(/\([^)]*\)/g,'').replace(/Z$/,'').trim();
+  var m=t.match(/^(\d{4})[-\/\.](\d{1,2})[-\/\.](\d{1,2})/);
+  if(m)return m[1]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[3]).padStart(2,'0');
+  m=t.match(/^(\d{1,2})[-\/\.](\d{1,2})[-\/\.](\d{4})/);
+  if(m)return m[3]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[1]).padStart(2,'0');
+  m=t.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
   if(m){var mon=MONTHS_MAP[m[2].toLowerCase().slice(0,3)];if(mon)return m[3]+'-'+String(mon).padStart(2,'0')+'-'+String(m[1]).padStart(2,'0');}
   m=t.match(/^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})/);
   if(m){var mon2=MONTHS_MAP[m[1].toLowerCase().slice(0,3)];if(mon2)return m[3]+'-'+String(mon2).padStart(2,'0')+'-'+String(m[2]).padStart(2,'0');}
-  m=t.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/);
-  if(m)return m[3]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[1]).padStart(2,'0');
-  m=t.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/);
-  if(m)return m[1]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[3]).padStart(2,'0');
   return '';
+}
+function parseISOParts(iso){
+  if(!iso||!/^\d{4}-\d{2}-\d{2}$/.test(iso))return null;
+  var p=iso.split('-');
+  return{y:parseInt(p[0],10),m:parseInt(p[1],10),d:parseInt(p[2],10)};
+}
+function toISO(parts){
+  return parts.y+'-'+String(parts.m).padStart(2,'0')+'-'+String(parts.d).padStart(2,'0');
+}
+function addDaysISO(iso,n){
+  var p=parseISOParts(iso);if(!p)return '';
+  var dim=[31,28,31,30,31,30,31,31,30,31,30,31];
+  if((p.y%4===0&&p.y%100!==0)||p.y%400===0)dim[1]=29;
+  p.d+=n;
+  while(p.d>dim[p.m-1]){p.d-=dim[p.m-1];p.m+=1;if(p.m>12){p.m=1;p.y+=1;}}
+  while(p.d<1){p.m-=1;if(p.m<1){p.m=12;p.y-=1;}p.d+=dim[p.m-1];}
+  return toISO(p);
+}
+function todayISO(){
+  var d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
 function longDayLabel(iso){
   if(!iso)return '';
-  var d=new Date(iso+'T00:00:00');
-  if(isNaN(d))return iso;
+  var p=parseISOParts(iso);if(!p)return iso;
+  var d=new Date(p.y,p.m-1,p.d);
   return d.toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'long'});
 }
-function addDaysISO(iso,n){
-  var d=new Date(iso+'T00:00:00');d.setDate(d.getDate()+n);
-  return d.toISOString().slice(0,10);
+function fmtDate(iso){
+  if(!iso)return 'TBA';
+  var p=parseISOParts(iso);
+  if(!p)return String(iso);
+  var d=new Date(p.y,p.m-1,p.d);
+  return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
 }
 function prettyTime(t){
   if(!t)return '';
@@ -371,16 +394,6 @@ function timeKey(t){
   if(/pm/i.test(t)&&h<12)h+=12;
   if(/am/i.test(t)&&h===12)h=0;
   return String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0');
-}
-
-/* ===== THEME ===== */
-function applyTheme(res){
- var t=(res&&(res.data||res))||{};var colors=t.colors||t.variables||t;
- Object.keys(colors).forEach(function(k){
-  var v=colors[k];if(typeof v!=='string')return;
-  var name=k.indexOf('--')===0?k:'--'+k.replace(/_/g,'-');
-  document.documentElement.style.setProperty(name,v);
- });
 }
 
 /* ===== NORMALISE ===== */
@@ -405,8 +418,7 @@ function normalise(res){
   var rawDate=pick(e,'date','exam_date');
   var startRaw=pick(e,'start_time','time');
   var endRaw=pick(e,'end_time');
-  // If time is a range like "10:00 - 12:00", split it
-  var start=startRaw, end=endRaw;
+  var start=startRaw,end=endRaw;
   if(!end && startRaw && /[-–—]/.test(startRaw)){
     var parts=startRaw.split(/[-–—]/);
     start=parts[0].trim();
@@ -416,7 +428,6 @@ function normalise(res){
    code:pick(e,'course_code','code'),
    title:pick(e,'course_title','title','name'),
    status:pick(e,'status')||'Scheduled',
-   date:fmtDate(rawDate),
    dateISO:isoDate(rawDate),
    start:start,
    end:end,
@@ -455,7 +466,6 @@ function renderClasses(){
  document.getElementById('classBody').innerHTML=html||msg('fa-calendar-times',state.classes.length?'No classes found for this selection.':'No class timetable has been published yet.');
 }
 
-/* Fill the "Start From" dropdown with distinct exam dates */
 function fillExamDaySelect(){
  var el=document.getElementById('examDay');
  var cur=el.value;
@@ -496,19 +506,26 @@ function renderExams(){
  var start=document.getElementById('examDay').value;
  var summary=document.getElementById('examSummary');
 
- // Default: show ALL levels (no level filter applied)
  var pool=state.exams.filter(function(c){return(!l||c.level===l)&&(!s||c.sem===s)});
  var validPool=pool.filter(function(e){return !!e.dateISO});
  var missingDates=pool.length-validPool.length;
 
- if(!start && validPool.length){
-  var dates=uniq(validPool.map(function(e){return e.dateISO})).sort();
-  start=dates[0];
+ if(!validPool.length){
+  summary.style.display='none';
+  document.getElementById('examBody').innerHTML=msg('fa-file-circle-xmark',state.exams.length?'No examination timetable has been published yet.':'No exam data available.');
+  return;
+ }
+
+ var allDates=uniq(validPool.map(function(e){return e.dateISO})).sort();
+ if(!start||allDates.indexOf(start)===-1){
+  var today=todayISO();
+  var futureDates=allDates.filter(function(d){return d>=today});
+  start=futureDates.length?futureDates[0]:allDates[0];
   document.getElementById('examDay').value=start;
  }
 
  var day1=start;
- var day2=start?addDaysISO(start,1):'';
+ var day2=addDaysISO(start,1);
 
  var rows1=validPool.filter(function(e){return e.dateISO===day1});
  var rows2=day2?validPool.filter(function(e){return e.dateISO===day2}):[];
@@ -516,39 +533,40 @@ function renderExams(){
  rows1.sort(function(a,b){return timeKey(a.start||a.time).localeCompare(timeKey(b.start||b.time))});
  rows2.sort(function(a,b){return timeKey(a.start||a.time).localeCompare(timeKey(b.start||b.time))});
 
- if(start && (rows1.length+rows2.length)){
+ if(rows1.length+rows2.length>0){
   summary.style.display='flex';
   var parts=[];
   if(rows1.length)parts.push('<strong>'+rows1.length+'</strong> on <strong>'+esc(longDayLabel(day1))+'</strong>');
   if(rows2.length)parts.push('<strong>'+rows2.length+'</strong> on <strong>'+esc(longDayLabel(day2))+'</strong>');
-  summary.innerHTML='<span class="dot"></span><span>Showing '+parts.join(' &amp; ')+'</span><span class="grow"></span><span>'+validPool.length+' total'+(missingDates>0?' ('+missingDates+' undated)':'')+'</span>';
+  summary.innerHTML='<span class="dot"></span><span>Showing '+parts.join(' &amp; ')+'</span>'
+   +'<span class="grow"></span><span>'+validPool.length+' total'+(missingDates>0?' ('+missingDates+' undated)':'')+'</span>';
  } else {
   summary.style.display='none';
  }
 
- if(!rows1.length && !rows2.length){
-  document.getElementById('examBody').innerHTML=msg('fa-file-circle-xmark',validPool.length?'No examinations on these two days for this selection.':'No examination timetable has been published yet.');
+ if(!rows1.length&&!rows2.length){
+  document.getElementById('examBody').innerHTML=msg('fa-file-circle-xmark','No examinations on these two days for this selection.');
   return;
  }
 
  var html='<div class="exam-days">';
  if(rows1.length){
   html+='<div class="exam-day">'
-      + '<div class="exam-day-head">'
-      + '<h3>'+esc(longDayLabel(day1))+'<small>'+esc(fmtDate(day1))+'</small></h3>'
-      + '<span class="exam-day-count">'+rows1.length+' exam'+(rows1.length===1?'':'s')+'</span>'
-      + '</div>'
-      + '<ul class="exam-list">'+rows1.map(renderExamItem).join('')+'</ul>'
-      + '</div>';
+      +'<div class="exam-day-head">'
+      +'<h3>'+esc(longDayLabel(day1))+'<small>'+esc(fmtDate(day1))+'</small></h3>'
+      +'<span class="exam-day-count">'+rows1.length+' exam'+(rows1.length===1?'':'s')+'</span>'
+      +'</div>'
+      +'<ul class="exam-list">'+rows1.map(renderExamItem).join('')+'</ul>'
+      +'</div>';
  }
  if(rows2.length){
   html+='<div class="exam-day">'
-      + '<div class="exam-day-head">'
-      + '<h3>'+esc(longDayLabel(day2))+'<small>'+esc(fmtDate(day2))+'</small></h3>'
-      + '<span class="exam-day-count">'+rows2.length+' exam'+(rows2.length===1?'':'s')+'</span>'
-      + '</div>'
-      + '<ul class="exam-list">'+rows2.map(renderExamItem).join('')+'</ul>'
-      + '</div>';
+      +'<div class="exam-day-head">'
+      +'<h3>'+esc(longDayLabel(day2))+'<small>'+esc(fmtDate(day2))+'</small></h3>'
+      +'<span class="exam-day-count">'+rows2.length+' exam'+(rows2.length===1?'':'s')+'</span>'
+      +'</div>'
+      +'<ul class="exam-list">'+rows2.map(renderExamItem).join('')+'</ul>'
+      +'</div>';
  }
  html+='</div>';
  document.getElementById('examBody').innerHTML=html;
@@ -559,7 +577,8 @@ function render(){
  document.getElementById('heroSession').textContent=m.session?m.session+' Academic Session':'Academic Session';
  document.getElementById('infoSession').textContent=m.session||'—';
  document.getElementById('infoSemester').textContent=m.semester||'—';
- var p=m.published;document.getElementById('infoStatus').textContent=p===true||String(p).toLowerCase()==='published'?'Published':(p===false?'Draft':(p||'—'));
+ var p=m.published;
+ document.getElementById('infoStatus').textContent=p===true||String(p).toLowerCase()==='published'?'Published':(p===false?'Draft':(p||'—'));
  document.getElementById('classUpdated').textContent=m.updated?'Last updated: '+new Date(m.updated).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):'';
  setStatus('classStatus',m.classStatus);setStatus('examStatus',m.examStatus);
  document.getElementById('class-timetable').classList.toggle('archived',m.classStatus==='archived');
@@ -598,8 +617,7 @@ function showError(){
 }
 function load(){
  ['classBody','examBody','annBody'].forEach(function(id){document.getElementById(id).innerHTML=LOADING});
- var ENDPOINTS={timetable:'/api/timetable'};
- fetchAPI(ENDPOINTS.timetable).then(function(res){normalise(res);render()}).catch(showError);
+ fetchAPI(TIMETABLE_ENDPOINT).then(function(res){normalise(res);render()}).catch(showError);
 }
 load();
 });
