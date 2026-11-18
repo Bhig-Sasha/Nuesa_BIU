@@ -1717,7 +1717,6 @@
     let election = null;
     let electionPhase = 'closed';
     let resultsPublished = false;
-    let resultsReady = false;
     let electionLoaded = false;
     let tallies = {};
     let hasVoted = false;
@@ -1755,19 +1754,25 @@
     }
 
     /* ============================================================
-       BODY SCROLL LOCK
+       BODY SCROLL LOCK (stack-aware)
        ============================================================ */
+    let scrollLockCount = 0;
+    let scrollLockY = 0;
     function lockBodyScroll() {
-        const y = window.scrollY;
-        document.body.dataset.scrollY = String(y);
-        document.body.style.top = `-${y}px`;
-        document.body.classList.add('modal-open');
+        if (scrollLockCount === 0) {
+            scrollLockY = window.scrollY;
+            document.body.style.top = `-${scrollLockY}px`;
+            document.body.classList.add('modal-open');
+        }
+        scrollLockCount++;
     }
     function unlockBodyScroll() {
-        const y = parseInt(document.body.dataset.scrollY || '0', 10);
-        document.body.classList.remove('modal-open');
-        document.body.style.top = '';
-        window.scrollTo(0, y);
+        scrollLockCount = Math.max(0, scrollLockCount - 1);
+        if (scrollLockCount === 0) {
+            document.body.classList.remove('modal-open');
+            document.body.style.top = '';
+            window.scrollTo(0, scrollLockY);
+        }
     }
 
     /* ============================================================
@@ -1779,10 +1784,16 @@
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
+
+    // Uses first + last initial. Never returns 'U' for the word "Unknown".
     function initials(name) {
-        if (!name) return '?';
-        return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        if (!name || typeof name !== 'string') return '?';
+        const parts = name.trim().split(/\s+/).filter(Boolean);
+        if (!parts.length) return '?';
+        if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
     }
+
     function phaseLabel(phase) {
         return ({
             'pending':    'Opens Soon',
@@ -1803,7 +1814,7 @@
         } catch { return '—'; }
     }
     function candidatesFor(positionId) {
-        return CANDIDATES.filter(c => c.positionId === positionId);
+        return CANDIDATES.filter(c => String(c.positionId) === String(positionId));
     }
     function positionsWithCandidates() {
         return POSITIONS.filter(p => candidatesFor(p.id).length > 0);
@@ -1816,10 +1827,58 @@
     }
 
     /**
-     * Normalizes a voter record coming from ANY endpoint
-     * (register, verify-by-matric, lookup) into a consistent shape.
-     * Accepts camelCase or snake_case keys.
+     * Defensive candidate normalizer. Accepts every common API key shape
+     * so a field-name mismatch can never blank out a candidate.
      */
+    function normalizeCandidate(c, positionId) {
+        if (!c || typeof c !== 'object') return null;
+
+        let name =
+            c.name ||
+            c.full_name ||
+            c.fullName ||
+            c.candidate_name ||
+            c.candidateName ||
+            c.student_name ||
+            c.studentName;
+
+        if (!name) {
+            const first = c.first_name || c.firstName || '';
+            const last  = c.last_name  || c.lastName  || '';
+            name = [first, last].filter(Boolean).join(' ').trim();
+        }
+
+        const department =
+            c.department ||
+            c.department_name ||
+            c.departmentName ||
+            c.dept ||
+            '';
+
+        const level =
+            c.level ||
+            c.academic_level ||
+            c.academicLevel ||
+            c.class_level ||
+            '';
+
+        const manifesto =
+            c.manifesto ||
+            c.manifest ||
+            c.statement ||
+            c.bio ||
+            '';
+
+        return {
+            id:         c.id ?? c.candidate_id ?? c.candidateId ?? null,
+            name:       String(name || '').trim(),
+            positionId: positionId,
+            department: String(department || '').trim(),
+            level:      String(level || '').trim(),
+            manifesto:  String(manifesto || '').trim()
+        };
+    }
+
     function normalizeVoterRecord(v) {
         if (!v) return null;
         return {
@@ -1887,12 +1946,13 @@
     }
 
     async function fetchTallies() {
-        if (!resultsReady) return {};
+        // Only meaningful once results are published — but never short-circuit
+        // on phase, because a closed election may still have unpublished results.
+        if (!resultsPublished) return {};
         try {
             const res = await fetch(`${API_BASE_URL}/api/elections/tallies`, {
                 headers: { 'Accept': 'application/json' }
             });
-            if (res.status === 403) return {};
             if (!res.ok) return {};
             const data = await res.json().catch(() => ({}));
             return (data && data.status === 'success') ? (data.data || {}) : {};
@@ -1903,23 +1963,20 @@
         raw = raw || {};
 
         POSITIONS = (raw.positions || []).map(p => ({
-            id: p.id, title: p.title, description: p.description || ''
+            id: p.id, title: p.title || 'Untitled Position', description: p.description || ''
         }));
 
         CANDIDATES = [];
         (raw.positions || []).forEach(p => {
             (p.candidates || []).forEach(c => {
-                CANDIDATES.push({
-                    id: c.id, name: c.name, positionId: p.id,
-                    department: c.department || '', level: c.level || '',
-                    manifesto: c.manifesto || ''
-                });
+                const norm = normalizeCandidate(c, p.id);
+                if (norm) CANDIDATES.push(norm);
             });
         });
 
         const derivedDepartments = [...new Set(CANDIDATES.map(c => c.department).filter(Boolean))].sort();
         const derivedLevels = [...new Set(CANDIDATES.map(c => c.level).filter(Boolean))]
-            .sort((a, b) => parseInt(a) - parseInt(b));
+            .sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
 
         DEPARTMENTS = (
             (Array.isArray(raw.departments) && raw.departments.length) ? raw.departments :
@@ -1934,13 +1991,6 @@
 
         electionPhase = raw.phase || 'closed';
         resultsPublished = !!raw.results_published;
-
-        const votingEnd = raw.voting_end ? new Date(raw.voting_end).getTime() : null;
-        resultsReady =
-            resultsPublished === true ||
-            electionPhase === 'closed' ||
-            (votingEnd !== null && Date.now() > votingEnd);
-
         electionLoaded = true;
     }
 
@@ -1957,8 +2007,8 @@
             openRegisterBtn.onclick = null;
         } else {
             regBannerBody.innerHTML = `
-                <h4>You're registered as ${esc(verifiedVoter.fullName)}</h4>
-                <p>Matric: <strong>${esc(verifiedVoter.matricNumber)}</strong> · You can now nominate and vote.</p>`;
+                <h4>You're registered as ${esc(verifiedVoter.fullName || 'Voter')}</h4>
+                <p>Matric: <strong>${esc(verifiedVoter.matricNumber || '—')}</strong> · You can now nominate and vote.</p>`;
             openRegisterBtn.innerHTML = '<i class="fas fa-right-from-bracket"></i> End Session';
             openRegisterBtn.disabled = false;
             openRegisterBtn.onclick = () => {
@@ -2120,12 +2170,11 @@
 
                 if (!res.ok || data.status !== 'success' || !data.data) {
                     let msg = data.message || `Registration failed (${res.status})`;
-                    if (data.code)    msg += ` [${data.code}]`;
-                    if (data.detail)  msg += `: ${data.detail}`;
+                    if (data.code)   msg += ` [${data.code}]`;
+                    if (data.detail) msg += `: ${data.detail}`;
                     throw new Error(msg);
                 }
 
-                // FIX #1: store the full record (phone, department, level)
                 verifiedVoter = normalizeVoterRecord(data.data);
                 saveVoterSession(verifiedVoter);
 
@@ -2134,8 +2183,8 @@
                 renderVote();
                 showFloatingToast(
                     data.alreadyRegistered
-                        ? `Welcome back, ${verifiedVoter.fullName}.`
-                        : `Welcome, ${verifiedVoter.fullName}. You can now nominate and vote.`,
+                        ? `Welcome back, ${verifiedVoter.fullName || 'voter'}.`
+                        : `Welcome, ${verifiedVoter.fullName || 'voter'}. You can now nominate and vote.`,
                     'success'
                 );
             } catch (err) {
@@ -2147,8 +2196,9 @@
         });
     }
 
+    // Single handler on the banner button — no conflicting addEventListener.
     openRegisterBtn.addEventListener('click', () => {
-        if (verifiedVoter) return;
+        if (verifiedVoter) return;   // End Session handler is set via .onclick
         openRegisterModal();
     });
     document.getElementById('heroRegisterBtn').addEventListener('click', (e) => {
@@ -2257,7 +2307,6 @@
                     throw new Error('You are not eligible to vote in this election.');
                 }
 
-                // FIX #2: store the full record (phone, department, level)
                 verifiedVoter = normalizeVoterRecord(voter);
                 saveVoterSession(verifiedVoter);
 
@@ -2288,7 +2337,6 @@
             throw new Error(data?.message || 'Could not verify your matric number.');
         }
 
-        // FIX #3: return the full record via the shared normalizer
         return normalizeVoterRecord(data.data);
     }
 
@@ -2373,20 +2421,32 @@
     }
 
     function candidateCardHtml(c, positionName) {
+        const displayName = (c.name && c.name.trim()) || 'Unnamed Candidate';
+        const metaParts = [];
+        if (c.level && c.level.trim()) metaParts.push(c.level.trim());
+        if (c.department && c.department.trim()) metaParts.push(c.department.trim().split(' ')[0]);
+        const meta = metaParts.join(' · ');
+
         return `
-            <div class="candidate-card" data-candidate-id="${esc(c.id)}" role="button" tabindex="0" aria-label="View ${esc(c.name)} profile">
-                <div class="candidate-avatar-lg">${esc(initials(c.name))}</div>
+            <div class="candidate-card" data-candidate-id="${esc(c.id)}" role="button" tabindex="0" aria-label="View ${esc(displayName)} profile">
+                <div class="candidate-avatar-lg">${esc(initials(displayName))}</div>
                 <div class="candidate-body">
                     <span class="candidate-position-tag">${esc(positionName)}</span>
-                    <div class="candidate-name">${esc(c.name)}</div>
-                    <div class="candidate-meta">${esc(c.level || '')}${c.department ? ' · ' + esc(c.department.split(' ')[0]) : ''}</div>
+                    <div class="candidate-name">${esc(displayName)}</div>
+                    <div class="candidate-meta">${esc(meta)}</div>
                     <div class="candidate-cta">View Manifesto <i class="fas fa-arrow-right"></i></div>
                 </div>
             </div>`;
     }
 
     function openCandidateModal(c) {
-        const pos = POSITIONS.find(p => p.id === c.positionId);
+        const pos = POSITIONS.find(p => String(p.id) === String(c.positionId));
+        const displayName = (c.name && c.name.trim()) || 'Unnamed Candidate';
+        const metaParts = [];
+        if (c.level && c.level.trim()) metaParts.push(c.level.trim());
+        if (c.department && c.department.trim()) metaParts.push(c.department.trim());
+        const meta = metaParts.join(' · ');
+
         const modal = document.createElement('div');
         modal.className = 'modal-backdrop';
         modal.setAttribute('role', 'dialog');
@@ -2395,16 +2455,16 @@
             <div class="modal">
                 <div class="modal-head" style="text-align:center;">
                     <button class="modal-close" aria-label="Close">&times;</button>
-                    <div class="candidate-modal-avatar">${esc(initials(c.name))}</div>
+                    <div class="candidate-modal-avatar">${esc(initials(displayName))}</div>
                     <span class="candidate-modal-tag">${esc(pos ? pos.title : 'Candidate')}</span>
-                    <h3 class="candidate-modal-head-name">${esc(c.name)}</h3>
-                    <p class="candidate-modal-head-meta">${esc(c.level || '')}${c.department ? ' · ' + esc(c.department) : ''}</p>
+                    <h3 class="candidate-modal-head-name">${esc(displayName)}</h3>
+                    <p class="candidate-modal-head-meta">${esc(meta)}</p>
                 </div>
                 <div class="modal-body candidate-modal-body">
                     <h4>Manifesto</h4>
                     ${c.manifesto
                         ? `<div class="quote">“${esc(c.manifesto)}”</div>`
-                        : `<p>${esc(c.name.split(' ')[0])} has not submitted a written manifesto yet.</p>`}
+                        : `<p>${esc(displayName.split(' ')[0])} has not submitted a written manifesto yet.</p>`}
                 </div>
             </div>`;
         document.body.appendChild(modal);
@@ -2499,236 +2559,230 @@
             </div>`;
     }
 
-function openNominateModal() {
-    if (!POSITIONS.length) {
-        alert('Nominations are not open yet — no positions have been configured.');
-        return;
-    }
-    if (!verifiedVoter) {
-        showFloatingToast('You must register as a voter before you can nominate.', 'error');
-        return;
-    }
-
-    nomineeCount = 0;
-    const modal = document.createElement('div');
-    modal.className = 'modal-backdrop';
-    modal.setAttribute('role', 'dialog');
-    modal.setAttribute('aria-modal', 'true');
-    modal.innerHTML = `
-        <div class="modal modal-lg">
-            <div class="modal-head">
-                <button class="modal-close" aria-label="Close">&times;</button>
-                <h3 class="modal-title">Nominate candidates</h3>
-                <p class="modal-sub">All nominations are submitted together for the electoral committee to review.</p>
-            </div>
-            <div class="modal-body" id="nominateModalBody">
-                <div class="alert alert-error" id="nominateError">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <span id="nominateErrorText"></span>
-                </div>
-
-                <div class="nom-step-head"><span>1</span> Nominator</div>
-                <div class="identity-card">
-                    <div class="identity-avatar">${esc(initials(verifiedVoter.fullName))}</div>
-                    <div class="identity-body">
-                        <strong>${esc(verifiedVoter.fullName)}</strong>
-                        <span>${esc(verifiedVoter.matricNumber)} · Verified voter</span>
-                    </div>
-                </div>
-
-                <div class="divider"></div>
-
-                <div class="nom-step-head"><span>2</span> People you want to nominate</div>
-                <div id="nomineeList"></div>
-                <button type="button" class="add-nominee-btn" id="addNomineeBtn">
-                    <i class="fas fa-plus"></i> Add another nominee
-                </button>
-            </div>
-            <div class="modal-foot">
-                <button type="button" class="btn btn-back" id="cancelNominateBtn">Cancel</button>
-                <button type="button" class="btn btn-gold" id="submitNominateBtn">
-                    <i class="fas fa-paper-plane"></i> Submit all nominations
-                </button>
-            </div>
-        </div>`;
-
-    document.body.appendChild(modal);
-    lockBodyScroll();
-
-    const close = () => { modal.remove(); unlockBodyScroll(); };
-    modal.addEventListener('click', e => { if (e.target === modal) close(); });
-    modal.querySelector('.modal-close').addEventListener('click', close);
-    document.getElementById('cancelNominateBtn').addEventListener('click', close);
-
-    function addNominee() {
-        const list = document.getElementById('nomineeList');
-        const card = document.createElement('div');
-        card.innerHTML = nomineeCardHtml(nomineeCount);
-        list.appendChild(card.firstElementChild);
-        nomineeCount++;
-        refreshRemoveButtons();
-    }
-
-    function refreshRemoveButtons() {
-        const cards = document.querySelectorAll('#nomineeList .nominee-card');
-        cards.forEach((card, i) => {
-            const title = card.querySelector('.nominee-card-title');
-            if (title) title.textContent = `Nominee ${i + 1}`;
-            const btn = card.querySelector('.nominee-remove-btn');
-            if (btn) {
-                btn.style.display = cards.length > 1 ? 'inline-flex' : 'none';
-                btn.onclick = () => {
-                    if (document.querySelectorAll('#nomineeList .nominee-card').length <= 1) return;
-                    card.remove();
-                    refreshRemoveButtons();
-                };
-            }
-        });
-    }
-
-    addNominee();
-    document.getElementById('addNomineeBtn').addEventListener('click', addNominee);
-
-    document.getElementById('submitNominateBtn').addEventListener('click', async () => {
-        const errorBox = document.getElementById('nominateError');
-        const errorText = document.getElementById('nominateErrorText');
-        errorBox.classList.remove('show');
-        errorText.textContent = '';
-
-        const nomineeCards = document.querySelectorAll('#nomineeList .nominee-card');
-        const nominees = [];
-        let valid = true;
-
-        nomineeCards.forEach(card => {
-            const idx = card.dataset.nomineeIndex;
-            const get = name => {
-                const el = card.querySelector(`[name="${name}"]`);
-                return el ? el.value.trim() : '';
-            };
-            const nominee = {
-                positionId: get(`nominee_position_${idx}`),
-                name: get(`nominee_name_${idx}`),
-                matric: normalizeMatric(get(`nominee_matric_${idx}`)),
-                department: get(`nominee_dept_${idx}`),
-                level: get(`nominee_level_${idx}`),
-                reason: get(`nominee_reason_${idx}`)
-            };
-            if (!nominee.positionId || !nominee.name || !nominee.matric || !nominee.department || !nominee.level) {
-                valid = false;
-                card.querySelectorAll('.field').forEach(f => {
-                    const input = f.querySelector('input, select');
-                    if (input && !input.value.trim()) f.classList.add('has-error');
-                    else f.classList.remove('has-error');
-                });
-            } else {
-                card.querySelectorAll('.field').forEach(f => f.classList.remove('has-error'));
-            }
-            nominees.push(nominee);
-        });
-
-        if (!valid) {
-            errorText.textContent = 'Please complete every nominee\'s details.';
-            errorBox.classList.add('show');
+    function openNominateModal() {
+        if (!POSITIONS.length) {
+            alert('Nominations are not open yet — no positions have been configured.');
+            return;
+        }
+        if (!verifiedVoter) {
+            showFloatingToast('You must register as a voter before you can nominate.', 'error');
             return;
         }
 
-        const submitBtn = document.getElementById('submitNominateBtn');
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting…';
+        nomineeCount = 0;
+        const modal = document.createElement('div');
+        modal.className = 'modal-backdrop';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.innerHTML = `
+            <div class="modal modal-lg">
+                <div class="modal-head">
+                    <button class="modal-close" aria-label="Close">&times;</button>
+                    <h3 class="modal-title">Nominate candidates</h3>
+                    <p class="modal-sub">All nominations are submitted together for the electoral committee to review.</p>
+                </div>
+                <div class="modal-body" id="nominateModalBody">
+                    <div class="alert alert-error" id="nominateError">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span id="nominateErrorText"></span>
+                    </div>
 
-        try {
-            const payload = {
-                nominator: {
-                    fullName: verifiedVoter.fullName,
-                    matricNumber: verifiedVoter.matricNumber,
-                    phone: verifiedVoter.phone || '',
-                    department: verifiedVoter.department || '',
-                    level: verifiedVoter.level || ''
-                },
-                nominees
-            };
-            const res = await fetch(`${API_BASE_URL}/api/elections/nominations/bulk`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const data = await res.json().catch(() => ({}));
+                    <div class="nom-step-head"><span>1</span> Nominator</div>
+                    <div class="identity-card">
+                        <div class="identity-avatar">${esc(initials(verifiedVoter.fullName))}</div>
+                        <div class="identity-body">
+                            <strong>${esc(verifiedVoter.fullName || 'Voter')}</strong>
+                            <span>${esc(verifiedVoter.matricNumber || '—')} · Verified voter</span>
+                        </div>
+                    </div>
 
-            // ---- Full failure: nothing was created -------------------------
-            if (!res.ok || data.status !== 'success') {
-                let msg = data?.message || `Submission failed (${res.status})`;
+                    <div class="divider"></div>
 
-                // Backend puts per-nominee reasons in data.details.skipped
-                const skipped = data?.details?.skipped;
-                if (Array.isArray(skipped) && skipped.length) {
-                    const lines = skipped.map(s => {
-                        const who = s.matric ? `${s.matric}: ` : '';
-                        return `• ${who}${s.reason || 'skipped'}`;
-                    }).join('\n');
-                    msg += `\n\nReasons:\n${lines}`;
-                }
-                throw new Error(msg);
-            }
+                    <div class="nom-step-head"><span>2</span> People you want to nominate</div>
+                    <div id="nomineeList"></div>
+                    <button type="button" class="add-nominee-btn" id="addNomineeBtn">
+                        <i class="fas fa-plus"></i> Add another nominee
+                    </button>
+                </div>
+                <div class="modal-foot">
+                    <button type="button" class="btn btn-back" id="cancelNominateBtn">Cancel</button>
+                    <button type="button" class="btn btn-gold" id="submitNominateBtn">
+                        <i class="fas fa-paper-plane"></i> Submit all nominations
+                    </button>
+                </div>
+            </div>`;
 
-            // ---- Partial success: some created, some skipped ---------------
-            const created = data?.data?.nominationsCreated ?? nominees.length;
-            const skippedList = data?.data?.skipped || [];
+        document.body.appendChild(modal);
+        lockBodyScroll();
 
-            if (created === 0) {
-                // Nothing new went through — keep the modal open and show why
-                let msg = data?.message || 'No new valid nominations to submit';
-                if (skippedList.length) {
-                    const lines = skippedList.map(s => {
-                        const who = s.matric ? `${s.matric}: ` : '';
-                        return `• ${who}${s.reason || 'skipped'}`;
-                    }).join('\n');
-                    msg += `\n\nReasons:\n${lines}`;
-                }
-                throw new Error(msg);
-            }
+        const close = () => { modal.remove(); unlockBodyScroll(); };
+        modal.addEventListener('click', e => { if (e.target === modal) close(); });
+        modal.querySelector('.modal-close').addEventListener('click', close);
+        document.getElementById('cancelNominateBtn').addEventListener('click', close);
 
-            // At least one nomination succeeded
-            close();
-
-            if (skippedList.length) {
-                const brief = skippedList.map(s => {
-                    const who = s.matric ? s.matric : 'one nominee';
-                    return `${who} — ${s.reason || 'skipped'}`;
-                }).join('; ');
-                showFloatingToast(
-                    `${created} nomination${created === 1 ? '' : 's'} submitted. ${skippedList.length} skipped: ${brief}`,
-                    'info'
-                );
-            } else {
-                showFloatingToast(
-                    `Thanks! ${created} nomination${created === 1 ? '' : 's'} submitted for review.`,
-                    'success'
-                );
-            }
-        } catch (err) {
-            errorText.textContent = err.message || 'Could not submit nominations. Please try again.';
-            errorBox.classList.add('show');
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit all nominations';
+        function addNominee() {
+            const list = document.getElementById('nomineeList');
+            const card = document.createElement('div');
+            card.innerHTML = nomineeCardHtml(nomineeCount);
+            list.appendChild(card.firstElementChild);
+            nomineeCount++;
+            refreshRemoveButtons();
         }
-    });
-}
 
-document.getElementById('openNominateBtn').addEventListener('click', () => {
-    if (!verifiedVoter) {
-        openMatricPrompt({
-            mode: 'nominate',
-            onVerified: () => openNominateModal()
+        function refreshRemoveButtons() {
+            const cards = document.querySelectorAll('#nomineeList .nominee-card');
+            cards.forEach((card, i) => {
+                const title = card.querySelector('.nominee-card-title');
+                if (title) title.textContent = `Nominee ${i + 1}`;
+                const btn = card.querySelector('.nominee-remove-btn');
+                if (btn) {
+                    btn.style.display = cards.length > 1 ? 'inline-flex' : 'none';
+                    btn.onclick = () => {
+                        if (document.querySelectorAll('#nomineeList .nominee-card').length <= 1) return;
+                        card.remove();
+                        refreshRemoveButtons();
+                    };
+                }
+            });
+        }
+
+        addNominee();
+        document.getElementById('addNomineeBtn').addEventListener('click', addNominee);
+
+        document.getElementById('submitNominateBtn').addEventListener('click', async () => {
+            const errorBox = document.getElementById('nominateError');
+            const errorText = document.getElementById('nominateErrorText');
+            errorBox.classList.remove('show');
+            errorText.textContent = '';
+
+            const nomineeCards = document.querySelectorAll('#nomineeList .nominee-card');
+            const nominees = [];
+            let valid = true;
+
+            nomineeCards.forEach(card => {
+                const idx = card.dataset.nomineeIndex;
+                const get = name => {
+                    const el = card.querySelector(`[name="${name}"]`);
+                    return el ? el.value.trim() : '';
+                };
+                const nominee = {
+                    positionId: get(`nominee_position_${idx}`),
+                    name: get(`nominee_name_${idx}`),
+                    matric: normalizeMatric(get(`nominee_matric_${idx}`)),
+                    department: get(`nominee_dept_${idx}`),
+                    level: get(`nominee_level_${idx}`),
+                    reason: get(`nominee_reason_${idx}`)
+                };
+                if (!nominee.positionId || !nominee.name || !nominee.matric || !nominee.department || !nominee.level) {
+                    valid = false;
+                    card.querySelectorAll('.field').forEach(f => {
+                        const input = f.querySelector('input, select');
+                        if (input && !input.value.trim()) f.classList.add('has-error');
+                        else f.classList.remove('has-error');
+                    });
+                } else {
+                    card.querySelectorAll('.field').forEach(f => f.classList.remove('has-error'));
+                }
+                nominees.push(nominee);
+            });
+
+            if (!valid) {
+                errorText.textContent = "Please complete every nominee's details.";
+                errorBox.classList.add('show');
+                return;
+            }
+
+            const submitBtn = document.getElementById('submitNominateBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting…';
+
+            try {
+                const payload = {
+                    nominator: {
+                        fullName: verifiedVoter.fullName,
+                        matricNumber: verifiedVoter.matricNumber,
+                        phone: verifiedVoter.phone || '',
+                        department: verifiedVoter.department || '',
+                        level: verifiedVoter.level || ''
+                    },
+                    nominees
+                };
+                const res = await fetch(`${API_BASE_URL}/api/elections/nominations/bulk`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok || data.status !== 'success') {
+                    let msg = data?.message || `Submission failed (${res.status})`;
+                    const skipped = data?.details?.skipped;
+                    if (Array.isArray(skipped) && skipped.length) {
+                        const lines = skipped.map(s => {
+                            const who = s.matric ? `${s.matric}: ` : '';
+                            return `• ${who}${s.reason || 'skipped'}`;
+                        }).join('\n');
+                        msg += `\n\nReasons:\n${lines}`;
+                    }
+                    throw new Error(msg);
+                }
+
+                const created = data?.data?.nominationsCreated ?? nominees.length;
+                const skippedList = data?.data?.skipped || [];
+
+                if (created === 0) {
+                    let msg = data?.message || 'No new valid nominations to submit';
+                    if (skippedList.length) {
+                        const lines = skippedList.map(s => {
+                            const who = s.matric ? `${s.matric}: ` : '';
+                            return `• ${who}${s.reason || 'skipped'}`;
+                        }).join('\n');
+                        msg += `\n\nReasons:\n${lines}`;
+                    }
+                    throw new Error(msg);
+                }
+
+                close();
+
+                if (skippedList.length) {
+                    const brief = skippedList.map(s => {
+                        const who = s.matric ? s.matric : 'one nominee';
+                        return `${who} — ${s.reason || 'skipped'}`;
+                    }).join('; ');
+                    showFloatingToast(
+                        `${created} nomination${created === 1 ? '' : 's'} submitted. ${skippedList.length} skipped: ${brief}`,
+                        'info'
+                    );
+                } else {
+                    showFloatingToast(
+                        `Thanks! ${created} nomination${created === 1 ? '' : 's'} submitted for review.`,
+                        'success'
+                    );
+                }
+            } catch (err) {
+                errorText.textContent = err.message || 'Could not submit nominations. Please try again.';
+                errorBox.classList.add('show');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit all nominations';
+            }
         });
-        return;
     }
-    openNominateModal();
-});
 
-document.getElementById('heroCandidatesBtn').addEventListener('click', (e) => {
-    e.preventDefault();
-    document.getElementById('candidates').scrollIntoView({ behavior: 'smooth' });
-});
+    document.getElementById('openNominateBtn').addEventListener('click', () => {
+        if (!verifiedVoter) {
+            openMatricPrompt({
+                mode: 'nominate',
+                onVerified: () => openNominateModal()
+            });
+            return;
+        }
+        openNominateModal();
+    });
+
+    document.getElementById('heroCandidatesBtn').addEventListener('click', (e) => {
+        e.preventDefault();
+        document.getElementById('candidates').scrollIntoView({ behavior: 'smooth' });
+    });
 
     /* ============================================================
        VOTE
@@ -2799,8 +2853,8 @@ document.getElementById('heroCandidatesBtn').addEventListener('click', (e) => {
                     if (voter.hasVoted) throw new Error('You have already cast your vote.');
                     if (voter.eligibleToVote === false) throw new Error('You are not eligible to vote in this election.');
 
-                    // FIX #2 (again): store full record
                     verifiedVoter = normalizeVoterRecord(voter);
+                    hasVoted = voter.hasVoted;
                     saveVoterSession(verifiedVoter);
                     renderRegBanner();
                     renderVote();
@@ -2828,7 +2882,7 @@ document.getElementById('heroCandidatesBtn').addEventListener('click', (e) => {
         let html = `
             <div class="vote-banner">
                 <div class="vote-banner-icon"><i class="fas fa-shield-halved"></i></div>
-                <p>Voting as <strong>${esc(verifiedVoter.fullName)}</strong> · <span style="font-family: var(--font-mono); font-size: .75rem;">${esc(verifiedVoter.matricNumber)}</span><br>Select one candidate per position.</p>
+                <p>Voting as <strong>${esc(verifiedVoter.fullName || 'Voter')}</strong> · <span style="font-family: var(--font-mono); font-size: .75rem;">${esc(verifiedVoter.matricNumber || '—')}</span><br>Select one candidate per position.</p>
             </div>`;
 
         positions.forEach(position => {
@@ -2841,16 +2895,21 @@ document.getElementById('heroCandidatesBtn').addEventListener('click', (e) => {
                         <span class="ballot-group-progress">${selectedId ? '✓ Selected' : 'Not selected'}</span>
                     </div>
                     <div class="ballot-list">
-                        ${list.map(c => `
-                            <button type="button" class="ballot-option ${selectedId === c.id ? 'selected' : ''}" data-position="${esc(position.id)}" data-candidate="${esc(c.id)}">
-                                <div class="ballot-radio"><i class="fas fa-check ballot-radio-check"></i></div>
-                                <div class="ballot-avatar">${esc(initials(c.name))}</div>
-                                <div class="ballot-body">
-                                    <strong>${esc(c.name)}</strong>
-                                    <span>${esc(c.level || '')}${c.department ? ' · ' + esc(c.department) : ''}</span>
-                                </div>
-                            </button>
-                        `).join('')}
+                        ${list.map(c => {
+                            const displayName = (c.name && c.name.trim()) || 'Unnamed Candidate';
+                            const metaParts = [];
+                            if (c.level && c.level.trim()) metaParts.push(c.level.trim());
+                            if (c.department && c.department.trim()) metaParts.push(c.department.trim());
+                            return `
+                                <button type="button" class="ballot-option ${String(selectedId) === String(c.id) ? 'selected' : ''}" data-position="${esc(position.id)}" data-candidate="${esc(c.id)}">
+                                    <div class="ballot-radio"><i class="fas fa-check ballot-radio-check"></i></div>
+                                    <div class="ballot-avatar">${esc(initials(displayName))}</div>
+                                    <div class="ballot-body">
+                                        <strong>${esc(displayName)}</strong>
+                                        <span>${esc(metaParts.join(' · '))}</span>
+                                    </div>
+                                </button>`;
+                        }).join('')}
                     </div>
                 </div>`;
         });
@@ -2869,7 +2928,7 @@ document.getElementById('heroCandidatesBtn').addEventListener('click', (e) => {
             btn.addEventListener('click', () => {
                 const pid = btn.dataset.position;
                 const cid = btn.dataset.candidate;
-                if (votes[pid] === cid) delete votes[pid];
+                if (String(votes[pid]) === String(cid)) delete votes[pid];
                 else votes[pid] = cid;
                 renderVote();
             });
@@ -2906,6 +2965,7 @@ document.getElementById('heroCandidatesBtn').addEventListener('click', (e) => {
                 hasVoted = true;
                 verifiedVoter.hasVoted = true;
                 saveVoterSession(verifiedVoter);
+                showFloatingToast('Your vote has been recorded. Thank you for voting!', 'success');
                 renderVote();
             } catch (err) {
                 errorBox.textContent = err.message || 'Vote submission failed. Please try again.';
@@ -2960,18 +3020,19 @@ document.getElementById('heroCandidatesBtn').addEventListener('click', (e) => {
                         <span class="result-position-total">${posTotal} vote${posTotal === 1 ? '' : 's'}</span>
                     </div>
                     ${sorted.map(c => {
+                        const displayName = (c.name && c.name.trim()) || 'Unnamed Candidate';
                         const count = tallies[c.id]?.votes || 0;
                         const pct = posTotal > 0 ? ((count / posTotal) * 100) : 0;
-                        const isLeader = c.id === leader.id && count > 0;
+                        const isLeader = leader && String(c.id) === String(leader.id) && count > 0;
                         return `
                             <div class="result-row ${isLeader ? 'is-leader' : ''}">
                                 <div class="result-row-head">
                                     <div class="result-row-left">
                                         ${isLeader
                                             ? `<div class="result-trophy"><i class="fas fa-crown"></i></div>`
-                                            : `<div class="result-avatar">${esc(initials(c.name))}</div>`}
+                                            : `<div class="result-avatar">${esc(initials(displayName))}</div>`}
                                         <div>
-                                            <strong>${esc(c.name)}</strong>
+                                            <strong>${esc(displayName)}</strong>
                                             <span>${esc(c.department ? c.department.split(' ')[0] : '')}${c.level ? ' · ' + esc(c.level) : ''}</span>
                                         </div>
                                     </div>
@@ -3017,6 +3078,7 @@ document.getElementById('heroCandidatesBtn').addEventListener('click', (e) => {
             font-weight: 600; font-size: .875rem; z-index: 9999;
             max-width: calc(100vw - 2rem); transform: translateY(-20px); opacity: 0;
             transition: transform .35s cubic-bezier(.22,1,.36,1), opacity .35s;
+            white-space: pre-line;
         `;
         toast.innerHTML = `<i class="fas ${c.icon}" style="font-size:1.1rem;"></i><span>${esc(message)}</span>`;
         document.body.appendChild(toast);
@@ -3076,7 +3138,8 @@ document.getElementById('heroCandidatesBtn').addEventListener('click', (e) => {
                 }
             }
 
-            // FIX #5: rebuild verifiedVoter from the fresh record
+            // Refresh the session voter record (handles backend-side changes
+            // like hasVoted flipping, department correction, etc.)
             if (verifiedVoter && verifiedVoter.matricNumber) {
                 try {
                     const fresh = await verifyVoterByMatric(verifiedVoter.matricNumber);
@@ -3084,10 +3147,10 @@ document.getElementById('heroCandidatesBtn').addEventListener('click', (e) => {
                         verifiedVoter = normalizeVoterRecord(fresh);
                         hasVoted = fresh.hasVoted;
                         saveVoterSession(verifiedVoter);
+                        renderVote();
                     }
                 } catch {}
             }
-            renderVote();
         } catch (err) {
             console.error('Election init failed:', err);
             infoGrid.innerHTML = '';
