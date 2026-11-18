@@ -848,6 +848,9 @@
         
         #pictureModal { z-index: 10100; }
 
+        [hidden] { display: none !important; }
+        .pm-current-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
         .modal-header {
             padding: 18px 22px;
             border-bottom: 1px solid var(--border);
@@ -1704,6 +1707,7 @@
 
                     <div class="pm-crop-stage" id="pmCropStage" hidden>
                         <div class="pm-crop-viewport" id="pmCropViewport">
+                            <img id="pmCurrentImg" class="pm-current-img" alt="" hidden>
                             <canvas id="pmCanvas"></canvas>
                             <div class="pm-crop-overlay">
                                 <div class="pm-crop-ring"></div>
@@ -2395,9 +2399,9 @@
         pmState.offsetX = 0;
         pmState.offsetY = 0;
 
-        // Always start clean: preloading the current remote picture can taint the
-        // canvas (CORS) and would enable "Save" before a new image is chosen.
         resetPmCropStage();
+        const existing = context === 'drawer' ? viewingRep?.profile_picture : selectedPicture?.url;
+        if (existing) showExistingPicture(existing);
 
         document.getElementById('pmErrorBox').classList.remove('active');
         document.getElementById('pictureModalTitle').textContent =
@@ -2423,10 +2427,11 @@
         pmState.image = null;
         document.getElementById('pmDropzone').hidden = false;
         document.getElementById('pmCropStage').hidden = true;
+        document.getElementById('pmCurrentImg').hidden = true;
+        document.getElementById('pmCanvas').hidden = false;
         document.getElementById('pmFileInput').value = '';
         const canvas = document.getElementById('pmCanvas');
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
     }
 
     function showPmError(msg) {
@@ -2465,7 +2470,7 @@
         reader.readAsDataURL(file);
     }
 
-    function loadImageFromUrl(url) {
+    function loadImageFromUrl(url, onFail) {
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
@@ -2476,6 +2481,8 @@
             pmState.offsetX = 0;
             pmState.offsetY = 0;
             document.getElementById('pmDropzone').hidden = true;
+            document.getElementById('pmCurrentImg').hidden = true;
+            document.getElementById('pmCanvas').hidden = false;
             document.getElementById('pmCropStage').hidden = false;
             document.getElementById('pmZoom').value = 1;
             requestAnimationFrame(() => {
@@ -2485,6 +2492,7 @@
             });
         };
         img.onerror = () => {
+            if (onFail) return onFail();
             resetPmCropStage();
             showPmError('Could not load that image. Try uploading another file.');
         };
