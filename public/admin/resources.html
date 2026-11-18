@@ -1395,7 +1395,6 @@
     }
     .related-item-body { flex: 1; min-width: 0; }
 
-    /* Legacy aliases used by some markups */
     .related-file {
         display: flex;
         align-items: center;
@@ -1675,6 +1674,7 @@
                         </select>
                         <select class="filter-select" id="filterDepartment">
                             <option value="">All Departments</option>
+                            <option value="General (All Departments)">General — All Departments</option>
                             <option value="Electrical/Electronics Engineering">Electrical/Electronics</option>
                             <option value="Mechanical Engineering">Mechanical</option>
                             <option value="Civil Engineering">Civil</option>
@@ -1791,10 +1791,12 @@
                             <label class="form-label" for="rDepartment">Department *</label>
                             <select class="form-select" id="rDepartment" required>
                                 <option value="">Select department</option>
+                                <option value="General (All Departments)">General — All Departments</option>
                                 <option value="Electrical/Electronics Engineering">Electrical/Electronics Engineering</option>
                                 <option value="Mechanical Engineering">Mechanical Engineering</option>
                                 <option value="Civil Engineering">Civil Engineering</option>
                             </select>
+                            <div class="form-hint">Choose "General" for courses taken by every department at the selected level (e.g. GEN 312).</div>
                         </div>
                         <div class="form-group">
                             <label class="form-label" for="rLevel">Academic Level *</label>
@@ -1817,9 +1819,7 @@
                         <div class="form-group">
                             <label class="form-label" for="rSession">Academic Session</label>
                             <select class="form-select" id="rSession">
-                                <option value="2025/2026">2025/2026</option>
-                                <option value="2024/2025">2024/2025</option>
-                                <option value="2023/2024">2023/2024</option>
+                                <option value="">Loading sessions…</option>
                             </select>
                         </div>
                     </div>
@@ -1915,9 +1915,7 @@
                     <div class="form-group">
                         <label class="form-label" for="cgpaSession">Academic Session</label>
                         <select class="form-select" id="cgpaSession">
-                            <option value="2025/2026">2025/2026</option>
-                            <option value="2024/2025">2024/2025</option>
-                            <option value="2023/2024">2023/2024</option>
+                            <option value="">Loading sessions…</option>
                         </select>
                     </div>
                     <div class="form-group full">
@@ -1982,1320 +1980,1215 @@
 
 <script>
 // ============================================================
-    // CONFIG
-    // ============================================================
-    const API_BASE_URL = '';
-    const PAGE_SIZE = 8;
-    const DEFAULT_SESSION = '2025/2026';
-    const LAST_SESSION_KEY = 'nuesa_last_resource_session';
+// CONFIG
+// ============================================================
+const API_BASE_URL = '';
+const PAGE_SIZE = 8;
+const LAST_SESSION_KEY = 'nuesa_last_resource_session';
 
-    const CATEGORY_META = {
-        'past-questions':    { label: 'Past Questions',    icon: 'fa-file-alt',    color: 'var(--accent)',  bg: 'var(--accent-tint)' },
-        'lecture-notes':     { label: 'Lecture Notes',     icon: 'fa-sticky-note', color: 'var(--info)',    bg: 'var(--info-tint)' },
-        'textbooks':         { label: 'Textbooks',         icon: 'fa-book-open',   color: 'var(--purple)',  bg: 'var(--purple-tint)' },
-        'project-materials': { label: 'Project Materials', icon: 'fa-folder-open', color: 'var(--success)', bg: 'var(--success-tint)' },
-        'academic-tools':    { label: 'Academic Tools',    icon: 'fa-calculator',  color: 'var(--warning)', bg: 'var(--warning-tint)' },
-        'useful-links':      { label: 'Useful Links',      icon: 'fa-link',        color: 'var(--primary)', bg: 'var(--primary-tint)' }
-    };
+const CATEGORY_META = {
+    'past-questions':    { label: 'Past Questions',    icon: 'fa-file-alt',    color: 'var(--accent)',  bg: 'var(--accent-tint)' },
+    'lecture-notes':     { label: 'Lecture Notes',     icon: 'fa-sticky-note', color: 'var(--info)',    bg: 'var(--info-tint)' },
+    'textbooks':         { label: 'Textbooks',         icon: 'fa-book-open',   color: 'var(--purple)',  bg: 'var(--purple-tint)' },
+    'project-materials': { label: 'Project Materials', icon: 'fa-folder-open', color: 'var(--success)', bg: 'var(--success-tint)' },
+    'academic-tools':    { label: 'Academic Tools',    icon: 'fa-calculator',  color: 'var(--warning)', bg: 'var(--warning-tint)' },
+    'useful-links':      { label: 'Useful Links',      icon: 'fa-link',        color: 'var(--primary)', bg: 'var(--primary-tint)' }
+};
 
-    let currentUser = null;
-    let inactivityTimeout = null;
-    let allResources = [];
-    let filteredResources = [];
-    let currentPage = 1;
-    let currentView = 'grid';
-    let activeCategory = '';
-    let editingResourceId = null;
-    let deletingResourceId = null;
-    let viewingResource = null;
-    let selectedFiles = [];      // [{ file, title, category, touchedCategory, error }]
-    let academicTools = null;
+const GENERAL_DEPARTMENT = 'General (All Departments)';
+const DEPARTMENTS = [
+    'Electrical/Electronics Engineering',
+    'Mechanical Engineering',
+    'Civil Engineering'
+];
 
-    // ============================================================
-    // AUTH
-    // ============================================================
-    async function checkAuth() {
-        try {
-            showLoading();
-            const res = await fetch(`${API_BASE_URL}/api/admin/session`, {
-                method: 'GET', credentials: 'include',
-                headers: { 'Accept': 'application/json' }
-            });
-            if (res.status === 200) {
-                const data = await res.json();
-                if (data.status === 'success' && data.data) {
-                    currentUser = data.data;
-                    updateUserInfo();
-                    hideLoading();
-                    return true;
-                }
-            }
-            showToast('Please login to continue', 'info');
-            setTimeout(() => window.location.replace('adlog.html'), 1200);
-            hideLoading();
-            return false;
-        } catch (err) {
-            console.error('Auth error:', err);
-            showToast('Connection error', 'error');
-            hideLoading();
-            return false;
-        }
-    }
+let currentUser = null;
+let inactivityTimeout = null;
+let allResources = [];
+let filteredResources = [];
+let currentPage = 1;
+let currentView = 'grid';
+let activeCategory = '';
+let editingResourceId = null;
+let deletingResourceId = null;
+let viewingResource = null;
+let selectedFiles = [];
+let academicTools = null;
 
-    function updateUserInfo() {
-        if (!currentUser) return;
-        const name = currentUser.fullName || currentUser.full_name || 'Administrator';
-        const role = currentUser.role || 'admin';
-        const initial = name.charAt(0).toUpperCase();
-        const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
-        document.getElementById('userName').textContent = name;
-        document.getElementById('userRole').textContent = roleLabel;
-        document.getElementById('userAvatar').textContent = initial;
-    }
+// Sessions, loaded from the server
+let allSessions = [];
+let sessionsLoaded = false;
 
-    async function confirmLogout() {
-        try {
-            showLoading();
-            await fetch(`${API_BASE_URL}/api/admin/logout`, { method: 'POST', credentials: 'include' });
-        } catch (err) { console.warn('Logout failed:', err); }
-        hideModal('logoutModal');
-        showToast('Logged out', 'success');
-        setTimeout(() => window.location.replace('adlog.html'), 700);
-    }
-
-    // ============================================================
-    // API HELPERS
-    // ============================================================
-    async function apiGet(endpoint) {
-        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+// ============================================================
+// AUTH
+// ============================================================
+async function checkAuth() {
+    try {
+        showLoading();
+        const res = await fetch(`${API_BASE_URL}/api/admin/session`, {
             method: 'GET', credentials: 'include',
             headers: { 'Accept': 'application/json' }
         });
-        if (res.status === 401) { showToast('Session expired', 'warning'); setTimeout(() => window.location.replace('adlog.html'), 1200); throw new Error('Unauthorized'); }
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-    }
-    async function apiPost(endpoint, body, isForm = false) {
-        const opts = {
-            method: 'POST', credentials: 'include',
-            headers: isForm ? { 'Accept': 'application/json' } : { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: isForm ? body : JSON.stringify(body)
-        };
-        const res = await fetch(`${API_BASE_URL}${endpoint}`, opts);
-        if (res.status === 401) { showToast('Session expired', 'warning'); setTimeout(() => window.location.replace('adlog.html'), 1200); throw new Error('Unauthorized'); }
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
-        return data;
-    }
-    async function apiPut(endpoint, body) {
-        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-            method: 'PUT', credentials: 'include',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify(body)
-        });
-        if (res.status === 401) { showToast('Session expired', 'warning'); setTimeout(() => window.location.replace('adlog.html'), 1200); throw new Error('Unauthorized'); }
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
-        return data;
-    }
-    async function apiDelete(endpoint) {
-        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-            method: 'DELETE', credentials: 'include',
-            headers: { 'Accept': 'application/json' }
-        });
-        if (res.status === 401) { showToast('Session expired', 'warning'); setTimeout(() => window.location.replace('adlog.html'), 1200); throw new Error('Unauthorized'); }
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
-        return data;
-    }
-
-    // ============================================================
-    // DATA LOADING
-    // ============================================================
-    async function loadResources() {
-        try {
-            const res = await apiGet('/api/admin/resources');
-            const list = Array.isArray(res.data) ? res.data : (res.data?.resources || []);
-            allResources = list.map(normalizeResource);
-            updateStats();
-            renderCategoryShortcuts();
-            applyFilters();
-        } catch (err) {
-            console.error('Load error:', err);
-            document.getElementById('resourcesGrid').innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-state-icon"><i class="fas fa-exclamation-triangle"></i></div>
-                    <h3>Couldn't load resources</h3>
-                    <p>${escapeHtml(err.message)}</p>
-                </div>`;
-            document.getElementById('resourcesTbody').innerHTML = `
-                <tr><td colspan="9" style="text-align: center; padding: 40px; color: var(--text-dim);">
-                    Unable to load resources: ${escapeHtml(err.message)}
-                </td></tr>`;
-        }
-    }
-
-    function normalizeResource(r) {
-        const cat = (r.category || 'other').toLowerCase();
-        const catMap = {
-            'past-question': 'past-questions', 'past-questions': 'past-questions', 'past_question': 'past-questions',
-            'lecture-note': 'lecture-notes', 'lecture-notes': 'lecture-notes', 'note': 'lecture-notes',
-            'textbook': 'textbooks', 'textbooks': 'textbooks',
-            'project-material': 'project-materials', 'project-materials': 'project-materials',
-            'academic-tool': 'academic-tools', 'academic-tools': 'academic-tools',
-            'useful-link': 'useful-links', 'useful-links': 'useful-links', 'link': 'useful-links',
-            'other': 'project-materials'
-        };
-        return {
-            id: r.id,
-            title: r.title || 'Untitled resource',
-            description: r.description || '',
-            category: catMap[cat] || 'project-materials',
-            course_code: r.course_code || '',
-            course_title: r.course_title || '',
-            department: r.department || '',
-            level: r.level || '',
-            semester: r.semester || 'first',
-            // The backend stores the session in "year". Never silently fall back to a
-            // default here: that made every saved session appear to "go back".
-            session: r.session || r.year || '',
-            file_url: r.file_url || '',
-            file_type: r.file_type || '',
-            file_size: r.file_size || 0,
-            download_count: r.download_count || 0,
-            is_published: !!r.is_published,
-            status: (r.status || (r.is_published ? 'published' : 'draft')).toLowerCase(),
-            uploaded_by: r.uploaded_by || '',
-            uploader_name: r.uploader_name || '',
-            created_at: r.created_at || null,
-            updated_at: r.updated_at || null
-        };
-    }
-
-    // ============================================================
-    // STATS (animated count-up)
-    // ============================================================
-    function animateNumber(el, target, duration = 500) {
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            el.textContent = target;
-            return;
-        }
-        const start = performance.now();
-        function step(now) {
-            const elapsed = now - start;
-            const progress = Math.min(elapsed / duration, 1);
-            const eased = 1 - Math.pow(1 - progress, 3);
-            el.textContent = Math.round(target * eased);
-            if (progress < 1) requestAnimationFrame(step);
-        }
-        requestAnimationFrame(step);
-    }
-
-    function updateStats() {
-        const total = allResources.length;
-        const past = allResources.filter(r => r.category === 'past-questions').length;
-        const notes = allResources.filter(r => r.category === 'lecture-notes').length;
-        const textbooks = allResources.filter(r => r.category === 'textbooks').length;
-        const other = allResources.filter(r => !['past-questions','lecture-notes','textbooks'].includes(r.category)).length;
-
-        animateNumber(document.getElementById('statTotal'), total);
-        animateNumber(document.getElementById('statPast'), past);
-        animateNumber(document.getElementById('statNotes'), notes);
-        animateNumber(document.getElementById('statTextbooks'), textbooks);
-        animateNumber(document.getElementById('statOther'), other);
-    }
-
-    // ============================================================
-    // CATEGORY SHORTCUTS
-    // ============================================================
-    function renderCategoryShortcuts() {
-        const container = document.getElementById('categoryShortcuts');
-        const cats = ['past-questions', 'lecture-notes', 'textbooks', 'project-materials', 'academic-tools', 'useful-links'];
-        container.innerHTML = cats.map(catKey => {
-            const meta = CATEGORY_META[catKey];
-            const count = allResources.filter(r => r.category === catKey).length;
-            const isActive = activeCategory === catKey ? 'active' : '';
-            return `
-                <div class="category-shortcut ${isActive}" data-category="${catKey}">
-                    <div class="category-icon" style="background: ${meta.bg}; color: ${meta.color};">
-                        <i class="fas ${meta.icon}"></i>
-                    </div>
-                    <div class="category-info">
-                        <div class="category-name">${meta.label}</div>
-                        <div class="category-count">${count} item${count === 1 ? '' : 's'}</div>
-                    </div>
-                </div>`;
-        }).join('');
-
-        container.querySelectorAll('.category-shortcut').forEach(el => {
-            el.addEventListener('click', () => {
-                const cat = el.dataset.category;
-                if (activeCategory === cat) {
-                    activeCategory = '';
-                    document.getElementById('filterType').value = '';
-                } else {
-                    activeCategory = cat;
-                    document.getElementById('filterType').value = cat;
-                }
-                renderCategoryShortcuts();
-                applyFilters();
-            });
-        });
-    }
-
-    // ============================================================
-    // FILTERS
-    // ============================================================
-    function applyFilters() {
-        const q = document.getElementById('searchInput').value.trim().toLowerCase();
-        const type = document.getElementById('filterType').value;
-        const dept = document.getElementById('filterDepartment').value;
-        const lvl = document.getElementById('filterLevel').value;
-        const semester = document.getElementById('filterSemester').value;
-        const status = document.getElementById('filterStatus').value;
-
-        filteredResources = allResources.filter(r => {
-            if (type && r.category !== type) return false;
-            if (dept && r.department !== dept) return false;
-            if (lvl && r.level !== lvl) return false;
-            if (semester && r.semester !== semester) return false;
-            if (status) {
-                if (status === 'published' && !r.is_published) return false;
-                if (status === 'draft' && r.is_published) return false;
+        if (res.status === 200) {
+            const data = await res.json();
+            if (data.status === 'success' && data.data) {
+                currentUser = data.data;
+                updateUserInfo();
+                hideLoading();
+                return true;
             }
-            if (q) {
-                const hay = `${r.title} ${r.course_code} ${r.course_title} ${r.description}`.toLowerCase();
-                if (!hay.includes(q)) return false;
-            }
-            return true;
-        });
-
-        filteredResources.sort((a, b) => {
-            const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
-            const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
-            return tb - ta;
-        });
-
-        currentPage = 1;
-        updateFilterSummary();
-        renderDirectory();
+        }
+        showToast('Please login to continue', 'info');
+        setTimeout(() => window.location.replace('adlog.html'), 1200);
+        hideLoading();
+        return false;
+    } catch (err) {
+        console.error('Auth error:', err);
+        showToast('Connection error', 'error');
+        hideLoading();
+        return false;
     }
+}
 
-    function updateFilterSummary() {
-        const active = [];
-        ['searchInput','filterType','filterDepartment','filterLevel','filterSemester','filterStatus'].forEach(id => {
-            if (document.getElementById(id).value) active.push(id);
-        });
-        document.getElementById('filterCount').textContent = active.length
-            ? `${active.length} filter${active.length > 1 ? 's' : ''} active`
-            : '';
-        document.getElementById('resultCount').textContent =
-            `${filteredResources.length} resource${filteredResources.length === 1 ? '' : 's'}`;
+function updateUserInfo() {
+    if (!currentUser) return;
+    const name = currentUser.fullName || currentUser.full_name || 'Administrator';
+    const role = currentUser.role || 'admin';
+    const initial = name.charAt(0).toUpperCase();
+    const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
+    document.getElementById('userName').textContent = name;
+    document.getElementById('userRole').textContent = roleLabel;
+    document.getElementById('userAvatar').textContent = initial;
+}
+
+async function confirmLogout() {
+    try {
+        showLoading();
+        await fetch(`${API_BASE_URL}/api/admin/logout`, { method: 'POST', credentials: 'include' });
+    } catch (err) { console.warn('Logout failed:', err); }
+    hideModal('logoutModal');
+    showToast('Logged out', 'success');
+    setTimeout(() => window.location.replace('adlog.html'), 700);
+}
+
+// ============================================================
+// API HELPERS
+// ============================================================
+async function apiGet(endpoint) {
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: 'GET', credentials: 'include',
+        headers: { 'Accept': 'application/json' }
+    });
+    if (res.status === 401) { showToast('Session expired', 'warning'); setTimeout(() => window.location.replace('adlog.html'), 1200); throw new Error('Unauthorized'); }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+async function apiPost(endpoint, body, isForm = false) {
+    const opts = {
+        method: 'POST', credentials: 'include',
+        headers: isForm ? { 'Accept': 'application/json' } : { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: isForm ? body : JSON.stringify(body)
+    };
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, opts);
+    if (res.status === 401) { showToast('Session expired', 'warning'); setTimeout(() => window.location.replace('adlog.html'), 1200); throw new Error('Unauthorized'); }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+    return data;
+}
+async function apiPut(endpoint, body) {
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: 'PUT', credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    if (res.status === 401) { showToast('Session expired', 'warning'); setTimeout(() => window.location.replace('adlog.html'), 1200); throw new Error('Unauthorized'); }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+    return data;
+}
+async function apiDelete(endpoint) {
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: 'DELETE', credentials: 'include',
+        headers: { 'Accept': 'application/json' }
+    });
+    if (res.status === 401) { showToast('Session expired', 'warning'); setTimeout(() => window.location.replace('adlog.html'), 1200); throw new Error('Unauthorized'); }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+    return data;
+}
+
+// ============================================================
+// SESSIONS (from server)
+// ============================================================
+async function loadSessions() {
+    try {
+        const res = await apiGet('/api/admin/sessions');
+        const list = Array.isArray(res.data) ? res.data : [];
+        allSessions = list
+            .map(s => ({
+                name: s.name || s.session_name || '',
+                is_active: !!s.is_active
+            }))
+            .filter(s => s.name);
+
+        // Newest first
+        allSessions.sort((a, b) => b.name.localeCompare(a.name));
+        sessionsLoaded = true;
+        populateSessionSelects();
+    } catch (err) {
+        console.warn('Could not load sessions:', err);
+        allSessions = [];
+        sessionsLoaded = false;
+        populateSessionSelects();
     }
+}
 
-    function clearFilters() {
-        ['searchInput','filterType','filterDepartment','filterLevel','filterSemester','filterStatus']
-            .forEach(id => document.getElementById(id).value = '');
-        activeCategory = '';
+function populateSessionSelects() {
+    const options = allSessions.length
+        ? allSessions.map(s => {
+            const label = s.is_active ? `${s.name} (Active)` : s.name;
+            return `<option value="${escapeHtml(s.name)}">${escapeHtml(label)}</option>`;
+        }).join('')
+        : '<option value="">No sessions configured</option>';
+
+    const rSession = document.getElementById('rSession');
+    if (rSession) rSession.innerHTML = options;
+
+    const cgpaSession = document.getElementById('cgpaSession');
+    if (cgpaSession) cgpaSession.innerHTML = options;
+}
+
+function getActiveSession() {
+    const active = allSessions.find(s => s.is_active);
+    if (active) return active.name;
+    return allSessions[0]?.name || '';
+}
+
+function getPreferredSession() {
+    try {
+        const saved = localStorage.getItem(LAST_SESSION_KEY);
+        if (saved && allSessions.some(s => s.name === saved)) return saved;
+    } catch (e) {}
+    return getActiveSession();
+}
+
+function saveLastSession(value) {
+    try { if (value) localStorage.setItem(LAST_SESSION_KEY, value); } catch (e) {}
+}
+
+function setSelectValue(select, value) {
+    if (!select || !value) return;
+    if (![...select.options].some(o => o.value === value)) {
+        select.add(new Option(value, value));
+    }
+    select.value = value;
+}
+
+// ============================================================
+// DATA LOADING
+// ============================================================
+async function loadResources() {
+    try {
+        if (!sessionsLoaded) await loadSessions();
+
+        const res = await apiGet('/api/admin/resources');
+        const list = Array.isArray(res.data) ? res.data : (res.data?.resources || []);
+        allResources = list.map(normalizeResource);
+        updateStats();
         renderCategoryShortcuts();
         applyFilters();
+    } catch (err) {
+        console.error('Load error:', err);
+        document.getElementById('resourcesGrid').innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <h3>Couldn't load resources</h3>
+                <p>${escapeHtml(err.message)}</p>
+            </div>`;
+        document.getElementById('resourcesTbody').innerHTML = `
+            <tr><td colspan="9" style="text-align: center; padding: 40px; color: var(--text-dim);">
+                Unable to load resources: ${escapeHtml(err.message)}
+            </td></tr>`;
     }
+}
 
-    // ============================================================
-    // RENDER
-    // ============================================================
-    function renderDirectory() {
-        if (currentView === 'grid') {
-            document.getElementById('resourcesGrid').style.display = '';
-            document.getElementById('resourcesList').style.display = 'none';
-            renderGrid();
-        } else {
-            document.getElementById('resourcesGrid').style.display = 'none';
-            document.getElementById('resourcesList').style.display = '';
-            renderList();
-        }
-        renderPagination();
+function normalizeResource(r) {
+    const cat = (r.category || 'other').toLowerCase();
+    const catMap = {
+        'past-question': 'past-questions', 'past-questions': 'past-questions', 'past_question': 'past-questions',
+        'lecture-note': 'lecture-notes', 'lecture-notes': 'lecture-notes', 'note': 'lecture-notes',
+        'textbook': 'textbooks', 'textbooks': 'textbooks',
+        'project-material': 'project-materials', 'project-materials': 'project-materials',
+        'academic-tool': 'academic-tools', 'academic-tools': 'academic-tools',
+        'useful-link': 'useful-links', 'useful-links': 'useful-links', 'link': 'useful-links',
+        'other': 'project-materials'
+    };
+    return {
+        id: r.id,
+        title: r.title || 'Untitled resource',
+        description: r.description || '',
+        category: catMap[cat] || 'project-materials',
+        course_code: r.course_code || '',
+        course_title: r.course_title || '',
+        department: r.department || '',
+        level: r.level || '',
+        semester: r.semester || 'first',
+        session: r.session || r.year || '',
+        file_url: r.file_url || '',
+        file_type: r.file_type || '',
+        file_size: r.file_size || 0,
+        download_count: r.download_count || 0,
+        is_published: !!r.is_published,
+        status: (r.status || (r.is_published ? 'published' : 'draft')).toLowerCase(),
+        uploaded_by: r.uploaded_by || '',
+        uploader_name: r.uploader_name || '',
+        created_at: r.created_at || null,
+        updated_at: r.updated_at || null
+    };
+}
+
+// ============================================================
+// STATS
+// ============================================================
+function animateNumber(el, target, duration = 500) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        el.textContent = target;
+        return;
     }
-
-    function getFileIcon(fileType) {
-        if (!fileType) return { icon: 'fa-file', cls: '' };
-        const t = fileType.toLowerCase();
-        if (t.includes('pdf')) return { icon: 'fa-file-pdf', cls: 'pdf' };
-        if (t.includes('word') || t.includes('doc')) return { icon: 'fa-file-word', cls: 'doc' };
-        if (t.includes('presentation') || t.includes('ppt')) return { icon: 'fa-file-powerpoint', cls: 'ppt' };
-        if (t.includes('sheet') || t.includes('xls')) return { icon: 'fa-file-excel', cls: 'xls' };
-        if (t.includes('image')) return { icon: 'fa-file-image', cls: 'img' };
-        return { icon: 'fa-file', cls: '' };
+    const start = performance.now();
+    function step(now) {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        el.textContent = Math.round(target * eased);
+        if (progress < 1) requestAnimationFrame(step);
     }
+    requestAnimationFrame(step);
+}
 
-    function renderStatusBadge(isPublished) {
-        return isPublished
-            ? '<span class="status-badge badge-success"><i class="fas fa-globe" style="font-size:0.5625rem;"></i> Published</span>'
-            : '<span class="status-badge badge-muted"><i class="fas fa-file-alt" style="font-size:0.5625rem;"></i> Draft</span>';
-    }
+function updateStats() {
+    const total = allResources.length;
+    const past = allResources.filter(r => r.category === 'past-questions').length;
+    const notes = allResources.filter(r => r.category === 'lecture-notes').length;
+    const textbooks = allResources.filter(r => r.category === 'textbooks').length;
+    const other = allResources.filter(r => !['past-questions','lecture-notes','textbooks'].includes(r.category)).length;
 
-    function renderGrid() {
-        const grid = document.getElementById('resourcesGrid');
-        const start = (currentPage - 1) * PAGE_SIZE;
-        const items = filteredResources.slice(start, start + PAGE_SIZE);
+    animateNumber(document.getElementById('statTotal'), total);
+    animateNumber(document.getElementById('statPast'), past);
+    animateNumber(document.getElementById('statNotes'), notes);
+    animateNumber(document.getElementById('statTextbooks'), textbooks);
+    animateNumber(document.getElementById('statOther'), other);
+}
 
-        if (items.length === 0) {
-            grid.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-state-icon"><i class="fas fa-book"></i></div>
-                    <h3>No resources found</h3>
-                    <p>Try adjusting your filters or upload a new resource.</p>
-                </div>`;
-            return;
-        }
+// ============================================================
+// CATEGORY SHORTCUTS
+// ============================================================
+function renderCategoryShortcuts() {
+    const container = document.getElementById('categoryShortcuts');
+    const cats = ['past-questions', 'lecture-notes', 'textbooks', 'project-materials', 'academic-tools', 'useful-links'];
+    container.innerHTML = cats.map(catKey => {
+        const meta = CATEGORY_META[catKey];
+        const count = allResources.filter(r => r.category === catKey).length;
+        const isActive = activeCategory === catKey ? 'active' : '';
+        return `
+            <div class="category-shortcut ${isActive}" data-category="${catKey}">
+                <div class="category-icon" style="background: ${meta.bg}; color: ${meta.color};">
+                    <i class="fas ${meta.icon}"></i>
+                </div>
+                <div class="category-info">
+                    <div class="category-name">${meta.label}</div>
+                    <div class="category-count">${count} item${count === 1 ? '' : 's'}</div>
+                </div>
+            </div>`;
+    }).join('');
 
-        grid.innerHTML = items.map((r, i) => {
-            const meta = CATEGORY_META[r.category] || CATEGORY_META['project-materials'];
-            const fileInfo = getFileIcon(r.file_type);
-            const badge = renderStatusBadge(r.is_published);
-            return `
-                <div class="resource-card" data-id="${escapeHtml(r.id)}" style="animation-delay: ${i * 40}ms;">
-                    <div class="resource-icon-area">
-                        <div class="resource-file-icon ${fileInfo.cls}">
-                            <i class="fas ${fileInfo.icon}"></i>
-                        </div>
-                        ${badge.replace('status-badge', 'resource-status')}
-                    </div>
-                    <div class="resource-body">
-                        <span class="resource-type-tag">${meta.label}</span>
-                        <h3 class="resource-title">${escapeHtml(r.title)}</h3>
-                        <div class="resource-course">${escapeHtml(r.course_code || '—')}${r.course_title ? ' · ' + escapeHtml(r.course_title) : ''}</div>
-                        <div class="resource-meta">
-                            <span><i class="fas fa-building"></i> ${escapeHtml(shortDept(r.department))}</span>
-                            <span><i class="fas fa-layer-group"></i> ${escapeHtml(r.level || '—')}</span>
-                            <span><i class="far fa-calendar"></i> ${escapeHtml(r.session || '—')}</span>
-                        </div>
-                        <div class="resource-footer">
-                            <span><i class="fas fa-download"></i> ${r.download_count}</span>
-                            <div class="resource-footer-actions">
-                                <button class="icon-btn" data-action="edit" data-id="${escapeHtml(r.id)}" title="Edit"><i class="fas fa-pen"></i></button>
-                                <button class="icon-btn danger" data-action="delete" data-id="${escapeHtml(r.id)}" title="Delete"><i class="fas fa-trash"></i></button>
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
-        }).join('');
-
-        grid.querySelectorAll('.resource-card').forEach(card => {
-            card.addEventListener('click', (e) => {
-                if (e.target.closest('button')) return;
-                openDrawer(card.dataset.id);
-            });
+    container.querySelectorAll('.category-shortcut').forEach(el => {
+        el.addEventListener('click', () => {
+            const cat = el.dataset.category;
+            if (activeCategory === cat) {
+                activeCategory = '';
+                document.getElementById('filterType').value = '';
+            } else {
+                activeCategory = cat;
+                document.getElementById('filterType').value = cat;
+            }
+            renderCategoryShortcuts();
+            applyFilters();
         });
-        grid.querySelectorAll('button[data-action]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const id = btn.dataset.id;
-                if (btn.dataset.action === 'edit') openResourceModal(id);
-                else if (btn.dataset.action === 'delete') openDeleteModal(id);
-            });
-        });
+    });
+}
+
+// ============================================================
+// FILTERS
+// ============================================================
+function applyFilters() {
+    const q = document.getElementById('searchInput').value.trim().toLowerCase();
+    const type = document.getElementById('filterType').value;
+    const dept = document.getElementById('filterDepartment').value;
+    const lvl = document.getElementById('filterLevel').value;
+    const semester = document.getElementById('filterSemester').value;
+    const status = document.getElementById('filterStatus').value;
+
+    filteredResources = allResources.filter(r => {
+        if (type && r.category !== type) return false;
+        if (dept) {
+            // "General" matches both true general and its stored value
+            if (dept === GENERAL_DEPARTMENT) {
+                if (r.department !== GENERAL_DEPARTMENT) return false;
+            } else if (r.department !== dept) {
+                return false;
+            }
+        }
+        if (lvl && r.level !== lvl) return false;
+        if (semester && r.semester !== semester) return false;
+        if (status) {
+            if (status === 'published' && !r.is_published) return false;
+            if (status === 'draft' && r.is_published) return false;
+        }
+        if (q) {
+            const hay = `${r.title} ${r.course_code} ${r.course_title} ${r.description}`.toLowerCase();
+            if (!hay.includes(q)) return false;
+        }
+        return true;
+    });
+
+    filteredResources.sort((a, b) => {
+        const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return tb - ta;
+    });
+
+    currentPage = 1;
+    updateFilterSummary();
+    renderDirectory();
+}
+
+function updateFilterSummary() {
+    const active = [];
+    ['searchInput','filterType','filterDepartment','filterLevel','filterSemester','filterStatus'].forEach(id => {
+        if (document.getElementById(id).value) active.push(id);
+    });
+    document.getElementById('filterCount').textContent = active.length
+        ? `${active.length} filter${active.length > 1 ? 's' : ''} active`
+        : '';
+    document.getElementById('resultCount').textContent =
+        `${filteredResources.length} resource${filteredResources.length === 1 ? '' : 's'}`;
+}
+
+function clearFilters() {
+    ['searchInput','filterType','filterDepartment','filterLevel','filterSemester','filterStatus']
+        .forEach(id => document.getElementById(id).value = '');
+    activeCategory = '';
+    renderCategoryShortcuts();
+    applyFilters();
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function renderDirectory() {
+    if (currentView === 'grid') {
+        document.getElementById('resourcesGrid').style.display = '';
+        document.getElementById('resourcesList').style.display = 'none';
+        renderGrid();
+    } else {
+        document.getElementById('resourcesGrid').style.display = 'none';
+        document.getElementById('resourcesList').style.display = '';
+        renderList();
     }
+    renderPagination();
+}
 
-    function renderList() {
-        const tbody = document.getElementById('resourcesTbody');
-        const start = (currentPage - 1) * PAGE_SIZE;
-        const items = filteredResources.slice(start, start + PAGE_SIZE);
+function getFileIcon(fileType) {
+    if (!fileType) return { icon: 'fa-file', cls: '' };
+    const t = fileType.toLowerCase();
+    if (t.includes('pdf')) return { icon: 'fa-file-pdf', cls: 'pdf' };
+    if (t.includes('word') || t.includes('doc')) return { icon: 'fa-file-word', cls: 'doc' };
+    if (t.includes('presentation') || t.includes('ppt')) return { icon: 'fa-file-powerpoint', cls: 'ppt' };
+    if (t.includes('sheet') || t.includes('xls')) return { icon: 'fa-file-excel', cls: 'xls' };
+    if (t.includes('image')) return { icon: 'fa-file-image', cls: 'img' };
+    return { icon: 'fa-file', cls: '' };
+}
 
-        if (items.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state">
+function renderStatusBadge(isPublished) {
+    return isPublished
+        ? '<span class="status-badge badge-success"><i class="fas fa-globe" style="font-size:0.5625rem;"></i> Published</span>'
+        : '<span class="status-badge badge-muted"><i class="fas fa-file-alt" style="font-size:0.5625rem;"></i> Draft</span>';
+}
+
+function renderGrid() {
+    const grid = document.getElementById('resourcesGrid');
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const items = filteredResources.slice(start, start + PAGE_SIZE);
+
+    if (items.length === 0) {
+        grid.innerHTML = `
+            <div class="empty-state">
                 <div class="empty-state-icon"><i class="fas fa-book"></i></div>
                 <h3>No resources found</h3>
                 <p>Try adjusting your filters or upload a new resource.</p>
-            </div></td></tr>`;
-            return;
-        }
+            </div>`;
+        return;
+    }
 
-        tbody.innerHTML = items.map((r, i) => {
-            const meta = CATEGORY_META[r.category] || CATEGORY_META['project-materials'];
-            const fileInfo = getFileIcon(r.file_type);
-            const badge = renderStatusBadge(r.is_published);
-            return `
-                <tr data-id="${escapeHtml(r.id)}" style="animation-delay: ${i * 30}ms;">
-                    <td>
-                        <div class="resource-cell">
-                            <div class="resource-thumb ${fileInfo.cls}"><i class="fas ${fileInfo.icon}"></i></div>
-                            <div class="resource-cell-info">
-                                <div class="resource-cell-title">${escapeHtml(r.title)}</div>
-                                <div class="resource-cell-sub">${escapeHtml(r.semester === 'second' ? '2nd Sem' : '1st Sem')}</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="cell-mono">${escapeHtml(r.course_code || '—')}</td>
-                    <td>${escapeHtml(meta.label)}</td>
-                    <td>${escapeHtml(shortDept(r.department))}</td>
-                    <td>${escapeHtml(r.level || '—')}</td>
-                    <td class="cell-mono">${escapeHtml(r.session || '—')}</td>
-                    <td>${r.download_count}</td>
-                    <td>${badge}</td>
-                    <td>
-                        <div class="row-actions">
-                            <button class="icon-btn" data-action="view" data-id="${escapeHtml(r.id)}" title="View"><i class="fas fa-eye"></i></button>
+    grid.innerHTML = items.map((r, i) => {
+        const meta = CATEGORY_META[r.category] || CATEGORY_META['project-materials'];
+        const fileInfo = getFileIcon(r.file_type);
+        const badge = renderStatusBadge(r.is_published);
+        return `
+            <div class="resource-card" data-id="${escapeHtml(r.id)}" style="animation-delay: ${i * 40}ms;">
+                <div class="resource-icon-area">
+                    <div class="resource-file-icon ${fileInfo.cls}">
+                        <i class="fas ${fileInfo.icon}"></i>
+                    </div>
+                    ${badge.replace('status-badge', 'resource-status')}
+                </div>
+                <div class="resource-body">
+                    <span class="resource-type-tag">${meta.label}</span>
+                    <h3 class="resource-title">${escapeHtml(r.title)}</h3>
+                    <div class="resource-course">${escapeHtml(r.course_code || '—')}${r.course_title ? ' · ' + escapeHtml(r.course_title) : ''}</div>
+                    <div class="resource-meta">
+                        <span><i class="fas fa-building"></i> ${escapeHtml(shortDept(r.department))}</span>
+                        <span><i class="fas fa-layer-group"></i> ${escapeHtml(r.level || '—')}</span>
+                        <span><i class="far fa-calendar"></i> ${escapeHtml(r.session || '—')}</span>
+                    </div>
+                    <div class="resource-footer">
+                        <span><i class="fas fa-download"></i> ${r.download_count}</span>
+                        <div class="resource-footer-actions">
                             <button class="icon-btn" data-action="edit" data-id="${escapeHtml(r.id)}" title="Edit"><i class="fas fa-pen"></i></button>
                             <button class="icon-btn danger" data-action="delete" data-id="${escapeHtml(r.id)}" title="Delete"><i class="fas fa-trash"></i></button>
                         </div>
-                    </td>
-                </tr>`;
-        }).join('');
-
-        tbody.querySelectorAll('tr[data-id]').forEach(tr => {
-            tr.addEventListener('click', (e) => {
-                if (e.target.closest('button')) return;
-                openDrawer(tr.dataset.id);
-            });
-        });
-        tbody.querySelectorAll('button[data-action]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const id = btn.dataset.id;
-                if (btn.dataset.action === 'view') openDrawer(id);
-                else if (btn.dataset.action === 'edit') openResourceModal(id);
-                else if (btn.dataset.action === 'delete') openDeleteModal(id);
-            });
-        });
-    }
-
-    function renderPagination() {
-        const info = document.getElementById('paginationInfo');
-        const controls = document.getElementById('paginationControls');
-        const totalPages = Math.max(1, Math.ceil(filteredResources.length / PAGE_SIZE));
-
-        if (filteredResources.length === 0) {
-            info.textContent = 'No resources to display';
-            controls.innerHTML = '';
-            return;
-        }
-
-        const start = (currentPage - 1) * PAGE_SIZE + 1;
-        const end = Math.min(currentPage * PAGE_SIZE, filteredResources.length);
-        info.textContent = `Showing ${start}–${end} of ${filteredResources.length}`;
-
-        const parts = [];
-        parts.push(`<button class="page-btn" data-page="prev" ${currentPage === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i></button>`);
-        for (let i = 1; i <= totalPages; i++) {
-            if (totalPages > 7 && i !== 1 && i !== totalPages && Math.abs(i - currentPage) > 1) {
-                if (i === 2 || i === totalPages - 1) parts.push(`<span class="page-btn" style="border:none;background:none;cursor:default;">…</span>`);
-                continue;
-            }
-            parts.push(`<button class="page-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`);
-        }
-        parts.push(`<button class="page-btn" data-page="next" ${currentPage === totalPages ? 'disabled' : ''}><i class="fas fa-chevron-right"></i></button>`);
-
-        controls.innerHTML = parts.join('');
-        controls.querySelectorAll('button[data-page]').forEach(b => {
-            b.addEventListener('click', () => {
-                const val = b.dataset.page;
-                if (val === 'prev') currentPage = Math.max(1, currentPage - 1);
-                else if (val === 'next') currentPage = Math.min(totalPages, currentPage + 1);
-                else currentPage = parseInt(val);
-                renderDirectory();
-            });
-        });
-    }
-
-    // ============================================================
-    // SESSION HELPERS
-    // ============================================================
-    function getLastSession() {
-        try { return localStorage.getItem(LAST_SESSION_KEY) || DEFAULT_SESSION; }
-        catch (e) { return DEFAULT_SESSION; }
-    }
-    function saveLastSession(value) {
-        try { if (value) localStorage.setItem(LAST_SESSION_KEY, value); } catch (e) {}
-    }
-
-    // Sets a <select> value, adding the option first if it isn't in the list
-    // (e.g. an older session like 2022/2023), so the value never silently resets.
-    function setSelectValue(select, value) {
-        if (!select || !value) return;
-        if (![...select.options].some(o => o.value === value)) {
-            select.add(new Option(value, value));
-        }
-        select.value = value;
-    }
-
-    // ============================================================
-    // UPLOAD / EDIT MODAL
-    // ============================================================
-    function openResourceModal(id = null, prefill = null) {
-        editingResourceId = id;
-        selectedFiles = [];
-        const title = document.getElementById('resourceModalTitle');
-        const form = document.getElementById('resourceForm');
-        form.reset();
-        document.getElementById('fileSelectedName').textContent = '';
-        document.getElementById('fileUploadArea').classList.remove('selected');
-        renderPendingFiles();
-
-        if (id) {
-            const r = allResources.find(x => String(x.id) === String(id));
-            if (!r) return;
-            title.innerHTML = '<i class="fas fa-pen"></i> Edit Resource';
-            document.getElementById('rTitle').value = r.title;
-            document.getElementById('rDescription').value = r.description;
-            document.getElementById('rCategory').value = r.category;
-            document.getElementById('rStatus').value = r.is_published ? 'published' : 'draft';
-            document.getElementById('rCourseCode').value = r.course_code;
-            document.getElementById('rCourseTitle').value = r.course_title;
-            setSelectValue(document.getElementById('rDepartment'), r.department);
-            setSelectValue(document.getElementById('rLevel'), r.level);
-            document.getElementById('rSemester').value = r.semester;
-            setSelectValue(document.getElementById('rSession'), r.session || getLastSession());
-            if (r.file_url) {
-                document.getElementById('fileSelectedName').textContent = 'Current file: ' + (r.file_type || 'uploaded file');
-                document.getElementById('fileUploadArea').classList.add('selected');
-            }
-        } else {
-            title.innerHTML = '<i class="fas fa-upload"></i> Upload New Resource';
-            document.getElementById('rStatus').value = 'draft';
-            setSelectValue(document.getElementById('rSession'), getLastSession());
-
-            // "Add file to this course": keep the course details, pick new files
-            if (prefill) {
-                document.getElementById('rCourseCode').value = prefill.course_code || '';
-                document.getElementById('rCourseTitle').value = prefill.course_title || '';
-                setSelectValue(document.getElementById('rDepartment'), prefill.department);
-                setSelectValue(document.getElementById('rLevel'), prefill.level);
-                document.getElementById('rSemester').value = prefill.semester || 'first';
-                setSelectValue(document.getElementById('rSession'), prefill.session || getLastSession());
-                if (prefill.category) document.getElementById('rCategory').value = prefill.category;
-            }
-        }
-
-        showModal('resourceModal');
-        setTimeout(() => {
-            const target = (!id && prefill) ? document.getElementById('rCategory') : document.getElementById('rTitle');
-            target.focus();
-        }, 150);
-    }
-
-    // ---------- multi-file selection ----------
-    function humanizeFilename(name) {
-        return (name || '').replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
-    }
-
-    function guessCategory(filename, fallback) {
-        const n = (filename || '').toLowerCase();
-        if (/(question|exam|\bpq\b|past[\s_-]?q)/.test(n)) return 'past-questions';
-        if (/(textbook|\bbook\b|ebook)/.test(n)) return 'textbooks';
-        if (/(outline|syllabus|note|lecture|slide)/.test(n)) return 'lecture-notes';
-        return fallback || 'lecture-notes';
-    }
-
-    function addFiles(fileList) {
-        if (editingResourceId) {
-            showToast('Editing changes the details only. To add more files for this course, use "Add file to this course" in the resource panel.', 'info', 6000);
-            return;
-        }
-        const defaultCat = document.getElementById('rCategory').value;
-        const incoming = Array.from(fileList || []);
-        let added = 0;
-        incoming.forEach(file => {
-            const exists = selectedFiles.some(x => x.file.name === file.name && x.file.size === file.size);
-            if (exists) return;
-            selectedFiles.push({
-                file,
-                title: humanizeFilename(file.name),
-                category: guessCategory(file.name, defaultCat),
-                touchedCategory: false,
-                error: ''
-            });
-            added++;
-        });
-        if (incoming.length && !added) showToast('Those files are already in the list', 'info');
-        renderPendingFiles();
-    }
-
-    function renderPendingFiles() {
-        const wrap = document.getElementById('pendingFiles');
-        const hint = document.getElementById('fileSelectedName');
-        const area = document.getElementById('fileUploadArea');
-        if (!wrap) return;
-
-        if (!selectedFiles.length) {
-            wrap.innerHTML = '';
-            if (!editingResourceId) hint.textContent = '';
-            if (!editingResourceId) area.classList.remove('selected');
-            return;
-        }
-
-        area.classList.add('selected');
-        hint.textContent = `${selectedFiles.length} file${selectedFiles.length === 1 ? '' : 's'} selected — click to add more`;
-
-        const catOptions = Object.entries(CATEGORY_META)
-            .map(([key, m]) => `<option value="${key}">${escapeHtml(m.label)}</option>`).join('');
-
-        wrap.innerHTML = selectedFiles.map((item, i) => {
-            const info = getFileIcon(item.file.type || item.file.name);
-            return `
-                <div class="pending-file ${item.error ? 'has-error' : ''}" data-index="${i}">
-                    <div class="pending-file-icon ${info.cls}"><i class="fas ${info.icon}"></i></div>
-                    <div class="pending-file-fields">
-                        <input type="text" class="form-input pf-title" value="${escapeHtml(item.title)}" placeholder="Title for this file">
-                        <div class="pending-file-row">
-                            <select class="form-select pf-category">${catOptions.replace(`value="${item.category}"`, `value="${item.category}" selected`)}</select>
-                            <span class="pending-file-meta">${escapeHtml(item.file.name)} · ${formatFileSize(item.file.size)}</span>
-                        </div>
-                        ${item.error ? `<div class="pending-file-error"><i class="fas fa-exclamation-circle"></i> ${escapeHtml(item.error)}</div>` : ''}
                     </div>
-                    <button type="button" class="icon-btn danger pf-remove" title="Remove"><i class="fas fa-times"></i></button>
-                </div>`;
-        }).join('');
+                </div>
+            </div>`;
+    }).join('');
+
+    grid.querySelectorAll('.resource-card').forEach(card => {
+        card.addEventListener('click', (e) => {
+            if (e.target.closest('button')) return;
+            openDrawer(card.dataset.id);
+        });
+    });
+    grid.querySelectorAll('button[data-action]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.dataset.id;
+            if (btn.dataset.action === 'edit') openResourceModal(id);
+            else if (btn.dataset.action === 'delete') openDeleteModal(id);
+        });
+    });
+}
+
+function renderList() {
+    const tbody = document.getElementById('resourcesTbody');
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const items = filteredResources.slice(start, start + PAGE_SIZE);
+
+    if (items.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state">
+            <div class="empty-state-icon"><i class="fas fa-book"></i></div>
+            <h3>No resources found</h3>
+            <p>Try adjusting your filters or upload a new resource.</p>
+        </div></td></tr>`;
+        return;
     }
 
-    function setupFileUpload() {
-        const area = document.getElementById('fileUploadArea');
-        const input = document.getElementById('resourceFileInput');
-        const pending = document.getElementById('pendingFiles');
-
-        area.addEventListener('click', () => {
-            if (editingResourceId) {
-                showToast('Editing changes the details only. Use "Add file to this course" to attach more files.', 'info', 5000);
-                return;
-            }
-            input.click();
-        });
-        input.addEventListener('change', (e) => {
-            addFiles(e.target.files);
-            input.value = '';
-        });
-
-        // Drag & drop
-        ['dragenter', 'dragover'].forEach(ev => area.addEventListener(ev, (e) => {
-            e.preventDefault();
-            area.classList.add('dragover');
-        }));
-        ['dragleave', 'drop'].forEach(ev => area.addEventListener(ev, (e) => {
-            e.preventDefault();
-            area.classList.remove('dragover');
-        }));
-        area.addEventListener('drop', (e) => addFiles(e.dataTransfer?.files));
-
-        // Per-file edits
-        pending.addEventListener('input', (e) => {
-            const row = e.target.closest('.pending-file');
-            if (!row || !e.target.classList.contains('pf-title')) return;
-            selectedFiles[+row.dataset.index].title = e.target.value;
-        });
-        pending.addEventListener('change', (e) => {
-            const row = e.target.closest('.pending-file');
-            if (!row || !e.target.classList.contains('pf-category')) return;
-            const item = selectedFiles[+row.dataset.index];
-            item.category = e.target.value;
-            item.touchedCategory = true;
-        });
-        pending.addEventListener('click', (e) => {
-            const btn = e.target.closest('.pf-remove');
-            if (!btn) return;
-            const row = btn.closest('.pending-file');
-            selectedFiles.splice(+row.dataset.index, 1);
-            renderPendingFiles();
-        });
-
-        // Changing the main category updates files you haven't set yourself
-        document.getElementById('rCategory').addEventListener('change', (e) => {
-            selectedFiles.forEach(item => { if (!item.touchedCategory) item.category = e.target.value || item.category; });
-            renderPendingFiles();
-        });
-    }
-
-    function buildResourcePayload() {
-        const session = document.getElementById('rSession').value;
-        return {
-            title: document.getElementById('rTitle').value.trim(),
-            description: document.getElementById('rDescription').value.trim(),
-            category: document.getElementById('rCategory').value,
-            status: document.getElementById('rStatus').value,
-            is_published: document.getElementById('rStatus').value === 'published',
-            course_code: document.getElementById('rCourseCode').value.trim(),
-            course_title: document.getElementById('rCourseTitle').value.trim(),
-            department: document.getElementById('rDepartment').value,
-            level: document.getElementById('rLevel').value,
-            semester: document.getElementById('rSemester').value,
-            // Send the session under both names. The list reads it back from
-            // "year", so sending only "session" lost it on every save.
-            session: session,
-            year: session
-        };
-    }
-
-    async function handleResourceSubmit(e) {
-        e.preventDefault();
-        const btn = document.getElementById('resourceSubmitBtn');
-        const original = btn.innerHTML;
-        const payload = buildResourcePayload();
-
-        // ----- validation -----
-        if (editingResourceId) {
-            if (!payload.title) { showToast('Resource title is required', 'warning'); document.getElementById('rTitle').focus(); return; }
-        } else if (selectedFiles.length === 0) {
-            if (!payload.title) { showToast('Add a title, or choose one or more files to upload', 'warning'); document.getElementById('rTitle').focus(); return; }
-        } else {
-            const missing = selectedFiles.findIndex(f => !f.title.trim());
-            if (missing !== -1) {
-                showToast(`Give file ${missing + 1} a title`, 'warning');
-                document.querySelectorAll('#pendingFiles .pf-title')[missing]?.focus();
-                return;
-            }
-        }
-
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Saving…';
-
-        try {
-            if (editingResourceId) {
-                await apiPut(`/api/admin/resources/${editingResourceId}`, payload);
-                saveLastSession(payload.session);
-                showToast('Resource updated', 'success');
-                hideModal('resourceModal');
-                await loadResources();
-                return;
-            }
-
-            // New resource without files (e.g. a useful link)
-            if (selectedFiles.length === 0) {
-                await apiPost('/api/admin/resources', payload);
-                saveLastSession(payload.session);
-                showToast('Resource saved', 'success');
-                hideModal('resourceModal');
-                await loadResources();
-                return;
-            }
-
-            // Many files: one resource record per file, all sharing the course details
-            const total = selectedFiles.length;
-            let ok = 0, failed = 0;
-            let n = 0;
-            for (const item of [...selectedFiles]) {
-                n++;
-                btn.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i> Uploading ${n} of ${total}…`;
-                const fd = new FormData();
-                fd.append('file', item.file);
-                fd.append('data', JSON.stringify({
-                    ...payload,
-                    title: item.title.trim(),
-                    category: item.category
-                }));
-                try {
-                    await apiPost('/api/admin/resources', fd, true);
-                    ok++;
-                    selectedFiles = selectedFiles.filter(x => x !== item);
-                } catch (err) {
-                    console.error('Upload failed:', item.file.name, err);
-                    item.error = err.message || 'Upload failed';
-                    failed++;
-                }
-            }
-
-            saveLastSession(payload.session);
-            await loadResources();
-
-            if (failed === 0) {
-                showToast(`${ok} file${ok === 1 ? '' : 's'} uploaded`, 'success');
-                hideModal('resourceModal');
-            } else {
-                renderPendingFiles();
-                showToast(`${ok} uploaded, ${failed} failed. Fix or remove the failed ones and press Save again.`, 'warning', 7000);
-            }
-        } catch (err) {
-            console.error('Save error:', err);
-            showToast(err.message || 'Failed to save resource', 'error');
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = original;
-        }
-    }
-
-    // ============================================================
-    // DRAWER
-    // ============================================================
-    function openDrawer(id) {
-        const r = allResources.find(x => String(x.id) === String(id));
-        if (!r) return;
-        viewingResource = r;
-
+    tbody.innerHTML = items.map((r, i) => {
         const meta = CATEGORY_META[r.category] || CATEGORY_META['project-materials'];
         const fileInfo = getFileIcon(r.file_type);
+        const badge = renderStatusBadge(r.is_published);
+        return `
+            <tr data-id="${escapeHtml(r.id)}" style="animation-delay: ${i * 30}ms;">
+                <td>
+                    <div class="resource-cell">
+                        <div class="resource-thumb ${fileInfo.cls}"><i class="fas ${fileInfo.icon}"></i></div>
+                        <div class="resource-cell-info">
+                            <div class="resource-cell-title">${escapeHtml(r.title)}</div>
+                            <div class="resource-cell-sub">${escapeHtml(r.semester === 'second' ? '2nd Sem' : '1st Sem')}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="cell-mono">${escapeHtml(r.course_code || '—')}</td>
+                <td>${escapeHtml(meta.label)}</td>
+                <td>${escapeHtml(shortDept(r.department))}</td>
+                <td>${escapeHtml(r.level || '—')}</td>
+                <td class="cell-mono">${escapeHtml(r.session || '—')}</td>
+                <td>${r.download_count}</td>
+                <td>${badge}</td>
+                <td>
+                    <div class="row-actions">
+                        <button class="icon-btn" data-action="view" data-id="${escapeHtml(r.id)}" title="View"><i class="fas fa-eye"></i></button>
+                        <button class="icon-btn" data-action="edit" data-id="${escapeHtml(r.id)}" title="Edit"><i class="fas fa-pen"></i></button>
+                        <button class="icon-btn danger" data-action="delete" data-id="${escapeHtml(r.id)}" title="Delete"><i class="fas fa-trash"></i></button>
+                    </div>
+                </td>
+            </tr>`;
+    }).join('');
 
-        const iconEl = document.getElementById('drawerFileIcon');
-        iconEl.className = 'drawer-file-icon ' + fileInfo.cls;
-        iconEl.innerHTML = `<i class="fas ${fileInfo.icon}"></i>`;
+    tbody.querySelectorAll('tr[data-id]').forEach(tr => {
+        tr.addEventListener('click', (e) => {
+            if (e.target.closest('button')) return;
+            openDrawer(tr.dataset.id);
+        });
+    });
+    tbody.querySelectorAll('button[data-action]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.dataset.id;
+            if (btn.dataset.action === 'view') openDrawer(id);
+            else if (btn.dataset.action === 'edit') openResourceModal(id);
+            else if (btn.dataset.action === 'delete') openDeleteModal(id);
+        });
+    });
+}
 
-        document.getElementById('drawerType').textContent = meta.label;
-        document.getElementById('drawerTitle').textContent = r.title;
-        document.getElementById('drawerCourse').textContent =
-            [r.course_code, r.course_title].filter(Boolean).join(' · ') || '—';
-        document.getElementById('drawerDescription').textContent = r.description || 'No description provided.';
-        document.getElementById('drawerDept').textContent = r.department || '—';
-        document.getElementById('drawerLevel').textContent = r.level || '—';
-        document.getElementById('drawerSemester').textContent = r.semester === 'second' ? 'Second Semester' : 'First Semester';
-        document.getElementById('drawerSession').textContent = r.session || '—';
-        document.getElementById('drawerFormat').textContent = r.file_type || '—';
-        document.getElementById('drawerSize').textContent = formatFileSize(r.file_size);
-        document.getElementById('drawerDownloads').textContent = r.download_count;
-        document.getElementById('drawerUploaded').textContent = formatDate(r.created_at);
-        document.getElementById('drawerUploader').textContent = r.uploader_name || 'Administrator';
-        document.getElementById('drawerStatusText').textContent = r.is_published ? 'Published' : 'Draft';
+function renderPagination() {
+    const info = document.getElementById('paginationInfo');
+    const controls = document.getElementById('paginationControls');
+    const totalPages = Math.max(1, Math.ceil(filteredResources.length / PAGE_SIZE));
 
-        const publishText = document.getElementById('drawerPublishText');
-        publishText.textContent = r.is_published ? 'Unpublish' : 'Publish';
-
-        renderRelatedFiles(r);
-
-        document.getElementById('drawerOverlay').classList.add('active');
-        document.getElementById('resourceDrawer').classList.add('active');
-        document.getElementById('resourceDrawer').setAttribute('aria-hidden', 'false');
-        document.body.style.overflow = 'hidden';
+    if (filteredResources.length === 0) {
+        info.textContent = 'No resources to display';
+        controls.innerHTML = '';
+        return;
     }
 
-    // Other files that belong to the same course (same code + level)
-    function renderRelatedFiles(r) {
-        const title = document.getElementById('drawerRelatedTitle');
-        const box = document.getElementById('drawerRelated');
-        const code = (r.course_code || '').trim().toLowerCase();
-        const related = code
-            ? allResources.filter(x =>
-                String(x.id) !== String(r.id) &&
-                (x.course_code || '').trim().toLowerCase() === code &&
-                x.level === r.level)
-            : [];
+    const start = (currentPage - 1) * PAGE_SIZE + 1;
+    const end = Math.min(currentPage * PAGE_SIZE, filteredResources.length);
+    info.textContent = `Showing ${start}–${end} of ${filteredResources.length}`;
 
-        if (!related.length) {
-            title.style.display = 'none';
-            box.innerHTML = '';
-            return;
+    const parts = [];
+    parts.push(`<button class="page-btn" data-page="prev" ${currentPage === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i></button>`);
+    for (let i = 1; i <= totalPages; i++) {
+        if (totalPages > 7 && i !== 1 && i !== totalPages && Math.abs(i - currentPage) > 1) {
+            if (i === 2 || i === totalPages - 1) parts.push(`<span class="page-btn" style="border:none;background:none;cursor:default;">…</span>`);
+            continue;
         }
+        parts.push(`<button class="page-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`);
+    }
+    parts.push(`<button class="page-btn" data-page="next" ${currentPage === totalPages ? 'disabled' : ''}><i class="fas fa-chevron-right"></i></button>`);
 
-        title.style.display = '';
-        title.textContent = `More files for ${r.course_code} (${related.length})`;
-        box.innerHTML = related.map(x => {
+    controls.innerHTML = parts.join('');
+    controls.querySelectorAll('button[data-page]').forEach(b => {
+        b.addEventListener('click', () => {
+            const val = b.dataset.page;
+            if (val === 'prev') currentPage = Math.max(1, currentPage - 1);
+            else if (val === 'next') currentPage = Math.min(totalPages, currentPage + 1);
+            else currentPage = parseInt(val);
+            renderDirectory();
+        });
+    });
+}
+
+// ============================================================
+// UPLOAD / EDIT MODAL
+// ============================================================
+function openResourceModal(id = null, prefill = null) {
+    editingResourceId = id;
+    selectedFiles = [];
+    const title = document.getElementById('resourceModalTitle');
+    const form = document.getElementById('resourceForm');
+    form.reset();
+    document.getElementById('fileSelectedName').textContent = '';
+    document.getElementById('fileUploadArea').classList.remove('selected');
+    renderPendingFiles();
+
+    if (id) {
+        const r = allResources.find(x => String(x.id) === String(id));
+        if (!r) return;
+        title.innerHTML = '<i class="fas fa-pen"></i> Edit Resource';
+        document.getElementById('rTitle').value = r.title;
+        document.getElementById('rDescription').value = r.description;
+        document.getElementById('rCategory').value = r.category;
+        document.getElementById('rStatus').value = r.is_published ? 'published' : 'draft';
+        document.getElementById('rCourseCode').value = r.course_code;
+        document.getElementById('rCourseTitle').value = r.course_title;
+        setSelectValue(document.getElementById('rDepartment'), r.department);
+        setSelectValue(document.getElementById('rLevel'), r.level);
+        document.getElementById('rSemester').value = r.semester;
+        setSelectValue(document.getElementById('rSession'), r.session || getPreferredSession());
+        if (r.file_url) {
+            document.getElementById('fileSelectedName').textContent = 'Current file: ' + (r.file_type || 'uploaded file');
+            document.getElementById('fileUploadArea').classList.add('selected');
+        }
+    } else {
+        title.innerHTML = '<i class="fas fa-upload"></i> Upload New Resource';
+        document.getElementById('rStatus').value = 'draft';
+        setSelectValue(document.getElementById('rSession'), getPreferredSession());
+
+        if (prefill) {
+            document.getElementById('rCourseCode').value = prefill.course_code || '';
+            document.getElementById('rCourseTitle').value = prefill.course_title || '';
+            setSelectValue(document.getElementById('rDepartment'), prefill.department);
+            setSelectValue(document.getElementById('rLevel'), prefill.level);
+            document.getElementById('rSemester').value = prefill.semester || 'first';
+            setSelectValue(document.getElementById('rSession'), prefill.session || getPreferredSession());
+            if (prefill.category) document.getElementById('rCategory').value = prefill.category;
+        }
+    }
+
+    showModal('resourceModal');
+    setTimeout(() => {
+        const target = (!id && prefill) ? document.getElementById('rCategory') : document.getElementById('rTitle');
+        target.focus();
+    }, 150);
+}
+
+// ---------- multi-file selection ----------
+function humanizeFilename(name) {
+    return (name || '').replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function guessCategory(filename, fallback) {
+    const n = (filename || '').toLowerCase();
+    const code = (document.getElementById('rCourseCode')?.value || '').toLowerCase();
+    const title = (document.getElementById('rCourseTitle')?.value || '').toLowerCase();
+    const hay = `${n} ${code} ${title}`;
+
+    if (/(past[\s_-]?q|past[\s_-]?question|exam|\bpq\b|questions?)/.test(hay)) return 'past-questions';
+    if (/(textbook|\bbook\b|ebook|manual)/.test(hay)) return 'textbooks';
+    if (/(outline|syllabus|scheme)/.test(hay)) return 'lecture-notes';
+    if (/(project|thesis|dissertation)/.test(hay)) return 'project-materials';
+    if (/(slide|lecture|note)/.test(hay)) return 'lecture-notes';
+
+    return fallback || '';
+}
+
+function addFiles(fileList) {
+    if (editingResourceId) {
+        showToast('Editing changes the details only. To add more files for this course, use "Add File" in the resource panel.', 'info', 6000);
+        return;
+    }
+    const formCategory = document.getElementById('rCategory').value;
+    const incoming = Array.from(fileList || []);
+    let added = 0;
+
+    incoming.forEach(file => {
+        const exists = selectedFiles.some(x => x.file.name === file.name && x.file.size === file.size);
+        if (exists) return;
+
+        const guessed = guessCategory(file.name, formCategory);
+        selectedFiles.push({
+            file,
+            title: humanizeFilename(file.name),
+            category: guessed || '',
+            touchedCategory: !!guessed,
+            error: guessed ? '' : 'Select a category for this file'
+        });
+        added++;
+    });
+
+    if (incoming.length && !added) showToast('Those files are already in the list', 'info');
+    renderPendingFiles();
+}
+
+function humanSize(bytes) {
+    if (!bytes) return '0 B';
+    const units = ['B','KB','MB','GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + units[i];
+}
+
+function renderPendingFiles() {
+    const wrap = document.getElementById('pendingFiles');
+    const hint = document.getElementById('fileSelectedName');
+    const area = document.getElementById('fileUploadArea');
+    if (!wrap) return;
+
+    if (!selectedFiles.length) {
+        wrap.innerHTML = '';
+        if (!editingResourceId) {
+            hint.textContent = '';
+            area.classList.remove('selected');
+        }
+        return;
+    }
+
+    wrap.innerHTML = selectedFiles.map((pf, idx) => {
+        const fileInfo = getFileIcon(pf.file.type || pf.file.name.split('.').pop() || '');
+        const ext = (pf.file.name.split('.').pop() || '').toLowerCase();
+        const iconCls = ext === 'pdf' ? 'pdf'
+            : ['doc','docx'].includes(ext) ? 'doc'
+            : ['ppt','pptx'].includes(ext) ? 'ppt'
+            : ['xls','xlsx','csv'].includes(ext) ? 'xls'
+            : ['png','jpg','jpeg','gif','webp','svg'].includes(ext) ? 'img' : '';
+
+        const catOptions = Object.entries(CATEGORY_META).map(([key, meta]) =>
+            `<option value="${key}" ${pf.category === key ? 'selected' : ''}>${meta.label}</option>`
+        ).join('');
+
+        return `
+            <div class="pending-file ${pf.error ? 'has-error' : ''}" data-index="${idx}">
+                <div class="pending-file-icon ${iconCls}"><i class="fas ${fileInfo.icon}"></i></div>
+                <div class="pending-file-fields">
+                    <div class="pending-file-row">
+                        <input type="text" class="form-input pending-file-title" data-index="${idx}" value="${escapeHtml(pf.title)}" placeholder="File title">
+                        <select class="form-select pending-file-cat" data-index="${idx}">
+                            <option value="">— Category —</option>
+                            ${catOptions}
+                        </select>
+                    </div>
+                    <div class="pending-file-meta">${escapeHtml(pf.file.name)} · ${humanSize(pf.file.size)}</div>
+                    ${pf.error ? `<div class="pending-file-error">${escapeHtml(pf.error)}</div>` : ''}
+                </div>
+                <button type="button" class="pending-file-remove" data-index="${idx}" aria-label="Remove">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>`;
+    }).join('');
+
+    wrap.querySelectorAll('.pending-file-title').forEach(input => {
+        input.addEventListener('input', (e) => {
+            const idx = parseInt(input.dataset.index, 10);
+            if (selectedFiles[idx]) selectedFiles[idx].title = e.target.value;
+        });
+    });
+    wrap.querySelectorAll('.pending-file-cat').forEach(sel => {
+        sel.addEventListener('change', (e) => {
+            const idx = parseInt(sel.dataset.index, 10);
+            const pf = selectedFiles[idx];
+            if (!pf) return;
+            pf.category = sel.value;
+            pf.touchedCategory = true;
+            pf.error = pf.category ? '' : 'Select a category for this file';
+            renderPendingFiles();
+        });
+    });
+    wrap.querySelectorAll('.pending-file-remove').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const idx = parseInt(btn.dataset.index, 10);
+            selectedFiles.splice(idx, 1);
+            renderPendingFiles();
+        });
+    });
+
+    // sync global hint
+    hint.textContent = `${selectedFiles.length} file${selectedFiles.length === 1 ? '' : 's'} ready to upload`;
+    area.classList.add('selected');
+}
+
+// ============================================================
+// SUBMIT RESOURCE
+// ============================================================
+async function handleResourceSubmit(e) {
+    e.preventDefault();
+
+    const category = document.getElementById('rCategory').value;
+    const department = document.getElementById('rDepartment').value;
+    const level = document.getElementById('rLevel').value;
+    const session = document.getElementById('rSession').value;
+    const status = document.getElementById('rStatus').value;
+    const title = document.getElementById('rTitle').value.trim();
+    const description = document.getElementById('rDescription').value.trim();
+    const courseCode = document.getElementById('rCourseCode').value.trim();
+    const courseTitle = document.getElementById('rCourseTitle').value.trim();
+    const semester = document.getElementById('rSemester').value;
+
+    if (!category) { showToast('Please choose a category', 'warning'); document.getElementById('rCategory').focus(); return; }
+    if (!department) { showToast('Please choose a department', 'warning'); document.getElementById('rDepartment').focus(); return; }
+    if (!level) { showToast('Please choose a level', 'warning'); document.getElementById('rLevel').focus(); return; }
+    if (!session) { showToast('Please choose a session', 'warning'); document.getElementById('rSession').focus(); return; }
+
+    // Editing: no new files, just update details
+    if (editingResourceId) {
+        const btn = document.getElementById('resourceSubmitBtn');
+        const orig = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Saving…';
+        try {
+            await apiPut(`/api/admin/resources/${editingResourceId}`, {
+                title: title || undefined,
+                description,
+                category,
+                course_code: courseCode,
+                course_title: courseTitle,
+                department,
+                level,
+                semester,
+                session,
+                is_published: status === 'published',
+                status
+            });
+            saveLastSession(session);
+            showToast('Resource updated', 'success');
+            hideModal('resourceModal');
+            await loadResources();
+        } catch (err) {
+            console.error('Update error:', err);
+            showToast(err.message || 'Failed to update resource', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = orig;
+        }
+        return;
+    }
+
+    // Upload: need at least one file
+    if (!selectedFiles.length) {
+        showToast('Please add at least one file', 'warning');
+        return;
+    }
+
+    const missingCat = selectedFiles.find(pf => !pf.category);
+    if (missingCat) {
+        showToast('Please choose a category for each file', 'warning');
+        return;
+    }
+
+    const btn = document.getElementById('resourceSubmitBtn');
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i> Uploading (0/${selectedFiles.length})…`;
+
+    let done = 0;
+    let failed = 0;
+
+    for (const pf of selectedFiles) {
+        try {
+            const fd = new FormData();
+            fd.append('file', pf.file);
+            fd.append('title', pf.title || humanizeFilename(pf.file.name));
+            fd.append('description', description);
+            fd.append('category', pf.category);
+            fd.append('course_code', courseCode);
+            fd.append('course_title', courseTitle);
+            fd.append('department', department);
+            fd.append('level', level);
+            fd.append('semester', semester);
+            fd.append('session', session);
+            fd.append('status', status);
+            fd.append('is_published', status === 'published' ? 'true' : 'false');
+
+            await apiPost('/api/admin/resources', fd, true);
+            done++;
+        } catch (err) {
+            console.error('Upload error for', pf.file.name, err);
+            failed++;
+        }
+        btn.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i> Uploading (${done + failed}/${selectedFiles.length})…`;
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = orig;
+
+    if (failed === 0) {
+        saveLastSession(session);
+        showToast(`${done} resource${done === 1 ? '' : 's'} uploaded`, 'success');
+        hideModal('resourceModal');
+        await loadResources();
+    } else {
+        showToast(`${done} uploaded, ${failed} failed`, 'error');
+        await loadResources();
+    }
+}
+
+// ============================================================
+// DRAWER
+// ============================================================
+function openDrawer(id) {
+    const r = allResources.find(x => String(x.id) === String(id));
+    if (!r) return;
+    viewingResource = r;
+
+    const meta = CATEGORY_META[r.category] || CATEGORY_META['project-materials'];
+    const fileInfo = getFileIcon(r.file_type);
+    document.getElementById('drawerFileIcon').innerHTML = `<i class="fas ${fileInfo.icon}"></i>`;
+    document.getElementById('drawerType').textContent = meta.label;
+    document.getElementById('drawerTitle').textContent = r.title;
+    document.getElementById('drawerCourse').textContent =
+        `${r.course_code || '—'}${r.course_title ? ' · ' + r.course_title : ''}`;
+    document.getElementById('drawerDescription').textContent = r.description || 'No description provided.';
+    document.getElementById('drawerDept').textContent = r.department || '—';
+    document.getElementById('drawerLevel').textContent = r.level || '—';
+    document.getElementById('drawerSemester').textContent =
+        r.semester === 'second' ? 'Second Semester' : 'First Semester';
+    document.getElementById('drawerSession').textContent = r.session || '—';
+    document.getElementById('drawerFormat').textContent = r.file_type || '—';
+    document.getElementById('drawerSize').textContent = humanSize(r.file_size);
+    document.getElementById('drawerDownloads').textContent = r.download_count;
+    document.getElementById('drawerUploaded').textContent = formatDate(r.created_at);
+    document.getElementById('drawerUploader').textContent = r.uploader_name || '—';
+    document.getElementById('drawerStatusText').textContent = r.is_published ? 'Published' : 'Draft';
+    document.getElementById('drawerPublishText').textContent = r.is_published ? 'Unpublish' : 'Publish';
+
+    // Related files (same course code + department + level + session)
+    const related = allResources.filter(x =>
+        x.id !== r.id &&
+        x.course_code &&
+        x.course_code === r.course_code &&
+        x.department === r.department &&
+        x.level === r.level &&
+        x.session === r.session
+    );
+    const relTitle = document.getElementById('drawerRelatedTitle');
+    const relBox = document.getElementById('drawerRelated');
+    if (related.length) {
+        relTitle.style.display = '';
+        relBox.innerHTML = related.map(x => {
             const info = getFileIcon(x.file_type);
-            const meta = CATEGORY_META[x.category] || CATEGORY_META['project-materials'];
             return `
-                <div class="related-item" data-id="${escapeHtml(x.id)}" role="button" tabindex="0">
-                    <div class="resource-thumb ${info.cls}"><i class="fas ${info.icon}"></i></div>
-                    <div class="related-item-info">
+                <div class="related-item" data-id="${escapeHtml(x.id)}">
+                    <i class="fas ${info.icon}"></i>
+                    <div class="related-item-body">
                         <div class="related-item-title">${escapeHtml(x.title)}</div>
-                        <div class="related-item-sub">${escapeHtml(meta.label)} · ${escapeHtml(x.session || '—')}</div>
+                        <div class="related-item-sub">${escapeHtml(x.file_type || 'file')} · ${humanSize(x.file_size)}</div>
                     </div>
                 </div>`;
         }).join('');
-
-        box.querySelectorAll('.related-item').forEach(el => {
-            const open = () => openDrawer(el.dataset.id);
-            el.addEventListener('click', open);
-            el.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
+        relBox.querySelectorAll('.related-item').forEach(el => {
+            el.addEventListener('click', () => {
+                closeDrawer();
+                setTimeout(() => openDrawer(el.dataset.id), 200);
             });
         });
+    } else {
+        relTitle.style.display = 'none';
+        relBox.innerHTML = '';
     }
 
-    function closeDrawer() {
-        const drawer = document.getElementById('resourceDrawer');
-        if (drawer.contains(document.activeElement)) document.activeElement.blur();
-        document.getElementById('drawerOverlay').classList.remove('active');
-        drawer.classList.remove('active');
-        drawer.setAttribute('aria-hidden', 'true');
+    document.getElementById('drawerOverlay').classList.add('active');
+    document.getElementById('resourceDrawer').classList.add('active');
+    document.getElementById('resourceDrawer').setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeDrawer() {
+    document.getElementById('drawerOverlay').classList.remove('active');
+    document.getElementById('resourceDrawer').classList.remove('active');
+    document.getElementById('resourceDrawer').setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    viewingResource = null;
+}
+
+// ============================================================
+// DELETE
+// ============================================================
+function openDeleteModal(id) {
+    const r = allResources.find(x => String(x.id) === String(id));
+    if (!r) return;
+    deletingResourceId = id;
+    document.getElementById('deleteResourceName').textContent = r.title;
+    showModal('deleteModal');
+}
+
+async function handleDelete() {
+    if (!deletingResourceId) return;
+    const btn = document.getElementById('confirmDeleteBtn');
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Deleting…';
+    try {
+        await apiDelete(`/api/admin/resources/${deletingResourceId}`);
+        showToast('Resource deleted', 'success');
+        hideModal('deleteModal');
+        if (viewingResource && String(viewingResource.id) === String(deletingResourceId)) closeDrawer();
+        deletingResourceId = null;
+        await loadResources();
+    } catch (err) {
+        console.error('Delete error:', err);
+        showToast(err.message || 'Failed to delete resource', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = orig;
+    }
+}
+
+// ============================================================
+// MISC
+// ============================================================
+function shortDept(dept) {
+    if (!dept) return '—';
+    if (dept === GENERAL_DEPARTMENT) return 'General';
+    if (dept.includes('Electrical')) return 'EEE';
+    if (dept.includes('Mechanical')) return 'Mech';
+    if (dept.includes('Civil')) return 'Civil';
+    return dept;
+}
+
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function formatDate(s) {
+    if (!s) return '—';
+    try {
+        const d = new Date(s);
+        if (isNaN(d.getTime())) return String(s);
+        return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch { return String(s); }
+}
+
+function showLoading() { document.getElementById('loadingOverlay').classList.add('active'); }
+function hideLoading() { document.getElementById('loadingOverlay').classList.remove('active'); }
+function showModal(id) { const el = document.getElementById(id); if (el) { el.classList.add('active'); document.body.style.overflow = 'hidden'; } }
+function hideModal(id) { const el = document.getElementById(id); if (el) { el.classList.remove('active'); document.body.style.overflow = ''; } }
+
+function showToast(message, type = 'info', duration = 4000) {
+    document.querySelectorAll('.toast').forEach(t => t.remove());
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    const icons = { success: 'check-circle', error: 'exclamation-circle', warning: 'exclamation-triangle', info: 'info-circle' };
+    toast.innerHTML = `
+        <div class="toast-icon"><i class="fas fa-${icons[type] || 'info-circle'}"></i></div>
+        <div class="toast-content">${escapeHtml(message)}</div>
+        <button class="toast-close" aria-label="Close">&times;</button>`;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('show'));
+    toast.querySelector('.toast-close').onclick = () => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    };
+    setTimeout(() => {
+        if (toast.parentElement) {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, duration);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+async function init() {
+    // Sidebar toggle
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('mobileOverlay');
+    const toggle = document.getElementById('mobileMenuToggle');
+    const closeSidebar = () => {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('active');
         document.body.style.overflow = '';
-        viewingResource = null;
-    }
+    };
+    toggle?.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (sidebar.classList.contains('open')) closeSidebar();
+        else {
+            sidebar.classList.add('open');
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+    });
+    overlay?.addEventListener('click', closeSidebar);
 
-    async function togglePublish() {
+    // Header scroll
+    const header = document.getElementById('mainHeader');
+    window.addEventListener('scroll', () => {
+        header.classList.toggle('scrolled', window.scrollY > 8);
+    }, { passive: true });
+
+    // Top buttons
+    document.getElementById('logoutBtn').addEventListener('click', () => showModal('logoutModal'));
+    document.getElementById('confirmLogout').addEventListener('click', confirmLogout);
+    document.getElementById('uploadBtn').addEventListener('click', () => openResourceModal());
+    document.getElementById('clearFilters').addEventListener('click', clearFilters);
+    document.getElementById('confirmDeleteBtn').addEventListener('click', handleDelete);
+
+    // View toggle
+    document.getElementById('gridViewBtn').addEventListener('click', () => {
+        currentView = 'grid';
+        document.getElementById('gridViewBtn').classList.add('active');
+        document.getElementById('listViewBtn').classList.remove('active');
+        renderDirectory();
+    });
+    document.getElementById('listViewBtn').addEventListener('click', () => {
+        currentView = 'list';
+        document.getElementById('listViewBtn').classList.add('active');
+        document.getElementById('gridViewBtn').classList.remove('active');
+        renderDirectory();
+    });
+
+    // Filters
+    ['searchInput','filterType','filterDepartment','filterLevel','filterSemester','filterStatus'].forEach(id => {
+        document.getElementById(id).addEventListener('input', applyFilters);
+    });
+
+    // File upload
+    const uploadArea = document.getElementById('fileUploadArea');
+    const fileInput = document.getElementById('resourceFileInput');
+    uploadArea.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => {
+        addFiles(e.target.files);
+        fileInput.value = '';
+    });
+    ['dragenter','dragover'].forEach(ev =>
+        uploadArea.addEventListener(ev, (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); }));
+    ['dragleave','drop'].forEach(ev =>
+        uploadArea.addEventListener(ev, (e) => { e.preventDefault(); uploadArea.classList.remove('dragover'); }));
+    uploadArea.addEventListener('drop', (e) => {
+        const files = e.dataTransfer?.files;
+        if (files?.length) addFiles(files);
+    });
+
+    // Resource form
+    document.getElementById('resourceForm').addEventListener('submit', handleResourceSubmit);
+
+    // Drawer buttons
+    document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
+    document.getElementById('drawerEditBtn').addEventListener('click', () => {
+        if (viewingResource) {
+            const id = viewingResource.id;
+            closeDrawer();
+            openResourceModal(id);
+        }
+    });
+    document.getElementById('drawerAddFileBtn').addEventListener('click', () => {
         if (!viewingResource) return;
-        const next = !viewingResource.is_published;
+        const prefill = {
+            course_code: viewingResource.course_code,
+            course_title: viewingResource.course_title,
+            department: viewingResource.department,
+            level: viewingResource.level,
+            semester: viewingResource.semester,
+            session: viewingResource.session,
+            category: viewingResource.category
+        };
+        closeDrawer();
+        openResourceModal(null, prefill);
+    });
+    document.getElementById('drawerPublishBtn').addEventListener('click', async () => {
+        if (!viewingResource) return;
+        const newState = !viewingResource.is_published;
         try {
-            await apiPut(`/api/admin/resources/${viewingResource.id}`, {
-                is_published: next,
-                status: next ? 'published' : 'draft'
-            });
-            showToast(next ? 'Resource published' : 'Resource unpublished', 'success');
+            await apiPut(`/api/admin/resources/${viewingResource.id}`, { is_published: newState, status: newState ? 'published' : 'draft' });
+            showToast(newState ? 'Resource published' : 'Resource unpublished', 'success');
             closeDrawer();
             await loadResources();
         } catch (err) {
             showToast(err.message || 'Failed to update', 'error');
         }
-    }
-
-    function downloadResource() {
-        if (!viewingResource) return;
-        if (!viewingResource.file_url) {
-            showToast('No file attached to this resource', 'warning');
-            return;
-        }
-        fetch(`${API_BASE_URL}/api/resources/${viewingResource.id}/download`, {
-            method: 'POST', credentials: 'include'
-        }).catch(() => {});
-        window.open(viewingResource.file_url, '_blank');
-    }
-
-    // ============================================================
-    // DELETE
-    // ============================================================
-    function openDeleteModal(id) {
-        const r = allResources.find(x => String(x.id) === String(id));
-        if (!r) return;
-        deletingResourceId = id;
-        document.getElementById('deleteResourceName').textContent = r.title;
-        showModal('deleteModal');
-    }
-
-    async function handleDelete() {
-        if (!deletingResourceId) return;
-        const btn = document.getElementById('confirmDeleteBtn');
-        const original = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Deleting…';
-        try {
-            await apiDelete(`/api/admin/resources/${deletingResourceId}`);
-            showToast('Resource deleted', 'success');
-            hideModal('deleteModal');
-            if (viewingResource && String(viewingResource.id) === String(deletingResourceId)) closeDrawer();
-            deletingResourceId = null;
-            await loadResources();
-        } catch (err) {
-            showToast(err.message || 'Failed to delete', 'error');
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = original;
-        }
-    }
-
-    // ============================================================
-    // ACADEMIC TOOLS
-    // ============================================================
-    const DEFAULT_GRADES = [
-        { grade: 'A', min: 70, max: 100, points: 5 },
-        { grade: 'B', min: 60, max: 69,  points: 4 },
-        { grade: 'C', min: 50, max: 59,  points: 3 },
-        { grade: 'D', min: 45, max: 49,  points: 2 },
-        { grade: 'E', min: 40, max: 44,  points: 1 },
-        { grade: 'F', min: 0,  max: 39,  points: 0 }
-    ];
-
-    function openAcademicTools() {
-        academicTools = academicTools || {
-            grades: DEFAULT_GRADES,
-            max_credits: 24,
-            session: DEFAULT_SESSION,
-            instructions: 'Enter your course codes, credit units and grades to calculate your GPA.',
-            policy: 'A minimum CGPA of 2.00 is required for graduation.',
-            visible: true
-        };
-
-        document.getElementById('cgpaMaxCredits').value = academicTools.max_credits || 24;
-        setSelectValue(document.getElementById('cgpaSession'), academicTools.session || DEFAULT_SESSION);
-        document.getElementById('cgpaInstructions').value = academicTools.instructions || '';
-        document.getElementById('cgpaPolicy').value = academicTools.policy || '';
-        document.getElementById('cgpaVisible').checked = academicTools.visible;
-
-        renderGradingTable();
-        showModal('academicToolsModal');
-    }
-
-    function renderGradingTable() {
-        const tbody = document.getElementById('gradingTableBody');
-        tbody.innerHTML = academicTools.grades.map((g, i) => `
-            <tr>
-                <td><input type="text" data-field="grade" data-index="${i}" value="${escapeHtml(g.grade)}"></td>
-                <td><input type="number" data-field="min" data-index="${i}" value="${g.min}" min="0" max="100"></td>
-                <td><input type="number" data-field="max" data-index="${i}" value="${g.max}" min="0" max="100"></td>
-                <td><input type="number" data-field="points" data-index="${i}" value="${g.points}" min="0" max="10"></td>
-            </tr>
-        `).join('');
-
-        tbody.querySelectorAll('input').forEach(input => {
-            input.addEventListener('input', () => {
-                const idx = parseInt(input.dataset.index);
-                const field = input.dataset.field;
-                const val = field === 'grade' ? input.value : parseFloat(input.value) || 0;
-                academicTools.grades[idx][field] = val;
-            });
-        });
-    }
-
-    async function saveAcademicTools() {
-        const maxCredits = parseInt(document.getElementById('cgpaMaxCredits').value) || 0;
-        const session = document.getElementById('cgpaSession').value;
-        const instructions = document.getElementById('cgpaInstructions').value;
-        const policy = document.getElementById('cgpaPolicy').value;
-        const visible = document.getElementById('cgpaVisible').checked;
-
-        academicTools = { ...academicTools, max_credits: maxCredits, session, instructions, policy, visible };
-
-        const payload = {
-            grades: academicTools.grades,
-            max_credits: maxCredits,
-            session,
-            instructions,
-            policy,
-            visible
-        };
-
-        try {
-            await apiPut('/api/admin/academic-tools', payload).catch(() => {
-                localStorage.setItem('nuesa_academic_tools', JSON.stringify(payload));
-            });
-            showToast('Academic tools settings saved', 'success');
-            hideModal('academicToolsModal');
-        } catch (err) {
-            localStorage.setItem('nuesa_academic_tools', JSON.stringify(payload));
-            showToast('Settings saved locally (backend endpoint pending)', 'info');
-            hideModal('academicToolsModal');
-        }
-    }
-
-    // ============================================================
-    // HELPERS
-    // ============================================================
-    function showLoading() { document.getElementById('loadingOverlay').classList.add('active'); }
-    function hideLoading() { document.getElementById('loadingOverlay').classList.remove('active'); }
-    function showModal(id) { const el = document.getElementById(id); if (el) { el.classList.add('active'); document.body.style.overflow = 'hidden'; } }
-    function hideModal(id) {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.classList.remove('active');
-        const stillOpen = document.querySelector('.modal.active') ||
-            document.getElementById('resourceDrawer')?.classList.contains('active');
-        document.body.style.overflow = stillOpen ? 'hidden' : '';
-    }
-
-    function showToast(message, type = 'info', duration = 4000) {
-        document.querySelectorAll('.toast').forEach(t => t.remove());
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        const icons = { success:'check-circle', error:'exclamation-circle', warning:'exclamation-triangle', info:'info-circle' };
-        toast.innerHTML = `
-            <div class="toast-icon"><i class="fas fa-${icons[type] || 'info-circle'}"></i></div>
-            <div class="toast-content">${escapeHtml(message)}</div>
-            <button class="toast-close" aria-label="Close">&times;</button>`;
-        document.body.appendChild(toast);
-        requestAnimationFrame(() => toast.classList.add('show'));
-        toast.querySelector('.toast-close').onclick = () => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); };
-        setTimeout(() => { if (toast.parentElement) { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); } }, duration);
-    }
-
-    function escapeHtml(str) {
-        if (str == null) return '';
-        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-    }
-
-    function shortDept(dept) {
-        if (!dept) return '—';
-        if (dept.includes('Electrical')) return 'EEE';
-        if (dept.includes('Mechanical')) return 'MEE';
-        if (dept.includes('Civil')) return 'CVE';
-        return dept.split('/')[0].substring(0, 6);
-    }
-
-    function formatFileSize(bytes) {
-        if (!bytes || bytes === 0) return '—';
-        const k = 1024;
-        const sizes = ['B', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-    }
-
-    function formatDate(s) {
-        if (!s) return '—';
-        try {
-            const d = new Date(s);
-            if (isNaN(d.getTime())) return String(s);
-            return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-        } catch { return String(s); }
-    }
-
-    // ============================================================
-    // SIDEBAR
-    // ============================================================
-    function setupSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        const mobileOverlay = document.getElementById('mobileOverlay');
-        const mobileToggle = document.getElementById('mobileMenuToggle');
-        if (!sidebar || !mobileOverlay || !mobileToggle) return;
-        const closeSidebar = () => {
-            sidebar.classList.remove('open');
-            mobileOverlay.classList.remove('active');
-            document.body.style.overflow = '';
-        };
-        mobileToggle.addEventListener('click', (e) => {
-            e.preventDefault(); e.stopPropagation();
-            if (sidebar.classList.contains('open')) closeSidebar();
-            else {
-                sidebar.classList.add('open');
-                mobileOverlay.classList.add('active');
-                document.body.style.overflow = 'hidden';
-            }
-        }, true);
-        mobileOverlay.addEventListener('click', closeSidebar);
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && sidebar.classList.contains('open')) closeSidebar();
-        });
-        document.querySelectorAll('.nav-item').forEach(link => {
-            link.addEventListener('click', () => { if (window.innerWidth <= 900) closeSidebar(); });
-        });
-    }
-
-    // ============================================================
-    // HEADER SCROLL SHADOW
-    // ============================================================
-    function setupHeaderScroll() {
-        const header = document.getElementById('mainHeader');
-        window.addEventListener('scroll', () => {
-            if (window.scrollY > 8) header.classList.add('scrolled');
-            else header.classList.remove('scrolled');
-        }, { passive: true });
-    }
-
-    // ============================================================
-    // EXPORT
-    // ============================================================
-    function exportResources() {
-        if (filteredResources.length === 0) {
-            showToast('Nothing to export', 'warning');
-            return;
-        }
-        const headers = ['Title','Category','Course Code','Course Title','Department','Level','Semester','Session','Downloads','Status'];
-        const rows = filteredResources.map(r => [
-            r.title, r.category, r.course_code, r.course_title,
-            r.department, r.level, r.semester, r.session, r.download_count,
-            r.is_published ? 'published' : 'draft'
-        ]);
-        const csv = [headers, ...rows]
-            .map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
-            .join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `nuesa-resources-${new Date().toISOString().slice(0,10)}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-        showToast(`Exported ${rows.length} resources`, 'success');
-    }
-
-    // ============================================================
-    // INACTIVITY
-    // ============================================================
-    function resetInactivityTimer() {
-        clearTimeout(inactivityTimeout);
-        inactivityTimeout = setTimeout(() => {
-            showToast('Session expiring soon', 'warning');
-            setTimeout(() => window.location.replace('adlog.html'), 60000);
-        }, 29 * 60 * 1000);
-    }
-    function setupActivityListeners() {
-        ['mousedown','keypress','scroll','touchstart'].forEach(ev =>
-            document.addEventListener(ev, resetInactivityTimer, { passive: true }));
-        resetInactivityTimer();
-    }
-
-    // ============================================================
-    // INIT
-    // ============================================================
-    async function init() {
-        setupSidebar();
-        setupHeaderScroll();
-
-        // Static wiring
-        document.getElementById('logoutBtn').addEventListener('click', () => showModal('logoutModal'));
-        document.getElementById('confirmLogout').addEventListener('click', confirmLogout);
-        document.getElementById('notificationBtn').addEventListener('click', () => { window.location.href = 'messages.html'; });
-        document.getElementById('uploadBtn').addEventListener('click', () => openResourceModal());
-        document.getElementById('exportBtn').addEventListener('click', exportResources);
-        document.getElementById('clearFilters').addEventListener('click', clearFilters);
-        document.getElementById('confirmDeleteBtn').addEventListener('click', handleDelete);
-        document.getElementById('academicToolsBtn').addEventListener('click', openAcademicTools);
-        document.getElementById('saveAcademicToolsBtn').addEventListener('click', saveAcademicTools);
-
-        // View toggle
-        document.getElementById('gridViewBtn').addEventListener('click', () => {
-            currentView = 'grid';
-            document.getElementById('gridViewBtn').classList.add('active');
-            document.getElementById('listViewBtn').classList.remove('active');
-            renderDirectory();
-        });
-        document.getElementById('listViewBtn').addEventListener('click', () => {
-            currentView = 'list';
-            document.getElementById('listViewBtn').classList.add('active');
-            document.getElementById('gridViewBtn').classList.remove('active');
-            renderDirectory();
-        });
-
-        // Filters
-        ['searchInput','filterType','filterDepartment','filterLevel','filterSemester','filterStatus']
-            .forEach(id => document.getElementById(id).addEventListener('input', () => {
-                if (id === 'filterType') {
-                    activeCategory = document.getElementById(id).value;
-                    renderCategoryShortcuts();
-                }
-                applyFilters();
-            }));
-
-        // Modal
-        document.getElementById('resourceForm').addEventListener('submit', handleResourceSubmit);
-        setupFileUpload();
-
-        // Drawer
-        document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
-        document.getElementById('drawerEditBtn').addEventListener('click', () => {
-            if (viewingResource) { const id = viewingResource.id; closeDrawer(); openResourceModal(id); }
-        });
-        document.getElementById('drawerAddFileBtn').addEventListener('click', () => {
-            if (!viewingResource) return;
-            const r = viewingResource;
+    });
+    document.getElementById('drawerDownloadBtn').addEventListener('click', () => {
+        if (viewingResource?.file_url) window.open(viewingResource.file_url, '_blank');
+    });
+    document.getElementById('drawerDeleteBtn').addEventListener('click', () => {
+        if (viewingResource) {
+            const id = viewingResource.id;
             closeDrawer();
-            openResourceModal(null, {
-                course_code: r.course_code,
-                course_title: r.course_title,
-                department: r.department,
-                level: r.level,
-                semester: r.semester,
-                session: r.session
-            });
-        });
-        document.getElementById('drawerPublishBtn').addEventListener('click', togglePublish);
-        document.getElementById('drawerDownloadBtn').addEventListener('click', downloadResource);
-        document.getElementById('drawerDeleteBtn').addEventListener('click', () => {
-            if (viewingResource) { const id = viewingResource.id; closeDrawer(); openDeleteModal(id); }
-        });
+            openDeleteModal(id);
+        }
+    });
 
-        // Escape: close the top-most layer only
-        document.addEventListener('keydown', (e) => {
-            if (e.key !== 'Escape') return;
-            const order = ['academicToolsModal','resourceModal','deleteModal','logoutModal'];
-            for (const id of order) {
-                const el = document.getElementById(id);
-                if (el && el.classList.contains('active')) { hideModal(id); return; }
-            }
+    // Escape closes modals
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            ['resourceModal','academicToolsModal','logoutModal','deleteModal'].forEach(id => hideModal(id));
             if (document.getElementById('resourceDrawer').classList.contains('active')) closeDrawer();
-        });
+        }
+    });
 
-        // Load academic tools from localStorage fallback
-        try {
-            const saved = localStorage.getItem('nuesa_academic_tools');
-            if (saved) academicTools = JSON.parse(saved);
-        } catch (e) {}
+    // Auth + load
+    const ok = await checkAuth();
+    if (!ok) return;
+    await loadResources();
+}
 
-        // Auth
-        const ok = await checkAuth();
-        if (!ok) return;
+document.addEventListener('DOMContentLoaded', init);
 
-        setupActivityListeners();
-        await loadResources();
-        hideLoading();
-    }
-
-    document.addEventListener('DOMContentLoaded', init);
-
-    window.showModal = showModal;
-    window.hideModal = hideModal;
-    window.confirmLogout = confirmLogout;
-    window.closeDrawer = closeDrawer;
+window.hideModal = hideModal;
+window.closeDrawer = closeDrawer;
 </script>
 </body>
 </html>
