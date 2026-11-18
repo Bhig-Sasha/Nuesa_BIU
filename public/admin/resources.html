@@ -2829,9 +2829,9 @@ async function handleResourceSubmit(e) {
         return;
     }
 
-    const missingCat = selectedFiles.find(pf => !pf.category);
-    if (missingCat) {
-        showToast('Please choose a category for each file', 'warning');
+    const missingTitle = selectedFiles.find(pf => !(pf.title || '').trim());
+    if (missingTitle) {
+        showToast('Every file needs a title. Check the pending files list.', 'warning');
         return;
     }
 
@@ -2845,19 +2845,25 @@ async function handleResourceSubmit(e) {
 
     for (const pf of selectedFiles) {
         try {
+            const fallbackTitle = humanizeFilename(pf.file.name) || pf.file.name.replace(/\.[^.]+$/, '') || 'Untitled resource';
+            const finalTitle = (pf.title || '').trim() || fallbackTitle;
+
+            // The backend reads everything from a JSON string in `req.body.data`
+            const payload = {
+                title: finalTitle,
+                description: description || '',
+                category: pf.category,
+                course_code: courseCode || '',
+                course_title: courseTitle || '',
+                department: department,
+                level: level,                    // "300L"
+                semester: semester,              // "first" / "second"
+                year: session,                   // ← backend column is `year`, not `session`
+            };
+
             const fd = new FormData();
             fd.append('file', pf.file);
-            fd.append('title', pf.title || humanizeFilename(pf.file.name));
-            fd.append('description', description);
-            fd.append('category', pf.category);
-            fd.append('course_code', courseCode);
-            fd.append('course_title', courseTitle);
-            fd.append('department', department);
-            fd.append('level', level);
-            fd.append('semester', semester);
-            fd.append('session', session);
-            fd.append('status', status);
-            fd.append('is_published', status === 'published' ? 'true' : 'false');
+            fd.append('data', JSON.stringify(payload));
 
             await apiPost('/api/admin/resources', fd, true);
             done++;

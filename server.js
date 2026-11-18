@@ -2202,14 +2202,19 @@ adminRouter.get('/resources', async (req, res) => {
     }
 });
 
-adminRouter.get('/resources/:id', async (req, res) => {
+adminRouter.put('/resources/:id', async (req, res) => {
     try {
-        const result = await db.query('select', 'resources', { where: { id: req.params.id } });
+        const updates = req.body;
+        const result = await db.query('update', 'resources', {
+            where: { id: req.params.id },
+            data: updates
+        });
         if (result.data.length === 0) return res.status(404).json({ status: 'error', message: 'Resource not found' });
-        res.json({ status: 'success', data: result.data[0] });
+        await cacheManager.invalidateByTags(['resources']);
+        res.json({ status: 'success', data: result.data[0], message: 'Resource updated successfully' });
     } catch (error) {
-        logger.error('Admin resource fetch error:', error);
-        res.status(500).json({ status: 'error', message: 'Failed to fetch resource' });
+        logger.error('Admin update resource error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to update resource' });
     }
 });
 
@@ -2227,7 +2232,9 @@ adminRouter.post('/resources', upload.single('file'), async (req, res) => {
             level: resourceData.level ? parseInt(resourceData.level) : null,
             file_url: `/uploads/${req.file.filename}`,
             file_size: req.file.size, file_type: req.file.mimetype,
-            download_count: 0, uploaded_by: req.user.id, created_at: new Date()
+            download_count: 0, uploaded_by: req.user.id, created_at: new Date(),
+            status: resourceData.status || 'draft',
+            is_published: resourceData.status === 'published'
         };
 
         const result = await db.query('insert', 'resources', { data: newResource });
