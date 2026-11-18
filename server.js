@@ -398,7 +398,10 @@ const fileFilter = (req, file, cb) => {
     cb(null, true);
 };
 
-const upload = multer({ storage, limits: { fileSize: MAX_FILE_SIZE, files: 5 }, fileFilter });
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 50 * 1024 * 1024 } // 50 MB — adjust as needed
+});
 
 // ---------- 1.8b MEDIA-ONLY UPLOAD (pictures + videos) ----------
 const MEDIA_PICTURE_MIMES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
@@ -2223,18 +2226,29 @@ adminRouter.post('/resources', upload.single('file'), async (req, res) => {
         if (!req.file) return res.status(400).json({ status: 'error', message: 'No file uploaded' });
 
         const resourceData = JSON.parse(req.body.data || '{}');
+
+        // Upload file to Supabase Storage
+        const { publicUrl } = await uploadToBucket(req.file, 'resources');
+
+        const title = (resourceData.title || req.file.originalname || '').trim() || 'Untitled resource';
+
         const newResource = {
             uuid: uuid.v4(),
-            title: resourceData.title?.trim(), category: resourceData.category?.trim(),
-            description: resourceData.description?.trim(), department: resourceData.department?.trim(),
-            course_code: resourceData.course_code?.trim(), course_title: resourceData.course_title?.trim(),
-            year: resourceData.year, semester: resourceData.semester,
+            title,
+            category: (resourceData.category || 'other').trim(),
+            description: (resourceData.description || '').trim(),
+            department: (resourceData.department || '').trim(),
+            course_code: (resourceData.course_code || '').trim(),
+            course_title: (resourceData.course_title || '').trim(),
+            year: resourceData.year || resourceData.session || null,
+            semester: resourceData.semester || null,
             level: resourceData.level ? parseInt(resourceData.level) : null,
-            file_url: `/uploads/${req.file.filename}`,
-            file_size: req.file.size, file_type: req.file.mimetype,
-            download_count: 0, uploaded_by: req.user.id, created_at: new Date(),
-            status: resourceData.status || 'draft',
-            is_published: resourceData.status === 'published'
+            file_url: publicUrl,               // ← absolute Supabase URL
+            file_size: req.file.size,
+            file_type: req.file.mimetype,
+            download_count: 0,
+            uploaded_by: req.user.id,
+            created_at: new Date()
         };
 
         const result = await db.query('insert', 'resources', { data: newResource });
@@ -2242,7 +2256,7 @@ adminRouter.post('/resources', upload.single('file'), async (req, res) => {
         res.status(201).json({ status: 'success', data: result.data[0], message: 'Resource uploaded successfully' });
     } catch (error) {
         logger.error('Admin upload resource error:', error);
-        res.status(500).json({ status: 'error', message: 'Failed to upload resource' });
+        res.status(500).json({ status: 'error', message: error.message || 'Failed to upload resource' });
     }
 });
 
@@ -6958,17 +6972,48 @@ console.log('✅ [TIMETABLE] /api/timetable registered');
 // ============================================================
 // ================== SECTION 5: FILE MANAGEMENT ==============
 // ============================================================
+const RESOURCE_BUCKET = 'Resources';
+
+function sanitizeName(name) {
+    return String(name || 'file').replace(/[^a-zA-Z0-9._-]/g, '_');
+}
+
+async function uploadToBucket(file, prefix = 'uploads') {
+    const safeName = sanitizeName(file.originalname);
+    const storagePath = `${prefix}/${Date.now()}-${safeName}`;
+    const { error: upErr } = await supabase.storage
+        .from(RESOURCE_BUCKET)
+        .upload(storagePath, file.buffer, {
+            contentType: file.mimetype,
+            upsert: false
+        });
+    if (upErr) throw upErr;
+    const { data: { publicUrl } } = supabase.storage
+        .from(RESOURCE_BUCKET)
+        .getPublicUrl(storagePath);
+    return { storagePath, publicUrl };
+}
+
 app.post('/api/upload', verifyToken, requireRole('admin', 'editor'), upload.single('file'), async (req, res) => {
     try {
         if (!req.file) throw new ValidationError('No file uploaded');
+
+        const { storagePath, publicUrl } = await uploadToBucket(req.file, 'uploads');
+
         const fileInfo = {
-            filename: req.file.filename, originalname: req.file.originalname,
-            mimetype: req.file.mimetype, size: req.file.size,
-            path: `/uploads/${req.file.filename}`,
-            url: `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`,
-            uploadedBy: req.user.id, uploadedAt: new Date()
+            filename: storagePath,
+            originalname: req.file.originalname,
+            mimetype: req.file.mimetype,
+            size: req.file.size,
+            path: `/${storagePath}`,
+            url: publicUrl,
+            uploadedBy: req.user.id,
+            uploadedAt: new Date()
         };
-        logger.info('File uploaded', { requestId: req.id, filename: req.file.filename, uploadedBy: req.user.id });
+
+        logger.info('File uploaded to Supabase', {
+            requestId: req.id, filename: storagePath, uploadedBy: req.user.id
+        });
         res.json({ status: 'success', data: fileInfo, message: 'File uploaded successfully' });
     } catch (error) {
         logger.error('Error uploading file:', { requestId: req.id, error: error.message });
@@ -6979,37 +7024,20 @@ app.post('/api/upload', verifyToken, requireRole('admin', 'editor'), upload.sing
 
 app.delete('/api/upload/:filename', verifyToken, requireRole('admin'), async (req, res) => {
     try {
-        const filePath = path.join(__dirname, 'uploads', req.params.filename);
-        await fs.access(filePath);
-        await fs.unlink(filePath);
-        logger.info('File deleted', { requestId: req.id, filename: req.params.filename, deletedBy: req.user.id });
+        // filename comes in as the storagePath (e.g. "uploads/1234-foo.pdf")
+        const { error } = await supabase.storage
+            .from(RESOURCE_BUCKET)
+            .remove([req.params.filename]);
+        if (error) throw error;
+        logger.info('File deleted from Supabase', {
+            requestId: req.id, filename: req.params.filename, deletedBy: req.user.id
+        });
         res.json({ status: 'success', message: 'File deleted successfully' });
     } catch (error) {
         logger.error('Error deleting file:', { requestId: req.id, error: error.message });
-        if (error.code === 'ENOENT') return res.status(404).json({ status: 'error', message: 'File not found' });
         res.status(500).json({ status: 'error', message: 'Failed to delete file' });
     }
 });
-
-// ============================================================
-// ================== SECTION 6: STATIC FILES =================
-// ============================================================
-app.use('/uploads', compression(), express.static(path.join(__dirname, 'uploads'), {
-    maxAge: IS_PRODUCTION ? '30d' : '0',
-    setHeaders: (res, filePath) => {
-        const ext = path.extname(filePath).toLowerCase();
-        const mimeType = mime.lookup(ext) || 'application/octet-stream';
-        if (ext.match(/\.(jpg|jpeg|png|gif|webp|svg|mp4|webm|mov)$/)) {
-            res.setHeader('Content-Disposition', 'inline');
-            res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
-        } else {
-            res.setHeader('Content-Disposition', 'attachment');
-            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-        }
-        res.setHeader('X-Content-Type-Options', 'nosniff');
-        res.setHeader('Content-Type', mimeType);
-    }
-}));
 
 const publicDir = path.join(__dirname, 'public');
 const publicExists = fsSync.existsSync(publicDir);
