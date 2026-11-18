@@ -845,6 +845,8 @@
         }
         .modal.active .modal-content { transform: translateY(0) scale(1); }
         .modal-content.modal-lg { max-width: 820px; }
+        
+        #pictureModal { z-index: 10100; }
 
         .modal-header {
             padding: 18px 22px;
@@ -3018,9 +3020,9 @@
         const el = document.getElementById(id);
         if (!el) return;
         el.classList.remove('active');
-        // Keep scrolling locked if the profile drawer is still open underneath
-        const drawerOpen = document.getElementById('profileDrawer')?.classList.contains('active');
-        document.body.style.overflow = drawerOpen ? 'hidden' : '';
+        const stillOpen = document.querySelector('.modal.active') ||
+            document.getElementById('profileDrawer')?.classList.contains('active');
+        document.body.style.overflow = stillOpen ? 'hidden' : '';
     }
 
     function showToast(message, type = 'info', duration = 4000) {
