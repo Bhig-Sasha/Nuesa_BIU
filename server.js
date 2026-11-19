@@ -2320,7 +2320,20 @@ adminRouter.get('/resources', async (req, res) => {
 
 adminRouter.put('/resources/:id', async (req, res) => {
     try {
-        const updates = req.body;
+        const updates = { ...(req.body || {}) };
+        // Keep is_published and status in sync
+        if (updates.status !== undefined && updates.is_published === undefined) {
+            updates.is_published = String(updates.status).toLowerCase() === 'published';
+        }
+        if (updates.is_published !== undefined) {
+            updates.is_published = updates.is_published === true || updates.is_published === 'true';
+            if (updates.status === undefined) {
+                updates.status = updates.is_published ? 'published' : 'draft';
+            }
+        }
+        if (updates.session && !updates.year) updates.year = updates.session;
+        updates.updated_at = new Date().toISOString();
+
         const result = await db.query('update', 'resources', {
             where: { id: req.params.id },
             data: updates
@@ -2345,6 +2358,18 @@ adminRouter.post('/resources', upload.single('file'), async (req, res) => {
 
         const title = (resourceData.title || req.file.originalname || '').trim() || 'Untitled resource';
 
+        const published =
+            resourceData.is_published === true ||
+            resourceData.is_published === 'true' ||
+            String(resourceData.status || '').toLowerCase() === 'published';
+
+        const levelRaw = resourceData.level;
+        let levelVal = null;
+        if (levelRaw != null && levelRaw !== '') {
+            const n = parseInt(String(levelRaw).replace(/[^\d]/g, ''), 10);
+            levelVal = Number.isFinite(n) ? n : String(levelRaw);
+        }
+
         const newResource = {
             uuid: uuid.v4(),
             title,
@@ -2355,13 +2380,16 @@ adminRouter.post('/resources', upload.single('file'), async (req, res) => {
             course_title: (resourceData.course_title || '').trim(),
             year: resourceData.year || resourceData.session || null,
             semester: resourceData.semester || null,
-            level: resourceData.level ? parseInt(resourceData.level) : null,
-            file_url: publicUrl,               // ← absolute Supabase URL
+            level: levelVal,
+            file_url: publicUrl,
             file_size: req.file.size,
             file_type: req.file.mimetype,
             download_count: 0,
             uploaded_by: req.user.id,
-            created_at: new Date()
+            is_published: published,
+            status: published ? 'published' : 'draft',
+            created_at: new Date(),
+            updated_at: new Date()
         };
 
         const result = await db.query('insert', 'resources', { data: newResource });
