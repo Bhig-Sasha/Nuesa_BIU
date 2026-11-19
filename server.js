@@ -1066,6 +1066,27 @@ app.get('/api/sessions/active', cacheMiddleware(60, ['sessions']), async (req, r
     }
 });
 
+// List all academic sessions (public, read-only — name + is_active only)
+app.get('/api/sessions', cacheMiddleware(120, ['sessions']), async (req, res) => {
+    try {
+        const result = await db.query('select', 'academic_sessions', {
+            select: 'id, name, is_active, start_date, end_date',
+            order: { column: 'name', ascending: false }
+        });
+        res.json({
+            status: 'success',
+            data: result.data || [],
+            count: (result.data || []).length
+        });
+    } catch (error) {
+        logger.error('Sessions list error:', { requestId: req.id, error: error.message });
+        if (error.message && error.message.includes('relation') && error.message.includes('does not exist')) {
+            return res.json({ status: 'success', data: [], count: 0 });
+        }
+        res.status(500).json({ status: 'error', message: 'Failed to fetch sessions' });
+    }
+});
+
 // -------------------- 3.4b PUBLIC MEMBERS ROUTES -------------
 const memberRouter = express.Router();
 
@@ -5129,11 +5150,14 @@ adminRouter.post('/elections/publish-results', async (req, res) => {
             return res.status(409).json({ status: 'error', message: 'Results have already been published' });
         }
 
+        // Pull approved nominations with voter join + denormalized nominee fields as fallback
         const { data: nominations, error: nomErr } = await supabase
             .from('nominations')
             .select(`
-                id, position_id,
-                nominee:voters!nominations_nominee_id_fkey (full_name, department, level, email, phone, matric_no)
+                id, position_id, manifesto, nominee_name, nominee_matric, nominee_department, nominee_level,
+                nominee:voters!nominations_nominee_id_fkey (
+                    id, full_name, department, level, email, phone, matric_no
+                )
             `)
             .eq('election_id', election.id)
             .eq('status', 'approved');
@@ -5141,84 +5165,182 @@ adminRouter.post('/elections/publish-results', async (req, res) => {
         if (nomErr) throw nomErr;
 
         const { data: votes, error: voteErr } = await supabase
-            .from('votes').select('candidate_id').eq('election_id', election.id);
+            .from('votes')
+            .select('candidate_id')
+            .eq('election_id', election.id);
 
         if (voteErr) throw voteErr;
 
         const tallies = {};
-        votes.forEach(v => { tallies[v.candidate_id] = (tallies[v.candidate_id] || 0) + 1; });
+        (votes || []).forEach(v => {
+            tallies[v.candidate_id] = (tallies[v.candidate_id] || 0) + 1;
+        });
 
-        const { data: positions } = await supabase
-            .from('positions').select('id, title').eq('election_id', election.id);
+        const { data: positions, error: posErr } = await supabase
+            .from('positions')
+            .select('id, title, display_order')
+            .eq('election_id', election.id)
+            .order('display_order', { ascending: true });
+
+        if (posErr) throw posErr;
 
         const winners = [];
+        const ties = [];
+        const skipped = [];
+
         for (const pos of positions || []) {
-            const posCandidates = nominations.filter(n => n.position_id === pos.id);
-            if (posCandidates.length === 0) continue;
-
-            posCandidates.sort((a, b) => (tallies[b.id] || 0) - (tallies[a.id] || 0));
-            const top = posCandidates[0];
-
-            if (posCandidates.length > 1 && (tallies[posCandidates[0].id] || 0) === (tallies[posCandidates[1].id] || 0)) {
-                logger.warn('Tie in position — skipping', { position: pos.title });
+            const posCandidates = (nominations || []).filter(n => n.position_id === pos.id);
+            if (posCandidates.length === 0) {
+                skipped.push(pos.title);
                 continue;
             }
 
-            winners.push({ position_title: pos.title, votes: tallies[top.id] || 0, nominee: top.nominee });
+            posCandidates.sort((a, b) => (tallies[b.id] || 0) - (tallies[a.id] || 0));
+            const top = posCandidates[0];
+            const topVotes = tallies[top.id] || 0;
+            const second = posCandidates[1];
+            const secondVotes = second ? (tallies[second.id] || 0) : -1;
+
+            if (second && topVotes === secondVotes) {
+                logger.warn('Tie in position — skipping promotion', { position: pos.title, votes: topVotes });
+                ties.push({ position: pos.title, votes: topVotes });
+                continue;
+            }
+
+            // Prefer linked voter record; fall back to nomination denormalized fields
+            const voter = top.nominee || null;
+            const fullName = (voter?.full_name || top.nominee_name || '').trim();
+            if (!fullName) {
+                skipped.push(pos.title);
+                continue;
+            }
+
+            winners.push({
+                position_id: pos.id,
+                position_title: pos.title,
+                display_order: pos.display_order != null ? pos.display_order : winners.length,
+                votes: topVotes,
+                nomination_id: top.id,
+                manifesto: top.manifesto || null,
+                nominee: {
+                    full_name: fullName,
+                    department: voter?.department || top.nominee_department || null,
+                    level: voter?.level || top.nominee_level || null,
+                    email: voter?.email || null,
+                    phone: voter?.phone || null,
+                    matric_no: voter?.matric_no || top.nominee_matric || null
+                }
+            });
         }
 
-        const { data: session } = await supabase
-            .from('academic_sessions').select('name').eq('id', election.session_id).single();
+        // Resolve academic session name for this election
+        let sessionName = null;
+        if (election.session_id) {
+            const { data: session } = await supabase
+                .from('academic_sessions')
+                .select('name')
+                .eq('id', election.session_id)
+                .maybeSingle();
+            sessionName = session?.name || null;
+        }
+        if (!sessionName) {
+            // Fallback: active session name
+            const { data: activeSess } = await supabase
+                .from('academic_sessions')
+                .select('name')
+                .eq('is_active', true)
+                .maybeSingle();
+            sessionName = activeSess?.name || 'Unknown';
+        }
 
-        const sessionName = session?.name || 'Unknown';
+        // Optional: mark previous active executives for THIS session as alumni before inserting winners
+        // (keeps historical records but clears the current executive roster for the session)
+        if (winners.length > 0 && sessionName && sessionName !== 'Unknown') {
+            try {
+                await supabase
+                    .from('executive_members')
+                    .update({
+                        status: 'alumni',
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('session', sessionName)
+                    .eq('status', 'active')
+                    .eq('committee', 'Executive');
+            } catch (alumniErr) {
+                logger.warn('Could not archive previous executives for session', {
+                    session: sessionName, error: alumniErr.message
+                });
+            }
+        }
 
-        const memberRows = winners.map(w => ({
+        const nowIso = new Date().toISOString();
+        const memberRows = winners.map((w, idx) => ({
             full_name: w.nominee.full_name,
             position: w.position_title,
             department: w.nominee.department,
             level: w.nominee.level,
-            email: w.nominee.email || null,
-            phone: w.nominee.phone || null,
+            email: w.nominee.email,
+            phone: w.nominee.phone,
             session: sessionName,
             status: 'active',
             committee: 'Executive',
-            display_order: 0,
-            bio: null,
+            display_order: w.display_order != null ? w.display_order : idx,
+            bio: w.manifesto || null,
             social_links: {},
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            created_at: nowIso,
+            updated_at: nowIso
         }));
 
         if (memberRows.length > 0) {
-            const { error: insertErr } = await supabase.from('executive_members').insert(memberRows);
+            const { error: insertErr } = await supabase
+                .from('executive_members')
+                .insert(memberRows);
             if (insertErr) throw insertErr;
         }
 
         await supabase
             .from('elections')
-            .update({ results_published: true, status: 'closed', updated_at: new Date().toISOString() })
+            .update({
+                results_published: true,
+                status: 'closed',
+                updated_at: nowIso
+            })
             .eq('id', election.id);
 
-        await cacheManager.invalidateByTags(['members']);
+        await cacheManager.invalidateByTags(['members', 'sessions']);
 
-        logger.info('Election results published', {
-            requestId: req.id, electionId: election.id, winnersPromoted: memberRows.length
+        logger.info('Election results published → executives promoted', {
+            requestId: req.id,
+            electionId: election.id,
+            session: sessionName,
+            winnersPromoted: memberRows.length,
+            ties: ties.length,
+            skipped: skipped.length
         });
 
         res.json({
             status: 'success',
             data: {
+                session: sessionName,
                 winners: winners.map(w => ({
                     position: w.position_title,
                     name: w.nominee.full_name,
+                    department: w.nominee.department,
+                    level: w.nominee.level,
+                    matric: w.nominee.matric_no,
                     votes: w.votes
-                }))
+                })),
+                ties,
+                skipped_positions: skipped,
+                promoted_count: memberRows.length
             },
-            message: `${memberRows.length} winner(s) promoted to executive members`
+            message: memberRows.length
+                ? `${memberRows.length} winner(s) promoted to Executive Council for session ${sessionName}`
+                : 'Results published but no winners could be promoted'
         });
     } catch (err) {
-        logger.error('Publish results error:', { requestId: req.id, error: err.message });
-        res.status(500).json({ status: 'error', message: 'Failed to publish results' });
+        logger.error('Publish results error:', { requestId: req.id, error: err.message, stack: err.stack });
+        res.status(500).json({ status: 'error', message: err.message || 'Failed to publish results' });
     }
 });
 

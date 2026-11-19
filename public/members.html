@@ -910,7 +910,7 @@
             <div class="hero-blob-2"></div>
             <div class="hero-content">
                 <h1 class="hero-title">Executive Council</h1>
-                <p class="hero-subtitle">Meet the dedicated team leading NUESA BIU for the 2025/2026 session</p>
+                <p class="hero-subtitle" id="heroSubtitle">Meet the dedicated team leading NUESA BIU</p>
             </div>
         </div>
 
@@ -921,8 +921,7 @@
                 <div class="toolbar-left">
                     <div class="select-wrapper">
                         <select class="select" id="sessionSelect">
-                            <option value="2025/2026">2025/2026</option>
-                            <option value="2024/2025">2024/2025</option>
+                            <option value="">Loading sessions…</option>
                         </select>
                         <svg class="select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
                     </div>
@@ -1027,7 +1026,9 @@
             // ===== STATE MANAGEMENT =====
             let membersData = [];
             let filteredMembers = [];
-            let currentSession = '2025/2026';
+            let currentSession = null;
+            let activeSessionName = null;
+            let academicSessions = [];
             let searchQuery = '';
             let showSearch = false;
             let expandedId = null;
@@ -1042,6 +1043,94 @@
             const emptyState = document.getElementById('emptyState');
             const gridViewBtn = document.getElementById('gridViewBtn');
             const listViewBtn = document.getElementById('listViewBtn');
+            const heroSubtitle = document.getElementById('heroSubtitle');
+
+            function updateHeroSubtitle(sessionName) {
+                if (!heroSubtitle) return;
+                if (sessionName) {
+                    heroSubtitle.textContent = `Meet the dedicated team leading NUESA BIU for the ${sessionName} session`;
+                } else {
+                    heroSubtitle.textContent = 'Meet the dedicated team leading NUESA BIU';
+                }
+            }
+
+            async function loadSessions() {
+                try {
+                    const [listRes, activeRes] = await Promise.all([
+                        fetch(`${API_BASE_URL}/api/sessions`, {
+                            headers: { 'Accept': 'application/json' }
+                        }).then(r => r.ok ? r.json() : { data: [] }).catch(() => ({ data: [] })),
+                        fetch(`${API_BASE_URL}/api/sessions/active`, {
+                            headers: { 'Accept': 'application/json' }
+                        }).then(r => r.ok ? r.json() : { data: null }).catch(() => ({ data: null }))
+                    ]);
+
+                    const list = Array.isArray(listRes.data) ? listRes.data : [];
+                    academicSessions = list
+                        .map(s => ({
+                            id: s.id,
+                            name: s.name || s.session_name || '',
+                            is_active: !!s.is_active
+                        }))
+                        .filter(s => s.name)
+                        .sort((a, b) => String(b.name).localeCompare(String(a.name)));
+
+                    const activeFromApi = activeRes.data;
+                    activeSessionName = (activeFromApi && (activeFromApi.name || activeFromApi.session_name))
+                        || academicSessions.find(s => s.is_active)?.name
+                        || academicSessions[0]?.name
+                        || null;
+
+                    // Mark active in list if API said so
+                    if (activeSessionName) {
+                        academicSessions = academicSessions.map(s => ({
+                            ...s,
+                            is_active: s.name === activeSessionName
+                        }));
+                    }
+
+                    populateSessionSelect();
+                    currentSession = activeSessionName;
+                    updateHeroSubtitle(currentSession);
+                    return currentSession;
+                } catch (err) {
+                    console.warn('Could not load academic sessions:', err);
+                    academicSessions = [];
+                    activeSessionName = null;
+                    currentSession = null;
+                    populateSessionSelect();
+                    updateHeroSubtitle(null);
+                    return null;
+                }
+            }
+
+            function populateSessionSelect() {
+                if (!sessionSelect) return;
+                const previous = sessionSelect.value;
+                sessionSelect.innerHTML = '';
+
+                if (academicSessions.length === 0) {
+                    const opt = document.createElement('option');
+                    opt.value = '';
+                    opt.textContent = 'No sessions available';
+                    sessionSelect.appendChild(opt);
+                    return;
+                }
+
+                academicSessions.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.name;
+                    opt.textContent = s.is_active ? `${s.name} (Active)` : s.name;
+                    sessionSelect.appendChild(opt);
+                });
+
+                const preferred = previous || activeSessionName || academicSessions[0].name;
+                if ([...sessionSelect.options].some(o => o.value === preferred)) {
+                    sessionSelect.value = preferred;
+                } else {
+                    sessionSelect.value = academicSessions[0].name;
+                }
+            }
 
             // ============================================
             // NAVBAR FUNCTIONS
@@ -1143,17 +1232,22 @@
             
             async function loadExecutives(session = currentSession) {
                 try {
+                    const sessionLabel = session || 'active';
                     executivesList.innerHTML = `
                         <div class="empty-state" style="display: block;">
                             <div class="loading-spinner"></div>
-                            <h3 style="margin-top: 1rem;">Loading ${session} executives...</h3>
+                            <h3 style="margin-top: 1rem;">Loading ${sessionLabel} executives...</h3>
                         </div>
                     `;
                     emptyState.classList.add('hidden');
 
-                    console.log(`🔍 Fetching ${session} executives from: ${API_BASE_URL}/api/members`);
+                    // When session is set, filter by it; otherwise omit so API uses active session
+                    const params = new URLSearchParams({ status: 'active' });
+                    if (session) params.set('session', session);
 
-                    const response = await fetch(`${API_BASE_URL}/api/members?status=active&session=${session}`, {
+                    console.log(`🔍 Fetching executives from: ${API_BASE_URL}/api/members?${params}`);
+
+                    const response = await fetch(`${API_BASE_URL}/api/members?${params}`, {
                         headers: {
                             'Accept': 'application/json',
                             'Content-Type': 'application/json'
@@ -1503,7 +1597,8 @@
             // ============================================
             
             sessionSelect.addEventListener('change', (e) => {
-                currentSession = e.target.value;
+                currentSession = e.target.value || activeSessionName;
+                updateHeroSubtitle(currentSession);
                 loadExecutives(currentSession);
             });
 
@@ -1538,7 +1633,11 @@
             // INITIAL LOAD
             // ============================================
             
-            loadExecutives('2025/2026');
+            (async function init() {
+                const session = await loadSessions();
+                // If no sessions configured, still try members with no filter (API uses active)
+                await loadExecutives(session || undefined);
+            })();
         });
     </script>
 </body>
