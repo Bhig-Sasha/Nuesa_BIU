@@ -2137,34 +2137,108 @@ adminRouter.get('/events/:id', async (req, res) => {
 
 adminRouter.post('/events', async (req, res) => {
     try {
-        const { title, description, date, start_time, end_time, location, category, organizer, max_participants, status } = req.body;
+        const body = req.body || {};
+        const startDate = body.start_date || body.date || null;
+        const endDate = body.end_date || null;
+        const maxAttendees = body.max_attendees ?? body.max_participants ?? null;
+
         const eventData = {
-            title: title?.trim(), description: description?.trim(), date, start_time, end_time,
-            location: location?.trim(), category: category?.trim(), organizer: organizer?.trim(),
-            max_participants: max_participants ? parseInt(max_participants) : null,
-            status: status || 'upcoming', created_at: new Date(), updated_at: new Date()
+            title: (body.title || '').trim() || null,
+            summary: body.summary ? String(body.summary).trim() : null,
+            description: body.description ? String(body.description).trim() : null,
+            category: body.category ? String(body.category).trim() : null,
+            session: body.session ? String(body.session).trim() : null,
+            date: startDate,
+            start_date: startDate,
+            start_time: body.start_time || null,
+            end_date: endDate,
+            end_time: body.end_time || null,
+            location: body.location ? String(body.location).trim() : null,
+            campus: body.campus ? String(body.campus).trim() : null,
+            venue_address: body.venue_address ? String(body.venue_address).trim() : null,
+            online_link: body.online_link ? String(body.online_link).trim() : null,
+            organizer: body.organizer ? String(body.organizer).trim() : null,
+            poster_url: body.poster_url || body.featured_image || null,
+            poster_alt: body.poster_alt ? String(body.poster_alt).trim() : null,
+            max_participants: maxAttendees != null && maxAttendees !== '' ? parseInt(maxAttendees, 10) : null,
+            registration_type: body.registration_type || 'none',
+            registration_link: body.registration_link ? String(body.registration_link).trim() : null,
+            registration_open: body.registration_open || null,
+            registration_close: body.registration_close || null,
+            registration_fields: body.registration_fields || null,
+            is_featured: !!body.is_featured,
+            public_visible: body.public_visible !== false,
+            is_published: !!body.is_published,
+            schedule_publish: body.schedule_publish || null,
+            status: body.status || (body.is_published ? 'published' : 'draft'),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
         };
+
+        Object.keys(eventData).forEach(key => {
+            if (eventData[key] === undefined) delete eventData[key];
+        });
 
         const result = await db.query('insert', 'biu_events', { data: eventData });
         await cacheManager.invalidateByTags(['biu_events']);
         res.status(201).json({ status: 'success', data: result.data[0], message: 'Event created successfully' });
     } catch (error) {
         logger.error('Admin create event error:', error);
-        res.status(500).json({ status: 'error', message: 'Failed to create event' });
+        res.status(500).json({ status: 'error', message: error.message || 'Failed to create event' });
     }
 });
 
 adminRouter.put('/events/:id', async (req, res) => {
     try {
-        const { title, description, date, start_time, end_time, location, category, organizer, max_participants, status } = req.body;
-        const updateData = {
-            title: title?.trim(), description: description?.trim(), date, start_time, end_time,
-            location: location?.trim(), category: category?.trim(), organizer: organizer?.trim(),
-            max_participants: max_participants ? parseInt(max_participants) : null,
-            status, updated_at: new Date()
-        };
+        const body = req.body || {};
+        const updateData = { updated_at: new Date().toISOString() };
 
-        Object.keys(updateData).forEach(key => updateData[key] === undefined && delete updateData[key]);
+        if (body.title !== undefined) updateData.title = String(body.title).trim();
+        if (body.summary !== undefined) updateData.summary = body.summary ? String(body.summary).trim() : null;
+        if (body.description !== undefined) updateData.description = body.description ? String(body.description).trim() : null;
+        if (body.category !== undefined) updateData.category = body.category ? String(body.category).trim() : null;
+        if (body.session !== undefined) updateData.session = body.session ? String(body.session).trim() : null;
+
+        const startDate = body.start_date !== undefined ? body.start_date : (body.date !== undefined ? body.date : undefined);
+        if (startDate !== undefined) {
+            updateData.date = startDate || null;
+            updateData.start_date = startDate || null;
+        }
+        if (body.start_time !== undefined) updateData.start_time = body.start_time || null;
+        if (body.end_date !== undefined) updateData.end_date = body.end_date || null;
+        if (body.end_time !== undefined) updateData.end_time = body.end_time || null;
+
+        if (body.location !== undefined) updateData.location = body.location ? String(body.location).trim() : null;
+        if (body.campus !== undefined) updateData.campus = body.campus ? String(body.campus).trim() : null;
+        if (body.venue_address !== undefined) updateData.venue_address = body.venue_address ? String(body.venue_address).trim() : null;
+        if (body.online_link !== undefined) updateData.online_link = body.online_link ? String(body.online_link).trim() : null;
+        if (body.organizer !== undefined) updateData.organizer = body.organizer ? String(body.organizer).trim() : null;
+
+        if (body.poster_url !== undefined || body.featured_image !== undefined) {
+            updateData.poster_url = body.poster_url || body.featured_image || null;
+        }
+        if (body.poster_alt !== undefined) updateData.poster_alt = body.poster_alt ? String(body.poster_alt).trim() : null;
+
+        const maxAttendees = body.max_attendees !== undefined ? body.max_attendees : body.max_participants;
+        if (maxAttendees !== undefined) {
+            updateData.max_participants = maxAttendees != null && maxAttendees !== '' ? parseInt(maxAttendees, 10) : null;
+        }
+
+        if (body.registration_type !== undefined) updateData.registration_type = body.registration_type || 'none';
+        if (body.registration_link !== undefined) updateData.registration_link = body.registration_link ? String(body.registration_link).trim() : null;
+        if (body.registration_open !== undefined) updateData.registration_open = body.registration_open || null;
+        if (body.registration_close !== undefined) updateData.registration_close = body.registration_close || null;
+        if (body.registration_fields !== undefined) updateData.registration_fields = body.registration_fields || null;
+
+        if (body.is_featured !== undefined) updateData.is_featured = !!body.is_featured;
+        if (body.public_visible !== undefined) updateData.public_visible = !!body.public_visible;
+        if (body.is_published !== undefined) updateData.is_published = !!body.is_published;
+        if (body.schedule_publish !== undefined) updateData.schedule_publish = body.schedule_publish || null;
+        if (body.status !== undefined) updateData.status = body.status;
+
+        Object.keys(updateData).forEach(key => {
+            if (updateData[key] === undefined) delete updateData[key];
+        });
 
         const result = await db.query('update', 'biu_events', { data: updateData, where: { id: req.params.id } });
         if (result.data.length === 0) return res.status(404).json({ status: 'error', message: 'Event not found' });
@@ -2173,7 +2247,7 @@ adminRouter.put('/events/:id', async (req, res) => {
         res.json({ status: 'success', data: result.data[0], message: 'Event updated successfully' });
     } catch (error) {
         logger.error('Admin update event error:', error);
-        res.status(500).json({ status: 'error', message: 'Failed to update event' });
+        res.status(500).json({ status: 'error', message: error.message || 'Failed to update event' });
     }
 });
 

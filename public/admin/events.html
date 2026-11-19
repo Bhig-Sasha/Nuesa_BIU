@@ -1335,9 +1335,7 @@
                         </select>
                         <select class="filter-select" id="filterSession">
                             <option value="">All Sessions</option>
-                            <option value="2025/2026">2025/2026</option>
-                            <option value="2024/2025">2024/2025</option>
-                            <option value="2023/2024">2023/2024</option>
+                            <!-- Populated dynamically from /api/admin/sessions -->
                         </select>
                     </div>
 
@@ -1415,9 +1413,7 @@
                         <div class="form-group">
                             <label class="form-label" for="eSession">Academic Session</label>
                             <select class="form-select" id="eSession">
-                                <option value="2025/2026">2025/2026</option>
-                                <option value="2024/2025">2024/2025</option>
-                                <option value="2023/2024">2023/2024</option>
+                                <!-- Populated dynamically from /api/admin/sessions -->
                             </select>
                         </div>
                     </div>
@@ -1632,6 +1628,72 @@
     let editingEventId = null;
     let deletingEventId = null;
     let viewingEvent = null;
+    let academicSessions = [];
+    let activeSessionName = null;
+
+    async function loadSessions() {
+        try {
+            const res = await apiGet('/api/admin/sessions');
+            const list = Array.isArray(res.data) ? res.data : [];
+            academicSessions = list
+                .map(s => ({
+                    id: s.id,
+                    name: s.name || s.session_name || '',
+                    is_active: !!s.is_active
+                }))
+                .filter(s => s.name)
+                .sort((a, b) => String(b.name).localeCompare(String(a.name)));
+
+            const active = academicSessions.find(s => s.is_active);
+            activeSessionName = active ? active.name : (academicSessions[0]?.name || null);
+
+            populateSessionSelects();
+        } catch (err) {
+            console.warn('Could not load academic sessions:', err.message);
+            academicSessions = [];
+            activeSessionName = null;
+            populateSessionSelects();
+        }
+    }
+
+    function populateSessionSelects() {
+        const filterEl = document.getElementById('filterSession');
+        const formEl = document.getElementById('eSession');
+        if (!filterEl || !formEl) return;
+
+        const filterVal = filterEl.value;
+        const formVal = formEl.value;
+
+        filterEl.innerHTML = '<option value="">All Sessions</option>';
+        formEl.innerHTML = '';
+
+        if (academicSessions.length === 0) {
+            formEl.innerHTML = '<option value="">No sessions configured</option>';
+            return;
+        }
+
+        academicSessions.forEach(s => {
+            const label = s.is_active ? `${s.name} (Active)` : s.name;
+            const optFilter = document.createElement('option');
+            optFilter.value = s.name;
+            optFilter.textContent = label;
+            filterEl.appendChild(optFilter);
+
+            const optForm = document.createElement('option');
+            optForm.value = s.name;
+            optForm.textContent = label;
+            formEl.appendChild(optForm);
+        });
+
+        if (filterVal && [...filterEl.options].some(o => o.value === filterVal)) {
+            filterEl.value = filterVal;
+        }
+        if (formVal && [...formEl.options].some(o => o.value === formVal)) {
+            formEl.value = formVal;
+        } else if (activeSessionName) {
+            formEl.value = activeSessionName;
+        }
+    }
 
     async function checkAuth() {
         try {
@@ -1769,7 +1831,7 @@
             is_published: !!e.is_published,
             is_featured: !!e.is_featured || !!e.featured,
             public_visible: e.public_visible !== false,
-            session: e.session || '2025/2026',
+            session: e.session || activeSessionName || '',
             max_attendees: e.max_participants || e.max_attendees || null,
             registrations: e.registrations || e.registration_count || 0,
             registration_type: e.registration_type || 'none',
@@ -2125,7 +2187,14 @@
             document.getElementById('eSummary').value = e.summary || '';
             document.getElementById('eDescription').value = e.description;
             document.getElementById('eCategory').value = e.category;
-            document.getElementById('eSession').value = e.session;
+            const sessionSelect = document.getElementById('eSession');
+            if (e.session && ![...sessionSelect.options].some(o => o.value === e.session)) {
+                const opt = document.createElement('option');
+                opt.value = e.session;
+                opt.textContent = e.session + ' (legacy)';
+                sessionSelect.appendChild(opt);
+            }
+            sessionSelect.value = e.session || activeSessionName || '';
             document.getElementById('ePoster').value = e.poster;
             document.getElementById('ePosterAlt').value = e.poster_alt || '';
             document.getElementById('eStartDate').value = toDateInputValue(e.start_date);
@@ -2148,6 +2217,9 @@
             document.getElementById('eSchedulePublish').value = e.schedule_publish || '';
         } else {
             title.innerHTML = '<i class="fas fa-plus-circle"></i> Create New Event';
+            if (activeSessionName) {
+                document.getElementById('eSession').value = activeSessionName;
+            }
         }
 
         showModal('eventModal');
@@ -2594,6 +2666,7 @@
         if (!ok) return;
 
         setupActivityListeners();
+        await loadSessions();
         await loadEvents();
         hideLoading();
     }
