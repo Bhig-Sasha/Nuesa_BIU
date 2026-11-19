@@ -627,7 +627,249 @@
         }
 
         .tab-pane { display: none; }
-        .tab-pane.active { display: block; }
+        .tab-pane.active { display: block; animation: paneIn 0.35s ease both; }
+
+        @keyframes paneIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        @keyframes cardIn {
+            from { opacity: 0; transform: translateY(16px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes softPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.55; }
+        }
+        @keyframes heroFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .skeleton {
+            background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.4s ease-in-out infinite;
+            border-radius: 0.375rem;
+        }
+        .skeleton-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 1.1rem 1rem; border-bottom: 1px dashed var(--gray-200);
+            gap: 1rem;
+        }
+        .skeleton-row:last-child { border-bottom: none; }
+        .skeleton-icon { width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; flex-shrink: 0; }
+        .skeleton-lines { flex: 1; display: flex; flex-direction: column; gap: 0.45rem; }
+        .skeleton-line { height: 0.7rem; border-radius: 999px; }
+        .skeleton-line.w60 { width: 60%; }
+        .skeleton-line.w40 { width: 40%; }
+        .skeleton-line.w80 { width: 80%; }
+        .skeleton-line.w30 { width: 30%; }
+        .skeleton-btn { width: 2.25rem; height: 2.25rem; border-radius: 0.375rem; flex-shrink: 0; }
+
+        .resources-header {
+            position: relative; overflow: hidden;
+            background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 50%, #f0fdf4 100%);
+            border-bottom: none;
+            padding: 3.5rem 0 3rem;
+        }
+        .resources-header::before {
+            content: '';
+            position: absolute; top: -40%; right: -10%;
+            width: 28rem; height: 28rem;
+            background: radial-gradient(circle, rgba(16,185,129,0.12), transparent 70%);
+            border-radius: 50%;
+            animation: heroFloat 8s ease-in-out infinite;
+            pointer-events: none;
+        }
+        .resources-header::after {
+            content: '';
+            position: absolute; bottom: -30%; left: -5%;
+            width: 20rem; height: 20rem;
+            background: radial-gradient(circle, rgba(245,158,11,0.1), transparent 70%);
+            border-radius: 50%;
+            animation: heroFloat 10s ease-in-out infinite reverse;
+            pointer-events: none;
+        }
+        .resources-title {
+            position: relative; z-index: 1;
+            animation: slideUp 0.6s ease both;
+            letter-spacing: -0.03em;
+        }
+        .resources-description {
+            position: relative; z-index: 1;
+            animation: slideUp 0.6s ease 0.12s both;
+        }
+        .hero-stats {
+            position: relative; z-index: 1;
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 0.75rem;
+            margin-top: 1.75rem;
+            animation: slideUp 0.6s ease 0.22s both;
+        }
+        .hero-stat {
+            background: white; border: 1px solid var(--gray-200);
+            border-radius: 999px; padding: 0.4rem 0.9rem;
+            font-family: 'Roboto Mono', monospace; font-size: 0.75rem;
+            color: var(--gray-600); font-weight: 600;
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+        .hero-stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .hero-stat strong { color: var(--emerald-700); }
+
+        .tabs-navigation {
+            background: white; border-radius: 0.75rem;
+            border: 1px solid var(--gray-200); padding: 0.35rem;
+            border-bottom: none; margin-bottom: 1.75rem;
+            box-shadow: var(--shadow-sm);
+            gap: 0.25rem;
+        }
+        .tab-button {
+            border-radius: 0.5rem; border-bottom: none !important;
+            flex: 1; min-width: max-content;
+            padding: 0.75rem 1rem;
+            position: relative;
+        }
+        .tab-button.active {
+            background: var(--emerald-600); color: white !important;
+            box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3);
+        }
+        .tab-button:hover:not(.active) {
+            background: var(--emerald-50); color: var(--emerald-700);
+        }
+
+        .downloads-container {
+            border-radius: 0.75rem; overflow: hidden;
+            border: 1px solid var(--gray-200);
+            box-shadow: var(--shadow-sm);
+        }
+        .download-item {
+            animation: cardIn 0.4s ease both;
+            transition: background-color 0.25s ease, transform 0.25s ease;
+        }
+        .download-item:hover {
+            background: linear-gradient(90deg, #ecfdf5, #ffffff);
+            transform: translateX(4px);
+        }
+        .download-button {
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .download-button:hover {
+            transform: scale(1.08);
+            background: var(--emerald-600) !important;
+            color: white !important;
+            border-color: var(--emerald-600) !important;
+        }
+        .download-button:active { transform: scale(0.95); }
+
+        .question-card {
+            animation: cardIn 0.45s ease both;
+            transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .question-card:hover {
+            border-color: var(--emerald-400);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 28px rgba(16, 43, 39, 0.08);
+        }
+
+        .tool-card {
+            border-radius: 0.75rem;
+            animation: cardIn 0.45s ease both;
+            transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+            border-style: solid;
+            border-color: var(--gray-200);
+            background: linear-gradient(180deg, #ffffff, #f9fafb);
+        }
+        .tool-card:hover {
+            border-color: var(--emerald-400);
+            transform: translateY(-6px);
+            box-shadow: 0 16px 32px rgba(5, 150, 105, 0.12);
+        }
+        .tool-icon {
+            transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+            color: var(--emerald-600);
+        }
+        .tool-card:hover .tool-icon { transform: scale(1.15) rotate(-6deg); }
+
+        .links-container {
+            border-radius: 0.75rem;
+            border: 1px solid var(--gray-200);
+            box-shadow: var(--shadow-sm);
+            animation: cardIn 0.4s ease both;
+        }
+        .links-list li {
+            transition: transform 0.2s ease, color 0.2s ease;
+            border-radius: 0.375rem; padding: 0.35rem 0.25rem;
+        }
+        .links-list li:hover { transform: translateX(6px); color: var(--emerald-700); }
+
+        .search-section {
+            border-radius: 0.75rem;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--gray-200);
+            animation: cardIn 0.35s ease both;
+        }
+        .search-input, .filter-select {
+            transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+        }
+        .search-input:focus, .filter-select:focus {
+            transform: translateY(-1px);
+        }
+
+        .resources-toolbar {
+            display: flex; flex-wrap: wrap; gap: 0.75rem;
+            margin-bottom: 1.25rem; align-items: center;
+            animation: cardIn 0.35s ease both;
+        }
+        .resources-toolbar .search-box { flex: 1; min-width: 200px; position: relative; }
+        .resources-toolbar .search-icon {
+            position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%);
+            color: var(--gray-400); font-size: 0.9rem; pointer-events: none;
+        }
+        .resources-toolbar .search-input {
+            width: 100%; padding: 0.7rem 0.75rem 0.7rem 2.4rem;
+            border: 1px solid var(--gray-300); border-radius: 0.5rem;
+            font-size: 0.9rem; background: white;
+        }
+        .resources-toolbar .filter-select {
+            padding: 0.7rem 0.85rem; border-radius: 0.5rem;
+            border: 1px solid var(--gray-300); background: white;
+            font-size: 0.875rem; min-width: 130px;
+        }
+        .result-chip {
+            font-family: 'Roboto Mono', monospace; font-size: 0.7rem;
+            color: var(--gray-500); font-weight: 600;
+            margin-left: auto;
+        }
+
+        .download-item.stagger-1 { animation-delay: 0.03s; }
+        .download-item.stagger-2 { animation-delay: 0.06s; }
+        .download-item.stagger-3 { animation-delay: 0.09s; }
+        .download-item.stagger-4 { animation-delay: 0.12s; }
+        .download-item.stagger-5 { animation-delay: 0.15s; }
+        .download-item.stagger-6 { animation-delay: 0.18s; }
+        .download-item.stagger-7 { animation-delay: 0.21s; }
+        .download-item.stagger-8 { animation-delay: 0.24s; }
+
+        .empty-illus {
+            width: 4.5rem; height: 4.5rem; margin: 0 auto 1rem;
+            border-radius: 50%; background: var(--emerald-50);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--emerald-500); font-size: 1.75rem;
+            animation: softPulse 2s ease infinite;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -682,12 +924,17 @@
 
     <!-- MAIN CONTENT -->
     <main class="min-h-screen bg-gray-100">
-        <section class="resources-header bg-white">
+        <section class="resources-header">
             <div class="container max-w-7xl text-center">
                 <h1 class="resources-title">Student Resources & Past Questions</h1>
                 <p class="resources-description">
                     Access study materials, past examination questions, tools, and links to help you succeed in your studies.
                 </p>
+                <div class="hero-stats" id="heroStats">
+                    <span class="hero-stat"><strong id="statResources">—</strong> resources</span>
+                    <span class="hero-stat"><strong id="statPastQ">—</strong> past questions</span>
+                    <span class="hero-stat"><strong id="statDownloads">—</strong> downloads</span>
+                </div>
             </div>
         </section>
 
@@ -705,6 +952,27 @@
                         <h2 class="section-title">
                             <i class="fas fa-download"></i> Study Materials
                         </h2>
+                        <div class="resources-toolbar" id="resourcesToolbar">
+                            <div class="search-box">
+                                <i class="fas fa-search search-icon"></i>
+                                <input type="text" id="resourcesSearchInput" class="search-input" placeholder="Search materials by title, course…">
+                            </div>
+                            <select id="resourcesLevelFilter" class="filter-select">
+                                <option value="All">All Levels</option>
+                                <option value="100">100 Level</option>
+                                <option value="200">200 Level</option>
+                                <option value="300">300 Level</option>
+                                <option value="400">400 Level</option>
+                                <option value="500">500 Level</option>
+                            </select>
+                            <select id="departmentFilter" class="filter-select">
+                                <option value="All">All Departments</option>
+                            </select>
+                            <select id="yearFilter" class="filter-select">
+                                <option value="All">All Years</option>
+                            </select>
+                            <span class="result-chip" id="resourcesCountChip">0 items</span>
+                        </div>
                         <div class="downloads-container divide-y divide-dashed divide-gray-300" id="resources-container"></div>
                     </div>
 
@@ -727,11 +995,18 @@
                                         <option value="400">400 Level</option>
                                         <option value="500">500 Level</option>
                                     </select>
+                                    <select id="pqDepartmentFilter" class="filter-select">
+                                        <option value="All">All Departments</option>
+                                    </select>
+                                    <select id="pqYearFilter" class="filter-select">
+                                        <option value="All">All Years</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
                         <div id="resultsList" class="results-list"></div>
                         <div id="noResults" class="no-results" style="display: none;">
+                            <div class="empty-illus"><i class="fas fa-search"></i></div>
                             <p class="no-results-text">No past questions found matching your search.</p>
                             <button id="clearFiltersBtn" class="clear-filters">Clear filters</button>
                         </div>
@@ -1475,7 +1750,8 @@
             currentTab: 'resources',
             resources: [],
             filteredResources: [],
-            filters: { search: '', level: 'All', department: '', year: '' },
+            filters: { search: '', level: 'All', department: 'All', year: 'All' },
+
             loading: false,
             tools: [
                 { name: 'CGPA Calculator', description: 'Calculate your semester and cumulative GPA easily', icon: 'calculator', action: showCGPACalculator },
@@ -1525,29 +1801,54 @@
             window.toolsContainer = document.getElementById('tools-container');
             window.linksContainer = document.getElementById('links-container');
             window.tabButtons = document.querySelectorAll('.tab-button');
+            window.resourcesSearchInput = document.getElementById('resourcesSearchInput');
+            window.resourcesLevelFilter = document.getElementById('resourcesLevelFilter');
+            window.departmentFilter = document.getElementById('departmentFilter');
+            window.yearFilter = document.getElementById('yearFilter');
+            window.pqDepartmentFilter = document.getElementById('pqDepartmentFilter');
+            window.pqYearFilter = document.getElementById('pqYearFilter');
+            window.resourcesCountChip = document.getElementById('resourcesCountChip');
         }
 
         function initializeEventListeners() {
             tabButtons.forEach(button => {
                 button.addEventListener('click', () => switchTab(button.dataset.tab));
             });
-            if (searchInput) searchInput.addEventListener('input', (e) => { appState.filters.search = e.target.value; filterResources(); });
-            if (levelFilter) levelFilter.addEventListener('change', (e) => { appState.filters.level = e.target.value; filterResources(); });
-            if (clearFiltersBtn) clearFiltersBtn.addEventListener('click', () => {
-                appState.filters.search = '';
-                appState.filters.level = 'All';
-                if (searchInput) searchInput.value = '';
-                if (levelFilter) levelFilter.value = 'All';
-                filterResources();
-            });
+
+            const bindFilter = (el, key) => {
+                if (!el) return;
+                const evt = el.tagName === 'SELECT' ? 'change' : 'input';
+                el.addEventListener(evt, (e) => {
+                    appState.filters[key] = e.target.value;
+                    filterResources();
+                });
+            };
+
+            bindFilter(searchInput, 'search');
+            bindFilter(levelFilter, 'level');
+            bindFilter(resourcesSearchInput, 'search');
+            bindFilter(resourcesLevelFilter, 'level');
+            bindFilter(departmentFilter, 'department');
+            bindFilter(yearFilter, 'year');
+            bindFilter(pqDepartmentFilter, 'department');
+            bindFilter(pqYearFilter, 'year');
+
+            if (clearFiltersBtn) clearFiltersBtn.addEventListener('click', resetFilters);
+
             document.addEventListener('click', (e) => {
                 if (e.target.closest('.download-button')) {
                     const button = e.target.closest('.download-button');
-                    const id = button.dataset.id;
-                    const rawUrl = button.dataset.url;
-                    handleDownload(id, rawUrl);
+                    handleDownload(button.dataset.id, button.dataset.url);
                 }
             });
+        }
+
+        function resetFilters() {
+            appState.filters = { search: '', level: 'All', department: 'All', year: 'All' };
+            [searchInput, resourcesSearchInput].forEach(el => { if (el) el.value = ''; });
+            [levelFilter, resourcesLevelFilter, departmentFilter, yearFilter, pqDepartmentFilter, pqYearFilter]
+                .forEach(el => { if (el) el.value = el.options[0]?.value || 'All'; });
+            filterResources();
         }
 
         function switchTab(tab) {
@@ -1562,34 +1863,67 @@
             if (tab === 'past-questions') renderPastQuestions();
         }
 
+        function renderSkeleton(count = 6) {
+            if (!resourcesContainer) return;
+            let html = '';
+            for (let i = 0; i < count; i++) {
+                html += `
+                    <div class="skeleton-row">
+                        <div class="skeleton skeleton-icon"></div>
+                        <div class="skeleton-lines">
+                            <div class="skeleton skeleton-line w60"></div>
+                            <div class="skeleton skeleton-line w40"></div>
+                            <div class="skeleton skeleton-line w30"></div>
+                        </div>
+                        <div class="skeleton skeleton-btn"></div>
+                    </div>
+                `;
+            }
+            resourcesContainer.innerHTML = html;
+        }
+
+        function renderPastQuestionsSkeleton(count = 4) {
+            if (!resultsList) return;
+            resultsList.style.display = 'flex';
+            const noResults = document.getElementById('noResults');
+            if (noResults) noResults.style.display = 'none';
+            let html = '';
+            for (let i = 0; i < count; i++) {
+                html += `
+                    <div class="question-card" style="animation:none;">
+                        <div class="question-content">
+                            <div style="flex:1;">
+                                <div class="skeleton skeleton-line w40" style="margin-bottom:0.75rem;height:0.85rem;"></div>
+                                <div class="skeleton skeleton-line w80" style="margin-bottom:0.5rem;height:0.7rem;"></div>
+                                <div class="skeleton skeleton-line w30" style="height:0.6rem;"></div>
+                            </div>
+                            <div class="skeleton skeleton-btn" style="width:6rem;height:2.25rem;"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            resultsList.innerHTML = html;
+        }
+
         async function loadResources() {
             try {
                 showLoadingState();
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000);
-                const response = await fetch(`${API_BASE_URL}/api/resources`, {
+                const timeoutId = setTimeout(() => controller.abort(), 12000);
+                const response = await fetch(`${API_BASE_URL}/api/resources?limit=300`, {
                     method: 'GET',
-                    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                    headers: { 'Accept': 'application/json' },
                     mode: 'cors',
                     signal: controller.signal
                 });
                 clearTimeout(timeoutId);
                 if (!response.ok) throw new Error(`API returned ${response.status}: ${response.statusText}`);
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) throw new Error('Server returned non-JSON response');
                 const data = await response.json();
 
                 let resources = [];
                 if (data.status === 'success' && data.data) resources = data.data;
                 else if (Array.isArray(data)) resources = data;
                 else if (data.resources && Array.isArray(data.resources)) resources = data.resources;
-                else resources = [];
-
-                if (resources.length === 0) {
-                    appState.resources = []; appState.filteredResources = [];
-                    renderResources(); showError('No resources available yet');
-                    return;
-                }
 
                 appState.resources = resources.map(resource => ({
                     id: resource.id,
@@ -1597,30 +1931,31 @@
                     description: resource.description || '',
                     file_type: resource.file_type || getFileExtension(resource.file_url || ''),
                     file_size: resource.file_size || 0,
-                    level: resource.level ? resource.level.toString() : null,
+                    level: resource.level != null ? String(resource.level).replace(/[^\d]/g, '') || String(resource.level) : null,
                     department: resource.department || '',
                     course_code: resource.course_code || '',
                     course_title: resource.course_title || '',
-                    year: resource.year || '',
-                    semester: resource.semester ? resource.semester.toString() : '',
+                    year: resource.year || resource.session || '',
+                    semester: resource.semester != null ? String(resource.semester) : '',
                     category: resource.category || 'General',
                     download_count: resource.download_count || 0,
-                    // FIX: prefix relative paths with the API host
                     file_url: resolveFileUrl(resource.file_url)
                 }));
 
+                populateDynamicFilters();
+                updateHeroStats();
                 appState.filteredResources = [...appState.resources];
-                renderResources();
+                filterResources();
             } catch (error) {
                 if (error.name === 'AbortError') showError('Request timed out. Please try again.');
                 else showError('Failed to load resources. Please try again.');
                 if (resourcesContainer) {
                     resourcesContainer.innerHTML = `
                         <div style="text-align: center; padding: 3rem; color: var(--gray-600);">
-                            <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 1rem; color: #ef4444;"></i>
+                            <div class="empty-illus" style="background:#fef2f2;color:#ef4444;"><i class="fas fa-exclamation-triangle"></i></div>
                             <p style="font-size: 1.1rem; margin-bottom: 1rem;">Failed to load resources</p>
-                            <p style="color: var(--gray-500); margin-bottom: 1.5rem;">${error.message}</p>
-                            <button onclick="location.reload()" style="padding: 0.75rem 1.5rem; background: var(--emerald-600); color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 500;">
+                            <p style="color: var(--gray-500); margin-bottom: 1.5rem;">${escapeHtmlSafe(error.message)}</p>
+                            <button onclick="location.reload()" style="padding: 0.75rem 1.5rem; background: var(--emerald-600); color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 600; transition: transform 0.2s;">
                                 <i class="fas fa-sync-alt mr-2"></i> Refresh Page
                             </button>
                         </div>
@@ -1631,33 +1966,88 @@
             }
         }
 
+        function escapeHtmlSafe(str) {
+            if (str == null) return '';
+            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function populateDynamicFilters() {
+            const depts = [...new Set(appState.resources.map(r => r.department).filter(Boolean))].sort();
+            const years = [...new Set(appState.resources.map(r => r.year).filter(Boolean))].sort().reverse();
+
+            const fill = (el, values, allLabel) => {
+                if (!el) return;
+                const current = el.value;
+                el.innerHTML = `<option value="All">${allLabel}</option>` +
+                    values.map(v => `<option value="${escapeHtmlSafe(v)}">${escapeHtmlSafe(v)}</option>`).join('');
+                if ([...el.options].some(o => o.value === current)) el.value = current;
+            };
+
+            fill(departmentFilter, depts, 'All Departments');
+            fill(pqDepartmentFilter, depts, 'All Departments');
+            fill(yearFilter, years, 'All Years');
+            fill(pqYearFilter, years, 'All Years');
+        }
+
+        function updateHeroStats() {
+            const total = appState.resources.length;
+            const pastQ = appState.resources.filter(isPastQuestion).length;
+            const downloads = appState.resources.reduce((s, r) => s + (r.download_count || 0), 0);
+            const el = (id, val) => { const n = document.getElementById(id); if (n) n.textContent = val; };
+            el('statResources', total);
+            el('statPastQ', pastQ);
+            el('statDownloads', downloads);
+        }
+
+        function isPastQuestion(resource) {
+            const c = (resource.category || '').toLowerCase();
+            return c.includes('past') || c.includes('question') || c.includes('exam');
+        }
+
         function filterResources() {
-            if (appState.resources.length === 0) return;
             let filtered = [...appState.resources];
-            if (appState.filters.search) {
-                const searchTerm = appState.filters.search.toLowerCase();
-                filtered = filtered.filter(resource =>
-                    (resource.title && resource.title.toLowerCase().includes(searchTerm)) ||
-                    (resource.course_code && resource.course_code.toLowerCase().includes(searchTerm)) ||
-                    (resource.course_title && resource.course_title.toLowerCase().includes(searchTerm)) ||
-                    (resource.description && resource.description.toLowerCase().includes(searchTerm))
+            const f = appState.filters;
+
+            if (f.search) {
+                const q = f.search.toLowerCase();
+                filtered = filtered.filter(r =>
+                    (r.title && r.title.toLowerCase().includes(q)) ||
+                    (r.course_code && r.course_code.toLowerCase().includes(q)) ||
+                    (r.course_title && r.course_title.toLowerCase().includes(q)) ||
+                    (r.description && r.description.toLowerCase().includes(q)) ||
+                    (r.department && r.department.toLowerCase().includes(q))
                 );
             }
-            if (appState.filters.level !== 'All') {
-                filtered = filtered.filter(resource => resource.level && resource.level.toString() === appState.filters.level);
+            if (f.level && f.level !== 'All') {
+                filtered = filtered.filter(r => r.level && String(r.level) === String(f.level));
             }
+            if (f.department && f.department !== 'All') {
+                filtered = filtered.filter(r => r.department === f.department);
+            }
+            if (f.year && f.year !== 'All') {
+                filtered = filtered.filter(r => String(r.year) === String(f.year));
+            }
+
             appState.filteredResources = filtered;
+            if (resourcesCountChip) {
+                resourcesCountChip.textContent = `${filtered.length} item${filtered.length === 1 ? '' : 's'}`;
+            }
+
             if (appState.currentTab === 'past-questions') renderPastQuestions();
             else if (appState.currentTab === 'resources') renderResources();
         }
 
         function renderResources() {
             if (!resourcesContainer) return;
+            if (resourcesCountChip) {
+                resourcesCountChip.textContent = `${appState.filteredResources.length} item${appState.filteredResources.length === 1 ? '' : 's'}`;
+            }
+
             if (appState.resources.length === 0) {
                 resourcesContainer.innerHTML = `
                     <div style="text-align: center; padding: 3rem; color: var(--gray-600);">
-                        <i class="fas fa-folder-open" style="font-size: 3rem; margin-bottom: 1rem; color: var(--gray-400);"></i>
-                        <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">No resources available</p>
+                        <div class="empty-illus"><i class="fas fa-folder-open"></i></div>
+                        <p style="font-size: 1.1rem; margin-bottom: 0.5rem; font-weight:600;">No resources available</p>
                         <p style="color: var(--gray-500);">Check back later for study materials and resources.</p>
                     </div>
                 `;
@@ -1666,50 +2056,48 @@
             if (appState.filteredResources.length === 0) {
                 resourcesContainer.innerHTML = `
                     <div style="text-align: center; padding: 3rem; color: var(--gray-600);">
-                        <i class="fas fa-search" style="font-size: 3rem; margin-bottom: 1rem; color: var(--gray-400);"></i>
-                        <p>No resources match your filters.</p>
+                        <div class="empty-illus"><i class="fas fa-search"></i></div>
+                        <p style="font-weight:600;">No resources match your filters.</p>
+                        <button class="clear-filters" onclick="resetFilters()">Clear filters</button>
                     </div>
                 `;
                 return;
             }
-            resourcesContainer.innerHTML = appState.filteredResources.map(resource => `
-                <div class="download-item">
+
+            resourcesContainer.innerHTML = appState.filteredResources.map((resource, idx) => {
+                const stagger = `stagger-${Math.min((idx % 8) + 1, 8)}`;
+                return `
+                <div class="download-item ${stagger}">
                     <div class="download-info">
                         <i class="fas fa-${getFileIcon(resource.file_type)} download-icon"></i>
                         <div class="download-details">
-                            <h3>${resource.title}</h3>
+                            <h3>${escapeHtmlSafe(resource.title)}</h3>
                             <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem; flex-wrap: wrap;">
                                 <span class="download-meta">
-                                    ${resource.file_type ? resource.file_type.toUpperCase() : 'FILE'} • ${formatFileSize(resource.file_size)}
+                                    ${resource.file_type ? escapeHtmlSafe(String(resource.file_type).toUpperCase()) : 'FILE'} • ${formatFileSize(resource.file_size)}
                                 </span>
-                                ${resource.level ? `<span style="font-family: 'Roboto Mono', monospace; font-size: 0.75rem; background: var(--emerald-100); color: var(--emerald-700); padding: 0.125rem 0.5rem; border-radius: 0.25rem;">Level ${resource.level}</span>` : ''}
-                                ${resource.department ? `<span style="font-family: 'Roboto Mono', monospace; font-size: 0.75rem; background: #dbeafe; color: #1e40af; padding: 0.125rem 0.5rem; border-radius: 0.25rem;">${resource.department}</span>` : ''}
-                                ${resource.year ? `<span style="font-family: 'Roboto Mono', monospace; font-size: 0.75rem; background: #fef3c7; color: #92400e; padding: 0.125rem 0.5rem; border-radius: 0.25rem;">${resource.year}</span>` : ''}
+                                ${resource.level ? `<span style="font-family: 'Roboto Mono', monospace; font-size: 0.75rem; background: var(--emerald-100); color: var(--emerald-700); padding: 0.125rem 0.5rem; border-radius: 0.25rem;">Level ${escapeHtmlSafe(resource.level)}</span>` : ''}
+                                ${resource.department ? `<span style="font-family: 'Roboto Mono', monospace; font-size: 0.75rem; background: #dbeafe; color: #1e40af; padding: 0.125rem 0.5rem; border-radius: 0.25rem;">${escapeHtmlSafe(resource.department)}</span>` : ''}
+                                ${resource.year ? `<span style="font-family: 'Roboto Mono', monospace; font-size: 0.75rem; background: #fef3c7; color: #92400e; padding: 0.125rem 0.5rem; border-radius: 0.25rem;">${escapeHtmlSafe(resource.year)}</span>` : ''}
                             </div>
-                            ${resource.description ? `<p style="font-family: 'Inter', sans-serif; font-size: 0.75rem; color: var(--gray-600); margin-top: 0.5rem;">${resource.description}</p>` : ''}
+                            ${resource.description ? `<p style="font-family: 'Inter', sans-serif; font-size: 0.75rem; color: var(--gray-600); margin-top: 0.5rem;">${escapeHtmlSafe(resource.description)}</p>` : ''}
                             <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                ${resource.course_code ? `<span style="font-family: 'Roboto Mono', monospace; font-size: 0.75rem; background: var(--gray-100); color: var(--gray-700); padding: 0.125rem 0.5rem; border-radius: 0.25rem;">${resource.course_code}</span>` : ''}
-                                ${resource.category ? `<span style="font-family: 'Roboto Mono', monospace; font-size: 0.75rem; background: var(--gray-100); color: var(--gray-700); padding: 0.125rem 0.5rem; border-radius: 0.25rem;">${resource.category}</span>` : ''}
+                                ${resource.course_code ? `<span style="font-family: 'Roboto Mono', monospace; font-size: 0.75rem; background: var(--gray-100); color: var(--gray-700); padding: 0.125rem 0.5rem; border-radius: 0.25rem;">${escapeHtmlSafe(resource.course_code)}</span>` : ''}
+                                ${resource.category ? `<span style="font-family: 'Roboto Mono', monospace; font-size: 0.75rem; background: var(--gray-100); color: var(--gray-700); padding: 0.125rem 0.5rem; border-radius: 0.25rem;">${escapeHtmlSafe(resource.category)}</span>` : ''}
                                 ${resource.download_count ? `<span style="font-family: 'Roboto Mono', monospace; font-size: 0.75rem; color: var(--gray-500);"><i class="fas fa-download mr-1"></i> ${resource.download_count}</span>` : ''}
                             </div>
                         </div>
                     </div>
-                    <button class="download-button" data-id="${resource.id}" data-url="${resource.file_url}" title="Download ${resource.title}">
+                    <button class="download-button" data-id="${escapeHtmlSafe(resource.id)}" data-url="${escapeHtmlSafe(resource.file_url)}" title="Download ${escapeHtmlSafe(resource.title)}">
                         <i class="fas fa-download"></i>
                     </button>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
         }
 
         function renderPastQuestions() {
             if (!resultsList) return;
-            const pastQuestions = appState.filteredResources.filter(resource =>
-                resource.category && (
-                    resource.category.toLowerCase().includes('past') ||
-                    resource.category.toLowerCase().includes('question') ||
-                    resource.category.toLowerCase().includes('exam')
-                )
-            );
+            const pastQuestions = appState.filteredResources.filter(isPastQuestion);
             if (pastQuestions.length === 0) {
                 resultsList.style.display = 'none';
                 const noResults = document.getElementById('noResults');
@@ -1719,24 +2107,24 @@
             resultsList.style.display = 'flex';
             const noResults = document.getElementById('noResults');
             if (noResults) noResults.style.display = 'none';
-            resultsList.innerHTML = pastQuestions.map(resource => `
-                <div class="question-card" data-id="${resource.id}">
+            resultsList.innerHTML = pastQuestions.map((resource, idx) => `
+                <div class="question-card" data-id="${escapeHtmlSafe(resource.id)}" style="animation-delay:${idx * 0.04}s">
                     <div class="question-content">
                         <div>
                             <div class="question-header">
-                                ${resource.course_code ? `<span class="question-code">${resource.course_code}</span>` : ''}
-                                ${resource.year ? `<span class="question-badge">${resource.year}</span>` : ''}
-                                ${resource.level ? `<span class="question-badge">Level ${resource.level}</span>` : ''}
-                                ${resource.semester ? `<span class="question-badge">Semester ${resource.semester}</span>` : ''}
+                                ${resource.course_code ? `<span class="question-code">${escapeHtmlSafe(resource.course_code)}</span>` : ''}
+                                ${resource.year ? `<span class="question-badge">${escapeHtmlSafe(resource.year)}</span>` : ''}
+                                ${resource.level ? `<span class="question-badge">Level ${escapeHtmlSafe(resource.level)}</span>` : ''}
+                                ${resource.semester ? `<span class="question-badge">Semester ${escapeHtmlSafe(resource.semester)}</span>` : ''}
                             </div>
-                            <h3 class="question-title">${resource.title || resource.course_title || 'Past Question'}</h3>
+                            <h3 class="question-title">${escapeHtmlSafe(resource.title || resource.course_title || 'Past Question')}</h3>
                             <div class="question-meta">
-                                ${resource.department ? `${resource.department} • ` : ''}
+                                ${resource.department ? `${escapeHtmlSafe(resource.department)} • ` : ''}
                                 ${formatFileSize(resource.file_size)}
                                 ${resource.download_count ? ` • ${resource.download_count} downloads` : ''}
                             </div>
                         </div>
-                        <button class="download-button" data-id="${resource.id}" data-url="${resource.file_url}">
+                        <button class="download-button" data-id="${escapeHtmlSafe(resource.id)}" data-url="${escapeHtmlSafe(resource.file_url)}">
                             <i class="fas fa-download"></i> Download
                         </button>
                     </div>
@@ -1787,19 +2175,30 @@
         }
 
         function handleDownload(id, fallbackUrl) {
-            // Try to look up by id first
             let url = fallbackUrl;
             const resource = appState.resources.find(r => String(r.id) === String(id));
             if (resource && resource.file_url && resource.file_url !== '#') {
                 url = resource.file_url;
             }
             if (!url || url === '#') {
-                alert('File not available');
+                showError('File not available for download');
                 return;
             }
-            // In case the raw data-url was still relative:
             url = resolveFileUrl(url);
             window.open(url, '_blank', 'noopener,noreferrer');
+
+            // Fire-and-forget download count
+            if (id) {
+                fetch(`${API_BASE_URL}/api/resources/${id}/download`, {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json' }
+                }).then(r => r.json()).then(data => {
+                    if (data && data.data && resource) {
+                        resource.download_count = data.data.download_count || (resource.download_count + 1);
+                        updateHeroStats();
+                    }
+                }).catch(() => {});
+            }
         }
 
         function getFileIcon(fileType) {
@@ -1830,14 +2229,8 @@
 
         function showLoadingState() {
             appState.loading = true;
-            if (resourcesContainer) {
-                resourcesContainer.innerHTML = `
-                    <div style="text-align: center; padding: 3rem;">
-                        <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--emerald-600); margin-bottom: 1rem;"></i>
-                        <p style="color: var(--gray-500);">Loading resources…</p>
-                    </div>
-                `;
-            }
+            renderSkeleton(7);
+            if (resultsList) renderPastQuestionsSkeleton(3);
         }
 
         function hideLoadingState() { appState.loading = false; }
@@ -1870,6 +2263,7 @@
         window.showCGPACalculator = showCGPACalculator;
         window.closeCGPAModal = closeCGPAModal;
         window.switchTab = switchTab;
+        window.resetFilters = resetFilters;
     </script>
 </body>
 </html>

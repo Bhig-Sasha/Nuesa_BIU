@@ -2076,7 +2076,13 @@
 
         <!-- Main Events Section -->
         <div class="container py-12">
-            <!-- Filter Tabs -->
+            <!-- Session selector + Filter Tabs -->
+            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:0.75rem; margin-bottom:0.5rem;">
+                <label for="sessionSelect" style="font-family:'Roboto Mono',monospace; font-size:0.75rem; font-weight:600; color:var(--gray-500); text-transform:uppercase; letter-spacing:0.06em;">Session</label>
+                <select id="sessionSelect" class="select" style="appearance:none; background:white; border:1px solid var(--gray-200); color:var(--gray-700); padding:0.5rem 2rem 0.5rem 0.75rem; border-radius:0.5rem; font-weight:500; font-size:0.875rem; min-width:160px; cursor:pointer;">
+                    <option value="">Loading sessions…</option>
+                </select>
+            </div>
             <div class="filter-tabs" id="filterTabs">
                 <!-- Filters will be populated by JavaScript -->
             </div>
@@ -2311,6 +2317,9 @@
         let searchQuery = '';
         let showSearch = false;
         let allEvents = [];
+        let academicSessions = [];
+        let activeSessionName = null;
+        let currentSession = null;
 
         // DOM Elements
         const filterTabs = document.getElementById('filterTabs');
@@ -2323,14 +2332,23 @@
         const gridViewBtn = document.getElementById('gridViewBtn');
         const listViewBtn = document.getElementById('listViewBtn');
         const loadingSpinner = document.getElementById('loadingSpinner');
+        const sessionSelect = document.getElementById('sessionSelect');
 
-        // Helper function to escape quotes for HTML attributes
         function escapeQuotes(str) {
             if (!str) return '';
             return String(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         }
 
-        // Helper Functions
+        function escapeHtml(str) {
+            if (str == null) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         function formatDate(dateStr) {
             if (!dateStr) return 'TBA';
             try {
@@ -2349,13 +2367,12 @@
         function formatTime(timeStr) {
             if (!timeStr) return 'TBA';
             try {
-                // Handle different time formats
-                if (timeStr.includes(':')) {
-                    const [hours, minutes] = timeStr.split(':');
-                    const hour = parseInt(hours);
+                if (String(timeStr).includes(':')) {
+                    const [hours, minutes] = String(timeStr).split(':');
+                    const hour = parseInt(hours, 10);
                     const ampm = hour >= 12 ? 'PM' : 'AM';
                     const displayHour = hour % 12 || 12;
-                    return `${displayHour}:${minutes.padStart(2, '0')} ${ampm}`;
+                    return `${displayHour}:${String(minutes).padStart(2, '0')} ${ampm}`;
                 }
                 return timeStr;
             } catch {
@@ -2363,43 +2380,149 @@
             }
         }
 
+        /** Compute public display status from dates + stored status */
+        function computeDisplayStatus(event) {
+            const raw = String(event.status || '').toLowerCase();
+            if (raw === 'postponed') return 'Postponed';
+            if (raw === 'cancelled' || raw === 'canceled') return 'Past';
+
+            const start = event.start_date || event.date || event.event_date;
+            const end = event.end_date || null;
+            const now = Date.now();
+            const startTs = start ? new Date(start).getTime() : null;
+            let endTs = end ? new Date(end).getTime() : null;
+            if (startTs && !endTs) endTs = startTs + 4 * 3600 * 1000;
+
+            if (startTs && startTs > now) return 'Upcoming';
+            if (startTs && endTs && startTs <= now && endTs > now) return 'Ongoing';
+            if (startTs && endTs && endTs <= now) return 'Past';
+            if (raw === 'past') return 'Past';
+            if (raw === 'ongoing') return 'Ongoing';
+            return 'Upcoming';
+        }
+
         function getStatusColor(status) {
             if (!status) return 'status-Upcoming';
-            const statusLower = status.toLowerCase();
-            if (statusLower.includes('upcoming')) return 'status-Upcoming';
-            if (statusLower.includes('ongoing')) return 'status-Ongoing';
-            if (statusLower.includes('postponed')) return 'status-Postponed';
-            if (statusLower.includes('past')) return 'status-Past';
+            const s = String(status).toLowerCase();
+            if (s.includes('upcoming')) return 'status-Upcoming';
+            if (s.includes('ongoing')) return 'status-Ongoing';
+            if (s.includes('postponed')) return 'status-Postponed';
+            if (s.includes('past') || s.includes('completed')) return 'status-Past';
             return 'status-Upcoming';
+        }
+
+        function normalizeEvent(e) {
+            const displayStatus = computeDisplayStatus(e);
+            return {
+                ...e,
+                title: e.title || 'Untitled Event',
+                description: e.description || e.summary || e.short_description || '',
+                category: e.category || 'Event',
+                location: e.location || e.venue || 'TBA',
+                start_date: e.start_date || e.date || e.event_date || null,
+                start_time: e.start_time || e.time || null,
+                end_date: e.end_date || null,
+                poster: e.poster_url || e.featured_image || e.cover_image || null,
+                session: e.session || null,
+                organizer: e.organizer || 'NUESA BIU',
+                expected_attendees: e.expected_attendees || e.max_participants || e.max_attendees || null,
+                displayStatus
+            };
         }
 
         function getFilterCount(filter) {
             if (filter === 'All Events') return allEvents.length;
-            return allEvents.filter(e => {
-                if (!e.status) return false;
-                return e.status.toLowerCase() === filter.toLowerCase();
-            }).length;
+            return allEvents.filter(e => e.displayStatus === filter).length;
         }
 
         function filterEvents() {
             return allEvents.filter(event => {
-                const matchesFilter = activeFilter === 'All Events' || 
-                    (event.status && event.status.toLowerCase() === activeFilter.toLowerCase());
-                
-                const matchesSearch = searchQuery === '' || 
-                    (event.title && event.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                    (event.description && event.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                    (event.category && event.category.toLowerCase().includes(searchQuery.toLowerCase()));
-                
+                const matchesFilter = activeFilter === 'All Events' || event.displayStatus === activeFilter;
+                const q = searchQuery.trim().toLowerCase();
+                const matchesSearch = !q ||
+                    (event.title && event.title.toLowerCase().includes(q)) ||
+                    (event.description && event.description.toLowerCase().includes(q)) ||
+                    (event.category && event.category.toLowerCase().includes(q)) ||
+                    (event.location && event.location.toLowerCase().includes(q));
                 return matchesFilter && matchesSearch;
             });
+        }
+
+        async function loadSessions() {
+            try {
+                const [listRes, activeRes] = await Promise.all([
+                    fetch(`${API_BASE_URL}/api/sessions`, { headers: { 'Accept': 'application/json' } })
+                        .then(r => r.ok ? r.json() : { data: [] }).catch(() => ({ data: [] })),
+                    fetch(`${API_BASE_URL}/api/sessions/active`, { headers: { 'Accept': 'application/json' } })
+                        .then(r => r.ok ? r.json() : { data: null }).catch(() => ({ data: null }))
+                ]);
+
+                academicSessions = (Array.isArray(listRes.data) ? listRes.data : [])
+                    .map(s => ({
+                        name: s.name || s.session_name || '',
+                        is_active: !!s.is_active
+                    }))
+                    .filter(s => s.name)
+                    .sort((a, b) => String(b.name).localeCompare(String(a.name)));
+
+                const activeFromApi = activeRes.data;
+                activeSessionName = (activeFromApi && (activeFromApi.name || activeFromApi.session_name))
+                    || academicSessions.find(s => s.is_active)?.name
+                    || academicSessions[0]?.name
+                    || null;
+
+                if (activeSessionName) {
+                    academicSessions = academicSessions.map(s => ({
+                        ...s,
+                        is_active: s.name === activeSessionName
+                    }));
+                }
+
+                populateSessionSelect();
+                currentSession = activeSessionName;
+                return currentSession;
+            } catch (err) {
+                console.warn('Sessions load failed:', err);
+                academicSessions = [];
+                activeSessionName = null;
+                currentSession = null;
+                populateSessionSelect();
+                return null;
+            }
+        }
+
+        function populateSessionSelect() {
+            if (!sessionSelect) return;
+            sessionSelect.innerHTML = '';
+
+            const allOpt = document.createElement('option');
+            allOpt.value = 'all';
+            allOpt.textContent = 'All Sessions';
+            sessionSelect.appendChild(allOpt);
+
+            if (academicSessions.length === 0) {
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.textContent = 'No sessions configured';
+                sessionSelect.appendChild(opt);
+                return;
+            }
+
+            academicSessions.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.name;
+                opt.textContent = s.is_active ? `${s.name} (Active)` : s.name;
+                sessionSelect.appendChild(opt);
+            });
+
+            sessionSelect.value = activeSessionName || 'all';
         }
 
         // Render Functions
         function renderFilterTabs() {
             const filters = ['All Events', 'Upcoming', 'Ongoing', 'Postponed', 'Past'];
             let html = '';
-            
+
             filters.forEach(filter => {
                 const count = getFilterCount(filter);
                 const isActive = activeFilter === filter;
@@ -2410,10 +2533,9 @@
                     </button>
                 `;
             });
-            
+
             filterTabs.innerHTML = html;
 
-            // Add click handlers
             document.querySelectorAll('.filter-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     activeFilter = btn.dataset.filter;
@@ -2444,47 +2566,51 @@
 
         function renderGridView(events) {
             let html = '<div class="events-grid">';
-            
+
             events.forEach((event, index) => {
-                const formattedDate = formatDate(event.date || event.start_date);
-                const formattedTime = formatTime(event.time || event.start_time);
-                const category = event.category || 'Event';
-                const status = event.status || 'Upcoming';
-                
+                const formattedDate = formatDate(event.start_date || event.date);
+                const formattedTime = formatTime(event.start_time || event.time);
+                const category = escapeHtml(event.category || 'Event');
+                const status = event.displayStatus || 'Upcoming';
+                const poster = event.poster;
+                const imageInner = poster
+                    ? `<img src="${escapeHtml(poster)}" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';this.parentNode.querySelector('i').style.display='block';"><i class="fas fa-calendar" style="display:none;"></i>`
+                    : `<i class="fas fa-calendar"></i>`;
+
                 html += `
-                    <a href="#" class="event-card fade-in" data-event-id="${event.id}" style="animation-delay: ${index * 0.05}s">
+                    <a href="#" class="event-card fade-in" data-event-id="${escapeHtml(event.id)}" style="animation-delay: ${index * 0.05}s">
                         <div class="event-card-image">
-                            <i class="fas fa-calendar"></i>
+                            ${imageInner}
                             <div class="event-badges">
                                 <span class="event-category">${category}</span>
-                                <span class="event-status ${getStatusColor(status)}">${status}</span>
+                                <span class="event-status ${getStatusColor(status)}">${escapeHtml(status)}</span>
                             </div>
                         </div>
                         <div class="event-card-body">
-                            <h3 class="event-title">${event.title || 'Untitled Event'}</h3>
+                            <h3 class="event-title">${escapeHtml(event.title || 'Untitled Event')}</h3>
                             <div class="event-details">
                                 <div class="event-detail-item">
                                     <i class="fas fa-calendar-alt"></i>
-                                    <span>${formattedDate}</span>
+                                    <span>${escapeHtml(formattedDate)}</span>
                                 </div>
                                 <div class="event-detail-item">
                                     <i class="fas fa-clock"></i>
-                                    <span>${formattedTime}</span>
+                                    <span>${escapeHtml(formattedTime)}</span>
                                 </div>
                                 <div class="event-detail-item">
                                     <i class="fas fa-map-marker-alt"></i>
-                                    <span class="line-clamp-1">${event.location || 'TBA'}</span>
+                                    <span class="line-clamp-1">${escapeHtml(event.location || 'TBA')}</span>
                                 </div>
-                                ${event.organizer ? `
+                                ${event.session ? `
                                 <div class="event-detail-item">
-                                    <i class="fas fa-user-tie"></i>
-                                    <span class="line-clamp-1">${event.organizer}</span>
+                                    <i class="fas fa-graduation-cap"></i>
+                                    <span class="line-clamp-1">${escapeHtml(event.session)}</span>
                                 </div>
                                 ` : ''}
                             </div>
                             <div class="event-footer">
                                 <span class="event-attendees">
-                                    <i class="fas fa-users"></i> ${event.expected_attendees || event.expectedAttendees || 'TBA'}
+                                    <i class="fas fa-users"></i> ${escapeHtml(event.expected_attendees || 'TBA')}
                                 </span>
                                 <span class="event-view-link">
                                     View <i class="fas fa-chevron-right"></i>
@@ -2498,55 +2624,58 @@
             html += '</div>';
             eventsContainer.innerHTML = html;
 
-            // Add click handlers for event cards
             document.querySelectorAll('.event-card').forEach(card => {
                 card.addEventListener('click', (e) => {
                     e.preventDefault();
                     const eventId = card.dataset.eventId;
-                    const event = events.find(e => e.id === eventId);
-                    if (event) {
-                        openEventModal(event);
-                    }
+                    const event = events.find(ev => String(ev.id) === String(eventId));
+                    if (event) openEventModal(event);
                 });
             });
         }
 
         function renderListView(events) {
             let html = '<div class="events-list">';
-            
+
             events.forEach((event, index) => {
-                const formattedDate = formatDate(event.date || event.start_date);
-                const formattedTime = formatTime(event.time || event.start_time);
-                const category = event.category || 'Event';
-                const status = event.status || 'Upcoming';
-                const description = event.description || event.short_description || 'No description available.';
-                
+                const formattedDate = formatDate(event.start_date || event.date);
+                const formattedTime = formatTime(event.start_time || event.time);
+                const category = escapeHtml(event.category || 'Event');
+                const status = event.displayStatus || 'Upcoming';
+                const description = escapeHtml(event.description || 'No description available.');
+                const poster = event.poster;
+                const thumb = poster
+                    ? `<img src="${escapeHtml(poster)}" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';this.parentNode.querySelector('i').style.display='flex';"><i class="fas fa-calendar" style="display:none;"></i>`
+                    : `<i class="fas fa-calendar"></i>`;
+
                 html += `
-                    <a href="#" class="event-list-item fade-in" data-event-id="${event.id}" style="animation-delay: ${index * 0.05}s">
+                    <a href="#" class="event-list-item fade-in" data-event-id="${escapeHtml(event.id)}" style="animation-delay: ${index * 0.05}s">
                         <div class="event-list-content">
                             <div class="event-list-image">
-                                <i class="fas fa-calendar"></i>
+                                ${thumb}
                             </div>
                             <div class="event-list-details">
                                 <div class="event-list-header">
                                     <span class="event-category">${category}</span>
-                                    <span class="event-status ${getStatusColor(status)}">${status}</span>
+                                    <span class="event-status ${getStatusColor(status)}">${escapeHtml(status)}</span>
                                 </div>
-                                <h3 class="event-list-title">${event.title || 'Untitled Event'}</h3>
+                                <h3 class="event-list-title">${escapeHtml(event.title || 'Untitled Event')}</h3>
                                 <p class="event-list-description line-clamp-2">${description}</p>
                                 <div class="event-list-meta">
                                     <span class="event-list-meta-item">
-                                        <i class="fas fa-calendar-alt"></i> ${formattedDate}
+                                        <i class="fas fa-calendar-alt"></i> ${escapeHtml(formattedDate)}
                                     </span>
                                     <span class="event-list-meta-item">
-                                        <i class="fas fa-clock"></i> ${formattedTime}
+                                        <i class="fas fa-clock"></i> ${escapeHtml(formattedTime)}
                                     </span>
                                     <span class="event-list-meta-item">
-                                        <i class="fas fa-map-marker-alt"></i> ${event.location || 'TBA'}
+                                        <i class="fas fa-map-marker-alt"></i> ${escapeHtml(event.location || 'TBA')}
                                     </span>
+                                    ${event.session ? `
                                     <span class="event-list-meta-item">
-                                        <i class="fas fa-users"></i> ${event.expected_attendees || event.expectedAttendees || 'TBA'}
+                                        <i class="fas fa-graduation-cap"></i> ${escapeHtml(event.session)}
                                     </span>
+                                    ` : ''}
                                 </div>
                             </div>
                             <div class="event-list-actions">
@@ -2562,15 +2691,12 @@
             html += '</div>';
             eventsContainer.innerHTML = html;
 
-            // Add click handlers for event list items
             document.querySelectorAll('.event-list-item').forEach(item => {
                 item.addEventListener('click', (e) => {
                     e.preventDefault();
                     const eventId = item.dataset.eventId;
-                    const event = events.find(e => e.id === eventId);
-                    if (event) {
-                        openEventModal(event);
-                    }
+                    const event = events.find(ev => String(ev.id) === String(eventId));
+                    if (event) openEventModal(event);
                 });
             });
         }
@@ -2579,10 +2705,10 @@
         function openEventModal(event) {
             if (!event) return;
 
-            const formattedDate = formatDate(event.date || event.start_date);
-            const formattedTime = formatTime(event.time || event.start_time);
+            const formattedDate = formatDate(event.start_date || event.date);
+            const formattedTime = formatTime(event.start_time || event.time);
             const category = event.category || 'Event';
-            const status = event.status || 'Upcoming';
+            const status = event.displayStatus || computeDisplayStatus(event);
             const fullDescription = event.full_description || event.description || 'No detailed description available.';
             const escapedTitle = escapeQuotes(event.title || 'Event');
             
@@ -2768,48 +2894,47 @@
             }, 1000);
         };
 
-        // Load Events from API
-        async function loadEventsFromAPI() {
+        // Load Events from API (optional session filter)
+        async function loadEventsFromAPI(session = currentSession) {
             try {
-                loadingSpinner.classList.remove('hidden');
+                if (loadingSpinner) loadingSpinner.classList.remove('hidden');
                 eventsContainer.innerHTML = '';
-                
-                const response = await fetch(`${API_BASE_URL}/api/events`, {
+
+                const params = new URLSearchParams({ limit: '200' });
+                if (session && session !== 'all') params.set('session', session);
+
+                const response = await fetch(`${API_BASE_URL}/api/events?${params}`, {
                     method: 'GET',
-                    headers: { 
-                        'Accept': 'application/json', 
-                        'Content-Type': 'application/json' 
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
                     },
                     mode: 'cors'
                 });
-                
-                if (!response.ok) throw new Error(`API returned ${response.status}`);
-                
-                const data = await response.json();
-                
-                // Handle different response formats
-                if (data.status === 'success' && data.data) {
-                    allEvents = data.data;
-                } else if (Array.isArray(data)) {
-                    allEvents = data;
-                } else if (data.events && Array.isArray(data.events)) {
-                    allEvents = data.events;
-                } else {
-                    allEvents = [];
-                }
 
-                // Hide loading spinner
-                loadingSpinner.classList.add('hidden');
+                if (!response.ok) throw new Error(`API returned ${response.status}`);
+
+                const data = await response.json();
+                let rows = [];
+                if (data.status === 'success' && data.data) rows = data.data;
+                else if (Array.isArray(data)) rows = data;
+                else if (data.events && Array.isArray(data.events)) rows = data.events;
+
+                allEvents = rows.map(normalizeEvent);
+
+                if (loadingSpinner) loadingSpinner.classList.add('hidden');
 
                 if (allEvents.length === 0) {
-                    showEmptyState('No events found in the database.');
+                    showEmptyState(session && session !== 'all'
+                        ? `No public events found for session ${session}.`
+                        : 'No events found in the database.');
                 } else {
                     renderFilterTabs();
                     renderEvents();
                 }
             } catch (error) {
                 console.error('Error loading events:', error);
-                loadingSpinner.classList.add('hidden');
+                if (loadingSpinner) loadingSpinner.classList.add('hidden');
                 showErrorState(error);
             }
         }
@@ -2876,8 +3001,20 @@
             renderEvents();
         });
 
-        // Initialize
-        loadEventsFromAPI();
+        // Session change
+        if (sessionSelect) {
+            sessionSelect.addEventListener('change', () => {
+                currentSession = sessionSelect.value || 'all';
+                activeFilter = 'All Events';
+                loadEventsFromAPI(currentSession);
+            });
+        }
+
+        // Initialize: sessions first, then events for active session
+        (async function initEventsPage() {
+            const session = await loadSessions();
+            await loadEventsFromAPI(session || 'all');
+        })();
     });
 </script>
 </body>

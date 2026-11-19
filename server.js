@@ -1166,11 +1166,20 @@ const eventRouter = express.Router();
 
 eventRouter.get('/', cacheMiddleware(120, ['biu_events']), async (req, res) => {
     try {
-        const { status = 'all', category, limit = 100 } = req.query;
+        const { status = 'all', category, session, limit = 100 } = req.query;
 
         let where = {};
-        if (status && status !== 'all') where.status = status;
+        // Public site: only show published / publicly visible events by default
+        // (drafts stay admin-only). Allow status filter for upcoming/past if stored that way.
+        if (status && status !== 'all') {
+            where.status = status;
+        } else {
+            // Prefer published events; also accept legacy rows without is_published
+            // Client can still filter drafts out. We do not force is_published here
+            // in case older rows lack the column — admin UI sets status draft/published.
+        }
         if (category && category !== 'all') where.category = category;
+        if (session && session !== 'all') where.session = session;
 
         const result = await db.query('select', 'biu_events', {
             where,
@@ -1178,13 +1187,22 @@ eventRouter.get('/', cacheMiddleware(120, ['biu_events']), async (req, res) => {
                 column: 'date',
                 ascending: status === 'past' ? false : true
             },
-            limit: parseInt(limit)
+            limit: parseInt(limit) || 100
+        });
+
+        // Hide drafts / non-public from public list
+        const publicRows = (result.data || []).filter(e => {
+            if (e.public_visible === false) return false;
+            const st = String(e.status || '').toLowerCase();
+            if (st === 'draft' || st === 'archived') return false;
+            if (e.is_published === false && st !== 'upcoming' && st !== 'past' && st !== 'ongoing') return false;
+            return true;
         });
 
         res.json({
             status: 'success',
-            data: result.data,
-            count: result.data.length
+            data: publicRows,
+            count: publicRows.length
         });
     } catch (error) {
         logger.error('Events API error:', {
