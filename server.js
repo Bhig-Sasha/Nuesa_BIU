@@ -5184,6 +5184,80 @@ adminRouter.patch('/elections/phase', async (req, res) => {
     }
 });
 
+// Update election schedule / timeline dates (does not change phase status shortcuts)
+adminRouter.patch('/elections/timeline', async (req, res) => {
+    try {
+        const election = await getActiveElection();
+        if (!election) {
+            return res.status(404).json({ status: 'error', message: 'No active election' });
+        }
+
+        const {
+            nomination_start,
+            nomination_end,
+            voting_start,
+            voting_end,
+            title,
+            description
+        } = req.body || {};
+
+        const update = { updated_at: new Date().toISOString() };
+
+        const toIso = (v) => {
+            if (v == null || v === '') return null;
+            const d = new Date(v);
+            if (isNaN(d.getTime())) return null;
+            return d.toISOString();
+        };
+
+        if (nomination_start !== undefined) update.nomination_start = toIso(nomination_start);
+        if (nomination_end !== undefined) update.nomination_end = toIso(nomination_end);
+        if (voting_start !== undefined) update.voting_start = toIso(voting_start);
+        if (voting_end !== undefined) update.voting_end = toIso(voting_end);
+        if (title !== undefined && String(title).trim()) update.title = String(title).trim();
+        if (description !== undefined) update.description = description;
+
+        const nomStart = update.nomination_start || election.nomination_start;
+        const nomEnd = update.nomination_end || election.nomination_end;
+        const voteStart = update.voting_start || election.voting_start;
+        const voteEnd = update.voting_end || election.voting_end;
+
+        if (nomStart && nomEnd && new Date(nomEnd) <= new Date(nomStart)) {
+            return res.status(400).json({ status: 'error', message: 'Nomination end must be after nomination start' });
+        }
+        if (voteStart && voteEnd && new Date(voteEnd) <= new Date(voteStart)) {
+            return res.status(400).json({ status: 'error', message: 'Voting end must be after voting start' });
+        }
+        if (nomEnd && voteStart && new Date(voteStart) < new Date(nomEnd)) {
+            return res.status(400).json({ status: 'error', message: 'Voting should start on or after nomination ends' });
+        }
+
+        const { data, error } = await supabase
+            .from('elections')
+            .update(update)
+            .eq('id', election.id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        logger.info('Election timeline updated', {
+            requestId: req.id,
+            electionId: election.id,
+            fields: Object.keys(update)
+        });
+
+        res.json({
+            status: 'success',
+            data,
+            message: 'Election timeline updated'
+        });
+    } catch (err) {
+        logger.error('Timeline update error:', { error: err.message });
+        res.status(500).json({ status: 'error', message: err.message || 'Failed to update timeline' });
+    }
+});
+
 adminRouter.post('/elections/publish-results', async (req, res) => {
     try {
         const election = await getActiveElection();
