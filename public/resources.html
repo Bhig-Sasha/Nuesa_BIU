@@ -872,6 +872,51 @@
         }
 
         /* ===== NUESA ACADEMIC TRACKER ===== */
+
+        .paste-import {
+            margin-bottom: 1.15rem;
+            border: 1px dashed var(--emerald-300);
+            background: linear-gradient(180deg, #ecfdf5, #ffffff);
+            border-radius: 0.85rem;
+            padding: 0.9rem 1rem;
+        }
+        .paste-import-head {
+            display: flex; flex-wrap: wrap; gap: 0.75rem;
+            align-items: flex-start; justify-content: space-between;
+        }
+        .paste-import-head strong {
+            display: block; color: var(--emerald-800); font-size: 0.9rem; margin-bottom: 0.2rem;
+        }
+        .paste-import-head p {
+            font-size: 0.78rem; color: var(--gray-600); max-width: 36rem; line-height: 1.45; margin: 0;
+        }
+        .paste-import-body { margin-top: 0.85rem; }
+        .paste-textarea {
+            width: 100%; min-height: 9rem; resize: vertical;
+            font-family: 'Roboto Mono', monospace; font-size: 0.75rem;
+            line-height: 1.45; padding: 0.75rem; border-radius: 0.6rem;
+            border: 1px solid var(--gray-300); background: white;
+            color: var(--gray-800);
+        }
+        .paste-textarea:focus {
+            outline: none; border-color: var(--emerald-500);
+            box-shadow: 0 0 0 3px rgba(16,185,129,0.12);
+        }
+        .paste-import-actions {
+            display: flex; flex-wrap: wrap; gap: 0.55rem; align-items: flex-end;
+            margin-top: 0.75rem;
+        }
+        .paste-year-label {
+            display: flex; flex-direction: column; gap: 0.25rem;
+            font-family: 'Roboto Mono', monospace; font-size: 0.65rem;
+            text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray-500);
+            font-weight: 600;
+        }
+        .paste-import-hint {
+            margin-top: 0.55rem; font-size: 0.72rem; color: var(--gray-500);
+            font-family: 'Roboto Mono', monospace;
+        }
+
         .tracker-overlay {
             position: fixed; inset: 0; z-index: 2000;
             background: #0b1f1a;
@@ -1484,6 +1529,47 @@
                                 </select>
                             </div>
                         </div>
+
+                        <!-- Paste results importer -->
+                        <div class="paste-import" id="pasteImportBox">
+                            <div class="paste-import-head">
+                                <div>
+                                    <strong><i class="fas fa-paste"></i> Paste portal results</strong>
+                                    <p>Paste your REGISTERED COURSES table (Semester · Code · Load · Title · Grade). We’ll sort First / Second semester for you.</p>
+                                </div>
+                                <button type="button" class="tracker-secondary-btn" id="togglePasteImport" style="padding:0.45rem 0.75rem;font-size:0.75rem;">
+                                    Show paste box
+                                </button>
+                            </div>
+                            <div id="pasteImportBody" class="paste-import-body" hidden>
+                                <textarea id="pasteResultsArea" class="paste-textarea" rows="8" placeholder="REGISTERED COURSES
+SEMESTER	CODE	LOAD	TITLE	GRADE
+FIRST	CHM 111	2	GENERAL CHEMISTRY I	E
+FIRST	MTH 111	2	ELEMENTARY MATHEMATICS I	A
+SECOND	PHY 121	2	GENERAL PHYSICS II	C
+…"></textarea>
+                                <div class="paste-import-actions">
+                                    <label class="paste-year-label">
+                                        Academic year for this paste
+                                        <select id="pasteYearSelect" class="semester-select">
+                                            <option value="1">Year 1</option>
+                                            <option value="2">Year 2</option>
+                                            <option value="3">Year 3</option>
+                                            <option value="4">Year 4</option>
+                                            <option value="5">Year 5</option>
+                                        </select>
+                                    </label>
+                                    <button type="button" class="tracker-primary-btn" id="parsePasteBtn">
+                                        <i class="fas fa-magic"></i> Sort &amp; import
+                                    </button>
+                                    <button type="button" class="tracker-secondary-btn" id="parsePasteLoadOnlyBtn">
+                                        Load into form only
+                                    </button>
+                                </div>
+                                <p class="paste-import-hint" id="pasteImportHint">Supports tab- or space-separated portal copies. Grades A–F only.</p>
+                            </div>
+                        </div>
+
                         <div class="course-header">
                             <div class="course-header-left">
                                 <span class="font-bold">Your courses (<span id="courseCount">1</span>)</span>
@@ -1681,6 +1767,151 @@
 
         // ==================== CGPA CALCULATOR ====================
         const GRADE_POINTS = { 'A': 5.0, 'B': 4.0, 'C': 3.0, 'D': 2.0, 'E': 1.0, 'F': 0.0 };
+
+        // ---------- Paste portal results ----------
+        function parsePortalResultsText(raw) {
+            const lines = String(raw || '')
+                .replace(/\r\n/g, '\n')
+                .replace(/\r/g, '\n')
+                .split('\n')
+                .map(l => l.trim())
+                .filter(Boolean);
+
+            const coursesBySem = { 1: [], 2: [] };
+            const validGrades = new Set(['A','B','C','D','E','F']);
+
+            for (const line of lines) {
+                const upper = line.toUpperCase();
+                if (upper.includes('REGISTERED COURSES')) continue;
+                if (upper.startsWith('SEMESTER') && upper.includes('CODE')) continue;
+                if (upper.startsWith('CODE') && upper.includes('GRADE')) continue;
+
+                // Split on tabs first, else multiple spaces
+                let parts = line.includes('\t')
+                    ? line.split('\t').map(p => p.trim()).filter(Boolean)
+                    : line.split(/\s{2,}/).map(p => p.trim()).filter(Boolean);
+
+                // Fallback: SEMESTER CODE LOAD TITLE... GRADE
+                if (parts.length < 4) {
+                    const m = line.match(/^(FIRST|SECOND|1ST|2ND|SEM\s*[12]|S[12])\s+([A-Z]{2,5}\s*\d{2,3}[A-Z]?)\s+(\d+(?:\.\d+)?)\s+(.+?)\s+([A-F])\s*$/i);
+                    if (m) {
+                        parts = [m[1], m[2], m[3], m[4], m[5]];
+                    }
+                }
+                if (parts.length < 4) continue;
+
+                let semesterRaw = parts[0];
+                let code, load, title, grade;
+
+                // Sometimes header omitted and first col is code
+                const looksLikeCode = /^[A-Z]{2,5}\s*\d{2,3}/i.test(semesterRaw);
+                if (looksLikeCode && parts.length >= 4) {
+                    // CODE LOAD TITLE GRADE
+                    code = parts[0];
+                    load = parts[1];
+                    grade = parts[parts.length - 1];
+                    title = parts.slice(2, -1).join(' ');
+                    semesterRaw = 'FIRST';
+                } else {
+                    code = parts[1];
+                    load = parts[2];
+                    grade = parts[parts.length - 1];
+                    title = parts.slice(3, -1).join(' ');
+                }
+
+                grade = String(grade || '').trim().toUpperCase();
+                if (!validGrades.has(grade)) continue;
+
+                const units = parseInt(String(load).replace(/[^\d]/g, ''), 10);
+                if (!units || units < 1) continue;
+
+                code = String(code || '').replace(/\s+/g, ' ').trim().toUpperCase();
+                title = String(title || '').replace(/\s+/g, ' ').trim();
+                if (!code) continue;
+
+                let sem = 1;
+                const s = String(semesterRaw).toUpperCase();
+                if (s.includes('SECOND') || s === '2' || s.includes('2ND') || s === 'S2' || s === 'SEM 2' || s === 'SEM2') {
+                    sem = 2;
+                }
+
+                coursesBySem[sem].push({
+                    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+                    code,
+                    title,
+                    units,
+                    grade
+                });
+            }
+
+            return coursesBySem;
+        }
+
+        function importParsedSemesters(coursesBySem, year, { saveAll = false } = {}) {
+            const y = parseInt(year, 10) || currentYear || 1;
+            currentYear = y;
+            const yearSel = document.getElementById('currentYear');
+            const pasteYear = document.getElementById('pasteYearSelect');
+            if (yearSel) yearSel.value = String(y);
+            if (pasteYear) pasteYear.value = String(y);
+
+            const order = [1, 2].filter(s => (coursesBySem[s] || []).length);
+            if (!order.length) {
+                const hint = document.getElementById('pasteImportHint');
+                if (hint) hint.textContent = 'No valid course rows found. Check format: SEMESTER, CODE, LOAD, TITLE, GRADE.';
+                return { imported: 0, saved: 0 };
+            }
+
+            let saved = 0;
+            if (saveAll) {
+                // Save each non-empty semester into history
+                for (const sem of order) {
+                    const list = coursesBySem[sem];
+                    if (!list.length) continue;
+                    let totalUnits = 0, qualityPoints = 0;
+                    list.forEach(c => {
+                        totalUnits += c.units;
+                        qualityPoints += (GRADE_POINTS[c.grade] || 0) * c.units;
+                    });
+                    const gpa = totalUnits > 0 ? qualityPoints / totalUnits : 0;
+                    // Remove existing same year+semester to avoid duplicates
+                    savedSemesters = savedSemesters.filter(s => !(s.year === y && s.semester === sem));
+                    savedSemesters.push({
+                        id: Date.now().toString() + '-' + sem,
+                        year: y,
+                        semester: sem,
+                        courses: list.map(c => ({ ...c })),
+                        gpa,
+                        totalUnits,
+                        qualityPoints
+                    });
+                    saved++;
+                }
+                saveToStorage();
+                updateDisplay();
+            }
+
+            // Load the first semester into the editor
+            const firstSem = order[0];
+            currentSemester = firstSem;
+            const semSel = document.getElementById('currentSemester');
+            if (semSel) semSel.value = String(firstSem);
+            courses = coursesBySem[firstSem].map(c => ({ ...c }));
+            renderCourses();
+            updateCurrentGpa();
+
+            const totalCourses = order.reduce((n, s) => n + coursesBySem[s].length, 0);
+            const hint = document.getElementById('pasteImportHint');
+            if (hint) {
+                const parts = order.map(s => `${coursesBySem[s].length} in ${s === 1 ? 'First' : 'Second'}`);
+                hint.textContent = saveAll
+                    ? `Imported ${totalCourses} courses (${parts.join(', ')}). Saved ${saved} semester(s) to History.`
+                    : `Loaded ${coursesBySem[firstSem].length} courses into the form (${parts.join(', ')} available). Switch semester or use “Sort & import” to save both.`;
+            }
+            return { imported: totalCourses, saved };
+        }
+
+
 
         let studentInfo = { fullName: '', matricNumber: '', department: '', level: '' };
         let currentYear = 1;
@@ -2080,6 +2311,31 @@
 
 
         // Tracker UI bindings
+
+        document.getElementById('togglePasteImport')?.addEventListener('click', () => {
+            const body = document.getElementById('pasteImportBody');
+            const btn = document.getElementById('togglePasteImport');
+            if (!body) return;
+            const open = body.hasAttribute('hidden');
+            if (open) body.removeAttribute('hidden');
+            else body.setAttribute('hidden', '');
+            if (btn) btn.textContent = open ? 'Hide paste box' : 'Show paste box';
+        });
+        document.getElementById('parsePasteBtn')?.addEventListener('click', () => {
+            const raw = document.getElementById('pasteResultsArea')?.value || '';
+            const year = document.getElementById('pasteYearSelect')?.value || currentYear;
+            const parsed = parsePortalResultsText(raw);
+            const result = importParsedSemesters(parsed, year, { saveAll: true });
+            if (result.imported) switchTrackerTab('history');
+        });
+        document.getElementById('parsePasteLoadOnlyBtn')?.addEventListener('click', () => {
+            const raw = document.getElementById('pasteResultsArea')?.value || '';
+            const year = document.getElementById('pasteYearSelect')?.value || currentYear;
+            const parsed = parsePortalResultsText(raw);
+            importParsedSemesters(parsed, year, { saveAll: false });
+        });
+
+
         document.addEventListener('click', function(e) {
             const tabBtn = e.target.closest('.tracker-tab');
             if (tabBtn && tabBtn.dataset.trackerTab) {
