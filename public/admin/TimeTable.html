@@ -133,14 +133,30 @@ a{color:inherit;text-decoration:none}button{font-family:inherit}
 .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-tint)}
 .field textarea{min-height:90px;resize:vertical}
 .hint{font-size:.8125rem;color:var(--text-muted);margin-top:12px}
-.level-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
-@media(max-width:640px){.level-grid{grid-template-columns:1fr;gap:10px}}
-.level-card{border:1px solid var(--border);border-radius:var(--r-lg);padding:18px;background:var(--surface);transition:all var(--dur) var(--ease);display:flex;flex-direction:column;gap:10px}
-.level-card:hover{border-color:var(--accent);box-shadow:var(--shadow-md);transform:translateY(-2px)}
-.level-card.empty{border-style:dashed;background:var(--surface-muted);align-items:flex-start}
-.level-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.level-name{font-weight:800;font-size:1.0625rem}
-.level-meta{font-size:.8125rem;color:var(--text-muted);flex:1}
+.level-grid{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:900px){.level-grid{grid-template-columns:1fr}}
+.tt-row{border:2px solid #a7f3d0;border-radius:10px;background:#fff;overflow:hidden;transition:border-color .2s,box-shadow .2s}
+.tt-row:hover{border-color:#34d399;box-shadow:0 10px 15px -3px rgba(0,0,0,.08)}
+.tt-row.empty{border-style:dashed;border-color:#cbd5e1;background:#f8fafc}
+.tt-row-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 16px;background:linear-gradient(135deg,#059669,#047857);color:#fff;flex-wrap:wrap}
+.tt-row.empty .tt-row-head{background:linear-gradient(135deg,#64748b,#475569)}
+.tt-row-head .tt-level{font-size:.95rem;font-weight:800;letter-spacing:-.01em;color:#fff}
+.tt-row-head .tt-level small{display:block;font-family:var(--font-mono);font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#d1fae5;margin-top:.15rem}
+.tt-row.empty .tt-row-head .tt-level small{color:#e2e8f0}
+.tt-count{font-family:var(--font-mono);font-size:.65rem;font-weight:700;padding:.2rem .65rem;border-radius:9999px;background:rgba(255,255,255,.2);color:#fff;white-space:nowrap}
+.tt-row-body{padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.tt-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;font-size:.8125rem;color:var(--text-muted);min-width:0}
+.tt-meta .mono-chip{font-family:var(--font-mono);font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:.2rem .55rem;border-radius:9999px;background:#ecfdf5;color:#047857}
+.tt-meta .mono-chip.muted{background:#f1f5f9;color:#64748b}
+.tt-meta .period{font-weight:600;color:var(--text)}
+.tt-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tt-row.empty .tt-row-body{justify-content:space-between}
+.tt-empty-msg{font-size:.8125rem;color:var(--text-dim);font-style:italic}
+@media(max-width:640px){
+  .tt-row-head{padding:10px 12px}
+  .tt-row-body{padding:12px;flex-direction:column;align-items:stretch}
+  .tt-actions{justify-content:flex-end}
+}
 .modal{position:fixed;inset:0;background:rgba(16,43,39,.5);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px;opacity:0;visibility:hidden;transition:opacity var(--dur) var(--ease),visibility var(--dur)}
 .modal.active{opacity:1;visibility:visible}
 .modal-content{background:var(--surface);border-radius:var(--r-lg);width:100%;max-width:400px;max-height:92vh;display:flex;flex-direction:column;transform:translateY(-12px) scale(.96);transition:transform var(--dur) var(--ease-out);box-shadow:var(--shadow-xl)}
@@ -277,7 +293,7 @@ a{color:inherit;text-decoration:none}button{font-family:inherit}
 
    <!-- Class timetables -->
    <div class="content-card">
-    <div class="card-header"><div><h3 class="card-title"><i class="fas fa-chalkboard-teacher"></i> Class Timetables</h3><p class="card-sub">Each level has its own timetable for the selected semester.</p></div><button class="btn btn-gold btn-sm" data-act="create" data-type="class"><i class="fas fa-plus"></i> Add timetable</button></div>
+    <div class="card-header"><div><h3 class="card-title"><i class="fas fa-chalkboard-teacher"></i> Class Timetables</h3><p class="card-sub">Weekly lecture schedule by level — mirrors the public timetable layout.</p></div><button class="btn btn-primary btn-sm" data-act="create" data-type="class"><i class="fas fa-plus"></i> Add timetable</button></div>
     <div class="level-grid" id="levelGrid"></div>
    </div>
 
@@ -643,17 +659,37 @@ function renderAll(){
   const cur = tts.filter(t => t.type === 'class' && inPeriod(t) && (levelFilter === 'all' || String(t.level) === levelFilter));
   $('levelGrid').innerHTML = (levelFilter === 'all' ? LEVELS : [levelFilter]).map(l => {
     const t = cur.find(x => String(x.level) === l);
-    if(!t) return `<div class="level-card empty">
-        <div class="level-name">${l} Level</div>
-        <div class="level-meta">${loadFailed ? 'Unable to load' : 'No timetable yet'}</div>
-        <button class="btn btn-secondary btn-sm" data-act="create" data-type="class" data-level="${l}">
-          <i class="fas fa-plus"></i> Create
-        </button>
+    if(!t) return `<div class="tt-row empty">
+        <div class="tt-row-head">
+          <div class="tt-level">${l} Level<small>${esc(settings.session || '—')} · ${esc(settings.semester || '—')} Semester</small></div>
+          <span class="tt-count">Empty</span>
+        </div>
+        <div class="tt-row-body">
+          <span class="tt-empty-msg">${loadFailed ? 'Unable to load timetable' : 'No class timetable for this level yet'}</span>
+          <button class="btn btn-primary btn-sm" data-act="create" data-type="class" data-level="${l}">
+            <i class="fas fa-plus"></i> Create timetable
+          </button>
+        </div>
       </div>`;
-    return `<div class="level-card">
-        <div class="level-top"><div class="level-name">${l} Level</div>${badge(t.status)}</div>
-        <div class="level-meta">${period(t)}<br>${t.mode === 'upload' ? 'Uploaded file' : t.entries.length + ' course' + (t.entries.length === 1 ? '' : 's')}</div>
-        ${acts(t)}
+    const countLabel = t.mode === 'upload'
+      ? 'Uploaded file'
+      : (t.entries.length + ' course' + (t.entries.length === 1 ? '' : 's'));
+    const formatChip = t.mode === 'upload'
+      ? '<span class="mono-chip muted">PDF / Image</span>'
+      : '<span class="mono-chip">Structured</span>';
+    return `<div class="tt-row">
+        <div class="tt-row-head">
+          <div class="tt-level">${l} Level<small>${period(t)}</small></div>
+          <span class="tt-count">${esc(countLabel)}</span>
+        </div>
+        <div class="tt-row-body">
+          <div class="tt-meta">
+            ${badge(t.status)}
+            ${formatChip}
+            <span class="period">${esc(t.title || (l + ' Level Class Schedule'))}</span>
+          </div>
+          <div class="tt-actions">${acts(t)}</div>
+        </div>
       </div>`;
   }).join('');
 
