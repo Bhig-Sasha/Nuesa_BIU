@@ -216,7 +216,38 @@ a{color:inherit;text-decoration:none}button{font-family:inherit}
 .sch-info .meta i{color:#059669}
 .sch-item-actions{display:flex;flex-direction:column;gap:4px}
 .sch-item-actions .icon-btn{width:28px;height:28px}
+
 .sch-empty{padding:16px;text-align:center;color:var(--text-dim);font-size:.8125rem;font-style:italic}
+.preview-title{font-family:var(--font-mono);font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#047857;margin:4px 0 12px}
+.ed-filters{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin-bottom:12px}
+.ed-filters .field{flex:1 1 140px;min-width:0;margin:0}
+.ed-filters label{display:block;font-family:var(--font-mono);font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:4px}
+.ed-filters select{width:100%;padding:8px 10px;border:1px solid var(--border-strong);border-radius:var(--r);font-size:.875rem;background:#fff}
+.ws-wrap{overflow-x:auto;border:2px solid #a7f3d0;border-radius:10px;background:#fff}
+.ws-grid{--label:88px;min-width:calc(88px + 10 * 100px)}
+.ws-head,.ws-row{display:grid;grid-template-columns:var(--label) 1fr}
+.ws-head{border-bottom:1px solid #e2e8f0;background:#f8fafc}
+.ws-corner,.ws-day{position:sticky;left:0;z-index:2}
+.ws-corner{background:#f1f5f9;padding:10px 12px;font-family:var(--font-mono);font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;border-right:1px solid #e2e8f0}
+.ws-hours{display:grid}
+.ws-hours span{padding:10px 0 10px 6px;font-family:var(--font-mono);font-size:.6rem;color:#64748b;border-left:1px solid #e2e8f0}
+.ws-row{border-top:1px solid #e2e8f0}
+.ws-day{background:#fff;border-right:1px solid #e2e8f0;padding:10px;display:flex;flex-direction:column;gap:2px;justify-content:center;font-family:var(--font-mono);font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#64748b}
+.ws-track{display:grid;gap:4px 0;padding:8px 0;min-height:72px;align-items:stretch;background-image:linear-gradient(to right,#e2e8f0 1px,transparent 1px)}
+.ws-slot{margin:0 2px;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;border-left:4px solid #10b981;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.06);min-width:0;overflow:hidden;cursor:default;transition:box-shadow .15s,transform .15s}
+.ws-slot.editable{cursor:pointer}
+.ws-slot.editable:hover{box-shadow:0 8px 16px rgba(16,185,129,.2);transform:translateY(-1px);border-color:#34d399}
+.ws-slot-time{font-family:var(--font-mono);font-size:.6rem;font-weight:700;color:#334155;margin-bottom:2px;white-space:nowrap}
+.ws-slot-code{font-weight:800;font-size:.78rem;color:#0f172a;line-height:1.2}
+.ws-slot-title{font-size:.65rem;color:#64748b;line-height:1.2;margin:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ws-slot-meta{display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap;font-family:var(--font-mono);font-size:.58rem;color:#64748b}
+.ws-slot-meta i{color:#059669}
+.ws-free{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:6px;font-family:var(--font-mono);font-size:.7rem;color:#cbd5e1}
+.edit-banner{display:none;align-items:center;gap:10px;padding:10px 14px;margin-bottom:12px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;font-size:.8125rem;color:#047857;font-weight:600}
+.edit-banner.on{display:flex}
+.edit-banner i{color:#059669}
+.btn-edit-on{background:#059669!important;color:#fff!important;border-color:#059669!important}
+
 .sch-hint{font-size:.75rem;color:var(--text-muted);margin-top:4px}
 @media(max-width:640px){
   .sch-item{grid-template-columns:auto 1fr;gap:8px;padding:10px 12px}
@@ -928,6 +959,7 @@ function openEditor(type, tt, level){
     status: tt ? tt.status : 'draft',
     mode: tt ? tt.mode : 'structured',
     entries: tt ? tt.entries.map(x => ({ ...x })) : [],
+    editMode: false,
     file: null,
     fileUrl: tt ? tt.file_url : '',
     level: level || (tt ? tt.level : '')
@@ -953,14 +985,17 @@ function openEditor(type, tt, level){
     <div id="paneS">
       <div class="sch-toolbar">
         <div>
-          <strong style="font-size:.875rem">${isC ? 'Weekly schedule' : 'Examination list'}</strong>
-          <p class="sch-hint">${isC ? 'Tap a course to edit · use arrows to reorder · change day inside the editor' : 'Tap an exam to edit its details'}</p>
+          <strong style="font-size:.875rem">${isC ? 'Weekly Schedule Preview' : 'Examination list'}</strong>
+          <p class="sch-hint">${isC ? 'Same layout as the public timetable. Turn on Edit to tap a course and change it.' : 'Tap an exam to edit its details'}</p>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${isC ? `<button class="btn btn-secondary btn-sm" id="edEditToggle" type="button"><i class="fas fa-pen"></i> Edit</button>
+          <select id="edSchView" style="padding:6px 10px;border:1px solid var(--border-strong);border-radius:var(--r);font-size:.8125rem"><option value="grid">Grid</option><option value="list">List</option></select>` : ''}
           <button class="btn btn-secondary btn-sm" id="openBulk" type="button"><i class="fas fa-paste"></i> Paste bulk</button>
           <button class="btn btn-primary btn-sm" id="enAdd" type="button"><i class="fas fa-plus"></i> ${isC ? 'Add course' : 'Add exam'}</button>
         </div>
       </div>
+      <div class="edit-banner" id="editBanner"><i class="fas fa-pen-to-square"></i> Edit mode on — tap any course to change day, time, venue or lecturer</div>
       <div id="entryList"></div>
     </div>
     <div id="paneU">
@@ -997,49 +1032,129 @@ const sortEntries = () => ed.entries.sort((a, b) =>
 
 const entryLine = e => `${ed.type === 'class' ? esc(e.day) : esc(fmtDate(e.date))} · ${fmtTime(e.start_time)}${e.end_time ? ' – ' + fmtTime(e.end_time) : ''} · ${esc(e.venue || 'TBA')}${e.lecturer ? ' · ' + esc(e.lecturer) : ''}${e.level ? ' · ' + esc(e.level) + ' Level' : ''}${ed.type === 'exam' && e.exam_type ? ' · ' + esc(e.exam_type) : ''}`;
 
+function timeToMin(t){
+  if(!t) return 0;
+  const p = String(t).split(':');
+  return (parseInt(p[0],10)||0)*60 + (parseInt(p[1],10)||0);
+}
+
+function renderWeeklyGridAdmin(editable){
+  const rows = ed.entries;
+  let minH = 8, maxH = 18;
+  rows.forEach(c => {
+    const s = timeToMin(c.start_time), e = timeToMin(c.end_time || c.start_time);
+    if(s > 0) minH = Math.min(minH, Math.floor(s/60));
+    if(e > 0) maxH = Math.max(maxH, Math.ceil(e/60));
+  });
+  const hours = Math.max(1, maxH - minH);
+  const cols = hours * 2;
+  const origin = minH * 60;
+  const bg = 'background-size:calc(100% / '+hours+') 100%';
+
+  const head = '<div class="ws-head">'
+    + '<div class="ws-corner">Day / Time</div>'
+    + '<div class="ws-hours" style="grid-template-columns:repeat('+hours+',1fr)">'
+    + Array.from({length:hours}, (_,i) => {
+        const h = minH + i;
+        const label = (h % 12 || 12) + ':00 ' + (h < 12 ? 'AM' : 'PM');
+        return '<span>'+label+'</span>';
+      }).join('')
+    + '</div></div>';
+
+  const body = DAYS.map(day => {
+    const list = rows
+      .map((c, i) => ({ c, i }))
+      .filter(x => x.c.day === day)
+      .sort((a,b) => timeToMin(a.c.start_time) - timeToMin(b.c.start_time));
+
+    const laneEnds = [], placed = [];
+    list.forEach(({ c, i }) => {
+      const s = timeToMin(c.start_time), e = timeToMin(c.end_time || c.start_time) || (s + 60);
+      let lane = laneEnds.findIndex(end => end <= s);
+      if(lane === -1) lane = laneEnds.length;
+      laneEnds[lane] = e;
+      const colStart = Math.floor((s - origin) / 30) + 1;
+      const colEnd = Math.max(colStart + 1, Math.ceil((e - origin) / 30) + 1);
+      placed.push({ c, i, lane, colStart, colEnd });
+    });
+    const lanes = Math.max(1, laneEnds.length);
+    const cells = placed.length ? placed.map(p => {
+      const c = p.c;
+      return '<div class="ws-slot '+(editable?'editable':'')+'" data-ei="'+p.i+'" data-ea="edit" style="grid-column:'+p.colStart+' / '+p.colEnd+';grid-row:'+(p.lane+1)+'">'
+        + '<div class="ws-slot-time">'+esc(fmtTime(c.start_time))+' - '+esc(fmtTime(c.end_time))+'</div>'
+        + '<div class="ws-slot-code">'+esc(c.course_code)+'</div>'
+        + '<div class="ws-slot-title">'+esc(c.course_title || '')+'</div>'
+        + '<div class="ws-slot-meta"><span><i class="fas fa-map-marker-alt"></i> '+esc(c.venue || 'TBA')+'</span>'
+        + (c.lecturer ? '<span><i class="fas fa-user"></i> '+esc(c.lecturer)+'</span>' : '')
+        + '</div></div>';
+    }).join('') : '<div class="ws-free"><i class="fas fa-book-open"></i> Free</div>';
+
+    return '<div class="ws-row">'
+      + '<div class="ws-day"><span>'+day.slice(0,3)+'</span><span style="font-weight:400;font-size:.62rem;text-transform:none;letter-spacing:0">'+day+'</span></div>'
+      + '<div class="ws-track" style="grid-template-columns:repeat('+cols+',1fr);grid-template-rows:repeat('+lanes+',auto);'+bg+'">'+cells+'</div>'
+      + '</div>';
+  }).join('');
+
+  return '<div class="preview-title">Weekly Schedule Preview</div><div class="ws-wrap"><div class="ws-grid">'+head+body+'</div></div>';
+}
+
+function renderWeeklyListAdmin(editable){
+  const html = DAYS.map(day => {
+    const list = ed.entries
+      .map((c, i) => ({ c, i }))
+      .filter(x => x.c.day === day)
+      .sort((a,b) => timeToMin(a.c.start_time) - timeToMin(b.c.start_time));
+    if(!list.length) return '';
+    return '<div class="sch-day">'
+      + '<div class="sch-day-head"><h4>'+day+'</h4><span class="sch-day-count">'+list.length+' course'+(list.length===1?'':'s')+'</span></div>'
+      + '<div class="sch-day-items">'
+      + list.map(({ c, i }) => {
+          return '<div class="sch-item" data-ei="'+i+'" data-ea="edit" title="'+(editable?'Tap to edit':'')+'">'
+            + '<div class="sch-time"><span class="s">'+esc(fmtTime(c.start_time))+'</span><span class="e">'+esc(fmtTime(c.end_time)||'')+'</span></div>'
+            + '<div class="sch-info"><div class="code">'+esc(c.course_code)+'</div><div class="title">'+esc(c.course_title||'')+'</div>'
+            + '<div class="meta"><span><i class="fas fa-map-marker-alt"></i> '+esc(c.venue||'TBA')+'</span>'
+            + (c.lecturer ? '<span><i class="fas fa-user"></i> '+esc(c.lecturer)+'</span>' : '')
+            + '</div></div>'
+            + (editable
+              ? '<div class="sch-item-actions" onclick="event.stopPropagation()"><button class="icon-btn" type="button" data-ei="'+i+'" data-ea="del" title="Remove"><i class="fas fa-xmark"></i></button></div>'
+              : '<div></div>')
+            + '</div>';
+        }).join('')
+      + '</div></div>';
+  }).join('');
+  return '<div class="preview-title">Weekly Schedule Preview</div>' + (html || '<div class="sch-empty">No courses yet.</div>');
+}
+
 function renderEntries(){
   sortEntries();
   const box = $('entryList');
   if(!box) return;
-  if(!ed.entries.length){
-    box.innerHTML = '<div class="sch-empty">No courses yet. Tap <strong>Add course</strong> or paste bulk rows.</div>';
-    return;
-  }
 
   if(ed.type === 'class'){
-    box.innerHTML = DAYS.map(day => {
-      const list = ed.entries
-        .map((e, i) => ({ e, i }))
-        .filter(x => x.e.day === day);
-      if(!list.length) return '';
-      return `<div class="sch-day">
-        <div class="sch-day-head"><h4>${day}</h4><span class="sch-day-count">${list.length} course${list.length===1?'':'s'}</span></div>
-        <div class="sch-day-items">` + list.map(({ e, i }) => {
-          const di = DAYS.indexOf(e.day);
-          const canUp = di > 0;
-          const canDown = di >= 0 && di < DAYS.length - 1;
-          return `<div class="sch-item" data-ei="${i}" data-ea="edit" title="Tap to edit">
-            <div class="sch-time"><span class="s">${esc(fmtTime(e.start_time))}</span><span class="e">${esc(fmtTime(e.end_time)||'')}</span></div>
-            <div class="sch-info">
-              <div class="code">${esc(e.course_code)}</div>
-              <div class="title">${esc(e.course_title || '')}</div>
-              <div class="meta">
-                <span><i class="fas fa-map-marker-alt"></i> ${esc(e.venue || 'TBA')}</span>
-                ${e.lecturer ? `<span><i class="fas fa-user"></i> ${esc(e.lecturer)}</span>` : ''}
-              </div>
-            </div>
-            <div class="sch-item-actions" onclick="event.stopPropagation()">
-              <button class="icon-btn" type="button" data-ei="${i}" data-ea="up" title="Move to previous day" ${canUp?'':'disabled'}><i class="fas fa-arrow-left"></i></button>
-              <button class="icon-btn" type="button" data-ei="${i}" data-ea="down" title="Move to next day" ${canDown?'':'disabled'}><i class="fas fa-arrow-right"></i></button>
-              <button class="icon-btn" type="button" data-ei="${i}" data-ea="del" title="Remove"><i class="fas fa-xmark"></i></button>
-            </div>
-          </div>`;
-        }).join('') + `</div></div>`;
-    }).join('') || '<div class="sch-empty">No courses yet.</div>';
+    if(!ed.entries.length){
+      box.innerHTML = '<div class="sch-empty">No courses yet. Tap <strong>Add course</strong> or paste bulk rows.</div>';
+      return;
+    }
+    const view = ($('edSchView') && $('edSchView').value) || 'grid';
+    const editable = !!ed.editMode;
+    box.innerHTML = view === 'list' ? renderWeeklyListAdmin(editable) : renderWeeklyGridAdmin(editable);
+    const banner = $('editBanner');
+    if(banner) banner.classList.toggle('on', editable);
+    const toggle = $('edEditToggle');
+    if(toggle){
+      toggle.classList.toggle('btn-edit-on', editable);
+      toggle.innerHTML = editable
+        ? '<i class="fas fa-check"></i> Done editing'
+        : '<i class="fas fa-pen"></i> Edit';
+    }
     return;
   }
 
-  // Exam list (flat, still tappable)
+  // Exam list
+  if(!ed.entries.length){
+    box.innerHTML = '<div class="sch-empty">No exams yet. Tap <strong>Add exam</strong> or paste bulk rows.</div>';
+    return;
+  }
   box.innerHTML = ed.entries.map((e, i) => `<div class="sch-item" data-ei="${i}" data-ea="edit" title="Tap to edit" style="border:1px solid var(--border);border-radius:var(--r);margin-bottom:8px">
     <div class="sch-time"><span class="s">${esc(fmtTime(e.start_time))}</span><span class="e">${esc(fmtTime(e.end_time)||'')}</span></div>
     <div class="sch-info">
@@ -1378,17 +1493,30 @@ document.addEventListener('click', e => {
   const m = e.target.closest('.seg button');
   if(m) return setMode(m.dataset.mode);
 
+  if(e.target.closest('#edEditToggle')){
+    ed.editMode = !ed.editMode;
+    renderEntries();
+    showToast(ed.editMode ? 'Edit mode on — tap a course to change it' : 'Edit mode off','success');
+    return;
+  }
+
   const en = e.target.closest('[data-ei]');
   if(en){
     const i = +en.dataset.ei;
     const act = en.dataset.ea || 'edit';
     if(act === 'del'){
+      if(ed.type === 'class' && !ed.editMode){
+        return showToast('Turn on Edit first','warning');
+      }
       ed.entries.splice(i, 1);
       return renderEntries();
     }
     if(act === 'up'){ moveEntryInDay(i, -1); return; }
     if(act === 'down'){ moveEntryInDay(i, 1); return; }
-    // default: open edit modal
+    // open modal: exams always; class only in edit mode
+    if(ed.type === 'class' && !ed.editMode){
+      return showToast('Tap Edit at the top first, then select a course','warning');
+    }
     openCourseModal(i);
     return;
   }
@@ -1465,6 +1593,9 @@ document.addEventListener('change', e => {
   if(e.target.id === 'edFile'){
     ed.file = e.target.files[0] || null;
     renderUploadPreview();
+  }
+  if(e.target.id === 'edSchView'){
+    renderEntries();
   }
   if(e.target.id === 'levelFilter'){
     levelFilter = e.target.value || 'all';
