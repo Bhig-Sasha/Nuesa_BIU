@@ -194,6 +194,34 @@ a{color:inherit;text-decoration:none}button{font-family:inherit}
   .entry{flex-direction:column;align-items:flex-start;gap:8px}
   .entry .actions{width:100%;justify-content:flex-end}
 }
+
+/* Interactive day schedule (class editor) */
+.sch-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.sch-day{border:2px solid #a7f3d0;border-radius:10px;overflow:hidden;background:#fff;margin-bottom:12px}
+.sch-day-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:linear-gradient(135deg,#059669,#047857);color:#fff;flex-wrap:wrap}
+.sch-day-head h4{font-size:.9rem;font-weight:800;color:#fff;margin:0}
+.sch-day-count{font-family:var(--font-mono);font-size:.65rem;font-weight:700;padding:.15rem .55rem;border-radius:9999px;background:rgba(255,255,255,.2);color:#fff}
+.sch-day-items{display:grid;gap:0}
+.sch-item{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;background:#fff}
+.sch-item:last-child{border-bottom:none}
+.sch-item:hover{background:#ecfdf5}
+.sch-item:active{background:#d1fae5}
+.sch-time{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:72px;padding:6px 8px;background:#ecfdf5;border-radius:6px;font-family:var(--font-mono);font-weight:700;color:#047857;text-align:center}
+.sch-time .s{font-size:.8rem;line-height:1.1}
+.sch-time .e{font-size:.6rem;color:#34d399}
+.sch-info{min-width:0}
+.sch-info .code{font-size:.9rem;font-weight:800;color:var(--text);line-height:1.2}
+.sch-info .title{font-size:.75rem;color:var(--text-muted);line-height:1.3;margin-top:2px}
+.sch-info .meta{font-family:var(--font-mono);font-size:.7rem;color:var(--text-muted);margin-top:4px;display:flex;flex-wrap:wrap;gap:8px}
+.sch-info .meta i{color:#059669}
+.sch-item-actions{display:flex;flex-direction:column;gap:4px}
+.sch-item-actions .icon-btn{width:28px;height:28px}
+.sch-empty{padding:16px;text-align:center;color:var(--text-dim);font-size:.8125rem;font-style:italic}
+.sch-hint{font-size:.75rem;color:var(--text-muted);margin-top:4px}
+@media(max-width:640px){
+  .sch-item{grid-template-columns:auto 1fr;gap:8px;padding:10px 12px}
+  .sch-item-actions{grid-column:2;flex-direction:row;justify-content:flex-end}
+}
 .preview{border:1px dashed var(--border-strong);border-radius:var(--r);padding:16px;margin-top:14px;color:var(--text);overflow-x:auto}
 .preview h4{font-family:var(--font-mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-gold);margin:10px 0 6px}
 .preview img{max-width:100%;border-radius:var(--r)}
@@ -321,6 +349,16 @@ a{color:inherit;text-decoration:none}button{font-family:inherit}
   <button class="btn btn-secondary" id="edPreviewBtn" type="button"><i class="fas fa-eye"></i> Preview</button>
   <button class="btn btn-secondary" id="edDraft" type="button">Save as Draft</button>
   <button class="btn btn-primary" id="edPublish" type="button">Publish</button>
+ </div>
+</div></div>
+
+<!-- Course / exam entry editor -->
+<div class="modal" id="courseModal"><div class="modal-content">
+ <div class="modal-header"><h3 class="modal-title" id="courseModalTitle">Edit course</h3><button class="modal-close" data-close="courseModal" aria-label="Close">&times;</button></div>
+ <div class="modal-body" id="courseModalBody"></div>
+ <div class="modal-footer">
+  <button class="btn btn-secondary" data-close="courseModal" type="button">Cancel</button>
+  <button class="btn btn-primary" id="courseSaveBtn" type="button"><i class="fas fa-check"></i> Save course</button>
  </div>
 </div></div>
 
@@ -913,27 +951,15 @@ function openEditor(type, tt, level){
       <button type="button" data-mode="upload">Upload PDF / image</button>
     </div>
     <div id="paneS">
-      <div class="entry-box">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-          <strong style="font-size:.875rem">${isC ? 'Add courses' : 'Add exams'}</strong>
+      <div class="sch-toolbar">
+        <div>
+          <strong style="font-size:.875rem">${isC ? 'Weekly schedule' : 'Examination list'}</strong>
+          <p class="sch-hint">${isC ? 'Tap a course to edit · use arrows to reorder · change day inside the editor' : 'Tap an exam to edit its details'}</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-secondary btn-sm" id="openBulk" type="button"><i class="fas fa-paste"></i> Paste bulk</button>
+          <button class="btn btn-primary btn-sm" id="enAdd" type="button"><i class="fas fa-plus"></i> ${isC ? 'Add course' : 'Add exam'}</button>
         </div>
-        <div class="form-grid">
-          ${isC ? '' : `<div class="field"><label>Level</label><select id="enLevel">${lvlOpts}</select></div>`}
-          <div class="field"><label>Course Code</label><input id="enCode"></div>
-          <div class="field"><label>Course Title</label><input id="enTitle"></div>
-          <div class="field"><label>${isC ? 'Day' : 'Examination Date'}</label>
-            ${isC ? `<select id="enWhen">${opts(DAYS)}</select>` : '<input type="date" id="enWhen">'}
-          </div>
-          <div class="field"><label>${isC ? 'Venue' : 'Examination Venue'}</label><input id="enVenue"></div>
-          ${isC ? `<div class="field"><label>Lecturer</label><input id="enLecturer" placeholder="e.g. Dr. A. Okoro"></div>` : ''}
-          <div class="field"><label>Start time</label><input type="time" id="enStart"></div>
-          <div class="field"><label>End time</label><input type="time" id="enEnd"></div>
-          ${isC ? '' : `<div class="field"><label>Exam Type</label><select id="enExamType">${examTypeOpts}</select></div>`}
-        </div>
-        <button class="btn btn-gold btn-sm" id="enAdd" type="button">
-          <i class="fas fa-plus"></i> ${isC ? 'Add Course to Timetable' : 'Add Examination'}
-        </button>
       </div>
       <div id="entryList"></div>
     </div>
@@ -973,13 +999,63 @@ const entryLine = e => `${ed.type === 'class' ? esc(e.day) : esc(fmtDate(e.date)
 
 function renderEntries(){
   sortEntries();
-  $('entryList').innerHTML = ed.entries.length ? ed.entries.map((e, i) => `<div class="entry">
-    <div><strong>${esc(e.course_code)}</strong> · ${esc(e.course_title || '')}<br><small>${entryLine(e)}</small></div>
-    <div class="actions">
-      <button class="icon-btn" type="button" data-ei="${i}" data-ea="edit" title="Edit"><i class="fas fa-pen"></i></button>
+  const box = $('entryList');
+  if(!box) return;
+  if(!ed.entries.length){
+    box.innerHTML = '<div class="sch-empty">No courses yet. Tap <strong>Add course</strong> or paste bulk rows.</div>';
+    return;
+  }
+
+  if(ed.type === 'class'){
+    box.innerHTML = DAYS.map(day => {
+      const list = ed.entries
+        .map((e, i) => ({ e, i }))
+        .filter(x => x.e.day === day);
+      if(!list.length) return '';
+      return `<div class="sch-day">
+        <div class="sch-day-head"><h4>${day}</h4><span class="sch-day-count">${list.length} course${list.length===1?'':'s'}</span></div>
+        <div class="sch-day-items">` + list.map(({ e, i }) => {
+          const di = DAYS.indexOf(e.day);
+          const canUp = di > 0;
+          const canDown = di >= 0 && di < DAYS.length - 1;
+          return `<div class="sch-item" data-ei="${i}" data-ea="edit" title="Tap to edit">
+            <div class="sch-time"><span class="s">${esc(fmtTime(e.start_time))}</span><span class="e">${esc(fmtTime(e.end_time)||'')}</span></div>
+            <div class="sch-info">
+              <div class="code">${esc(e.course_code)}</div>
+              <div class="title">${esc(e.course_title || '')}</div>
+              <div class="meta">
+                <span><i class="fas fa-map-marker-alt"></i> ${esc(e.venue || 'TBA')}</span>
+                ${e.lecturer ? `<span><i class="fas fa-user"></i> ${esc(e.lecturer)}</span>` : ''}
+              </div>
+            </div>
+            <div class="sch-item-actions" onclick="event.stopPropagation()">
+              <button class="icon-btn" type="button" data-ei="${i}" data-ea="up" title="Move to previous day" ${canUp?'':'disabled'}><i class="fas fa-arrow-left"></i></button>
+              <button class="icon-btn" type="button" data-ei="${i}" data-ea="down" title="Move to next day" ${canDown?'':'disabled'}><i class="fas fa-arrow-right"></i></button>
+              <button class="icon-btn" type="button" data-ei="${i}" data-ea="del" title="Remove"><i class="fas fa-xmark"></i></button>
+            </div>
+          </div>`;
+        }).join('') + `</div></div>`;
+    }).join('') || '<div class="sch-empty">No courses yet.</div>';
+    return;
+  }
+
+  // Exam list (flat, still tappable)
+  box.innerHTML = ed.entries.map((e, i) => `<div class="sch-item" data-ei="${i}" data-ea="edit" title="Tap to edit" style="border:1px solid var(--border);border-radius:var(--r);margin-bottom:8px">
+    <div class="sch-time"><span class="s">${esc(fmtTime(e.start_time))}</span><span class="e">${esc(fmtTime(e.end_time)||'')}</span></div>
+    <div class="sch-info">
+      <div class="code">${esc(e.course_code)}</div>
+      <div class="title">${esc(e.course_title || '')}</div>
+      <div class="meta">
+        <span>${esc(e.date ? fmtDate(e.date) : '—')}</span>
+        <span><i class="fas fa-map-marker-alt"></i> ${esc(e.venue || 'TBA')}</span>
+        ${e.exam_type ? `<span>${esc(e.exam_type)}</span>` : ''}
+        ${e.level ? `<span>${esc(e.level)} Level</span>` : ''}
+      </div>
+    </div>
+    <div class="sch-item-actions" onclick="event.stopPropagation()">
       <button class="icon-btn" type="button" data-ei="${i}" data-ea="del" title="Remove"><i class="fas fa-xmark"></i></button>
     </div>
-  </div>`).join('') : '<p class="hint">No entries added yet.</p>';
+  </div>`).join('');
 }
 
 function renderUploadPreview(){
@@ -994,34 +1070,97 @@ function renderUploadPreview(){
     : `<a href="${esc(src)}" target="_blank" rel="noopener" style="color:var(--info);font-weight:600"><i class="fas fa-file-pdf"></i> Open document</a>`;
 }
 
-function addEntry(){
+let courseEditIndex = null; // null = add new
+
+function openCourseModal(index){
   const isC = ed.type === 'class';
-  const v = id => $(id).value.trim();
-  const e = {
-    course_code: v('enCode').toUpperCase(),
-    course_title: v('enTitle'),
-    venue: v('enVenue'),
-    start_time: v('enStart'),
-    end_time: v('enEnd')
+  courseEditIndex = (typeof index === 'number') ? index : null;
+  const e = courseEditIndex != null ? ed.entries[courseEditIndex] : {};
+  const opts = a => a.map(v => `<option value="${v}">${v}</option>`).join('');
+  const lvlOpts = `<option value="">Select level</option>` + LEVELS.map(l => `<option value="${l}">${l} Level</option>`).join('');
+  const examTypeOpts = EXAM_TYPES.map(t => `<option value="${t}">${t.charAt(0).toUpperCase() + t.slice(1)}</option>`).join('');
+
+  $('courseModalTitle').textContent = courseEditIndex != null
+    ? (isC ? 'Edit course' : 'Edit exam')
+    : (isC ? 'Add course' : 'Add exam');
+
+  $('courseModalBody').innerHTML = `
+    <div class="form-grid">
+      <div class="field"><label>Course Code</label><input id="cmCode" value="${esc(e.course_code || '')}"></div>
+      <div class="field"><label>Course Title</label><input id="cmTitle" value="${esc(e.course_title || '')}"></div>
+      ${isC
+        ? `<div class="field"><label>Day</label><select id="cmWhen">${opts(DAYS)}</select></div>`
+        : `<div class="field"><label>Examination Date</label><input type="date" id="cmWhen" value="${esc(e.date || '')}"></div>`}
+      <div class="field"><label>${isC ? 'Venue' : 'Examination Venue'}</label><input id="cmVenue" value="${esc(e.venue || '')}"></div>
+      ${isC ? `<div class="field"><label>Lecturer</label><input id="cmLecturer" placeholder="e.g. Dr. A. Okoro" value="${esc(e.lecturer || '')}"></div>` : ''}
+      <div class="field"><label>Start time</label><input type="time" id="cmStart" value="${esc(e.start_time || '')}"></div>
+      <div class="field"><label>End time</label><input type="time" id="cmEnd" value="${esc(e.end_time || '')}"></div>
+      ${isC ? '' : `
+        <div class="field"><label>Level</label><select id="cmLevel">${lvlOpts}</select></div>
+        <div class="field"><label>Exam Type</label><select id="cmExamType">${examTypeOpts}</select></div>`}
+    </div>
+    ${isC ? '<p class="hint">Change the day to move this course to another weekday.</p>' : ''}`;
+
+  if(isC) $('cmWhen').value = e.day || 'Monday';
+  if(!isC){
+    if($('cmLevel')) $('cmLevel').value = e.level || $('edLevel').value || '';
+    if($('cmExamType')) $('cmExamType').value = e.exam_type || 'written';
+  }
+  showModal('courseModal');
+  setTimeout(() => { const el = $('cmCode'); if(el) el.focus(); }, 50);
+}
+
+function saveCourseModal(){
+  const isC = ed.type === 'class';
+  const v = id => { const el = $(id); return el ? el.value.trim() : ''; };
+  const row = {
+    course_code: v('cmCode').toUpperCase(),
+    course_title: v('cmTitle'),
+    venue: v('cmVenue'),
+    start_time: v('cmStart'),
+    end_time: v('cmEnd')
   };
-  if(isC) {
-    e.day = v('enWhen');
-    e.lecturer = v('enLecturer');
+  if(isC){
+    row.day = v('cmWhen');
+    row.lecturer = v('cmLecturer');
   } else {
-    e.date = v('enWhen');
-    e.level = v('enLevel');
-    e.exam_type = v('enExamType') || 'written';
+    row.date = v('cmWhen');
+    row.level = v('cmLevel');
+    row.exam_type = v('cmExamType') || 'written';
   }
 
-  if(!e.course_code || !e.start_time || (!isC && (!e.date || !e.level))){
+  if(!row.course_code || !row.start_time || (!isC && (!row.date || !row.level))){
     return showToast(isC ? 'Course code and start time are required' : 'Level, course code, date and start time are required','warning');
   }
-  if(e.end_time && e.end_time <= e.start_time){
+  if(row.end_time && row.end_time <= row.start_time){
     return showToast('End time must be after start time','warning');
   }
-  ed.entries.push(e);
+
+  if(courseEditIndex != null){
+    ed.entries[courseEditIndex] = row;
+  } else {
+    ed.entries.push(row);
+  }
+  hideModal('courseModal');
   renderEntries();
-  ['enCode','enTitle','enVenue','enLecturer','enStart','enEnd'].forEach(id => { if($(id)) $(id).value = ''; });
+  showToast(courseEditIndex != null ? 'Course updated' : 'Course added','success');
+}
+
+function moveEntryInDay(index, dir){
+  // dir -1 = previous weekday, +1 = next weekday
+  const e = ed.entries[index];
+  if(!e || !e.day) return;
+  const di = DAYS.indexOf(e.day);
+  if(di < 0) return;
+  const ni = di + dir;
+  if(ni < 0 || ni >= DAYS.length) return;
+  e.day = DAYS[ni];
+  renderEntries();
+  showToast('Moved to ' + e.day, 'success');
+}
+
+function addEntry(){
+  openCourseModal(null);
 }
 
 function buildPreview(){
@@ -1216,7 +1355,7 @@ function setupSidebar(){
   }, true);
   ov.addEventListener('click', close);
   document.addEventListener('keydown', e => {
-    if(e.key === 'Escape'){ close(); ['editorModal','confirmModal','settingsModal','bulkModal','levelModal'].forEach(hideModal); }
+    if(e.key === 'Escape'){ close(); ['editorModal','confirmModal','settingsModal','bulkModal','levelModal','courseModal'].forEach(hideModal); }
   });
   document.querySelectorAll('.nav-item').forEach(l => l.addEventListener('click', () => { if(innerWidth <= 900) close(); }));
   window.addEventListener('scroll', () => $('mainHeader').classList.toggle('scrolled', scrollY > 8), { passive:true });
@@ -1241,23 +1380,21 @@ document.addEventListener('click', e => {
 
   const en = e.target.closest('[data-ei]');
   if(en){
-    const i = +en.dataset.ei, x = ed.entries[i];
-    if(en.dataset.ea === 'del'){ ed.entries.splice(i, 1); return renderEntries(); }
-    ed.entries.splice(i, 1);
-    renderEntries();
-    $('enCode').value = x.course_code || '';
-    $('enTitle').value = x.course_title || '';
-    $('enVenue').value = x.venue || '';
-    if($('enLecturer')) $('enLecturer').value = x.lecturer || '';
-    $('enStart').value = x.start_time || '';
-    $('enEnd').value = x.end_time || '';
-    $('enWhen').value = ed.type === 'class' ? x.day : x.date;
-    if($('enLevel')) $('enLevel').value = x.level || '';
-    if($('enExamType')) $('enExamType').value = x.exam_type || 'written';
+    const i = +en.dataset.ei;
+    const act = en.dataset.ea || 'edit';
+    if(act === 'del'){
+      ed.entries.splice(i, 1);
+      return renderEntries();
+    }
+    if(act === 'up'){ moveEntryInDay(i, -1); return; }
+    if(act === 'down'){ moveEntryInDay(i, 1); return; }
+    // default: open edit modal
+    openCourseModal(i);
     return;
   }
 
   if(e.target.closest('#enAdd')) addEntry();
+  if(e.target.closest('#courseSaveBtn')) saveCourseModal();
 
   if(e.target.closest('#openBulk')){
     if(!$('edLevel').value){
