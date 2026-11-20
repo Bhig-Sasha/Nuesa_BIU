@@ -317,8 +317,9 @@ a{color:inherit;text-decoration:none}button{font-family:inherit}
    <br>• <code>Date • Code • Title • Time • Venue</code> (exam)
    <br>• <code>Date • Code • Title • Time</code> (exam, no venue)
    <br>• <code>Day • Code • Title • Time • Venue</code> (class)
+   <br>• <code>Day • Code • Title • Time • Venue • Lecturer</code> (class, optional lecturer)
    <br>Time accepts <code>9:00 AM–12:00 PM</code>, <code>9:00-12:00</code>, <code>09:00–12:00</code>, etc. Date accepts <code>26 Nov 2026 (Thu)</code>, <code>2026-11-26</code>, <code>26/11/2026</code>.
-   <br><strong>Tip:</strong> Append "CBT", "written", "practical", or "oral" to any row and it will set that exam's type.
+   <br><strong>Tip:</strong> Append "CBT", "written", "practical", or "oral" to any row and it will set that exam's type. For class rows, a final non-venue column is treated as the lecturer name.
   </div>
   <textarea id="bulkText" placeholder="26 Nov 2026 (Thu)	CVE 515	Drainage &amp; Irrigation Engineering (E)	9:00 AM–12:00 PM	B115	CBT&#10;26 Nov 2026 (Thu)	CVE 519	Advanced Pavement Design (E)	9:00 AM–12:00 PM	B118	written"></textarea>
   <div id="bulkStatus" class="bulk-status hidden"></div>
@@ -803,7 +804,7 @@ function parseBulk(text){
     }
 
     const rest = parts.slice(2);
-    let title = '', timeStr = '', venue = '', examType = '';
+    let title = '', timeStr = '', venue = '', examType = '', lecturer = '';
     rest.forEach(r => {
       const low = r.toLowerCase();
       if(EXAM_TYPES.includes(low)) { examType = low; return; }
@@ -815,6 +816,9 @@ function parseBulk(text){
         title = r;
       } else if(!venue){
         venue = r;
+      } else if(!lecturer){
+        // leftover column after venue → treat as lecturer (class rows)
+        lecturer = r;
       }
     });
 
@@ -832,6 +836,7 @@ function parseBulk(text){
       start_time: start,
       end_time: end,
       venue: venue === '—' || venue === '-' ? '' : venue,
+      lecturer: lecturer || '',
       level: '',
       exam_type: examType || 'written'
     });
@@ -885,6 +890,7 @@ function openEditor(type, tt, level){
             ${isC ? `<select id="enWhen">${opts(DAYS)}</select>` : '<input type="date" id="enWhen">'}
           </div>
           <div class="field"><label>${isC ? 'Venue' : 'Examination Venue'}</label><input id="enVenue"></div>
+          ${isC ? `<div class="field"><label>Lecturer</label><input id="enLecturer" placeholder="e.g. Dr. A. Okoro"></div>` : ''}
           <div class="field"><label>Start time</label><input type="time" id="enStart"></div>
           <div class="field"><label>End time</label><input type="time" id="enEnd"></div>
           ${isC ? '' : `<div class="field"><label>Exam Type</label><select id="enExamType">${examTypeOpts}</select></div>`}
@@ -927,7 +933,7 @@ const sortEntries = () => ed.entries.sort((a, b) =>
     : (String(a.date).localeCompare(b.date)) || String(a.start_time).localeCompare(b.start_time)
 );
 
-const entryLine = e => `${ed.type === 'class' ? esc(e.day) : esc(fmtDate(e.date))} · ${fmtTime(e.start_time)}${e.end_time ? ' – ' + fmtTime(e.end_time) : ''} · ${esc(e.venue || 'TBA')}${e.level ? ' · ' + esc(e.level) + ' Level' : ''}${ed.type === 'exam' && e.exam_type ? ' · ' + esc(e.exam_type) : ''}`;
+const entryLine = e => `${ed.type === 'class' ? esc(e.day) : esc(fmtDate(e.date))} · ${fmtTime(e.start_time)}${e.end_time ? ' – ' + fmtTime(e.end_time) : ''} · ${esc(e.venue || 'TBA')}${e.lecturer ? ' · ' + esc(e.lecturer) : ''}${e.level ? ' · ' + esc(e.level) + ' Level' : ''}${ed.type === 'exam' && e.exam_type ? ' · ' + esc(e.exam_type) : ''}`;
 
 function renderEntries(){
   sortEntries();
@@ -962,7 +968,14 @@ function addEntry(){
     start_time: v('enStart'),
     end_time: v('enEnd')
   };
-  if(isC) e.day = v('enWhen'); else { e.date = v('enWhen'); e.level = v('enLevel'); e.exam_type = v('enExamType') || 'written'; }
+  if(isC) {
+    e.day = v('enWhen');
+    e.lecturer = v('enLecturer');
+  } else {
+    e.date = v('enWhen');
+    e.level = v('enLevel');
+    e.exam_type = v('enExamType') || 'written';
+  }
 
   if(!e.course_code || !e.start_time || (!isC && (!e.date || !e.level))){
     return showToast(isC ? 'Course code and start time are required' : 'Level, course code, date and start time are required','warning');
@@ -972,7 +985,7 @@ function addEntry(){
   }
   ed.entries.push(e);
   renderEntries();
-  ['enCode','enTitle','enVenue','enStart','enEnd'].forEach(id => $(id).value = '');
+  ['enCode','enTitle','enVenue','enLecturer','enStart','enEnd'].forEach(id => { if($(id)) $(id).value = ''; });
 }
 
 function buildPreview(){
@@ -990,7 +1003,7 @@ function buildPreview(){
   if(ed.type === 'class'){
     box.innerHTML = DAYS.map(d => {
       const r = ed.entries.filter(e => e.day === d);
-      return r.length ? `<h4>${d}</h4>` + r.map(e => `<div class="entry"><div><strong>${esc(e.course_code)}</strong> · ${esc(e.course_title || '')}<br><small>${fmtTime(e.start_time)} – ${fmtTime(e.end_time)} · ${esc(e.venue || 'TBA')}</small></div></div>`).join('') : '';
+      return r.length ? `<h4>${d}</h4>` + r.map(e => `<div class="entry"><div><strong>${esc(e.course_code)}</strong> · ${esc(e.course_title || '')}<br><small>${fmtTime(e.start_time)} – ${fmtTime(e.end_time)} · ${esc(e.venue || 'TBA')}${e.lecturer ? ' · ' + esc(e.lecturer) : ''}</small></div></div>`).join('') : '';
     }).join('');
   } else {
     box.innerHTML = ed.entries.map(e => `<div class="entry"><div><strong>${esc(e.course_code)}</strong> · ${esc(e.course_title || '')}<br><small>${entryLine(e)}</small></div></div>`).join('');
@@ -1199,6 +1212,7 @@ document.addEventListener('click', e => {
     $('enCode').value = x.course_code || '';
     $('enTitle').value = x.course_title || '';
     $('enVenue').value = x.venue || '';
+    if($('enLecturer')) $('enLecturer').value = x.lecturer || '';
     $('enStart').value = x.start_time || '';
     $('enEnd').value = x.end_time || '';
     $('enWhen').value = ed.type === 'class' ? x.day : x.date;

@@ -180,8 +180,11 @@ h1,h2,h3{font-weight:900;line-height:1.2}
 .ws-slot-time i{color:var(--amber-500)}
 .ws-slot-code{font-weight:800;font-size:.8rem;color:var(--slate-800);line-height:1.2;margin-bottom:.15rem}
 .ws-slot-title{font-size:.68rem;color:var(--slate-500);line-height:1.2;margin-bottom:.35rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ws-slot-venue{font-family:'Roboto Mono',monospace;font-size:.6rem;color:var(--slate-500);display:flex;align-items:center;gap:.25rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ws-slot-meta{display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap;margin-top:.15rem}
+.ws-slot-venue,.ws-slot-lecturer{font-family:'Roboto Mono',monospace;font-size:.6rem;color:var(--slate-500);display:inline-flex;align-items:center;gap:.25rem;min-width:0;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ws-slot-venue i{color:var(--emerald-600)}
+.ws-slot-lecturer{color:var(--slate-600);font-weight:600}
+.ws-slot-lecturer i{color:var(--emerald-600)}
 .ws-free{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:.5rem;font-family:'Roboto Mono',monospace;font-size:.7rem;color:var(--slate-300)}
 
 /* ===== LIST VIEW ===== */
@@ -200,8 +203,10 @@ h1,h2,h3{font-weight:900;line-height:1.2}
 .ws-list-info{min-width:0}
 .ws-list-info .code{font-size:.9rem;font-weight:800;color:var(--slate-800);line-height:1.2;margin-bottom:.15rem;display:flex;align-items:center;gap:.35rem;flex-wrap:wrap}
 .ws-list-info .title{font-size:.75rem;color:var(--slate-500);line-height:1.3}
-.ws-list-venue{font-family:'Roboto Mono',monospace;font-size:.7rem;color:var(--slate-500);display:flex;align-items:center;gap:.35rem;grid-column:1/-1;margin-top:-.15rem}
-.ws-list-venue i{color:var(--emerald-600)}
+.ws-list-meta{display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;grid-column:1/-1;margin-top:-.15rem}
+.ws-list-venue,.ws-list-lecturer{font-family:'Roboto Mono',monospace;font-size:.7rem;color:var(--slate-500);display:inline-flex;align-items:center;gap:.35rem;min-width:0}
+.ws-list-venue i,.ws-list-lecturer i{color:var(--emerald-600)}
+.ws-list-lecturer{color:var(--slate-600);font-weight:600}
 .clash-tag{background:var(--amber-100);color:var(--amber-700);font-family:'Roboto Mono',monospace;font-size:.6rem;font-weight:800;text-transform:uppercase;padding:.15rem .4rem;border-radius:9999px;display:inline-flex;align-items:center;gap:.25rem}
 @media(max-width:640px){
  .ws-list-item{grid-template-columns:auto 1fr;gap:.6rem;padding:.65rem .75rem}
@@ -534,6 +539,7 @@ function normalise(res){
     start:start,
     end:end,
     venue:pick(c,'venue','room')||'TBA',
+    lecturer:pick(c,'lecturer','lecturer_name','instructor','staff','lecturerName')||'',
     level:String(pick(c,'level')),
     sem:String(pick(c,'semester','sem')),
     type:pick(c,'type')||'class'
@@ -680,7 +686,10 @@ function renderWeeklyGrid(rows){
         +'<div class="ws-slot-time"><span>'+prettyTime(c.start||c.time)+' - '+prettyTime(c.end||c.time)+'</span>'+(clash?'<i class="fas fa-triangle-exclamation"></i>':'')+'</div>'
         +'<div class="ws-slot-code">'+esc(c.code)+'</div>'
         +'<div class="ws-slot-title">'+esc(c.dept)+'</div>'
-        +'<div class="ws-slot-venue"><i class="fas fa-map-marker-alt"></i> '+esc(c.venue)+'</div>'
+        +'<div class="ws-slot-meta">'
+        +'<span class="ws-slot-venue"><i class="fas fa-map-marker-alt"></i> '+esc(c.venue)+'</span>'
+        +(c.lecturer?'<span class="ws-slot-lecturer"><i class="fas fa-user"></i> '+esc(c.lecturer)+'</span>':'')
+        +'</div>'
         +'</div>';
     }).join('') : '<div class="ws-free"><i class="fas fa-book-open"></i> Free</div>';
 
@@ -708,7 +717,10 @@ function renderWeeklyList(rows){
         return '<div class="ws-list-item '+(clash?'clash':'')+'">'
           +'<div class="ws-list-time"><span class="start">'+prettyTime(c.start||c.time)+'</span><span class="end">'+prettyTime(c.end||c.time)+'</span></div>'
           +'<div class="ws-list-info"><div class="code">'+esc(c.code)+(clash?' <span class="clash-tag"><i class="fas fa-triangle-exclamation"></i> Conflict</span>':'')+'</div><div class="title">'+esc(c.dept)+'</div></div>'
-          +'<div class="ws-list-venue"><i class="fas fa-map-marker-alt"></i> '+esc(c.venue)+'</div>'
+          +'<div class="ws-list-meta">'
+          +'<span class="ws-list-venue"><i class="fas fa-map-marker-alt"></i> '+esc(c.venue)+'</span>'
+          +(c.lecturer?'<span class="ws-list-lecturer"><i class="fas fa-user"></i> '+esc(c.lecturer)+'</span>':'')
+          +'</div>'
           +'</div>';
       }).join('')
       +'</div></div>';
