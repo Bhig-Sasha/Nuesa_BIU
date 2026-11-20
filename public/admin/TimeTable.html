@@ -363,11 +363,6 @@ a{color:inherit;text-decoration:none}button{font-family:inherit}
     <div class="table-container"><table class="data-table"><thead><tr><th>Timetable</th><th>Format</th><th>Status</th><th>Last Modified</th><th>Actions</th></tr></thead><tbody id="examRows"></tbody></table></div>
    </div>
 
-   <!-- History -->
-   <div class="content-card">
-    <div class="card-header"><h3 class="card-title"><i class="fas fa-clock-rotate-left"></i> Publication History</h3></div>
-    <div class="table-container"><table class="data-table"><thead><tr><th>Type</th><th>Timetable</th><th>Period</th><th>Status</th><th>Last Modified</th><th>Actions</th></tr></thead><tbody id="histRows"></tbody></table></div>
-   </div>
   </main>
  </div>
 </div>
@@ -820,15 +815,6 @@ function renderAll(){
     }).join('');
   }
 
-  const hist = [...tts].sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
-  $('histRows').innerHTML = hist.length ? hist.map(t => `<tr>
-    <td>${t.type === 'class' ? 'Class' : 'Exam'}</td>
-    <td><strong>${esc(nameOf(t))}</strong></td>
-    <td class="text-muted">${period(t)}</td>
-    <td>${badge(t.status)}</td>
-    <td class="text-muted">${formatDateTime(t.updated_at)}</td>
-    <td>${acts(t)}</td>
-  </tr>`).join('') : `<tr class="empty-row"><td colspan="6">${loadFailed ? 'Unable to load history' : 'No timetables yet'}</td></tr>`;
 }
 
 /* ---------- bulk paste parser ---------- */
