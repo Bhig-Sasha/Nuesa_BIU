@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign In — NUESA DEV</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root{
+  --bg:#09131C;
+  --card:#122431;
+  --input-bg:#0D1B27;
+  --teal:#65D6C0;
+  --teal-dim:rgba(101,214,192,.14);
+  --gold:#D9B66F;
+  --gold-dim:rgba(217,182,111,.14);
+  --text:#F3F6FA;
+  --muted:#91A4B6;
+  --border:#263D4C;
+  --border-soft:rgba(38,61,76,.6);
+  --danger:#E57070;
+  --danger-dim:rgba(229,112,112,.14);
+  --warn:#E5B96F;
+  --warn-dim:rgba(229,185,111,.14);
+  --radius:14px;
+  --font:'Inter',system-ui,-apple-system,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  font-family:var(--font);
+  background:var(--bg);
+  color:var(--text);
+  font-size:14px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input{font-family:inherit;font-size:inherit;color:inherit}
+::selection{background:var(--teal-dim);color:var(--teal)}
+
+/* ============ SPLIT LAYOUT ============ */
+.login-shell{
+  display:grid;
+  grid-template-columns:45% 55%;
+  height:100vh;
+  width:100%;
+}
+
+/* ============ LEFT — BRAND PANEL ============ */
+.brand-panel{
+  position:relative;
+  background:linear-gradient(160deg,#0A1929 0%,#061520 100%);
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  padding:2.5rem 3rem;
+  border-right:1px solid var(--border);
+}
+/* Subtle engineering grid + accent glows */
+.brand-panel::before{
+  content:'';
+  position:absolute;inset:0;
+  background-image:
+    linear-gradient(rgba(101,214,192,.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(101,214,192,.04) 1px, transparent 1px);
+  background-size:44px 44px;
+  pointer-events:none;
+}
+.brand-panel::after{
+  content:'';
+  position:absolute;
+  top:-40%;
+  right:-30%;
+  width:80%;
+  height:80%;
+  border-radius:50%;
+  background:radial-gradient(circle, rgba(101,214,192,.14) 0%, transparent 65%);
+  pointer-events:none;
+}
+.brand-glow-2{
+  position:absolute;
+  bottom:-30%;
+  left:-20%;
+  width:70%;
+  height:70%;
+  border-radius:50%;
+  background:radial-gradient(circle, rgba(217,182,111,.10) 0%, transparent 65%);
+  pointer-events:none;
+}
+
+/* Corner tech lines */
+.brand-corner{
+  position:absolute;
+  width:60px;height:60px;
+  border:1px solid rgba(101,214,192,.25);
+  pointer-events:none;
+}
+.brand-corner.tl{top:1.5rem;left:1.5rem;border-right:none;border-bottom:none}
+.brand-corner.br{bottom:1.5rem;right:1.5rem;border-left:none;border-top:none}
+
+.brand-content{
+  position:relative;
+  z-index:2;
+  display:flex;
+  flex-direction:column;
+  height:100%;
+}
+
+/* Brand mark */
+.brand-logo{
+  display:flex;
+  align-items:center;
+  gap:.85rem;
+  margin-bottom:auto;
+}
+.brand-mark{
+  width:44px;height:44px;
+  border-radius:12px;
+  background:linear-gradient(135deg,var(--teal),#3aa894);
+  color:#062018;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:900;
+  font-size:16px;
+  letter-spacing:-.04em;
+  box-shadow:0 6px 20px -4px rgba(101,214,192,.4);
+}
+.brand-wordmark{display:flex;flex-direction:column;line-height:1.15}
+.brand-wordmark b{font-weight:800;font-size:15px;letter-spacing:-.01em}
+.brand-wordmark span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.14em;font-weight:600}
+
+/* Middle content */
+.brand-middle{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding:2rem 0;
+}
+.brand-tag{
+  display:inline-flex;
+  align-items:center;
+  gap:.5rem;
+  padding:.35rem .8rem;
+  border-radius:999px;
+  background:rgba(101,214,192,.1);
+  border:1px solid rgba(101,214,192,.25);
+  color:var(--teal);
+  font-size:10.5px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+  margin-bottom:1.5rem;
+  width:fit-content;
+}
+.brand-tag .dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--teal);
+  box-shadow:0 0 0 3px rgba(101,214,192,.2);
+}
+.brand-headline{
+  font-size:clamp(1.75rem,3vw,2.5rem);
+  font-weight:800;
+  letter-spacing:-.03em;
+  line-height:1.1;
+  margin-bottom:1rem;
+  color:#fff;
+}
+.brand-headline .accent{
+  color:var(--teal);
+  position:relative;
+  display:inline-block;
+}
+.brand-headline .accent::after{
+  content:'';
+  position:absolute;
+  bottom:-4px;left:0;right:0;
+  height:3px;
+  background:linear-gradient(90deg,var(--teal),transparent);
+  border-radius:2px;
+}
+.brand-sub{
+  font-size:14px;
+  color:var(--muted);
+  line-height:1.65;
+  max-width:24rem;
+}
+
+/* Feature list */
+.features{
+  list-style:none;
+  margin-top:2rem;
+  display:flex;
+  flex-direction:column;
+  gap:1rem;
+  max-width:24rem;
+}
+.features li{
+  display:flex;
+  align-items:flex-start;
+  gap:.85rem;
+  font-size:12.5px;
+  color:var(--muted);
+  line-height:1.5;
+}
+.features li i{
+  width:28px;height:28px;
+  border-radius:8px;
+  background:rgba(101,214,192,.1);
+  color:var(--teal);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;
+  flex-shrink:0;
+  margin-top:-1px;
+}
+.features li b{color:var(--text);font-weight:600}
+
+/* Footer */
+.brand-footer{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding-top:1.5rem;
+  border-top:1px solid var(--border-soft);
+  font-size:11px;
+  color:var(--muted);
+  gap:1rem;
+  flex-wrap:wrap;
+}
+.brand-footer .status-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:.45rem;
+  padding:.3rem .7rem;
+  border-radius:999px;
+  background:rgba(101,214,192,.08);
+  border:1px solid rgba(101,214,192,.2);
+  color:var(--teal);
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.brand-footer .status-pill .dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--teal);
+  box-shadow:0 0 0 3px rgba(101,214,192,.2);
+  animation:pulse 2s infinite;
+}
+@keyframes pulse{
+  0%,100%{opacity:1}
+  50%{opacity:.5}
+}
+
+/* ============ RIGHT — LOGIN PANEL ============ */
+.login-panel{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:2rem;
+  background:var(--bg);
+  position:relative;
+  overflow-y:auto;
+}
+.login-card{
+  width:100%;
+  max-width:420px;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:2.5rem 2.25rem;
+  box-shadow:0 20px 50px -20px rgba(0,0,0,.6);
+  position:relative;
+}
+.login-card::before{
+  content:'';
+  position:absolute;
+  top:0;left:2.25rem;right:2.25rem;
+  height:2px;
+  background:linear-gradient(90deg,transparent,var(--teal),transparent);
+  border-radius:0 0 2px 2px;
+}
+
+/* Card header */
+.card-eyebrow{
+  display:inline-flex;
+  align-items:center;
+  gap:.4rem;
+  font-size:10px;
+  font-weight:700;
+  color:var(--teal);
+  text-transform:uppercase;
+  letter-spacing:.14em;
+  margin-bottom:.85rem;
+}
+.card-eyebrow .dot{
+  width:5px;height:5px;border-radius:50%;
+  background:var(--teal);
+}
+.card-title{
+  font-size:1.65rem;
+  font-weight:800;
+  letter-spacing:-.025em;
+  line-height:1.15;
+  margin-bottom:.4rem;
+}
+.card-subtitle{
+  font-size:13px;
+  color:var(--muted);
+  line-height:1.55;
+  margin-bottom:1.75rem;
+}
+
+/* Alert banner */
+.alert{
+  display:none;
+  align-items:flex-start;
+  gap:.65rem;
+  padding:.75rem .9rem;
+  border-radius:9px;
+  font-size:12.5px;
+  margin-bottom:1.15rem;
+  line-height:1.45;
+}
+.alert.show{display:flex}
+.alert i{margin-top:.1rem;flex-shrink:0}
+.alert.danger{background:var(--danger-dim);border:1px solid rgba(229,112,112,.3);color:#F4B8B8}
+.alert.danger i{color:var(--danger)}
+.alert.danger b{color:#fff;font-weight:700;display:block;margin-bottom:.1rem}
+.alert.warn{background:var(--warn-dim);border:1px solid rgba(229,185,111,.3);color:var(--warn)}
+.alert.warn i{color:var(--warn)}
+.alert.warn b{color:#fff;font-weight:700;display:block;margin-bottom:.1rem}
+.alert.success{background:var(--teal-dim);border:1px solid rgba(101,214,192,.3);color:var(--teal)}
+.alert.success i{color:var(--teal)}
+.alert.success b{color:#fff;font-weight:700;display:block;margin-bottom:.1rem}
+
+/* Form */
+.form-group{margin-bottom:1.15rem}
+.form-label{
+  display:block;
+  font-size:11.5px;
+  font-weight:600;
+  color:var(--muted);
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  margin-bottom:.45rem;
+}
+.input-wrap{
+  position:relative;
+  display:flex;
+  align-items:center;
+  background:var(--input-bg);
+  border:1px solid var(--border);
+  border-radius:9px;
+  transition:border-color .15s,box-shadow .15s;
+}
+.input-wrap:focus-within{
+  border-color:var(--teal);
+  box-shadow:0 0 0 3px rgba(101,214,192,.1);
+}
+.input-wrap.error{
+  border-color:var(--danger);
+  box-shadow:0 0 0 3px rgba(229,112,112,.1);
+}
+.input-wrap > i.lead{
+  color:var(--muted);
+  font-size:13px;
+  margin-left:.9rem;
+  flex-shrink:0;
+  transition:color .15s;
+}
+.input-wrap:focus-within > i.lead{color:var(--teal)}
+.input-wrap input{
+  flex:1;
+  background:transparent;
+  border:none;
+  outline:none;
+  padding:.8rem .85rem;
+  font-size:14px;
+  color:var(--text);
+  min-width:0;
+}
+.input-wrap input::placeholder{color:rgba(145,164,182,.65)}
+.input-wrap input:disabled{opacity:.6}
+.toggle-pw{
+  width:38px;
+  height:38px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--muted);
+  border-radius:7px;
+  margin-right:.35rem;
+  transition:color .15s;
+}
+.toggle-pw:hover{color:var(--teal)}
+
+/* Options row */
+.options-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:.75rem;
+  margin-bottom:1.5rem;
+  flex-wrap:wrap;
+}
+.checkbox{
+  display:flex;
+  align-items:center;
+  gap:.55rem;
+  font-size:12.5px;
+  color:var(--muted);
+  cursor:pointer;
+  user-select:none;
+  position:relative;
+}
+.checkbox input{
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
+  width:0;height:0;
+}
+.checkbox .box{
+  width:16px;height:16px;
+  border-radius:4px;
+  border:1.5px solid var(--border);
+  background:var(--input-bg);
+  display:flex;align-items:center;justify-content:center;
+  transition:all .15s;
+  flex-shrink:0;
+}
+.checkbox .box i{
+  font-size:8px;
+  color:#062018;
+  opacity:0;
+  transform:scale(.5);
+  transition:all .15s;
+}
+.checkbox input:checked ~ .box{
+  background:var(--teal);
+  border-color:var(--teal);
+}
+.checkbox input:checked ~ .box i{opacity:1;transform:scale(1)}
+.checkbox:hover .box{border-color:var(--teal)}
+
+.forgot-link{
+  font-size:12.5px;
+  font-weight:600;
+  color:var(--teal);
+  transition:color .15s;
+}
+.forgot-link:hover{color:#7fe0cc}
+
+/* Submit */
+.btn-submit{
+  width:100%;
+  padding:.9rem 1.25rem;
+  background:linear-gradient(135deg,var(--teal),#4dc4ad);
+  color:#062018;
+  border-radius:9px;
+  font-size:14px;
+  font-weight:700;
+  letter-spacing:.01em;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:.6rem;
+  transition:all .18s;
+  position:relative;
+  overflow:hidden;
+}
+.btn-submit:hover:not(:disabled){
+  transform:translateY(-1px);
+  box-shadow:0 8px 20px -6px rgba(101,214,192,.5);
+}
+.btn-submit:active:not(:disabled){transform:translateY(0)}
+.btn-submit:disabled{opacity:.7;cursor:not-allowed}
+.btn-submit .spinner{
+  width:16px;height:16px;
+  border:2px solid rgba(6,32,24,.3);
+  border-top-color:#062018;
+  border-radius:50%;
+  animation:spin .7s linear infinite;
+  display:none;
+}
+.btn-submit.loading .spinner{display:inline-block}
+.btn-submit.loading .btn-label,
+.btn-submit.loading .btn-arrow{display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Divider */
+.divider{
+  display:flex;
+  align-items:center;
+  gap:.75rem;
+  margin:1.5rem 0 1rem;
+  font-size:11px;
+  color:var(--muted);
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  font-weight:600;
+}
+.divider::before,
+.divider::after{
+  content:'';
+  flex:1;
+  height:1px;
+  background:var(--border);
+}
+
+/* Footer note */
+.card-footnote{
+  text-align:center;
+  font-size:11.5px;
+  color:var(--muted);
+  line-height:1.5;
+  margin-top:1rem;
+}
+.card-footnote i{color:var(--teal);margin-right:.35rem}
+
+/* Card footer */
+.card-footer{
+  margin-top:1.75rem;
+  padding-top:1.35rem;
+  border-top:1px solid var(--border-soft);
+  text-align:center;
+  font-size:11px;
+  color:var(--muted);
+  line-height:1.6;
+}
+.card-footer b{color:var(--text);font-weight:600}
+
+/* ============ MOBILE BRAND BAR ============ */
+.mobile-brand{
+  display:none;
+  align-items:center;
+  gap:.7rem;
+  padding:0 0 1.75rem;
+  margin-bottom:1.75rem;
+  border-bottom:1px solid var(--border-soft);
+}
+.mobile-brand .brand-mark{width:36px;height:36px;font-size:13px;border-radius:10px}
+.mobile-brand .brand-wordmark b{font-size:13px}
+.mobile-brand .brand-wordmark span{font-size:9px}
+
+/* ============ RESPONSIVE ============ */
+@media(max-width:1024px){
+  .login-shell{grid-template-columns:40% 60%}
+  .brand-panel{padding:2rem 2.25rem}
+  .brand-headline{font-size:2rem}
+  .features{display:none}
+}
+@media(max-width:820px){
+  .login-shell{grid-template-columns:1fr}
+  .brand-panel{display:none}
+  .login-panel{padding:1.5rem;align-items:flex-start;padding-top:3rem}
+  .login-card{
+    max-width:440px;
+    margin:0 auto;
+    padding:2rem 1.75rem;
+    box-shadow:0 10px 30px -12px rgba(0,0,0,.5);
+  }
+  .login-card::before{left:1.75rem;right:1.75rem}
+  .mobile-brand{display:flex}
+}
+@media(max-width:480px){
+  .login-panel{padding:1rem;padding-top:1.5rem}
+  .login-card{padding:1.75rem 1.35rem}
+  .login-card::before{left:1.35rem;right:1.35rem}
+  .card-title{font-size:1.45rem}
+  .options-row{gap:.5rem}
+}
+@media(max-height:600px){
+  .login-panel{align-items:flex-start;padding-top:2rem}
+}
+</style>
+</head>
+<body>
+
+<div class="login-shell">
+
+  <!-- ============ LEFT — BRAND PANEL ============ -->
+  <aside class="brand-panel" aria-hidden="true">
+    <div class="brand-corner tl"></div>
+    <div class="brand-corner br"></div>
+    <div class="brand-glow-2"></div>
+
+    <div class="brand-content">
+
+      <div class="brand-logo">
+        <div class="brand-mark">N</div>
+        <div class="brand-wordmark">
+          <b>NUESA DEV</b>
+          <span>Super Administration</span>
+        </div>
+      </div>
+
+      <div class="brand-middle">
+        <div class="brand-tag"><span class="dot"></span> Secure Access</div>
+        <h1 class="brand-headline">
+          Command your<br>
+          association's<br>
+          <span class="accent">digital platform.</span>
+        </h1>
+        <p class="brand-sub">
+          The NUESA BIU administration portal — built for owners who need full visibility, control and accountability across every aspect of the association.
+        </p>
+
+        <ul class="features">
+          <li>
+            <i class="fas fa-shield-halved"></i>
+            <span><b>Owner-level access.</b> Every action is logged, justified and attributable to a named administrator.</span>
+          </li>
+          <li>
+            <i class="fas fa-chart-line"></i>
+            <span><b>Live oversight.</b> Elections, awards, content, users and platform health — one command centre.</span>
+          </li>
+          <li>
+            <i class="fas fa-lock"></i>
+            <span><b>Enterprise security.</b> Encrypted sessions, protected credentials and backend-enforced permissions.</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="brand-footer">
+        <span class="status-pill"><span class="dot"></span> System Operational</span>
+        <span>NUESA BIU · Developer Administration</span>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- ============ RIGHT — LOGIN PANEL ============ -->
+  <main class="login-panel">
+    <div class="login-card">
+
+      <!-- Mobile-only brand -->
+      <div class="mobile-brand">
+        <div class="brand-mark">N</div>
+        <div class="brand-wordmark">
+          <b>NUESA DEV</b>
+          <span>Super Administration</span>
+        </div>
+      </div>
+
+      <div class="card-eyebrow"><span class="dot"></span> Protected Access</div>
+      <h2 class="card-title">Welcome back</h2>
+      <p class="card-subtitle">Sign in to access your NUESA administration workspace.</p>
+
+      <!-- Alert area -->
+      <div class="alert" id="alertBox" role="alert" aria-live="polite">
+        <i class="fas fa-circle-exclamation"></i>
+        <div id="alertContent"></div>
+      </div>
+
+      <form id="loginForm" novalidate autocomplete="on">
+
+        <div class="form-group">
+          <label class="form-label" for="email">Email address</label>
+          <div class="input-wrap" id="emailWrap">
+            <i class="fas fa-envelope lead"></i>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              placeholder="Enter your admin email"
+              autocomplete="username"
+              inputmode="email"
+              spellcheck="false"
+              required
+              aria-describedby="emailError"
+            >
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <div class="input-wrap" id="passwordWrap">
+            <i class="fas fa-lock lead"></i>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              placeholder="Enter your password"
+              autocomplete="current-password"
+              required
+              aria-describedby="passwordError"
+            >
+            <button type="button" class="toggle-pw" id="togglePw" aria-label="Show password" tabindex="-1">
+              <i class="fas fa-eye" id="pwIcon"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="options-row">
+          <label class="checkbox">
+            <input type="checkbox" id="remember" name="remember">
+            <span class="box"><i class="fas fa-check"></i></span>
+            <span>Remember this device</span>
+          </label>
+          <a href="#" class="forgot-link" id="forgotLink">Forgot password?</a>
+        </div>
+
+        <button type="submit" class="btn-submit" id="submitBtn">
+          <span class="spinner"></span>
+          <span class="btn-label">Sign In to Dashboard</span>
+          <i class="fas fa-arrow-right btn-arrow" style="font-size:13px"></i>
+        </button>
+
+      </form>
+
+      <div class="divider">Secure</div>
+
+      <p class="card-footnote">
+        <i class="fas fa-shield-halved"></i>
+        Protected administrative access
+      </p>
+
+      <div class="card-footer">
+        <b>NUESA BIU</b> · Developer Administration<br>
+        &copy; 2026 NUESA BIU. All rights reserved.
+      </div>
+
+    </div>
+  </main>
+
+</div>
+
+<script>
+/* ============================================================
+   NUESA DEV — Login
+   Backend-enforced auth only. No frontend security theatre.
+   ============================================================ */
+(function(){
+'use strict';
+
+var API = 'https://nuesa-biu-pjp0.onrender.com';
+var LOGIN_ENDPOINT = '/api/auth/login';
+var SESSION_KEY = 'nuesa_dev_session';
+var REMEMBER_KEY = 'nuesa_dev_remember';
+
+/* --- state --- */
+var attempts = 0;
+var lockoutUntil = 0;
+var MAX_ATTEMPTS = 5;
+var LOCKOUT_MS = 60 * 1000; // 1 minute
+var isSubmitting = false;
+
+/* --- dom --- */
+var form = document.getElementById('loginForm');
+var emailEl = document.getElementById('email');
+var passwordEl = document.getElementById('password');
+var emailWrap = document.getElementById('emailWrap');
+var passwordWrap = document.getElementById('passwordWrap');
+var togglePw = document.getElementById('togglePw');
+var pwIcon = document.getElementById('pwIcon');
+var submitBtn = document.getElementById('submitBtn');
+var alertBox = document.getElementById('alertBox');
+var alertContent = document.getElementById('alertContent');
+var rememberEl = document.getElementById('remember');
+var forgotLink = document.getElementById('forgotLink');
+
+/* ============================================================
+   ALERTS
+   ============================================================ */
+function showAlert(type, title, message){
+  alertBox.className = 'alert ' + type + ' show';
+  alertContent.innerHTML = '<b>' + escapeHtml(title) + '</b>' + escapeHtml(message || '');
+}
+function hideAlert(){
+  alertBox.className = 'alert';
+  alertContent.innerHTML = '';
+}
+function escapeHtml(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+/* ============================================================
+   PASSWORD VISIBILITY
+   ============================================================ */
+togglePw.addEventListener('click', function(){
+  var isPassword = passwordEl.type === 'password';
+  passwordEl.type = isPassword ? 'text' : 'password';
+  pwIcon.className = isPassword ? 'fas fa-eye-slash' : 'fas fa-eye';
+  togglePw.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+  passwordEl.focus();
+});
+
+/* ============================================================
+   FIELD VALIDATION
+   ============================================================ */
+function markError(wrap){
+  wrap.classList.add('error');
+}
+function clearError(wrap){
+  wrap.classList.remove('error');
+}
+emailEl.addEventListener('input', function(){ clearError(emailWrap); });
+passwordEl.addEventListener('input', function(){ clearError(passwordWrap); });
+
+function isValidEmail(v){
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || '').trim());
+}
+
+/* ============================================================
+   LOCKOUT
+   ============================================================ */
+function isLockedOut(){
+  return Date.now() < lockoutUntil;
+}
+function lockoutSecondsRemaining(){
+  return Math.max(0, Math.ceil((lockoutUntil - Date.now()) / 1000));
+}
+function renderLockout(){
+  if(isLockedOut()){
+    var s = lockoutSecondsRemaining();
+    showAlert('warn', 'Account temporarily locked',
+      'Too many failed attempts. Please wait ' + s + ' seconds before trying again.');
+    submitBtn.disabled = true;
+    setTimeout(function(){
+      if(isLockedOut()) renderLockout();
+      else {
+        submitBtn.disabled = false;
+        hideAlert();
+        attempts = 0;
+      }
+    }, 1000);
+  }
+}
+
+/* ============================================================
+   SUBMIT
+   ============================================================ */
+form.addEventListener('submit', function(e){
+  e.preventDefault();
+  hideAlert();
+
+  if(isSubmitting) return;
+  if(isLockedOut()){ renderLockout(); return; }
+
+  var email = emailEl.value.trim();
+  var password = passwordEl.value;
+  var remember = rememberEl.checked;
+
+  /* client-side validation */
+  var ok = true;
+  if(!email || !isValidEmail(email)){
+    markError(emailWrap);
+    ok = false;
+  }
+  if(!password || password.length < 1){
+    markError(passwordWrap);
+    ok = false;
+  }
+  if(!ok){
+    showAlert('danger', 'Check your details',
+      !email || !isValidEmail(email) ? 'Enter a valid email address.' : 'Enter your password to continue.');
+    return;
+  }
+
+  /* submitting state */
+  isSubmitting = true;
+  submitBtn.disabled = true;
+  submitBtn.classList.add('loading');
+
+  var ctrl = new AbortController();
+  var timeoutId = setTimeout(function(){ ctrl.abort(); }, 15000);
+
+  fetch(API + LOGIN_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({ email: email, password: password, remember: remember }),
+    credentials: 'include',
+    signal: ctrl.signal
+  })
+  .then(function(res){
+    clearTimeout(timeoutId);
+    return res.json().catch(function(){ return {}; }).then(function(body){
+      return { ok: res.ok, status: res.status, body: body };
+    });
+  })
+  .then(function(result){
+    if(!result.ok){
+      handleLoginFailure(result);
+      return;
+    }
+
+    /* success */
+    var body = result.body || {};
+    var token = body.token || body.access_token || body.accessToken || null;
+    var user  = body.user || body.admin || body.data || null;
+    var role  = body.role || (user && (user.role || user.type)) || null;
+
+    /* role verification — backend is authoritative, but we gate navigation */
+    if(role && !/^(super_?admin|owner|admin)$/i.test(String(role))){
+      handleLoginFailure({
+        status: 403,
+        body: { message: 'This account does not have Super Admin access to NUESA DEV.' }
+      });
+      return;
+    }
+
+    /* store session */
+    try {
+      if(token){
+        if(remember) localStorage.setItem(SESSION_KEY, token);
+        else sessionStorage.setItem(SESSION_KEY, token);
+      }
+      if(user){
+        var payload = JSON.stringify({ id: user.id, email: user.email, name: user.full_name || user.name, role: role });
+        if(remember) localStorage.setItem(SESSION_KEY + '_user', payload);
+        else sessionStorage.setItem(SESSION_KEY + '_user', payload);
+      }
+      if(remember) localStorage.setItem(REMEMBER_KEY, '1');
+    } catch(e){ /* storage may be blocked — non-fatal */ }
+
+    showAlert('success', 'Signed in', 'Redirecting to your dashboard…');
+
+    setTimeout(function(){
+      window.location.href = 'overview.html';
+    }, 450);
+  })
+  .catch(function(err){
+    clearTimeout(timeoutId);
+    if(err && err.name === 'AbortError'){
+      showAlert('danger', 'Request timed out',
+        'The server did not respond in time. Check your connection and try again.');
+    } else {
+      showAlert('danger', 'Connection error',
+        'We could not reach the authentication server. Please try again.');
+    }
+  })
+  .finally(function(){
+    isSubmitting = false;
+    submitBtn.disabled = false;
+    submitBtn.classList.remove('loading');
+    if(isLockedOut()) renderLockout();
+  });
+});
+
+function handleLoginFailure(result){
+  attempts += 1;
+  var body = result.body || {};
+  var status = result.status;
+
+  /* generic messages — never leak whether email exists */
+  if(status === 401){
+    if(attempts >= MAX_ATTEMPTS){
+      lockoutUntil = Date.now() + LOCKOUT_MS;
+      renderLockout();
+    } else {
+      var remaining = MAX_ATTEMPTS - attempts;
+      showAlert('danger', 'Invalid credentials',
+        'The email or password you entered is incorrect. ' +
+        remaining + ' attempt' + (remaining === 1 ? '' : 's') + ' remaining before a temporary lock.');
+    }
+  } else if(status === 403){
+    showAlert('danger', 'Access denied',
+      body.message || 'This account does not have Super Admin access.');
+  } else if(status === 429){
+    var retry = body.retry_after ? body.retry_after + ' seconds' : 'a few minutes';
+    showAlert('warn', 'Too many requests',
+      'Slow down and try again in ' + retry + '.');
+  } else if(status >= 500){
+    showAlert('danger', 'Server error',
+      'The authentication server encountered a problem. Try again shortly.');
+  } else {
+    showAlert('danger', 'Sign in failed',
+      body.message || 'An unexpected error occurred. Please try again.');
+  }
+}
+
+/* ============================================================
+   FORGOT PASSWORD
+   ============================================================ */
+forgotLink.addEventListener('click', function(e){
+  e.preventDefault();
+  var email = (emailEl.value || '').trim();
+  if(!email || !isValidEmail(email)){
+    showAlert('warn', 'Enter your email first',
+      'Type the email address associated with your admin account above, then click Forgot password again.');
+    emailEl.focus();
+    markError(emailWrap);
+    return;
+  }
+
+  hideAlert();
+  forgotLink.style.opacity = '.5';
+  forgotLink.style.pointerEvents = 'none';
+
+  fetch(API + '/api/auth/forgot-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({ email: email })
+  })
+  .then(function(){ /* never reveal whether the email exists */ })
+  .catch(function(){ /* same — always show the same message */ })
+  .finally(function(){
+    forgotLink.style.opacity = '';
+    forgotLink.style.pointerEvents = '';
+    showAlert('success', 'Check your inbox',
+      'If that email is registered to an admin account, a secure password reset link has been sent. The link expires shortly for security.');
+  });
+});
+
+/* ============================================================
+   RESTORE REMEMBERED EMAIL (convenience only — never the password)
+   ============================================================ */
+(function restore(){
+  try {
+    if(localStorage.getItem(REMEMBER_KEY) === '1'){
+      rememberEl.checked = true;
+    }
+    /* do not prefill email — some admins share devices */
+  } catch(e){}
+})();
+
+/* ============================================================
+   SESSION GUARD — if already signed in, offer direct entry
+   ============================================================ */
+(function checkExistingSession(){
+  try {
+    var token = localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY);
+    if(token){
+      showAlert('success', 'You are already signed in',
+        'Continue to your dashboard, or sign in again below if you want to switch accounts.');
+      var cta = document.createElement('a');
+      cta.href = 'overview.html';
+      cta.textContent = 'Continue to dashboard →';
+      cta.style.cssText = 'display:inline-block;margin-top:.4rem;color:var(--teal);font-weight:700;text-decoration:underline;text-underline-offset:3px;';
+      alertContent.appendChild(document.createElement('br'));
+      alertContent.appendChild(cta);
+    }
+  } catch(e){}
+})();
+
+/* ============================================================
+   KEYBOARD & FOCUS
+   ============================================================ */
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape'){
+    passwordEl.blur();
+  }
+});
+/* focus first empty field on load */
+window.addEventListener('load', function(){
+  if(!emailEl.value) emailEl.focus();
+  else passwordEl.focus();
+});
+
+})();
+</script>
+</body>
+</html>

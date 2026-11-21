@@ -3,7 +3,7 @@
  * NUESA BIU API SERVER - ORGANIZED VERSION
  * ============================================================
  * @author Sasha Troger
- * @version 1.3.0  (Media Library + Gallery + Supabase Storage + Bulk Nominations)
+ * @version 1.4.0  (Admin Overview + Adjustment Approve/Reject + Auth/me + Super-Admin role + Contract alignment)
  * @license MIT
  * @DevSignature ST-BIU-2026
  */
@@ -85,7 +85,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey, {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
     db: { schema: 'public', pool: { max: 20, idleTimeoutMillis: 30000 } },
-    global: { headers: { 'x-application-name': 'nuesa-biu-api', 'x-version': '1.3.0' } }
+    global: { headers: { 'x-application-name': 'nuesa-biu-api', 'x-version': '1.4.0' } }
 });
 
 const STORAGE_BUCKET = 'nuesa-media';
@@ -880,13 +880,21 @@ const verifyToken = async (req, res, next) => {
 
 const requireRole = (...roles) => (req, res, next) => {
     if (!req.user) return next(new AuthError('Authentication required', 'AUTH_REQUIRED'));
-    if (!roles.includes(req.user.role)) return next(new ForbiddenError(`Required roles: ${roles.join(', ')}`));
+    // Treat super_admin / owner as admin for compatibility with admin frontend contract
+    const effectiveRole = (req.user.role === 'super_admin' || req.user.role === 'owner')
+        ? 'admin'
+        : req.user.role;
+    if (!roles.includes(effectiveRole) && !roles.includes(req.user.role)) {
+        return next(new ForbiddenError(`Required roles: ${roles.join(', ')}`));
+    }
     next();
 };
 
 const requirePermission = (permission) => {
     const permissions = {
         admin: ['manage_users', 'manage_content', 'manage_settings', 'view_all'],
+        super_admin: ['manage_users', 'manage_content', 'manage_settings', 'view_all'],
+        owner: ['manage_users', 'manage_content', 'manage_settings', 'view_all'],
         editor: ['manage_content', 'view_all'],
         member: ['view_content']
     };
@@ -919,7 +927,7 @@ app.get('/api/health', async (req, res) => {
         const dbStatus = await checkDatabase();
         res.status(200).json({
             status: 'healthy', database: dbStatus,
-            uptime: process.uptime(), timestamp: new Date().toISOString(), version: '1.3.0'
+            uptime: process.uptime(), timestamp: new Date().toISOString(), version: '1.4.0'
         });
     } catch (error) {
         res.status(200).json({ status: 'degraded', message: 'Partial service disruption', timestamp: new Date().toISOString() });
@@ -927,12 +935,12 @@ app.get('/api/health', async (req, res) => {
 });
 
 app.get('/api/ping', (req, res) => {
-    res.json({ status: 'success', message: 'pong', timestamp: new Date().toISOString(), version: '1.3.0', requestId: req.id });
+    res.json({ status: 'success', message: 'pong', timestamp: new Date().toISOString(), version: '1.4.0', requestId: req.id });
 });
 
 app.get('/api', (req, res) => {
     res.json({
-        message: 'NUESA BIU API Server', version: '1.3.0', environment: NODE_ENV, status: 'operational',
+        message: 'NUESA BIU API Server', version: '1.4.0', environment: NODE_ENV, status: 'operational',
         timestamp: new Date().toISOString(),
         documentation: `${req.protocol}://${req.get('host')}/api/docs`,
         endpoints: {
@@ -941,7 +949,8 @@ app.get('/api', (req, res) => {
             health: '/api/health', 'stats-public': '/api/stats/public',
             contact: '/api/contact/submit', docs: '/api/docs', 'course-reps': '/api/course-reps',
             media: '/api/admin/media', elections: '/api/elections', awards: '/api/awards',
-            gallery: '/api/gallery'
+            gallery: '/api/gallery', overview: '/api/overview', audit: '/api/audit/logs',
+            authMe: '/api/auth/me'
         },
         requestId: req.id
     });
@@ -978,7 +987,7 @@ app.get('/api/stats/public', cacheMiddleware(300, ['stats']), async (req, res) =
 const swaggerOptions = {
     definition: {
         openapi: '3.0.0',
-        info: { title: 'NUESA BIU API', version: '1.3.0', description: 'API documentation for NUESA BIU application', contact: { name: 'NUESA BIU', email: process.env.ADMIN_EMAIL } },
+        info: { title: 'NUESA BIU API', version: '1.4.0', description: 'API documentation for NUESA BIU application', contact: { name: 'NUESA BIU', email: process.env.ADMIN_EMAIL } },
         servers: [{ url: IS_PRODUCTION ? 'https://nuesa-biu-pjp0.onrender.com' : `http://localhost:${PORT}`, description: IS_PRODUCTION ? 'Production server' : 'Development server' }],
         components: { securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } } }
     },
@@ -1021,6 +1030,20 @@ authRouter.post('/logout', verifyToken, async (req, res) => {
 
 authRouter.get('/verify', verifyToken, async (req, res) => {
     res.json({ status: 'success', data: req.user, message: 'Token is valid' });
+});
+
+// Contract-aligned session check used by admin pages
+authRouter.get('/me', verifyToken, async (req, res) => {
+    res.json({
+        status: 'success',
+        user: {
+            id: req.user.id,
+            email: req.user.email,
+            full_name: req.user.fullName || req.user.full_name,
+            role: req.user.role
+        },
+        data: req.user
+    });
 });
 
 authRouter.post('/refresh', verifyToken, async (req, res) => {
@@ -1785,7 +1808,7 @@ app.post('/api/admin/login', createRateLimiter(10, 15 * 60 * 1000), validate(sch
 
         const user = result.data[0];
 
-        if (user.role !== 'admin') {
+        if (!['admin', 'super_admin', 'owner'].includes(user.role)) {
             logger.warn('Admin login failed - not admin', { email, role: user.role });
             return res.status(403).json({ status: 'error', code: 'FORBIDDEN', message: 'Access denied. Admin privileges required.' });
         }
@@ -1839,7 +1862,8 @@ app.post('/api/admin/logout', verifyToken, async (req, res) => {
 
 app.get('/api/admin/session', verifyToken, async (req, res) => {
     try {
-        if (req.user.role !== 'admin') {
+        const role = req.user.role;
+        if (role !== 'admin' && role !== 'super_admin' && role !== 'owner') {
             return res.status(403).json({ status: 'error', code: 'FORBIDDEN', message: 'Not authorized' });
         }
         res.json({ status: 'success', data: req.user, message: 'Session valid' });
@@ -1853,6 +1877,81 @@ app.get('/api/admin/session', verifyToken, async (req, res) => {
 const adminRouter = express.Router();
 adminRouter.use(verifyToken);
 adminRouter.use(requireRole('admin'));
+
+// ==================== OVERVIEW (contract: /api/overview) ====================
+// Also exposed under admin for convenience
+adminRouter.get('/overview', async (req, res) => {
+    try {
+        const [
+            usersRes, electionsRes, articlesRes, eventsRes, awardsRes, membersRes
+        ] = await Promise.allSettled([
+            db.query('select', 'users', { count: true }),
+            supabase.from('elections').select('id', { count: 'exact', head: true }).neq('status', 'closed'),
+            db.query('select', 'articles', { count: true, where: { status: 'published', is_published: true } }),
+            db.query('select', 'biu_events', { count: true, where: { status: 'upcoming' } }),
+            supabase.from('award_editions').select('id', { count: 'exact', head: true }).in('status', ['draft', 'preparation', 'active']),
+            db.query('select', 'executive_members', { count: true, where: { status: 'active' } })
+        ]);
+
+        const countOf = (r) => {
+            if (r.status !== 'fulfilled') return 0;
+            if (r.value && typeof r.value.count === 'number') return r.value.count;
+            if (r.value && r.value.count != null) return r.value.count;
+            return 0;
+        };
+
+        const data = {
+            users_total: countOf(usersRes),
+            elections_active: electionsRes.status === 'fulfilled' ? (electionsRes.value.count || 0) : 0,
+            articles_published: countOf(articlesRes),
+            events_upcoming: countOf(eventsRes),
+            awards_active: awardsRes.status === 'fulfilled' ? (awardsRes.value.count || 0) : 0,
+            reps_active: countOf(membersRes)
+        };
+
+        res.json({ status: 'success', data, ...data });
+    } catch (error) {
+        logger.error('Overview error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch overview' });
+    }
+});
+
+// Public-facing alias used by overview.html (admin-only)
+app.get('/api/overview', verifyToken, requireRole('admin'), async (req, res) => {
+    try {
+        const [
+            usersRes, electionsRes, articlesRes, eventsRes, awardsRes, membersRes
+        ] = await Promise.allSettled([
+            db.query('select', 'users', { count: true }),
+            supabase.from('elections').select('id', { count: 'exact', head: true }).neq('status', 'closed'),
+            db.query('select', 'articles', { count: true, where: { status: 'published', is_published: true } }),
+            db.query('select', 'biu_events', { count: true, where: { status: 'upcoming' } }),
+            supabase.from('award_editions').select('id', { count: 'exact', head: true }).in('status', ['draft', 'preparation', 'active']),
+            db.query('select', 'executive_members', { count: true, where: { status: 'active' } })
+        ]);
+
+        const countOf = (r) => {
+            if (r.status !== 'fulfilled') return 0;
+            if (r.value && typeof r.value.count === 'number') return r.value.count;
+            if (r.value && r.value.count != null) return r.value.count;
+            return 0;
+        };
+
+        const data = {
+            users_total: countOf(usersRes),
+            elections_active: electionsRes.status === 'fulfilled' ? (electionsRes.value.count || 0) : 0,
+            articles_published: countOf(articlesRes),
+            events_upcoming: countOf(eventsRes),
+            awards_active: awardsRes.status === 'fulfilled' ? (awardsRes.value.count || 0) : 0,
+            reps_active: countOf(membersRes)
+        };
+
+        res.json({ status: 'success', data, ...data });
+    } catch (error) {
+        logger.error('Overview error:', { requestId: req.id, error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch overview' });
+    }
+});
 
 // ==================== DASHBOARD STATS ====================
 adminRouter.get('/stats', async (req, res) => {
@@ -5479,6 +5578,429 @@ adminRouter.get('/elections/voters', async (req, res) => {
     } catch (err) {
         logger.error('Voters list error:', { error: err.message });
         res.status(500).json({ status: 'error', message: 'Failed to load voters' });
+    }
+});
+
+
+// ============================================================
+// ====== ELECTION / AWARD RESULT ADJUSTMENTS (contract) ======
+// ============================================================
+// Tables expected (create via migration if missing):
+//   election_adjustments, award_adjustments
+// Minimal columns: id, election_id|programme_id, result_id, delta, reason,
+//   evidence, requested_by, approver_role, status, approved_by, approved_at, created_at
+
+const ALLOWED_APPROVER_ROLES = [
+    'electoral-committee-chair',
+    'deputy-owner',
+    'independent-auditor'
+];
+
+async function writeAuditLog(entry) {
+    try {
+        await supabase.from('audit_logs').insert([{
+            action: entry.action,
+            description: entry.description,
+            actor_id: entry.actor_id || null,
+            actor: entry.actor || null,
+            meta: entry.meta || {},
+            created_at: new Date().toISOString()
+        }]);
+    } catch (e) {
+        logger.warn('audit_logs write skipped', { error: e.message, action: entry.action });
+    }
+}
+
+// ---- Election adjustments ----
+adminRouter.post('/elections/:id/results/:rid/adjust', async (req, res) => {
+    try {
+        const { delta, reason, evidence, approver } = req.body || {};
+        const electionId = req.params.id;
+        const resultId = req.params.rid;
+
+        if (delta === undefined || delta === null || Number(delta) === 0 || !Number.isFinite(Number(delta))) {
+            return res.status(400).json({ status: 'error', message: 'delta must be a non-zero integer' });
+        }
+        if (!reason || String(reason).trim().length < 20) {
+            return res.status(400).json({ status: 'error', message: 'reason must be at least 20 characters' });
+        }
+        if (!evidence || !String(evidence).trim()) {
+            return res.status(400).json({ status: 'error', message: 'evidence is required' });
+        }
+        if (!ALLOWED_APPROVER_ROLES.includes(approver)) {
+            return res.status(400).json({
+                status: 'error',
+                message: `approver must be one of: ${ALLOWED_APPROVER_ROLES.join(', ')}`
+            });
+        }
+
+        const { data: row, error } = await supabase
+            .from('election_adjustments')
+            .insert([{
+                election_id: electionId,
+                result_id: resultId,
+                delta: parseInt(delta, 10),
+                reason: String(reason).trim(),
+                evidence: String(evidence).trim(),
+                requested_by: req.user.id,
+                approver_role: approver,
+                status: 'pending',
+                created_at: new Date().toISOString()
+            }])
+            .select()
+            .single();
+
+        if (error) {
+            if (error.message && error.message.includes('relation') && error.message.includes('does not exist')) {
+                return res.status(501).json({
+                    status: 'error',
+                    message: 'election_adjustments table not found. Run the migration first.'
+                });
+            }
+            throw error;
+        }
+
+        await writeAuditLog({
+            action: 'election.adjustment.request',
+            description: `Adjustment requested for result ${resultId} (delta ${delta})`,
+            actor_id: req.user.id,
+            actor: req.user.email,
+            meta: { electionId, resultId, adjustmentId: row.id, delta }
+        });
+
+        res.status(201).json({
+            status: 'success',
+            data: { adjustment_id: row.id, status: 'pending' },
+            message: 'Adjustment request submitted and pending approval'
+        });
+    } catch (err) {
+        logger.error('Election adjustment request error:', { requestId: req.id, error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to submit adjustment' });
+    }
+});
+
+adminRouter.get('/elections/:id/results/adjustments', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('election_adjustments')
+            .select('*')
+            .eq('election_id', req.params.id)
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        res.json({ status: 'success', data: data || [], count: (data || []).length });
+    } catch (err) {
+        logger.error('List election adjustments error:', { error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to load adjustments' });
+    }
+});
+
+adminRouter.post('/elections/:id/results/adjustments/:aid/approve', async (req, res) => {
+    try {
+        const { data: adj, error: fetchErr } = await supabase
+            .from('election_adjustments')
+            .select('*')
+            .eq('id', req.params.aid)
+            .eq('election_id', req.params.id)
+            .maybeSingle();
+        if (fetchErr) throw fetchErr;
+        if (!adj) return res.status(404).json({ status: 'error', message: 'Adjustment not found' });
+        if (adj.status !== 'pending') {
+            return res.status(409).json({ status: 'error', message: `Adjustment is already ${adj.status}` });
+        }
+
+        const { data: updated, error } = await supabase
+            .from('election_adjustments')
+            .update({
+                status: 'approved',
+                approved_by: req.user.id,
+                approved_at: new Date().toISOString()
+            })
+            .eq('id', adj.id)
+            .select()
+            .single();
+        if (error) throw error;
+
+        // Best-effort: apply delta to a results row if the table exists
+        try {
+            const { data: resultRow } = await supabase
+                .from('election_results')
+                .select('id, votes, original_votes')
+                .eq('id', adj.result_id)
+                .maybeSingle();
+            if (resultRow) {
+                const base = resultRow.original_votes != null ? resultRow.original_votes : (resultRow.votes || 0);
+                // Recompute from all approved deltas for safety
+                const { data: allAdj } = await supabase
+                    .from('election_adjustments')
+                    .select('delta')
+                    .eq('result_id', adj.result_id)
+                    .eq('status', 'approved');
+                const sumDelta = (allAdj || []).reduce((s, a) => s + (parseInt(a.delta, 10) || 0), 0);
+                await supabase
+                    .from('election_results')
+                    .update({
+                        votes: base + sumDelta,
+                        original_votes: resultRow.original_votes != null ? resultRow.original_votes : (resultRow.votes || 0)
+                    })
+                    .eq('id', adj.result_id);
+            }
+        } catch (applyErr) {
+            logger.warn('Could not apply election adjustment to results table', { error: applyErr.message });
+        }
+
+        await writeAuditLog({
+            action: 'election.adjustment.approve',
+            description: `Adjustment ${adj.id} approved (delta ${adj.delta})`,
+            actor_id: req.user.id,
+            actor: req.user.email,
+            meta: { electionId: req.params.id, adjustmentId: adj.id }
+        });
+
+        res.json({ status: 'success', data: updated, message: 'Adjustment approved' });
+    } catch (err) {
+        logger.error('Approve election adjustment error:', { error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to approve adjustment' });
+    }
+});
+
+adminRouter.post('/elections/:id/results/adjustments/:aid/reject', async (req, res) => {
+    try {
+        const reason = (req.body && req.body.reason) || 'Rejected by admin';
+        const { data: adj, error: fetchErr } = await supabase
+            .from('election_adjustments')
+            .select('*')
+            .eq('id', req.params.aid)
+            .eq('election_id', req.params.id)
+            .maybeSingle();
+        if (fetchErr) throw fetchErr;
+        if (!adj) return res.status(404).json({ status: 'error', message: 'Adjustment not found' });
+        if (adj.status !== 'pending') {
+            return res.status(409).json({ status: 'error', message: `Adjustment is already ${adj.status}` });
+        }
+
+        const { data: updated, error } = await supabase
+            .from('election_adjustments')
+            .update({
+                status: 'rejected',
+                approved_by: req.user.id,
+                approved_at: new Date().toISOString(),
+                rejection_reason: String(reason).trim()
+            })
+            .eq('id', adj.id)
+            .select()
+            .single();
+        if (error) throw error;
+
+        await writeAuditLog({
+            action: 'election.adjustment.reject',
+            description: `Adjustment ${adj.id} rejected`,
+            actor_id: req.user.id,
+            actor: req.user.email,
+            meta: { electionId: req.params.id, adjustmentId: adj.id, reason }
+        });
+
+        res.json({ status: 'success', data: updated, message: 'Adjustment rejected' });
+    } catch (err) {
+        logger.error('Reject election adjustment error:', { error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to reject adjustment' });
+    }
+});
+
+// ---- Award (programme) adjustments ----
+adminRouter.post('/awards/programmes/:id/results/:rid/adjust', async (req, res) => {
+    try {
+        const { delta, reason, evidence, approver } = req.body || {};
+        if (delta === undefined || delta === null || Number(delta) === 0 || !Number.isFinite(Number(delta))) {
+            return res.status(400).json({ status: 'error', message: 'delta must be a non-zero integer' });
+        }
+        if (!reason || String(reason).trim().length < 20) {
+            return res.status(400).json({ status: 'error', message: 'reason must be at least 20 characters' });
+        }
+        if (!evidence || !String(evidence).trim()) {
+            return res.status(400).json({ status: 'error', message: 'evidence is required' });
+        }
+        if (!ALLOWED_APPROVER_ROLES.includes(approver)) {
+            return res.status(400).json({
+                status: 'error',
+                message: `approver must be one of: ${ALLOWED_APPROVER_ROLES.join(', ')}`
+            });
+        }
+
+        const { data: row, error } = await supabase
+            .from('award_adjustments')
+            .insert([{
+                programme_id: req.params.id,
+                result_id: req.params.rid,
+                delta: parseInt(delta, 10),
+                reason: String(reason).trim(),
+                evidence: String(evidence).trim(),
+                requested_by: req.user.id,
+                approver_role: approver,
+                status: 'pending',
+                created_at: new Date().toISOString()
+            }])
+            .select()
+            .single();
+
+        if (error) {
+            if (error.message && error.message.includes('relation') && error.message.includes('does not exist')) {
+                return res.status(501).json({
+                    status: 'error',
+                    message: 'award_adjustments table not found. Run the migration first.'
+                });
+            }
+            throw error;
+        }
+
+        await writeAuditLog({
+            action: 'award.adjustment.request',
+            description: `Award adjustment requested for result ${req.params.rid}`,
+            actor_id: req.user.id,
+            actor: req.user.email,
+            meta: { programmeId: req.params.id, adjustmentId: row.id }
+        });
+
+        res.status(201).json({
+            status: 'success',
+            data: { adjustment_id: row.id, status: 'pending' },
+            message: 'Adjustment request submitted and pending approval'
+        });
+    } catch (err) {
+        logger.error('Award adjustment request error:', { error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to submit adjustment' });
+    }
+});
+
+adminRouter.get('/awards/programmes/:id/results/adjustments', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('award_adjustments')
+            .select('*')
+            .eq('programme_id', req.params.id)
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        res.json({ status: 'success', data: data || [], count: (data || []).length });
+    } catch (err) {
+        logger.error('List award adjustments error:', { error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to load adjustments' });
+    }
+});
+
+adminRouter.post('/awards/programmes/:id/results/adjustments/:aid/approve', async (req, res) => {
+    try {
+        const { data: adj, error: fetchErr } = await supabase
+            .from('award_adjustments')
+            .select('*')
+            .eq('id', req.params.aid)
+            .eq('programme_id', req.params.id)
+            .maybeSingle();
+        if (fetchErr) throw fetchErr;
+        if (!adj) return res.status(404).json({ status: 'error', message: 'Adjustment not found' });
+        if (adj.status !== 'pending') {
+            return res.status(409).json({ status: 'error', message: `Adjustment is already ${adj.status}` });
+        }
+
+        const { data: updated, error } = await supabase
+            .from('award_adjustments')
+            .update({
+                status: 'approved',
+                approved_by: req.user.id,
+                approved_at: new Date().toISOString()
+            })
+            .eq('id', adj.id)
+            .select()
+            .single();
+        if (error) throw error;
+
+        await writeAuditLog({
+            action: 'award.adjustment.approve',
+            description: `Award adjustment ${adj.id} approved`,
+            actor_id: req.user.id,
+            actor: req.user.email,
+            meta: { programmeId: req.params.id, adjustmentId: adj.id }
+        });
+
+        res.json({ status: 'success', data: updated, message: 'Adjustment approved' });
+    } catch (err) {
+        logger.error('Approve award adjustment error:', { error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to approve adjustment' });
+    }
+});
+
+adminRouter.post('/awards/programmes/:id/results/adjustments/:aid/reject', async (req, res) => {
+    try {
+        const reason = (req.body && req.body.reason) || 'Rejected by admin';
+        const { data: adj, error: fetchErr } = await supabase
+            .from('award_adjustments')
+            .select('*')
+            .eq('id', req.params.aid)
+            .eq('programme_id', req.params.id)
+            .maybeSingle();
+        if (fetchErr) throw fetchErr;
+        if (!adj) return res.status(404).json({ status: 'error', message: 'Adjustment not found' });
+        if (adj.status !== 'pending') {
+            return res.status(409).json({ status: 'error', message: `Adjustment is already ${adj.status}` });
+        }
+
+        const { data: updated, error } = await supabase
+            .from('award_adjustments')
+            .update({
+                status: 'rejected',
+                approved_by: req.user.id,
+                approved_at: new Date().toISOString(),
+                rejection_reason: String(reason).trim()
+            })
+            .eq('id', adj.id)
+            .select()
+            .single();
+        if (error) throw error;
+
+        await writeAuditLog({
+            action: 'award.adjustment.reject',
+            description: `Award adjustment ${adj.id} rejected`,
+            actor_id: req.user.id,
+            actor: req.user.email,
+            meta: { programmeId: req.params.id, adjustmentId: adj.id, reason }
+        });
+
+        res.json({ status: 'success', data: updated, message: 'Adjustment rejected' });
+    } catch (err) {
+        logger.error('Reject award adjustment error:', { error: err.message });
+        res.status(500).json({ status: 'error', message: 'Failed to reject adjustment' });
+    }
+});
+
+// Simple audit feed for overview page
+adminRouter.get('/audit/logs', async (req, res) => {
+    try {
+        const limit = Math.min(parseInt(req.query.limit || '20', 10), 100);
+        const { data, error } = await supabase
+            .from('audit_logs')
+            .select('action, description, actor, created_at')
+            .order('created_at', { ascending: false })
+            .limit(limit);
+        if (error) {
+            // Table may not exist yet
+            return res.json({ status: 'success', data: [], count: 0 });
+        }
+        res.json({ status: 'success', data: data || [], count: (data || []).length });
+    } catch (err) {
+        res.json({ status: 'success', data: [], count: 0 });
+    }
+});
+
+app.get('/api/audit/logs', verifyToken, requireRole('admin'), async (req, res) => {
+    try {
+        const limit = Math.min(parseInt(req.query.limit || '20', 10), 100);
+        const { data, error } = await supabase
+            .from('audit_logs')
+            .select('action, description, actor, created_at')
+            .order('created_at', { ascending: false })
+            .limit(limit);
+        if (error) return res.json({ status: 'success', data: [], count: 0 });
+        res.json({ status: 'success', data: data || [], count: (data || []).length });
+    } catch (err) {
+        res.json({ status: 'success', data: [], count: 0 });
     }
 });
 

@@ -1,0 +1,1861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Award Management — NUESA DEV</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root{
+  --bg:#09131C; --sidebar:#0D1B27; --card:#122431; --card-elevated:#173B4B;
+  --teal:#65D6C0; --teal-dim:rgba(101,214,192,.14);
+  --gold:#D9B66F; --gold-dim:rgba(217,182,111,.14);
+  --gold-strong:rgba(217,182,111,.24);
+  --text:#F3F6FA; --muted:#91A4B6;
+  --border:#263D4C; --border-soft:rgba(38,61,76,.6);
+  --danger:#E57070; --danger-dim:rgba(229,112,112,.14);
+  --warn:#E5B96F; --warn-dim:rgba(229,185,111,.14);
+  --blue:#6AA7E6; --blue-dim:rgba(106,167,230,.14);
+  --purple:#A08CE6; --purple-dim:rgba(160,140,230,.14);
+  --sidebar-w:250px; --sidebar-w-collapsed:72px;
+  --topbar-h:70px; --radius:14px;
+  --shadow:0 1px 2px rgba(0,0,0,.25), 0 8px 24px -12px rgba(0,0,0,.5);
+  --font:'Inter',system-ui,-apple-system,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow:hidden}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+::selection{background:var(--gold-dim);color:var(--gold)}
+
+/* ============ LAYOUT ============ */
+.app{display:grid;grid-template-columns:var(--sidebar-w) 1fr;height:100vh;transition:grid-template-columns .25s ease}
+.app.rail{grid-template-columns:var(--sidebar-w-collapsed) 1fr}
+
+/* ============ SIDEBAR ============ */
+.sidebar{background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;z-index:30}
+.brand{height:var(--topbar-h);display:flex;align-items:center;gap:.75rem;padding:0 1.25rem;border-bottom:1px solid var(--border);flex-shrink:0}
+.brand-mark{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--gold),#b8944f);color:#231a06;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0}
+.brand-text{min-width:0;display:flex;flex-direction:column;line-height:1.2}
+.brand-name{font-weight:800;font-size:14px;letter-spacing:-.01em;white-space:nowrap}
+.brand-sub{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-weight:600;white-space:nowrap}
+.app.rail .brand-text{display:none}
+.app.rail .brand{padding:0;justify-content:center}
+.nav{flex:1;overflow-y:auto;padding:.75rem .75rem 1rem;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.nav::-webkit-scrollbar{width:6px}
+.nav::-webkit-scrollbar-thumb{background:var(--border);border-radius:6px}
+.nav-group{padding:.85rem 0 .35rem}
+.nav-group:first-child{padding-top:.25rem}
+.nav-group-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.14em;padding:0 .75rem;margin-bottom:.5rem;white-space:nowrap;overflow:hidden;transition:opacity .2s}
+.app.rail .nav-group-label{opacity:0;height:0;margin:0;padding:0}
+.nav-item{display:flex;align-items:center;gap:.75rem;padding:.55rem .75rem;border-radius:9px;color:var(--muted);font-size:13.5px;font-weight:500;margin-bottom:2px;position:relative;white-space:nowrap;overflow:hidden;transition:background .15s,color .15s}
+.nav-item i{width:18px;text-align:center;font-size:14px;flex-shrink:0;opacity:.9}
+.nav-item:hover{background:rgba(255,255,255,.03);color:var(--text)}
+.nav-item.active{background:var(--gold-dim);color:var(--gold)}
+.nav-item.active::before{content:'';position:absolute;left:-.75rem;top:50%;transform:translateY(-50%);width:3px;height:18px;background:var(--gold);border-radius:0 3px 3px 0}
+.nav-label{overflow:hidden;text-overflow:ellipsis}
+.app.rail .nav-label{opacity:0;width:0}
+.app.rail .nav-item{justify-content:center;padding:.65rem}
+.sidebar-foot{border-top:1px solid var(--border);padding:.75rem;flex-shrink:0}
+.sys-pill{display:flex;align-items:center;gap:.5rem;padding:.55rem .75rem;border-radius:9px;background:var(--card);border:1px solid var(--border);font-size:11.5px;font-weight:600;color:var(--muted);white-space:nowrap;overflow:hidden}
+.sys-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;box-shadow:0 0 0 3px rgba(145,164,182,.15)}
+.sys-dot.ok{background:var(--gold);box-shadow:0 0 0 3px var(--gold-dim)}
+.app.rail .sys-pill{justify-content:center;padding:.6rem}
+.app.rail .sys-pill span:last-child{display:none}
+
+/* ============ MAIN ============ */
+.main{display:flex;flex-direction:column;min-width:0;height:100vh;overflow:hidden}
+.topbar{height:var(--topbar-h);background:rgba(9,19,28,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:1rem;padding:0 1.5rem;flex-shrink:0;position:relative;z-index:20}
+.tb-toggle{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:.15s}
+.tb-toggle:hover{background:var(--card);color:var(--text)}
+.crumb{display:flex;align-items:center;gap:.5rem;font-size:12.5px;color:var(--muted);white-space:nowrap}
+.crumb .sep{opacity:.5;font-size:10px}
+.crumb .current{color:var(--text);font-weight:600}
+.tb-spacer{flex:1}
+.tb-search{flex:0 1 320px;min-width:0;display:flex;align-items:center;gap:.5rem;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:.45rem .75rem;color:var(--muted);font-size:12.5px;transition:.15s;cursor:text}
+.tb-search:hover{border-color:var(--border-soft)}
+.tb-search i{font-size:12px}
+.tb-search kbd{margin-left:auto;font-family:var(--font);font-size:10.5px;background:var(--bg);border:1px solid var(--border);padding:.1rem .35rem;border-radius:4px;color:var(--muted)}
+.tb-btn{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--muted);position:relative;transition:.15s}
+.tb-btn:hover{background:var(--card);color:var(--text)}
+.tb-btn .badge{position:absolute;top:6px;right:6px;min-width:15px;height:15px;padding:0 4px;border-radius:999px;background:var(--danger);color:#fff;font-size:9px;font-weight:800;display:none;align-items:center;justify-content:center;border:2px solid var(--bg)}
+.tb-btn .badge.show{display:flex}
+.avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#b8944f);color:#231a06;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.tb-profile{display:flex;align-items:center;gap:.6rem;padding:.25rem .5rem .25rem .25rem;border-radius:999px;transition:.15s}
+.tb-profile:hover{background:var(--card)}
+.tb-profile-text{display:flex;flex-direction:column;line-height:1.2;font-size:12px}
+.tb-profile-text b{font-weight:700}
+.tb-profile-text span{color:var(--muted);font-size:10.5px}
+.content{flex:1;overflow-y:auto;padding:2rem;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.content::-webkit-scrollbar{width:10px}
+.content::-webkit-scrollbar-thumb{background:var(--border);border-radius:10px;border:2px solid var(--bg)}
+.wrap{max-width:1400px;margin:0 auto}
+
+/* ============ PAGE HEAD ============ */
+.page-head{display:flex;flex-wrap:wrap;gap:1rem;align-items:flex-end;justify-content:space-between;margin-bottom:1.75rem}
+.page-head h1{font-size:clamp(1.5rem,2.6vw,1.85rem);font-weight:800;letter-spacing:-.02em;margin-bottom:.35rem}
+.page-head p{color:var(--muted);font-size:13.5px;max-width:44rem}
+.page-actions{display:flex;gap:.5rem;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;padding:.6rem 1.05rem;border-radius:9px;font-size:12.5px;font-weight:600;transition:.15s;white-space:nowrap}
+.btn-primary{background:var(--gold);color:#231a06}
+.btn-primary:hover{background:#e4c383}
+.btn-teal{background:var(--teal);color:#062018}
+.btn-teal:hover{background:#7fe0cc}
+.btn-ghost{background:var(--card);border:1px solid var(--border);color:var(--text)}
+.btn-ghost:hover{background:var(--card-elevated);border-color:var(--border-soft)}
+.btn-danger{background:var(--danger-dim);color:var(--danger);border:1px solid rgba(229,112,112,.3)}
+.btn-danger:hover{background:rgba(229,112,112,.22)}
+.btn-sm{padding:.4rem .75rem;font-size:11.5px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* ============ BANNER ============ */
+.banner{background:linear-gradient(135deg,var(--card) 0%,var(--card-elevated) 100%);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem 1.6rem;margin-bottom:1.5rem;position:relative;overflow:hidden;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem}
+.banner::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:linear-gradient(180deg,var(--gold),#b8944f)}
+.banner-icon{width:48px;height:48px;border-radius:12px;background:var(--gold-dim);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.banner-text{flex:1;min-width:200px}
+.banner-tag{font-size:10.5px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.12em;margin-bottom:.25rem}
+.banner-title{font-size:1.25rem;font-weight:800;letter-spacing:-.02em;line-height:1.2;margin-bottom:.15rem}
+.banner-sub{font-size:12.5px;color:var(--muted)}
+
+/* ============ STATS ============ */
+.stats{display:grid;gap:1rem;grid-template-columns:repeat(6,1fr);margin-bottom:1.75rem}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.1rem 1.2rem;transition:border-color .2s}
+.stat:hover{border-color:var(--border-soft)}
+.stat-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.8rem}
+.stat-ico{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;background:var(--gold-dim);color:var(--gold)}
+.stat-ico.teal{background:var(--teal-dim);color:var(--teal)}
+.stat-ico.blue{background:var(--blue-dim);color:var(--blue)}
+.stat-ico.purple{background:var(--purple-dim);color:var(--purple)}
+.stat-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.stat-value{font-size:1.75rem;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.1;margin-top:.1rem}
+.stat-value.loading{display:inline-block;min-width:48px;height:1.75rem;background:linear-gradient(90deg,var(--card-elevated) 25%,var(--border) 50%,var(--card-elevated) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:6px;color:transparent}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.stat-foot{font-size:11px;color:var(--muted);margin-top:.35rem}
+
+/* ============ PANELS ============ */
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.35rem 1.4rem;margin-bottom:1.5rem;min-width:0}
+.panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;margin-bottom:1.15rem;flex-wrap:wrap}
+.panel-title{font-size:15px;font-weight:700;letter-spacing:-.01em}
+.panel-sub{font-size:12px;color:var(--muted);margin-top:.15rem}
+.panel-actions{display:flex;gap:.4rem;flex-wrap:wrap;align-items:center}
+.grid-2{display:grid;grid-template-columns:1.4fr 1fr;gap:1.25rem}
+.grid-2 > .panel{margin-bottom:0}
+@media(max-width:1100px){.grid-2{grid-template-columns:1fr}}
+@media(max-width:1280px){.stats{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}}
+
+/* ============ ACTIVE AWARD HERO ============ */
+.hero-award{background:linear-gradient(135deg,var(--card-elevated),var(--card));border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem 1.6rem;margin-bottom:1.75rem;display:grid;grid-template-columns:1.5fr 1fr;gap:1.5rem;align-items:center;position:relative;overflow:hidden}
+.hero-award::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:var(--gold)}
+@media(max-width:900px){.hero-award{grid-template-columns:1fr}}
+.he-label{display:inline-flex;align-items:center;gap:.4rem;padding:.25rem .7rem;border-radius:999px;background:var(--gold-dim);color:var(--gold);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.6rem}
+.he-label .dot{width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 3px var(--gold-dim)}
+.he-title{font-size:1.35rem;font-weight:800;letter-spacing:-.02em;margin-bottom:.25rem;line-height:1.2}
+.he-sub{font-size:12.5px;color:var(--muted);margin-bottom:1rem}
+.he-progress{margin-top:1rem}
+.he-progress-head{display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:.4rem}
+.he-progress-head .pct{font-size:15px;font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums}
+.bar{height:7px;border-radius:99px;background:var(--bg);overflow:hidden;position:relative}
+.bar>span{display:block;height:100%;background:var(--gold);border-radius:99px;transition:width .5s}
+.bar.teal>span{background:var(--teal)}
+.he-meta{display:flex;flex-wrap:wrap;gap:1rem;margin-top:1rem;font-size:11.5px;color:var(--muted)}
+.he-meta div{display:flex;align-items:center;gap:.35rem}
+.he-meta i{color:var(--gold)}
+.he-controls{display:flex;flex-direction:column;gap:.5rem;border-left:1px solid var(--border);padding-left:1.5rem}
+@media(max-width:900px){.he-controls{border-left:none;border-top:1px solid var(--border);padding-left:0;padding-top:1.25rem}}
+.he-controls h4{font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem}
+
+/* ============ TABLE ============ */
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px}
+table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:640px}
+thead th{background:var(--bg);text-align:left;padding:.7rem .9rem;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);white-space:nowrap}
+tbody td{padding:.7rem .9rem;border-bottom:1px solid var(--border-soft);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:rgba(255,255,255,.02)}
+td .row-name{font-weight:600;color:var(--text)}
+td .row-sub{font-size:11px;color:var(--muted);margin-top:.1rem}
+.tag{display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .55rem;border-radius:999px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.tag i{font-size:7px}
+.tag.live{background:var(--gold-dim);color:var(--gold)}
+.tag.pending{background:var(--warn-dim);color:var(--warn)}
+.tag.closed{background:rgba(145,164,182,.14);color:var(--muted)}
+.tag.draft{background:rgba(145,164,182,.14);color:var(--muted)}
+.tag.approved{background:var(--teal-dim);color:var(--teal)}
+.tag.rejected{background:var(--danger-dim);color:var(--danger)}
+.tag.verified{background:var(--teal-dim);color:var(--teal)}
+.tag.corrected{background:var(--warn-dim);color:var(--warn)}
+.tag.winner{background:var(--gold-dim);color:var(--gold)}
+.tag.provisional{background:var(--gold-dim);color:var(--gold)}
+.row-actions{display:flex;gap:.3rem;justify-content:flex-end}
+.icon-btn{width:28px;height:28px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);transition:.15s;font-size:11.5px}
+.icon-btn:hover{background:var(--card-elevated);color:var(--text)}
+.icon-btn.danger:hover{background:var(--danger-dim);color:var(--danger)}
+.icon-btn.gold:hover{background:var(--gold-dim);color:var(--gold)}
+.icon-btn.teal:hover{background:var(--teal-dim);color:var(--teal)}
+
+/* ============ EMPTY / LOADING ============ */
+.empty-block{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;padding:2rem 1rem;text-align:center;color:var(--muted)}
+.empty-block i{font-size:22px;opacity:.5}
+.empty-block p{font-size:12.5px}
+
+/* ============ ANALYTICS ============ */
+.analytics-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.25rem}
+@media(max-width:900px){.analytics-grid{grid-template-columns:1fr}}
+.analytics-metric{background:var(--card-elevated);border:1px solid var(--border);border-radius:10px;padding:.9rem 1rem}
+.analytics-metric .am-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.3rem}
+.analytics-metric .am-value{font-size:1.5rem;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.analytics-metric .am-foot{font-size:11px;color:var(--muted);margin-top:.2rem}
+.analytics-metric.gold .am-value{color:var(--gold)}
+.analytics-metric.teal .am-value{color:var(--teal)}
+.analytics-chart{height:220px;position:relative;margin-top:.5rem}
+.category-bars{display:flex;flex-direction:column;gap:.7rem;margin-top:.75rem}
+.cat-bar-row{display:grid;grid-template-columns:1fr auto;gap:.75rem;align-items:center;font-size:12px}
+.cat-bar-row .cbr-info{grid-column:1/-1;display:flex;justify-content:space-between;align-items:baseline;gap:.5rem}
+.cat-bar-row .cbr-name{font-weight:600;color:var(--text);font-size:12px}
+.cat-bar-row .cbr-votes{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.cat-bar-row .bar{grid-column:1/-1;height:5px}
+
+/* ============ RESULTS ============ */
+.results-list{display:flex;flex-direction:column;gap:.6rem}
+.result-row{display:grid;grid-template-columns:auto 1fr auto auto;gap:1rem;align-items:center;padding:.85rem 1rem;background:var(--card-elevated);border:1px solid var(--border);border-radius:10px;transition:.15s}
+.result-row:hover{border-color:var(--border-soft)}
+.result-row.winner{border-color:rgba(217,182,111,.35);background:linear-gradient(135deg,rgba(217,182,111,.04),transparent)}
+.result-rank{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--muted);font-weight:800;font-size:12px}
+.result-row.winner .result-rank{background:var(--gold-dim);color:var(--gold)}
+.result-info{min-width:0}
+.result-info .rn{font-weight:700;font-size:13.5px}
+.result-info .rp{font-size:11px;color:var(--muted);margin-top:.15rem;display:flex;flex-wrap:wrap;gap:.35rem;align-items:center}
+.result-votes{text-align:right}
+.result-votes .rv{font-size:1.15rem;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+.result-votes .rvs{font-size:10.5px;color:var(--muted);margin-top:.15rem}
+.result-row .adjust-btn{font-size:11.5px;padding:.35rem .7rem;border-radius:7px;background:var(--bg);border:1px solid var(--border);color:var(--muted)}
+.result-row .adjust-btn:hover{color:var(--gold);border-color:var(--gold)}
+@media(max-width:640px){
+  .result-row{grid-template-columns:auto 1fr;gap:.6rem}
+  .result-votes{grid-column:1/-1;text-align:left;display:flex;align-items:baseline;gap:.5rem}
+  .result-row .adjust-btn{grid-column:2;justify-self:start}
+}
+.pos-group{margin-bottom:1.5rem}
+.pos-group-head{font-size:12px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.6rem;display:flex;align-items:center;gap:.5rem}
+.pos-group-head::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ============ ACTIVITY ============ */
+.log{display:flex;flex-direction:column;gap:0;max-height:360px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.log::-webkit-scrollbar{width:6px}
+.log::-webkit-scrollbar-thumb{background:var(--border);border-radius:6px}
+.log-item{display:flex;gap:.85rem;padding:.75rem 0;border-bottom:1px solid var(--border-soft)}
+.log-item:last-child{border-bottom:none}
+.log-ico{width:28px;height:28px;border-radius:7px;background:var(--card-elevated);color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.log-ico.teal{background:var(--teal-dim);color:var(--teal)}
+.log-ico.gold{background:var(--gold-dim);color:var(--gold)}
+.log-ico.danger{background:var(--danger-dim);color:var(--danger)}
+.log-ico.warn{background:var(--warn-dim);color:var(--warn)}
+.log-body{flex:1;min-width:0}
+.log-text{font-size:12.5px;line-height:1.35}
+.log-text b{font-weight:600;color:var(--text)}
+.log-meta{font-size:11px;color:var(--muted);margin-top:.15rem}
+
+/* ============ MODAL ============ */
+.modal-back{position:fixed;inset:0;background:rgba(4,8,12,.72);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;padding:1rem}
+.modal-back.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:14px;width:100%;max-width:560px;max-height:90vh;display:flex;flex-direction:column;box-shadow:var(--shadow);overflow:hidden}
+.modal.wide{max-width:760px}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--border);flex-shrink:0}
+.modal-title{font-size:15px;font-weight:700}
+.modal-sub{font-size:12px;color:var(--muted);margin-top:.15rem}
+.modal-close{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.modal-close:hover{background:var(--card-elevated);color:var(--text)}
+.modal-body{padding:1.25rem;overflow-y:auto;flex:1}
+.modal-foot{display:flex;gap:.5rem;justify-content:flex-end;padding:1rem 1.25rem;border-top:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
+
+/* wizard */
+.wizard-steps{display:flex;gap:.35rem;margin-bottom:1.25rem;flex-wrap:wrap}
+.wizard-steps .ws{flex:1;min-width:60px;text-align:center}
+.wizard-steps .ws-num{width:24px;height:24px;border-radius:50%;background:var(--bg);border:2px solid var(--border);color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;margin:0 auto .3rem;transition:.2s}
+.wizard-steps .ws.active .ws-num{background:var(--gold);border-color:var(--gold);color:#231a06}
+.wizard-steps .ws.done .ws-num{background:var(--gold-dim);border-color:var(--gold);color:var(--gold)}
+.wizard-steps .ws-label{font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;line-height:1.15}
+.wizard-steps .ws.active .ws-label{color:var(--gold)}
+.wizard-step{display:none}
+.wizard-step.active{display:block}
+.wizard-nav{display:flex;justify-content:space-between;gap:.5rem;margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid var(--border);flex-wrap:wrap}
+
+/* form */
+.form-row{margin-bottom:1rem}
+.form-row label{display:block;font-size:11.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.35rem}
+.form-row label .req{color:var(--danger);margin-left:.15rem}
+.form-row .hint{font-size:11px;color:var(--muted);margin-top:.3rem;font-weight:400;text-transform:none;letter-spacing:0}
+.form-control{width:100%;padding:.6rem .8rem;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;transition:.15s}
+.form-control:focus{outline:none;border-color:var(--gold)}
+textarea.form-control{min-height:70px;resize:vertical}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:520px){.form-grid{grid-template-columns:1fr}}
+.checkbox-row{display:flex;align-items:center;gap:.5rem;font-size:12.5px;padding:.5rem 0;cursor:pointer}
+.checkbox-row input[type="checkbox"]{accent-color:var(--gold)}
+
+/* adjustment warning */
+.adj-warning{display:flex;gap:.7rem;padding:.85rem 1rem;border-radius:10px;background:var(--warn-dim);border:1px solid rgba(229,185,111,.3);color:var(--warn);font-size:12px;margin-bottom:1rem}
+.adj-warning i{margin-top:.1rem}
+.adj-warning b{color:var(--text);display:block;margin-bottom:.2rem}
+.adj-preview{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:.9rem 1rem;margin-bottom:1rem}
+.adj-preview-row{display:flex;justify-content:space-between;font-size:12.5px;padding:.25rem 0}
+.adj-preview-row.total{border-top:1px solid var(--border);margin-top:.4rem;padding-top:.5rem;font-weight:700}
+.adj-preview-row .was{color:var(--muted);text-decoration:line-through}
+.adj-preview-row .now{color:var(--gold);font-weight:700}
+.adj-preview-row .delta.pos{color:var(--teal)}
+.adj-preview-row .delta.neg{color:var(--danger)}
+
+/* drawer */
+.drawer-back{position:fixed;inset:0;background:rgba(4,8,12,.6);z-index:190;display:none}
+.drawer-back.open{display:block}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(480px,100vw);background:var(--card);border-left:1px solid var(--border);z-index:200;transform:translateX(100%);transition:transform .28s ease;display:flex;flex-direction:column;box-shadow:-8px 0 30px -10px rgba(0,0,0,.6)}
+.drawer.open{transform:none}
+.drawer-head{padding:1.1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.drawer-body{flex:1;overflow-y:auto;padding:1.25rem}
+.drawer-foot{padding:1rem 1.25rem;border-top:1px solid var(--border);display:flex;gap:.5rem;justify-content:flex-end;flex-shrink:0}
+
+/* confirm */
+.confirm-body{text-align:center;padding:.5rem 0}
+.confirm-body .ci{width:52px;height:52px;border-radius:50%;background:var(--warn-dim);color:var(--warn);display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto .85rem}
+.confirm-body .ci.gold{background:var(--gold-dim);color:var(--gold)}
+.confirm-body .ci.danger{background:var(--danger-dim);color:var(--danger)}
+.confirm-body .ct{font-size:14.5px;font-weight:700;margin-bottom:.4rem}
+.confirm-body .cd{font-size:12.5px;color:var(--muted);max-width:340px;margin:0 auto}
+
+/* toast */
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--card-elevated);border:1px solid var(--border);border-left:4px solid var(--gold);border-radius:10px;padding:.85rem 1rem;font-size:12.5px;box-shadow:var(--shadow);z-index:300;transform:translateY(150%);transition:transform .3s;max-width:340px}
+.toast.show{transform:none}
+.toast.error{border-left-color:var(--danger)}
+.toast b{display:block;margin-bottom:.15rem;color:var(--text)}
+.toast span{color:var(--muted)}
+
+/* expandable */
+.expand-btn{width:24px;height:24px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);transition:.15s;background:var(--bg);border:1px solid var(--border)}
+.expand-btn:hover{color:var(--text)}
+.expand-btn i{font-size:9px;transition:transform .2s}
+.expand-btn.open i{transform:rotate(90deg)}
+.expand-row td{background:var(--bg);padding:0!important;border-bottom:1px solid var(--border)}
+.expand-inner{padding:1rem 1.25rem;font-size:12px;color:var(--muted)}
+.expand-inner .kv{display:grid;grid-template-columns:140px 1fr;gap:.35rem 1rem}
+.expand-inner .kv dt{font-weight:600;color:var(--muted)}
+.expand-inner .kv dd{color:var(--text)}
+
+/* ============ RESPONSIVE ============ */
+@media(max-width:1024px){.tb-profile-text{display:none}.tb-search{flex:0 1 220px}}
+@media(max-width:768px){
+  .app{grid-template-columns:1fr}
+  .sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);transform:translateX(-100%);transition:transform .25s ease;z-index:100;box-shadow:0 0 0 100vmax rgba(0,0,0,0)}
+  .sidebar.open{transform:none;box-shadow:0 0 0 100vmax rgba(0,0,0,.55)}
+  .content{padding:1.25rem}
+  .tb-search kbd{display:none}
+}
+@media(max-width:520px){.tb-search{display:none}.content{padding:1rem}.panel{padding:1.1rem}}
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <!-- ================= SIDEBAR ================= -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">N</div>
+      <div class="brand-text">
+        <span class="brand-name">NUESA DEV</span>
+        <span class="brand-sub">Super Admin</span>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-group">
+        <div class="nav-group-label">Main</div>
+        <a href="overview.html" class="nav-item"><i class="fas fa-gauge-high"></i><span class="nav-label">Overview</span></a>
+        <a href="election-management.html" class="nav-item"><i class="fas fa-check-to-slot"></i><span class="nav-label">Election Management</span></a>
+        <a href="award-management.html" class="nav-item active"><i class="fas fa-trophy"></i><span class="nav-label">Award Management</span></a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Platform</div>
+        <a href="#" class="nav-item"><i class="fas fa-globe"></i><span class="nav-label">Website Management</span></a>
+        <a href="#" class="nav-item"><i class="fas fa-users-gear"></i><span class="nav-label">Users &amp; Executives</span></a>
+        <a href="#" class="nav-item"><i class="fas fa-newspaper"></i><span class="nav-label">Content Management</span></a>
+        <a href="#" class="nav-item"><i class="fas fa-photo-film"></i><span class="nav-label">Media Library</span></a>
+        <a href="#" class="nav-item"><i class="fas fa-bell"></i><span class="nav-label">Notifications</span></a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">System</div>
+        <a href="#" class="nav-item"><i class="fas fa-chart-line"></i><span class="nav-label">Reports &amp; Analytics</span></a>
+        <a href="#" class="nav-item"><i class="fas fa-clipboard-list"></i><span class="nav-label">Audit Logs</span></a>
+        <a href="#" class="nav-item"><i class="fas fa-shield-halved"></i><span class="nav-label">Security &amp; Access</span></a>
+        <a href="#" class="nav-item"><i class="fas fa-sliders"></i><span class="nav-label">Settings</span></a>
+      </div>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="sys-pill"><span class="sys-dot ok"></span><span>Awards system operational</span></div>
+    </div>
+  </aside>
+
+  <!-- ================= MAIN ================= -->
+  <div class="main">
+
+    <header class="topbar">
+      <button class="tb-toggle" id="toggleBtn" aria-label="Toggle sidebar"><i class="fas fa-bars"></i></button>
+      <div class="crumb">
+        <span>NUESA DEV</span>
+        <i class="fas fa-chevron-right sep"></i>
+        <span class="current">Award Management</span>
+      </div>
+      <div class="tb-spacer"></div>
+      <div class="tb-search" id="searchBtn"><i class="fas fa-magnifying-glass"></i><span>Search programmes, categories, nominees…</span><kbd>⌘K</kbd></div>
+      <button class="tb-btn" aria-label="Notifications"><i class="fas fa-bell"></i><span class="badge" id="notifBadge"></span></button>
+      <button class="tb-btn" aria-label="Help"><i class="fas fa-circle-question"></i></button>
+      <div class="tb-profile">
+        <div class="avatar">O</div>
+        <div class="tb-profile-text"><b>Owner</b><span>Super Admin</span></div>
+      </div>
+    </header>
+
+    <main class="content" id="content">
+      <div class="wrap">
+
+        <div id="topNotice"></div>
+
+        <!-- PAGE HEADER -->
+        <section class="page-head">
+          <div>
+            <h1>Award Management</h1>
+            <p>Manage NUESA BIU award programmes, categories, nominations, voting and recognition — all in one place.</p>
+          </div>
+          <div class="page-actions">
+            <button class="btn btn-ghost" id="refreshAll"><i class="fas fa-rotate"></i> Refresh</button>
+            <button class="btn btn-ghost" id="awardSettingsBtn"><i class="fas fa-gear"></i> Settings</button>
+            <button class="btn btn-ghost" id="exportBtn"><i class="fas fa-file-export"></i> Export</button>
+            <button class="btn btn-primary" id="createProgrammeBtn"><i class="fas fa-plus"></i> Create Award Programme</button>
+          </div>
+        </section>
+
+        <!-- BANNER -->
+        <section class="banner">
+          <div class="banner-icon"><i class="fas fa-trophy"></i></div>
+          <div class="banner-text">
+            <div class="banner-tag">Awards Control Centre</div>
+            <div class="banner-title">Celebrate Excellence</div>
+            <div class="banner-sub">Manage NUESA recognition and award programmes with full audit-safe control.</div>
+          </div>
+          <div><span class="tag live" style="font-size:11px;padding:.35rem .85rem"><i class="fas fa-circle"></i> Operational</span></div>
+        </section>
+
+        <!-- STATS -->
+        <section class="stats" id="stats">
+          <div class="stat" data-stat="programmes">
+            <div class="stat-head"><div class="stat-ico"><i class="fas fa-trophy"></i></div></div>
+            <div class="stat-label">Total Programmes</div>
+            <div class="stat-value loading" data-value>—</div>
+            <div class="stat-foot" data-foot>&nbsp;</div>
+          </div>
+          <div class="stat" data-stat="active">
+            <div class="stat-head"><div class="stat-ico teal"><i class="fas fa-tower-broadcast"></i></div></div>
+            <div class="stat-label">Active Programmes</div>
+            <div class="stat-value loading" data-value>—</div>
+            <div class="stat-foot" data-foot>&nbsp;</div>
+          </div>
+          <div class="stat" data-stat="categories">
+            <div class="stat-head"><div class="stat-ico blue"><i class="fas fa-layer-group"></i></div></div>
+            <div class="stat-label">Award Categories</div>
+            <div class="stat-value loading" data-value>—</div>
+            <div class="stat-foot" data-foot>&nbsp;</div>
+          </div>
+          <div class="stat" data-stat="nominees">
+            <div class="stat-head"><div class="stat-ico purple"><i class="fas fa-user-group"></i></div></div>
+            <div class="stat-label">Total Nominees</div>
+            <div class="stat-value loading" data-value>—</div>
+            <div class="stat-foot" data-foot>&nbsp;</div>
+          </div>
+          <div class="stat" data-stat="votes">
+            <div class="stat-head"><div class="stat-ico teal"><i class="fas fa-ballot-check"></i></div></div>
+            <div class="stat-label">Votes Cast</div>
+            <div class="stat-value loading" data-value>—</div>
+            <div class="stat-foot" data-foot>&nbsp;</div>
+          </div>
+          <div class="stat" data-stat="winners">
+            <div class="stat-head"><div class="stat-ico"><i class="fas fa-crown"></i></div></div>
+            <div class="stat-label">Winners Declared</div>
+            <div class="stat-value loading" data-value>—</div>
+            <div class="stat-foot" data-foot>&nbsp;</div>
+          </div>
+        </section>
+
+        <!-- ACTIVE AWARD HERO -->
+        <section class="hero-award" id="activeAwardHero">
+          <div id="heLeft">
+            <div class="empty-block"><i class="fas fa-hourglass-half"></i><p>Loading active award programme…</p></div>
+          </div>
+          <div class="he-controls" id="heControls">
+            <h4>Programme Controls</h4>
+            <button class="btn btn-ghost btn-sm" disabled><i class="fas fa-pause"></i> Pause voting</button>
+            <button class="btn btn-ghost btn-sm" disabled><i class="fas fa-stop"></i> Close programme</button>
+            <button class="btn btn-ghost btn-sm" disabled><i class="fas fa-gear"></i> Manage details</button>
+          </div>
+        </section>
+
+        <!-- AWARD PROGRAMMES TABLE -->
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Award Programmes</div>
+              <div class="panel-sub">All created programmes. Click a row to expand details.</div>
+            </div>
+            <div class="panel-actions">
+              <input type="text" class="form-control" id="programmeSearch" placeholder="Search programmes…" style="width:200px;padding:.45rem .7rem;font-size:12px">
+              <select class="form-control" id="programmeFilter" style="width:auto;padding:.45rem .7rem;font-size:12px">
+                <option value="">All statuses</option>
+                <option value="active">Active</option>
+                <option value="upcoming">Upcoming</option>
+                <option value="completed">Completed</option>
+                <option value="draft">Draft</option>
+              </select>
+            </div>
+          </div>
+          <div id="programmesTable"><div class="empty-block"><i class="fas fa-hourglass-half"></i><p>Loading programmes…</p></div></div>
+        </section>
+
+        <!-- CATEGORIES -->
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Award Categories</div>
+              <div class="panel-sub">Categories and eligibility for the selected programme.</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="addCategoryBtn"><i class="fas fa-plus"></i> Add Category</button>
+          </div>
+          <div id="categoriesList"><div class="empty-block"><i class="fas fa-hourglass-half"></i><p>Loading categories…</p></div></div>
+        </section>
+
+        <!-- NOMINEES -->
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Nominees</div>
+              <div class="panel-sub">Nominations, approvals and profiles.</div>
+            </div>
+            <div class="panel-actions">
+              <input type="text" class="form-control" id="nomineeSearch" placeholder="Search nominees…" style="width:200px;padding:.45rem .7rem;font-size:12px">
+              <button class="btn btn-ghost btn-sm" id="addNomineeBtn"><i class="fas fa-plus"></i> Add Nominee</button>
+            </div>
+          </div>
+          <div id="nomineesList"><div class="empty-block"><i class="fas fa-hourglass-half"></i><p>Loading nominees…</p></div></div>
+        </section>
+
+        <!-- VOTING ANALYTICS -->
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Award Voting Analytics</div>
+              <div class="panel-sub">Turnout, participation and category standings.</div>
+            </div>
+            <div class="panel-actions">
+              <div class="seg" id="rangeSeg" style="display:inline-flex;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:2px;gap:2px">
+                <button data-range="7" class="on" style="padding:.35rem .65rem;border-radius:6px;font-size:11.5px;font-weight:600;color:var(--muted)">7d</button>
+                <button data-range="30" style="padding:.35rem .65rem;border-radius:6px;font-size:11.5px;font-weight:600;color:var(--muted)">30d</button>
+                <button data-range="90" style="padding:.35rem .65rem;border-radius:6px;font-size:11.5px;font-weight:600;color:var(--muted)">90d</button>
+              </div>
+              <button class="btn btn-ghost btn-sm" id="analyticsRefresh"><i class="fas fa-rotate"></i></button>
+            </div>
+          </div>
+          <div class="analytics-grid" id="analyticsMetrics">
+            <div class="analytics-metric gold"><div class="am-label">Total Votes</div><div class="am-value" data-am="votes">—</div><div class="am-foot" data-amf="votes">Loading…</div></div>
+            <div class="analytics-metric teal"><div class="am-label">Eligible Voters</div><div class="am-value" data-am="voters">—</div><div class="am-foot" data-amf="voters">Loading…</div></div>
+            <div class="analytics-metric gold"><div class="am-label">Voter Turnout</div><div class="am-value" data-am="turnout">—</div><div class="am-foot" data-amf="turnout">Loading…</div></div>
+          </div>
+          <div class="analytics-chart" id="analyticsChart">
+            <div class="empty-block"><i class="fas fa-chart-line"></i><p>Voting activity will display here when data is available.</p></div>
+          </div>
+          <div style="margin-top:1.5rem">
+            <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.6rem">Category Performance</div>
+            <div class="category-bars" id="categoryBars">
+              <div class="empty-block"><i class="fas fa-chart-simple"></i><p>Per-category voting data will appear here.</p></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- RESULTS CONTROL -->
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Results &amp; Winners</div>
+              <div class="panel-sub">Review standings, verify totals and declare winners.</div>
+            </div>
+            <div class="panel-actions">
+              <button class="btn btn-ghost btn-sm" id="verifyAllBtn"><i class="fas fa-shield-halved"></i> Verify All</button>
+              <button class="btn btn-primary btn-sm" id="declareWinnersBtn"><i class="fas fa-crown"></i> Declare Winners</button>
+              <button class="btn btn-ghost btn-sm" id="resultsAuditBtn"><i class="fas fa-clipboard-list"></i> Adjustment History</button>
+            </div>
+          </div>
+          <div class="adj-warning" style="margin-bottom:1.15rem">
+            <i class="fas fa-circle-info"></i>
+            <div>
+              <b>Results Control Policy</b>
+              Every adjustment to nominee vote totals requires a written justification, supporting evidence, and approval by a second authorised administrator. Original totals, corrections, reasons and approvals are preserved in an immutable audit trail.
+            </div>
+          </div>
+          <div id="resultsList"><div class="empty-block"><i class="fas fa-hourglass-half"></i><p>Loading results…</p></div></div>
+        </section>
+
+        <!-- ACTIVITY & SECURITY -->
+        <section class="grid-2">
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">Recent Award Activity</div>
+                <div class="panel-sub">Latest administrative actions.</div>
+              </div>
+            </div>
+            <div class="log" id="activityLog">
+              <div class="empty-block"><i class="fas fa-hourglass-half"></i><p>Loading activity…</p></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">Award Security</div>
+                <div class="panel-sub">Alerts and unusual patterns.</div>
+              </div>
+            </div>
+            <div class="log" id="securityLog">
+              <div class="empty-block"><i class="fas fa-hourglass-half"></i><p>Loading security events…</p></div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ============ MODALS ============ -->
+<div class="modal-back" id="modalBack">
+  <div class="modal" id="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="modalTitle">Title</div>
+        <div class="modal-sub" id="modalSub"></div>
+      </div>
+      <button class="modal-close" id="modalClose"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot" id="modalFoot"></div>
+  </div>
+</div>
+
+<!-- ============ DRAWER ============ -->
+<div class="drawer-back" id="drawerBack"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div>
+      <div class="modal-title" id="drawerTitle">Drawer</div>
+      <div class="modal-sub" id="drawerSub"></div>
+    </div>
+    <button class="modal-close" id="drawerClose"><i class="fas fa-xmark"></i></button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+  <div class="drawer-foot">
+    <button class="btn btn-ghost" id="drawerCancel">Close</button>
+    <button class="btn btn-primary" id="drawerSave"><i class="fas fa-check"></i> Save</button>
+  </div>
+</aside>
+
+<div class="toast" id="toast"><b id="toastTitle">Done</b><span id="toastMsg"></span></div>
+
+<script>
+/* ============================================================
+   NUESA DEV — Award Management
+   Single page. No tabs. Modals + drawers + expandable rows.
+   No mock data. No fallback data. Live API only.
+   ============================================================ */
+(function(){
+'use strict';
+
+var API = 'https://nuesa-biu-pjp0.onrender.com';
+var TIMEOUT = 12000;
+
+function api(path, opts){
+  opts = opts || {};
+  var ctrl = new AbortController();
+  var t = setTimeout(function(){ ctrl.abort(); }, opts.timeout || TIMEOUT);
+  var fetchOpts = {
+    method: opts.method || 'GET',
+    headers: Object.assign({ 'Accept': 'application/json' }, opts.headers || {}),
+    signal: ctrl.signal
+  };
+  if(opts.body){
+    fetchOpts.headers['Content-Type'] = 'application/json';
+    fetchOpts.body = JSON.stringify(opts.body);
+  }
+  return fetch(API + path, fetchOpts).then(function(r){
+    clearTimeout(t);
+    if(!r.ok){
+      return r.text().then(function(txt){
+        throw new Error('HTTP ' + r.status + (txt ? ' — ' + txt.slice(0,200) : ''));
+      });
+    }
+    return r.json();
+  }).catch(function(e){ clearTimeout(t); throw e; });
+}
+
+function $(s, root){ return (root||document).querySelector(s); }
+function $$(s, root){ return Array.prototype.slice.call((root||document).querySelectorAll(s)); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]}); }
+function num(n){ if(n == null || isNaN(n)) return '—'; return Number(n).toLocaleString('en-GB'); }
+function pct(n){ if(n == null || isNaN(n)) return '—'; return Number(n).toFixed(1) + '%'; }
+function relTime(d){ if(!d) return ''; var t = new Date(d).getTime(); if(isNaN(t)) return '';
+  var s = Math.floor((Date.now()-t)/1000);
+  if(s < 60) return 'just now';
+  if(s < 3600) return Math.floor(s/60) + 'm ago';
+  if(s < 86400) return Math.floor(s/3600) + 'h ago';
+  if(s < 604800) return Math.floor(s/86400) + 'd ago';
+  return new Date(t).toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+}
+function fmtDate(d){ if(!d) return '—'; var t = new Date(d); if(isNaN(t)) return '—'; return t.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
+function fmtDateShort(d){ if(!d) return '—'; var t = new Date(d); if(isNaN(t)) return '—'; return t.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}); }
+
+/* ============================================================
+   STATE
+   ============================================================ */
+var state = {
+  programmes: [],
+  activeProgramme: null,
+  categories: [],
+  nominees: [],
+  results: [],
+  activity: [],
+  security: [],
+  analytics: null,
+  range: 7,
+  selectedProgrammeId: null
+};
+
+/* ============================================================
+   SHELL
+   ============================================================ */
+var app = $('#app'), sidebar = $('#sidebar');
+var isMobile = function(){ return window.matchMedia('(max-width:768px)').matches; };
+$('#toggleBtn').addEventListener('click', function(){
+  if(isMobile()) sidebar.classList.toggle('open');
+  else app.classList.toggle('rail');
+});
+document.addEventListener('click', function(e){
+  if(isMobile() && sidebar.classList.contains('open') && !sidebar.contains(e.target) && !$('#toggleBtn').contains(e.target)){
+    sidebar.classList.remove('open');
+  }
+});
+$('#searchBtn').addEventListener('click', function(){
+  toast('Search', 'Global search will be wired when the /api/search endpoint is available.');
+});
+document.addEventListener('keydown', function(e){
+  if((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k'){ e.preventDefault(); $('#searchBtn').click(); }
+});
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+var toastTimer;
+function toast(title, msg, isError){
+  var t = $('#toast');
+  $('#toastTitle').textContent = title;
+  $('#toastMsg').textContent = msg || '';
+  t.classList.toggle('error', !!isError);
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 4000);
+}
+
+/* ============================================================
+   MODAL / DRAWER
+   ============================================================ */
+var modalBack = $('#modalBack'), modalEl = $('#modal');
+function openModal(opts){
+  $('#modalTitle').textContent = opts.title || '';
+  $('#modalSub').textContent = opts.sub || '';
+  $('#modalBody').innerHTML = opts.body || '';
+  $('#modalFoot').innerHTML = opts.foot || '<button class="btn btn-ghost" data-close>Cancel</button>';
+  modalEl.classList.toggle('wide', !!opts.wide);
+  modalBack.classList.add('open');
+  if(opts.onMount) opts.onMount($('#modalBody'));
+  modalEl.querySelectorAll('[data-close]').forEach(function(b){
+    b.addEventListener('click', closeModal);
+  });
+  if(opts.onFoot) opts.onFoot($('#modalFoot'));
+}
+function closeModal(){ modalBack.classList.remove('open'); }
+$('#modalClose').addEventListener('click', closeModal);
+modalBack.addEventListener('click', function(e){ if(e.target === modalBack) closeModal(); });
+
+function confirmDialog(opts){
+  return new Promise(function(resolve){
+    var foot = '<button class="btn btn-ghost" data-close>Cancel</button>'
+             + '<button class="btn ' + (opts.danger?'btn-danger':'btn-primary') + '" id="confirmYes">' + (opts.confirmLabel||'Confirm') + '</button>';
+    openModal({
+      title: opts.title || 'Confirm',
+      sub: opts.sub || '',
+      body: '<div class="confirm-body"><div class="ci '+(opts.danger?'danger':opts.gold?'gold':'')+'"><i class="fas '+(opts.icon||'fa-circle-exclamation')+'"></i></div>'
+          + '<div class="ct">'+(opts.heading||opts.title||'Are you sure?')+'</div>'
+          + '<div class="cd">'+(opts.message||'This action cannot be undone.')+'</div></div>',
+      foot: foot,
+      onMount: function(){
+        var yes = $('#confirmYes');
+        if(yes) yes.addEventListener('click', function(){ closeModal(); resolve(true); });
+      }
+    });
+    modalBack.addEventListener('click', function once(e){
+      if(e.target === modalBack || (e.target.closest && e.target.closest('[data-close]'))){
+        modalBack.removeEventListener('click', once); resolve(false);
+      }
+    }, {once:false});
+  });
+}
+
+var drawerBack = $('#drawerBack'), drawer = $('#drawer');
+function openDrawer(opts){
+  $('#drawerTitle').textContent = opts.title || '';
+  $('#drawerSub').textContent = opts.sub || '';
+  $('#drawerBody').innerHTML = opts.body || '';
+  drawerBack.classList.add('open');
+  drawer.classList.add('open');
+  if(opts.onMount) opts.onMount($('#drawerBody'));
+}
+function closeDrawer(){ drawerBack.classList.remove('open'); drawer.classList.remove('open'); }
+$('#drawerClose').addEventListener('click', closeDrawer);
+$('#drawerCancel').addEventListener('click', closeDrawer);
+drawerBack.addEventListener('click', closeDrawer);
+
+/* ============================================================
+   STATS
+   ============================================================ */
+function setStat(key, value, foot){
+  var card = $('.stat[data-stat="'+key+'"]');
+  if(!card) return;
+  var v = card.querySelector('[data-value]'), f = card.querySelector('[data-foot]');
+  v.classList.remove('loading');
+  v.textContent = (value == null) ? '—' : (typeof value === 'string' ? value : num(value));
+  f.innerHTML = foot || '&nbsp;';
+}
+
+function loadStats(){
+  return api('/api/awards/overview').then(function(res){
+    var d = (res && res.data) ? res.data : res;
+    setStat('programmes', d.programmes_total);
+    setStat('active', d.programmes_active);
+    setStat('categories', d.categories_total);
+    setStat('nominees', d.nominees_total);
+    setStat('votes', d.votes_cast);
+    setStat('winners', d.winners_declared);
+  }).catch(function(){
+    return loadProgrammesList().then(function(items){
+      setStat('programmes', items.length);
+      setStat('active', items.filter(function(p){ return /active|live/i.test(p.status||''); }).length);
+      setStat('categories', null, 'Unavailable');
+      setStat('nominees', null, 'Unavailable');
+      setStat('votes', null, 'Unavailable');
+      setStat('winners', null, 'Unavailable');
+    }).catch(function(){
+      ['programmes','active','categories','nominees','votes','winners'].forEach(function(k){
+        var card = $('.stat[data-stat="'+k+'"]');
+        if(card){
+          var v = card.querySelector('[data-value]');
+          v.classList.remove('loading'); v.textContent = '—';
+          card.querySelector('[data-foot]').textContent = 'Unavailable';
+        }
+      });
+    });
+  });
+}
+
+/* ============================================================
+   PROGRAMMES
+   ============================================================ */
+function loadProgrammesList(){
+  if(state.programmes.length) return Promise.resolve(state.programmes);
+  return api('/api/awards/programmes').then(function(res){
+    var d = (res && res.data) ? res.data : res;
+    var items = Array.isArray(d) ? d : (d.programmes || d.items || []);
+    state.programmes = items;
+    return items;
+  });
+}
+
+function loadProgrammes(){
+  return loadProgrammesList().then(function(items){
+    renderProgrammes(items);
+    var active = items.filter(function(p){ return /active|live/i.test(p.status||''); })[0]
+              || items.find(function(p){ return /upcoming|scheduled/i.test(p.status||''); })
+              || null;
+    state.activeProgramme = active;
+    if(active && !state.selectedProgrammeId) state.selectedProgrammeId = active.id;
+    renderActiveHero(active);
+    if(!state.selectedProgrammeId && items.length) state.selectedProgrammeId = items[0].id;
+    loadCategories(state.selectedProgrammeId);
+    loadNominees(state.selectedProgrammeId);
+    loadResults(state.selectedProgrammeId);
+    loadAnalytics(state.selectedProgrammeId);
+    return items;
+  }).catch(function(){
+    $('#programmesTable').innerHTML = '<div class="empty-block"><i class="fas fa-plug-circle-xmark"></i><p>Programme records unavailable</p></div>';
+    renderActiveHero(null, true);
+  });
+}
+
+function renderProgrammes(items){
+  var host = $('#programmesTable');
+  if(!items || !items.length){
+    host.innerHTML = '<div class="empty-block"><i class="fas fa-trophy"></i><p>No award programmes created yet</p><p style="font-size:11px;margin-top:.35rem">Click <b>Create Award Programme</b> above to begin.</p></div>';
+    return;
+  }
+  var rows = items.map(function(p){
+    var id = p.id || p.programme_id || '';
+    var status = (p.status||'').toLowerCase();
+    var tagCls = /active|live/.test(status) ? 'live'
+               : /upcoming|scheduled/.test(status) ? 'pending'
+               : /completed|closed/.test(status) ? 'closed' : 'draft';
+    return '<tr data-programme-id="'+esc(id)+'">'
+      + '<td><div class="row-name">'+esc(p.title||p.name||'Untitled')+'</div>'
+      +     '<div class="row-sub">'+esc(p.academic_session||p.session||'')+'</div></td>'
+      + '<td>'+esc(p.year||'—')+'</td>'
+      + '<td>'+num(p.categories_count ?? (p.categories && p.categories.length) ?? null)+'</td>'
+      + '<td>'+num(p.nominees_count ?? (p.nominees && p.nominees.length) ?? null)+'</td>'
+      + '<td><span class="tag '+tagCls+'"><i class="fas fa-circle"></i>'+esc(p.status||'draft')+'</span></td>'
+      + '<td class="row-actions">'
+      +   '<button class="icon-btn gold" data-action="select" data-id="'+esc(id)+'" title="Select"><i class="fas fa-crosshairs"></i></button>'
+      +   '<button class="icon-btn" data-action="edit" data-id="'+esc(id)+'" title="Edit"><i class="fas fa-pen"></i></button>'
+      +   '<button class="icon-btn" data-action="duplicate" data-id="'+esc(id)+'" title="Duplicate"><i class="fas fa-copy"></i></button>'
+      +   '<button class="icon-btn danger" data-action="archive" data-id="'+esc(id)+'" title="Archive"><i class="fas fa-box-archive"></i></button>'
+      +   '<button class="expand-btn" data-action="expand" data-id="'+esc(id)+'"><i class="fas fa-chevron-right"></i></button>'
+      + '</td></tr>';
+  }).join('');
+  host.innerHTML =
+    '<div class="table-wrap"><table>'
+    + '<thead><tr><th>Programme</th><th>Year</th><th>Categories</th><th>Nominees</th><th>Status</th><th></th></tr></thead>'
+    + '<tbody>'+rows+'</tbody></table></div>';
+  wireProgrammeRows(items);
+}
+
+function wireProgrammeRows(items){
+  $$('#programmesTable tbody tr').forEach(function(tr){
+    var id = tr.getAttribute('data-programme-id');
+    var p = items.find(function(x){ return String(x.id||x.programme_id) === id; });
+    $$('[data-action]', tr).forEach(function(btn){
+      btn.addEventListener('click', function(e){
+        e.stopPropagation();
+        var act = btn.getAttribute('data-action');
+        if(act === 'select'){
+          state.selectedProgrammeId = id;
+          state.activeProgramme = p;
+          renderActiveHero(p);
+          loadCategories(id); loadNominees(id); loadResults(id); loadAnalytics(id);
+          toast('Programme selected', p.title||p.name||id);
+        } else if(act === 'edit'){
+          openProgrammeForm(p);
+        } else if(act === 'duplicate'){
+          confirmDialog({
+            title:'Duplicate Programme', heading:'Duplicate this programme?',
+            message:'A new draft will be created with the same categories and configuration.',
+            confirmLabel:'Duplicate', icon:'fa-copy'
+          }).then(function(ok){
+            if(!ok) return;
+            api('/api/awards/programmes/'+encodeURIComponent(id)+'/duplicate', {method:'POST'})
+              .then(function(){ toast('Duplicated','New draft created.'); state.programmes = []; loadProgrammes(); })
+              .catch(function(err){ toast('Duplicate failed', err.message, true); });
+          });
+        } else if(act === 'archive'){
+          confirmDialog({
+            title:'Archive Programme', heading:'Archive this programme?',
+            message:'It will be hidden from active records but preserved for audit history.',
+            confirmLabel:'Archive', danger:true, icon:'fa-box-archive'
+          }).then(function(ok){
+            if(!ok) return;
+            api('/api/awards/programmes/'+encodeURIComponent(id)+'/archive', {method:'POST'})
+              .then(function(){ toast('Archived','Programme archived.'); state.programmes = []; loadProgrammes(); })
+              .catch(function(err){ toast('Archive failed', err.message, true); });
+          });
+        } else if(act === 'expand'){
+          toggleExpand(tr, p);
+        }
+      });
+    });
+  });
+}
+
+function toggleExpand(tr, p){
+  var next = tr.nextElementSibling;
+  var btn = tr.querySelector('[data-action="expand"]');
+  if(next && next.classList.contains('expand-row')){
+    next.remove(); btn.classList.remove('open'); return;
+  }
+  btn.classList.add('open');
+  var row = document.createElement('tr');
+  row.className = 'expand-row';
+  row.innerHTML = '<td colspan="6"><div class="expand-inner"><dl class="kv">'
+    + '<dt>Programme ID</dt><dd>'+esc(String(p.id||p.programme_id||'—'))+'</dd>'
+    + '<dt>Description</dt><dd>'+esc(p.description||'—')+'</dd>'
+    + '<dt>Nominations open</dt><dd>'+esc(fmtDate(p.nominations_opens_at||p.nominations_start))+'</dd>'
+    + '<dt>Nominations close</dt><dd>'+esc(fmtDate(p.nominations_closes_at||p.nominations_end))+'</dd>'
+    + '<dt>Voting opens</dt><dd>'+esc(fmtDate(p.voting_opens_at||p.voting_start))+'</dd>'
+    + '<dt>Voting closes</dt><dd>'+esc(fmtDate(p.voting_closes_at||p.voting_end))+'</dd>'
+    + '<dt>Created</dt><dd>'+esc(fmtDate(p.created_at))+'</dd>'
+    + '</dl></div></td>';
+  tr.parentNode.insertBefore(row, tr.nextSibling);
+}
+
+/* ============================================================
+   ACTIVE HERO
+   ============================================================ */
+function renderActiveHero(p, failed){
+  var left = $('#heLeft'), controls = $('#heControls');
+  if(failed){
+    left.innerHTML = '<div class="empty-block"><i class="fas fa-plug-circle-xmark"></i><p>Active programme data unavailable</p></div>';
+    return;
+  }
+  if(!p){
+    left.innerHTML = '<div class="empty-block"><i class="fas fa-trophy"></i><p>No active award programme right now</p></div>';
+    controls.innerHTML = '<h4>Programme Controls</h4><button class="btn btn-ghost btn-sm" disabled><i class="fas fa-pause"></i> Pause voting</button>'
+                       + '<button class="btn btn-ghost btn-sm" disabled><i class="fas fa-stop"></i> Close programme</button>';
+    return;
+  }
+  var status = (p.status||'').toLowerCase();
+  var isLive = /active|live/.test(status);
+  var cats = p.categories_count ?? (p.categories && p.categories.length) ?? null;
+  var noms = p.nominees_count ?? (p.nominees && p.nominees.length) ?? null;
+  var totalVoters = p.eligible_voters ?? null;
+  var votesCast = p.votes_cast ?? null;
+  var pctNum = (totalVoters && votesCast != null) ? Math.round((votesCast/totalVoters)*1000)/10 : null;
+  var opensAt = p.voting_opens_at || p.voting_start;
+  var closesAt = p.voting_closes_at || p.voting_end;
+  left.innerHTML =
+    '<span class="he-label"><span class="dot"></span>'+(isLive?'Voting Open':'Upcoming Programme')+'</span>'
+    + '<div class="he-title">'+esc(p.title||p.name||'Untitled programme')+'</div>'
+    + '<div class="he-sub">'+esc(p.description || 'Nominees, categories and voting progress.')+'</div>'
+    + '<div class="he-progress">'
+    +   '<div class="he-progress-head"><span>Voting participation</span><span class="pct">'+(pctNum!=null?pctNum+'%':'—')+'</span></div>'
+    +   '<div class="bar"><span style="width:'+(pctNum!=null?pctNum:0)+'%"></span></div>'
+    + '</div>'
+    + '<div class="he-meta">'
+    +   '<div><i class="fas fa-layer-group"></i>'+num(cats)+' categories</div>'
+    +   '<div><i class="fas fa-user-group"></i>'+num(noms)+' nominees</div>'
+    +   (opensAt ? '<div><i class="far fa-calendar"></i>Opens '+esc(fmtDateShort(opensAt))+'</div>' : '')
+    +   (closesAt ? '<div><i class="far fa-calendar"></i>Closes '+esc(fmtDateShort(closesAt))+'</div>' : '')
+    + '</div>';
+  controls.innerHTML = '<h4>Programme Controls</h4>'
+    + (isLive
+        ? '<button class="btn btn-ghost btn-sm" id="pauseVoteBtn"><i class="fas fa-pause"></i> Pause voting</button>'
+        + '<button class="btn btn-danger btn-sm" id="closeVoteBtn"><i class="fas fa-stop"></i> Close programme</button>'
+        : '<button class="btn btn-primary btn-sm" id="startVoteBtn"><i class="fas fa-play"></i> Open voting</button>')
+    + '<button class="btn btn-ghost btn-sm" id="manageProgrammeBtn"><i class="fas fa-gear"></i> Manage details</button>';
+  if($('#pauseVoteBtn')) $('#pauseVoteBtn').addEventListener('click', function(){ pauseVoting(p); });
+  if($('#closeVoteBtn')) $('#closeVoteBtn').addEventListener('click', function(){ closeProgramme(p); });
+  if($('#startVoteBtn')) $('#startVoteBtn').addEventListener('click', function(){ startVoting(p); });
+  if($('#manageProgrammeBtn')) $('#manageProgrammeBtn').addEventListener('click', function(){ openProgrammeForm(p); });
+}
+
+function pauseVoting(p){
+  confirmDialog({
+    title:'Pause Voting', heading:'Pause voting on this programme?',
+    message:'Voters will not be able to cast ballots until you resume. This action is logged.',
+    confirmLabel:'Pause', icon:'fa-pause'
+  }).then(function(ok){
+    if(!ok) return;
+    api('/api/awards/programmes/'+encodeURIComponent(p.id||p.programme_id)+'/pause', {method:'POST'})
+      .then(function(){ toast('Voting paused','The programme has been paused.'); state.programmes = []; loadProgrammes(); })
+      .catch(function(err){ toast('Pause failed', err.message, true); });
+  });
+}
+function startVoting(p){
+  confirmDialog({
+    title:'Open Voting', heading:'Open voting for this programme?',
+    message:'Voters will be able to cast ballots immediately. This action is logged.',
+    confirmLabel:'Open voting', icon:'fa-play'
+  }).then(function(ok){
+    if(!ok) return;
+    api('/api/awards/programmes/'+encodeURIComponent(p.id||p.programme_id)+'/start', {method:'POST'})
+      .then(function(){ toast('Voting opened','The programme is now live.'); state.programmes = []; loadProgrammes(); })
+      .catch(function(err){ toast('Start failed', err.message, true); });
+  });
+}
+function closeProgramme(p){
+  confirmDialog({
+    title:'Close Programme', heading:'Close this programme permanently?',
+    message:'Voting will end and results will be locked for verification. This action is logged.',
+    confirmLabel:'Close programme', danger:true, icon:'fa-stop'
+  }).then(function(ok){
+    if(!ok) return;
+    api('/api/awards/programmes/'+encodeURIComponent(p.id||p.programme_id)+'/close', {method:'POST'})
+      .then(function(){ toast('Programme closed','Results are now locked.'); state.programmes = []; loadProgrammes(); })
+      .catch(function(err){ toast('Close failed', err.message, true); });
+  });
+}
+
+/* ============================================================
+   CATEGORIES
+   ============================================================ */
+function loadCategories(pid){
+  var host = $('#categoriesList');
+  if(!pid){ host.innerHTML = '<div class="empty-block"><i class="fas fa-circle-info"></i><p>Select a programme to view categories</p></div>'; return; }
+  host.innerHTML = '<div class="empty-block"><i class="fas fa-hourglass-half"></i><p>Loading…</p></div>';
+  api('/api/awards/programmes/'+encodeURIComponent(pid)+'/categories').then(function(res){
+    var d = (res && res.data) ? res.data : res;
+    var items = Array.isArray(d) ? d : (d.categories || d.items || []);
+    state.categories = items;
+    renderCategories(items);
+  }).catch(function(){
+    state.categories = [];
+    host.innerHTML = '<div class="empty-block"><i class="fas fa-plug-circle-xmark"></i><p>Categories unavailable</p></div>';
+  });
+}
+function renderCategories(items){
+  var host = $('#categoriesList');
+  if(!items.length){
+    host.innerHTML = '<div class="empty-block"><i class="fas fa-layer-group"></i><p>No categories created yet</p></div>';
+    return;
+  }
+  host.innerHTML = '<div class="table-wrap"><table style="min-width:auto">'
+    + '<thead><tr><th>Category</th><th>Nominees</th><th>Max</th><th></th></tr></thead><tbody>'
+    + items.map(function(c){
+      var id = c.id || c.category_id || '';
+      return '<tr>'
+        + '<td><div class="row-name">'+esc(c.title||c.name||'—')+'</div>'
+        +     (c.description?'<div class="row-sub">'+esc(c.description)+'</div>':'')+'</td>'
+        + '<td>'+num(c.nominees_count ?? (c.nominees && c.nominees.length) ?? null)+'</td>'
+        + '<td>'+num(c.max_nominees||'—')+'</td>'
+        + '<td class="row-actions">'
+        +   '<button class="icon-btn" data-cat-edit="'+esc(id)+'" title="Edit"><i class="fas fa-pen"></i></button>'
+        +   '<button class="icon-btn danger" data-cat-del="'+esc(id)+'" title="Delete"><i class="fas fa-trash"></i></button>'
+        + '</td></tr>';
+    }).join('')
+    + '</tbody></table></div>';
+  $$('[data-cat-edit]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var c = items.find(function(x){ return String(x.id||x.category_id) === b.getAttribute('data-cat-edit'); });
+      openCategoryForm(c);
+    });
+  });
+  $$('[data-cat-del]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var id = b.getAttribute('data-cat-del');
+      confirmDialog({
+        title:'Delete Category', heading:'Delete this category?',
+        message:'Nominees assigned to this category will need reassignment.',
+        confirmLabel:'Delete', danger:true, icon:'fa-trash'
+      }).then(function(ok){
+        if(!ok) return;
+        api('/api/awards/categories/'+encodeURIComponent(id), {method:'DELETE'})
+          .then(function(){ toast('Deleted','Category removed.'); loadCategories(state.selectedProgrammeId); })
+          .catch(function(err){ toast('Delete failed', err.message, true); });
+      });
+    });
+  });
+}
+
+/* ============================================================
+   NOMINEES
+   ============================================================ */
+function loadNominees(pid){
+  var host = $('#nomineesList');
+  if(!pid){ host.innerHTML = '<div class="empty-block"><i class="fas fa-circle-info"></i><p>Select a programme to view nominees</p></div>'; return; }
+  host.innerHTML = '<div class="empty-block"><i class="fas fa-hourglass-half"></i><p>Loading…</p></div>';
+  api('/api/awards/programmes/'+encodeURIComponent(pid)+'/nominees').then(function(res){
+    var d = (res && res.data) ? res.data : res;
+    var items = Array.isArray(d) ? d : (d.nominees || d.items || []);
+    state.nominees = items;
+    renderNominees(items);
+  }).catch(function(){
+    state.nominees = [];
+    host.innerHTML = '<div class="empty-block"><i class="fas fa-plug-circle-xmark"></i><p>Nominees unavailable</p></div>';
+  });
+}
+function renderNominees(items){
+  var host = $('#nomineesList');
+  if(!items.length){
+    host.innerHTML = '<div class="empty-block"><i class="fas fa-user-group"></i><p>No nominees registered yet</p></div>';
+    return;
+  }
+  host.innerHTML = '<div class="table-wrap"><table>'
+    + '<thead><tr><th>Nominee</th><th>Category</th><th>Dept / Level</th><th>Status</th><th></th></tr></thead><tbody>'
+    + items.map(function(n){
+      var id = n.id || n.nominee_id || '';
+      var st = (n.status||'pending').toLowerCase();
+      var tagCls = /approved/.test(st)?'approved':/rejected/.test(st)?'rejected':'pending';
+      return '<tr>'
+        + '<td><div class="row-name">'+esc(n.full_name || n.name || '—')+'</div>'
+        +     '<div class="row-sub">'+esc(n.matric_no || n.matric || '')+'</div></td>'
+        + '<td>'+esc(n.category_title || n.category || '—')+'</td>'
+        + '<td>'+esc(n.department || '—')+'<div class="row-sub">'+esc(n.level||'')+'</div></td>'
+        + '<td><span class="tag '+tagCls+'"><i class="fas fa-circle"></i>'+esc(st)+'</span></td>'
+        + '<td class="row-actions">'
+        +   (st!=='approved'?'<button class="icon-btn teal" data-nom-approve="'+esc(id)+'" title="Approve"><i class="fas fa-check"></i></button>':'')
+        +   (st!=='rejected'?'<button class="icon-btn danger" data-nom-reject="'+esc(id)+'" title="Reject"><i class="fas fa-xmark"></i></button>':'')
+        +   '<button class="icon-btn" data-nom-edit="'+esc(id)+'" title="Edit"><i class="fas fa-pen"></i></button>'
+        + '</td></tr>';
+    }).join('')
+    + '</tbody></table></div>';
+  $$('[data-nom-approve]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var id = b.getAttribute('data-nom-approve');
+      confirmDialog({
+        title:'Approve Nominee', heading:'Approve this nominee?',
+        message:'They will appear on the voting ballot. Logged for audit.',
+        confirmLabel:'Approve', icon:'fa-user-check'
+      }).then(function(ok){
+        if(!ok) return;
+        api('/api/awards/nominees/'+encodeURIComponent(id)+'/approve', {method:'POST'})
+          .then(function(){ toast('Approved','Nominee is now on the ballot.'); loadNominees(state.selectedProgrammeId); })
+          .catch(function(err){ toast('Approval failed', err.message, true); });
+      });
+    });
+  });
+  $$('[data-nom-reject]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var id = b.getAttribute('data-nom-reject');
+      confirmDialog({
+        title:'Reject Nominee', heading:'Reject this nominee?',
+        message:'The nomination will be marked as rejected and can be reversed by editing.',
+        confirmLabel:'Reject', danger:true, icon:'fa-user-xmark'
+      }).then(function(ok){
+        if(!ok) return;
+        api('/api/awards/nominees/'+encodeURIComponent(id)+'/reject', {method:'POST'})
+          .then(function(){ toast('Rejected','Nominee rejected.'); loadNominees(state.selectedProgrammeId); })
+          .catch(function(err){ toast('Rejection failed', err.message, true); });
+      });
+    });
+  });
+  $$('[data-nom-edit]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var n = items.find(function(x){ return String(x.id||x.nominee_id) === b.getAttribute('data-nom-edit'); });
+      openNomineeForm(n);
+    });
+  });
+}
+
+/* ============================================================
+   ANALYTICS
+   ============================================================ */
+function loadAnalytics(pid){
+  if(!pid){
+    $('#analyticsChart').innerHTML = '<div class="empty-block"><i class="fas fa-chart-line"></i><p>Select a programme to view analytics.</p></div>';
+    return;
+  }
+  api('/api/awards/programmes/'+encodeURIComponent(pid)+'/analytics?range='+state.range).then(function(res){
+    var d = (res && res.data) ? res.data : res;
+    state.analytics = d;
+    $('[data-am="votes"]').textContent = num(d.votes_cast);
+    $('[data-am="voters"]').textContent = num(d.eligible_voters);
+    $('[data-am="turnout"]').textContent = d.turnout != null ? pct(d.turnout) : '—';
+    $('[data-amf="votes"]').textContent = (d.votes_cast!=null ? 'Live count' : 'Not available');
+    $('[data-amf="voters"]').textContent = (d.eligible_voters!=null ? 'Eligible voters' : 'Not available');
+    $('[data-amf="turnout"]').textContent = (d.turnout!=null ? 'of eligible voters' : 'Not available');
+    renderAnalyticsChart(d.series || null);
+    renderCategoryBars(d.categories || null);
+  }).catch(function(){
+    state.analytics = null;
+    $('[data-am="votes"]').textContent = '—';
+    $('[data-am="voters"]').textContent = '—';
+    $('[data-am="turnout"]').textContent = '—';
+    $('[data-amf="votes"]').textContent = 'Unavailable';
+    $('[data-amf="voters"]').textContent = 'Unavailable';
+    $('[data-amf="turnout"]').textContent = 'Unavailable';
+    $('#analyticsChart').innerHTML = '<div class="empty-block"><i class="fas fa-chart-line"></i><p>Voting analytics unavailable</p></div>';
+    $('#categoryBars').innerHTML = '<div class="empty-block"><i class="fas fa-chart-simple"></i><p>Category data unavailable</p></div>';
+  });
+}
+function renderAnalyticsChart(series){
+  var host = $('#analyticsChart');
+  if(!series || !series.length){
+    host.innerHTML = '<div class="empty-block"><i class="fas fa-chart-line"></i><p>Voting activity will display here once votes are recorded.</p></div>';
+    return;
+  }
+  var W = 600, H = 200, P = {l:30, r:12, t:12, b:24};
+  var iw = W-P.l-P.r, ih = H-P.t-P.b;
+  var max = Math.max(1, Math.max.apply(null, series.map(function(s){ return s.votes || 0; })));
+  var pts = series.map(function(s,i){
+    var x = P.l + (iw * (series.length===1?0.5:i/(series.length-1)));
+    var y = P.t + ih - (ih * ((s.votes||0)/max));
+    return [x,y];
+  });
+  var line = 'M' + pts.map(function(p){ return p[0]+','+p[1]; }).join(' L');
+  var area = line + ' L' + pts[pts.length-1][0] + ',' + (P.t+ih) + ' L' + pts[0][0] + ',' + (P.t+ih) + ' Z';
+  host.innerHTML = '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" style="width:100%;height:100%">'
+    + '<defs><linearGradient id="aGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#D9B66F" stop-opacity=".35"/><stop offset="100%" stop-color="#D9B66F" stop-opacity="0"/></linearGradient></defs>'
+    + '<path d="'+area+'" fill="url(#aGrad)"/>'
+    + '<path d="'+line+'" fill="none" stroke="#D9B66F" stroke-width="2" stroke-linejoin="round"/>'
+    + pts.map(function(p){ return '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="3" fill="#D9B66F"/>'; }).join('')
+    + '</svg>';
+}
+function renderCategoryBars(items){
+  var host = $('#categoryBars');
+  if(!items || !items.length){
+    host.innerHTML = '<div class="empty-block"><i class="fas fa-chart-simple"></i><p>Per-category voting data will appear here.</p></div>';
+    return;
+  }
+  var max = Math.max(1, Math.max.apply(null, items.map(function(c){ return c.votes || 0; })));
+  host.innerHTML = items.map(function(c){
+    var w = Math.round(((c.votes||0)/max)*100);
+    return '<div class="cat-bar-row">'
+      + '<div class="cbr-info"><span class="cbr-name">'+esc(c.category_title||c.category||c.name||'—')+'</span>'
+      +   '<span class="cbr-votes">'+num(c.votes)+' votes</span></div>'
+      + '<div class="bar" style="grid-column:1/-1"><span style="width:'+w+'%"></span></div>'
+      + '</div>';
+  }).join('');
+}
+
+$$('#rangeSeg button').forEach(function(b){
+  b.addEventListener('click', function(){
+    $$('#rangeSeg button').forEach(function(x){
+      x.classList.remove('on');
+      x.style.background = 'transparent';
+      x.style.color = 'var(--muted)';
+    });
+    b.classList.add('on');
+    b.style.background = 'var(--card-elevated)';
+    b.style.color = 'var(--gold)';
+    state.range = parseInt(b.getAttribute('data-range'),10);
+    loadAnalytics(state.selectedProgrammeId);
+  });
+});
+// init first range button styling
+(function(){
+  var first = $('#rangeSeg button[data-range="7"]');
+  if(first){ first.style.background = 'var(--card-elevated)'; first.style.color = 'var(--gold)'; }
+})();
+
+/* ============================================================
+   RESULTS + ADJUSTMENTS
+   ============================================================ */
+function loadResults(pid){
+  if(!pid){
+    $('#resultsList').innerHTML = '<div class="empty-block"><i class="fas fa-circle-info"></i><p>Select a programme to view results.</p></div>';
+    return;
+  }
+  api('/api/awards/programmes/'+encodeURIComponent(pid)+'/results').then(function(res){
+    var d = (res && res.data) ? res.data : res;
+    var items = Array.isArray(d) ? d : (d.results || d.items || []);
+    state.results = items;
+    renderResults(items);
+  }).catch(function(){
+    state.results = [];
+    $('#resultsList').innerHTML = '<div class="empty-block"><i class="fas fa-plug-circle-xmark"></i><p>Results unavailable</p></div>';
+  });
+}
+function renderResults(items){
+  var host = $('#resultsList');
+  if(!items.length){
+    host.innerHTML = '<div class="empty-block"><i class="fas fa-clipboard-check"></i><p>No results recorded yet</p></div>';
+    return;
+  }
+  var byCat = {};
+  items.forEach(function(r){
+    var k = r.category_title || r.category || 'Uncategorised';
+    (byCat[k] = byCat[k] || []).push(r);
+  });
+  var html = '';
+  Object.keys(byCat).forEach(function(cat){
+    var group = byCat[cat].sort(function(a,b){ return (b.votes||0) - (a.votes||0); });
+    html += '<div class="pos-group"><div class="pos-group-head">'+esc(cat)+'</div><div class="results-list">';
+    group.forEach(function(r, i){
+      var votes = r.votes ?? r.total_votes ?? null;
+      var verif = (r.verification_status || r.status || 'provisional').toLowerCase();
+      var isVerified = /verified/.test(verif);
+      var isCorrected = /corrected/.test(verif);
+      var isWinner = r.is_winner || i === 0;
+      html += '<div class="result-row '+(isWinner?'winner':'')+'">'
+        + '<div class="result-rank">'+(i+1)+'</div>'
+        + '<div class="result-info">'
+        +   '<div class="rn">'+esc(r.nominee_name || r.full_name || r.name || '—')+'</div>'
+        +   '<div class="rp">'
+        +     (isWinner?'<span class="tag winner" style="margin-right:.35rem"><i class="fas fa-crown"></i>leading</span>':'')
+        +     '<span class="tag '+(isVerified?'verified':isCorrected?'corrected':'provisional')+'"><i class="fas fa-circle"></i>'+esc(verif)+'</span>'
+        +   '</div>'
+        + '</div>'
+        + '<div class="result-votes"><div class="rv">'+num(votes)+'</div><div class="rvs">votes</div></div>'
+        + '<button class="adjust-btn" data-adjust="'+esc(r.id||r.result_id||'')+'" data-nom="'+esc(r.nominee_name||r.full_name||r.name||'')+'"><i class="fas fa-sliders"></i> Adjust</button>'
+        + '</div>';
+    });
+    html += '</div></div>';
+  });
+  host.innerHTML = html;
+  $$('[data-adjust]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var rid = b.getAttribute('data-adjust');
+      var nomName = b.getAttribute('data-nom');
+      var result = items.find(function(x){ return String(x.id||x.result_id) === rid; });
+      openAdjustmentModal(result, nomName);
+    });
+  });
+}
+
+function openAdjustmentModal(result, nomName){
+  if(!result) return;
+  var originalVotes = result.votes ?? result.total_votes ?? 0;
+  var currentCategory = result.category_title || result.category || '';
+  var body =
+    '<div class="adj-warning"><i class="fas fa-circle-exclamation"></i><div><b>Auditable Correction Only</b>This adjustment will be permanently recorded. You must provide a written justification and supporting evidence. The original total will remain visible in the audit trail. This is not a way to secretly alter results.</div></div>'
+    + '<div class="form-row"><label>Nominee</label>'
+    +   '<input type="text" class="form-control" value="'+esc(nomName)+'" disabled></div>'
+    + '<div class="form-row"><label>Category</label>'
+    +   '<input type="text" class="form-control" value="'+esc(currentCategory)+'" disabled></div>'
+    + '<div class="form-grid">'
+    +   '<div class="form-row"><label>Current verified total</label>'
+    +     '<input type="text" class="form-control" value="'+esc(num(originalVotes))+'" disabled></div>'
+    +   '<div class="form-row"><label>Correction amount <span class="req">*</span></label>'
+    +     '<input type="number" class="form-control" id="adjDelta" placeholder="e.g. -2 or +5" required>'
+    +     '<div class="hint">Positive or negative integer. Use a negative number to correct an over-count.</div></div>'
+    + '</div>'
+    + '<div class="adj-preview">'
+    +   '<div class="adj-preview-row"><span>Original total</span><span class="was" id="adjOrig">'+num(originalVotes)+'</span></div>'
+    +   '<div class="adj-preview-row"><span>Correction</span><span class="delta" id="adjDeltaShow">—</span></div>'
+    +   '<div class="adj-preview-row total"><span>New total (pending approval)</span><span class="now" id="adjNew">'+num(originalVotes)+'</span></div>'
+    + '</div>'
+    + '<div class="form-row"><label>Reason for correction <span class="req">*</span></label>'
+    +   '<textarea class="form-control" id="adjReason" placeholder="e.g. Duplicate ballots from nominee\'s department found and removed after verification." required></textarea>'
+    +   '<div class="hint">Be specific. Vague reasons will be rejected by the approval workflow.</div></div>'
+    + '<div class="form-row"><label>Supporting evidence reference <span class="req">*</span></label>'
+    +   '<input type="text" class="form-control" id="adjEvidence" placeholder="e.g. Audit report AR-2026-04 signed by Awards Committee" required>'
+    +   '<div class="hint">File reference, document ID or description of physical/digital evidence kept on record.</div></div>'
+    + '<div class="form-row"><label>Second approver <span class="req">*</span></label>'
+    +   '<select class="form-control" id="adjApprover" required>'
+    +     '<option value="">Select an authorised approver…</option>'
+    +     '<option value="awards-committee-chair">Awards Committee Chair</option>'
+    +     '<option value="deputy-owner">Deputy Owner</option>'
+    +     '<option value="independent-auditor">Independent Auditor</option>'
+    +   '</select>'
+    +   '<div class="hint">A second authorised administrator must approve before the correction is committed.</div></div>';
+
+  openModal({
+    title: 'Request Award Vote Correction',
+    sub: 'This request will be queued for approval. No totals change until approved.',
+    body: body,
+    wide: true,
+    foot: '<button class="btn btn-ghost" data-close>Cancel</button>'
+        + '<button class="btn btn-primary" id="submitAdjustment"><i class="fas fa-paper-plane"></i> Submit for Approval</button>',
+    onMount: function(){
+      var delta = $('#adjDelta');
+      delta.addEventListener('input', function(){
+        var v = parseInt(delta.value, 10) || 0;
+        var nv = Math.max(0, originalVotes + v);
+        $('#adjNew').textContent = num(nv);
+        var dshow = $('#adjDeltaShow');
+        dshow.textContent = (v > 0 ? '+' : '') + v;
+        dshow.className = 'delta ' + (v >= 0 ? 'pos' : 'neg');
+      });
+    },
+    onFoot: function(){
+      $('#submitAdjustment').addEventListener('click', function(){
+        var delta = parseInt($('#adjDelta').value, 10);
+        var reason = $('#adjReason').value.trim();
+        var evidence = $('#adjEvidence').value.trim();
+        var approver = $('#adjApprover').value;
+        if(!delta || isNaN(delta)){ toast('Invalid amount','Enter a non-zero correction amount.', true); return; }
+        if(originalVotes + delta < 0){ toast('Invalid','Corrected total cannot be negative.', true); return; }
+        if(reason.length < 20){ toast('Reason too short','Please describe the correction in at least 20 characters.', true); return; }
+        if(!evidence){ toast('Evidence required','Provide a document reference for the correction.', true); return; }
+        if(!approver){ toast('Approver required','Select a second authorised approver.', true); return; }
+        api('/api/awards/programmes/'+encodeURIComponent(state.selectedProgrammeId)+'/results/'+encodeURIComponent(result.id||result.result_id)+'/adjust', {
+          method:'POST',
+          body: { delta: delta, reason: reason, evidence: evidence, approver: approver }
+        }).then(function(){
+          closeModal();
+          toast('Adjustment submitted','Queued for approval by '+approver+'. Original total preserved.');
+          loadResults(state.selectedProgrammeId);
+        }).catch(function(err){
+          toast('Submission failed', err.message, true);
+        });
+      });
+    }
+  });
+}
+
+function openAdjustmentHistory(){
+  api('/api/awards/programmes/'+encodeURIComponent(state.selectedProgrammeId)+'/results/adjustments').then(function(res){
+    var d = (res && res.data) ? res.data : res;
+    var items = Array.isArray(d) ? d : (d.adjustments || d.items || []);
+    var body = items.length
+      ? '<div class="table-wrap"><table style="min-width:auto"><thead><tr><th>Date</th><th>Nominee</th><th>Change</th><th>Reason</th><th>Status</th></tr></thead><tbody>'
+        + items.map(function(a){
+          var delta = a.delta || 0;
+          var st = (a.status||'pending').toLowerCase();
+          var tagCls = /approved/.test(st)?'approved':/rejected/.test(st)?'rejected':'pending';
+          return '<tr>'
+            + '<td>'+esc(fmtDate(a.created_at))+'</td>'
+            + '<td>'+esc(a.nominee_name || a.nominee || '—')+'</td>'
+            + '<td style="color:'+(delta>=0?'var(--teal)':'var(--danger)')+';font-weight:700">'+(delta>0?'+':'')+num(delta)+'</td>'
+            + '<td style="max-width:280px"><div style="font-size:11.5px">'+esc(a.reason||'—')+'</div><div class="row-sub">'+esc(a.evidence||'')+'</div></td>'
+            + '<td><span class="tag '+tagCls+'"><i class="fas fa-circle"></i>'+esc(st)+'</span></td>'
+            + '</tr>';
+        }).join('')
+        + '</tbody></table></div>'
+      : '<div class="empty-block"><i class="fas fa-clipboard-check"></i><p>No adjustments recorded for this programme</p></div>';
+    openModal({
+      title: 'Adjustment History',
+      sub: 'Every correction request with original totals, reasons and approver status.',
+      body: body,
+      wide: true
+    });
+  }).catch(function(){
+    openModal({
+      title: 'Adjustment History',
+      sub: 'Audit data unavailable',
+      body: '<div class="empty-block"><i class="fas fa-plug-circle-xmark"></i><p>Adjustment history endpoint not available.</p></div>'
+    });
+  });
+}
+
+/* ============================================================
+   ACTIVITY + SECURITY
+   ============================================================ */
+function loadActivity(){
+  api('/api/awards/activity?limit=15').then(function(res){
+    var d = (res && res.data) ? res.data : res;
+    var items = Array.isArray(d) ? d : (d.activity || d.items || d.logs || []);
+    state.activity = items;
+    renderActivity(items);
+  }).catch(function(){
+    state.activity = [];
+    $('#activityLog').innerHTML = '<div class="empty-block"><i class="fas fa-plug-circle-xmark"></i><p>Activity log unavailable</p></div>';
+  });
+}
+function renderActivity(items){
+  var host = $('#activityLog');
+  if(!items.length){
+    host.innerHTML = '<div class="empty-block"><i class="fas fa-clipboard-list"></i><p>No award activity recorded yet</p></div>';
+    return;
+  }
+  var ICONS = {
+    programme_created:   {i:'fa-plus-circle', cls:'gold'},
+    programme_started:   {i:'fa-play', cls:'gold'},
+    programme_paused:    {i:'fa-pause', cls:'warn'},
+    programme_closed:    {i:'fa-stop', cls:'danger'},
+    category_added:      {i:'fa-layer-group', cls:'gold'},
+    nominee_added:       {i:'fa-user-plus', cls:'teal'},
+    nominee_approved:    {i:'fa-user-check', cls:'teal'},
+    nominee_rejected:    {i:'fa-user-xmark', cls:'danger'},
+    vote_adjusted:       {i:'fa-sliders', cls:'gold'},
+    adjustment_approved: {i:'fa-check-double', cls:'teal'},
+    adjustment_rejected: {i:'fa-xmark', cls:'danger'},
+    results_verified:    {i:'fa-shield-halved', cls:'teal'},
+    winner_declared:     {i:'fa-crown', cls:'gold'}
+  };
+  host.innerHTML = items.map(function(it){
+    var type = it.action || it.type || 'unknown';
+    var ico = ICONS[type] || {i:'fa-circle-info', cls:''};
+    var who = it.actor || it.user || it.admin || null;
+    var when = it.created_at || it.timestamp || it.time || null;
+    return '<div class="log-item">'
+      + '<div class="log-ico '+ico.cls+'"><i class="fas '+ico.i+'"></i></div>'
+      + '<div class="log-body">'
+      +   '<div class="log-text"><b>'+esc(who||'System')+'</b> — '+esc(it.description||it.message||type.replace(/_/g,' '))+'</div>'
+      +   '<div class="log-meta">'+esc(relTime(when))+'</div>'
+      + '</div></div>';
+  }).join('');
+}
+
+function loadSecurity(){
+  api('/api/awards/security?limit=10').then(function(res){
+    var d = (res && res.data) ? res.data : res;
+    var items = Array.isArray(d) ? d : (d.events || d.items || []);
+    state.security = items;
+    renderSecurity(items);
+  }).catch(function(){
+    state.security = [];
+    $('#securityLog').innerHTML = '<div class="empty-block"><i class="fas fa-shield-halved"></i><p>No security alerts detected</p></div>';
+  });
+}
+function renderSecurity(items){
+  var host = $('#securityLog');
+  if(!items.length){
+    host.innerHTML = '<div class="empty-block"><i class="fas fa-shield-halved"></i><p>No security alerts detected</p></div>';
+    return;
+  }
+  var ICONS = {
+    unusual_pattern:       {i:'fa-triangle-exclamation', cls:'warn'},
+    duplicate_ballot:      {i:'fa-clone', cls:'danger'},
+    unauthorized_action:   {i:'fa-ban', cls:'danger'},
+    config_changed:        {i:'fa-gear', cls:'warn'},
+    adjustment_recorded:   {i:'fa-sliders', cls:'gold'}
+  };
+  host.innerHTML = items.map(function(it){
+    var type = it.type || it.event || 'unknown';
+    var ico = ICONS[type] || {i:'fa-shield', cls:''};
+    var sev = (it.severity||'').toLowerCase();
+    var sevCls = /high|critical/.test(sev)?'danger':/medium|warning/.test(sev)?'warn':'';
+    return '<div class="log-item">'
+      + '<div class="log-ico '+(sevCls||ico.cls)+'"><i class="fas '+ico.i+'"></i></div>'
+      + '<div class="log-body">'
+      +   '<div class="log-text"><b>'+esc(it.description||it.message||type.replace(/_/g,' '))+'</b></div>'
+      +   '<div class="log-meta">'+esc(relTime(it.created_at||it.timestamp))+(sev?' · '+esc(sev):'')+'</div>'
+      + '</div></div>';
+  }).join('');
+}
+
+/* ============================================================
+   FORMS
+   ============================================================ */
+function openProgrammeForm(existing){
+  var isEdit = !!existing;
+  var p = existing || {};
+  var body =
+    '<div class="form-row"><label>Programme title <span class="req">*</span></label>'
+    + '<input type="text" class="form-control" id="fTitle" value="'+esc(p.title||p.name||'')+'" required></div>'
+    + '<div class="form-row"><label>Description</label>'
+    + '<textarea class="form-control" id="fDesc">'+esc(p.description||'')+'</textarea></div>'
+    + '<div class="form-grid">'
+    +   '<div class="form-row"><label>Academic session <span class="req">*</span></label>'
+    +     '<input type="text" class="form-control" id="fSession" value="'+esc(p.academic_session||p.session||'')+'" placeholder="e.g. 2025/2026" required></div>'
+    +   '<div class="form-row"><label>Award year <span class="req">*</span></label>'
+    +     '<input type="number" class="form-control" id="fYear" value="'+esc(p.year||new Date().getFullYear())+'" required></div>'
+    + '</div>'
+    + '<div class="form-grid">'
+    +   '<div class="form-row"><label>Nominations open <span class="req">*</span></label>'
+    +     '<input type="date" class="form-control" id="fNomOpen" value="'+esc((p.nominations_opens_at||p.nominations_start||'').slice(0,10))+'" required></div>'
+    +   '<div class="form-row"><label>Nominations close <span class="req">*</span></label>'
+    +     '<input type="date" class="form-control" id="fNomClose" value="'+esc((p.nominations_closes_at||p.nominations_end||'').slice(0,10))+'" required></div>'
+    + '</div>'
+    + '<div class="form-grid">'
+    +   '<div class="form-row"><label>Voting opens <span class="req">*</span></label>'
+    +     '<input type="date" class="form-control" id="fVoteOpen" value="'+esc((p.voting_opens_at||p.voting_start||'').slice(0,10))+'" required></div>'
+    +   '<div class="form-row"><label>Voting closes <span class="req">*</span></label>'
+    +     '<input type="date" class="form-control" id="fVoteClose" value="'+esc((p.voting_closes_at||p.voting_end||'').slice(0,10))+'" required></div>'
+    + '</div>'
+    + '<div class="form-row"><label>Eligible levels</label>'
+    +   '<input type="text" class="form-control" id="fLevels" value="'+esc(p.levels||p.eligible_levels||'')+'" placeholder="e.g. 100,200,300,400,500"></div>';
+  openModal({
+    title: isEdit ? 'Edit Award Programme' : 'Create Award Programme',
+    sub: isEdit ? 'Update programme details' : 'Set up a new award programme',
+    body: body,
+    wide: true,
+    foot: '<button class="btn btn-ghost" data-close>Cancel</button>'
+        + '<button class="btn btn-primary" id="saveProgramme"><i class="fas fa-check"></i> '+(isEdit?'Save changes':'Create')+'</button>',
+    onFoot: function(){
+      $('#saveProgramme').addEventListener('click', function(){
+        var title = $('#fTitle').value.trim();
+        var session = $('#fSession').value.trim();
+        var year = $('#fYear').value;
+        if(!title || !session || !year){ toast('Required fields','Title, session and year are required.', true); return; }
+        var payload = {
+          title: title,
+          description: $('#fDesc').value.trim(),
+          academic_session: session,
+          year: parseInt(year,10),
+          nominations_opens_at: $('#fNomOpen').value,
+          nominations_closes_at: $('#fNomClose').value,
+          voting_opens_at: $('#fVoteOpen').value,
+          voting_closes_at: $('#fVoteClose').value,
+          levels: $('#fLevels').value.trim()
+        };
+        var pr = isEdit
+          ? api('/api/awards/programmes/'+encodeURIComponent(p.id||p.programme_id), {method:'PUT', body:payload})
+          : api('/api/awards/programmes', {method:'POST', body:payload});
+        pr.then(function(){
+          closeModal();
+          toast(isEdit?'Updated':'Created', title);
+          state.programmes = []; loadProgrammes();
+        }).catch(function(err){ toast('Save failed', err.message, true); });
+      });
+    }
+  });
+}
+
+function openCategoryForm(existing){
+  var c = existing || {};
+  var body =
+    '<div class="form-row"><label>Category name <span class="req">*</span></label>'
+    + '<input type="text" class="form-control" id="catTitle" value="'+esc(c.title||c.name||'')+'" required></div>'
+    + '<div class="form-row"><label>Description</label>'
+    + '<textarea class="form-control" id="catDesc">'+esc(c.description||'')+'</textarea></div>'
+    + '<div class="form-grid">'
+    +   '<div class="form-row"><label>Max nominees</label>'
+    +     '<input type="number" class="form-control" id="catMax" value="'+esc(c.max_nominees||'')+'" placeholder="e.g. 3"></div>'
+    +   '<div class="form-row"><label>Status</label>'
+    +     '<select class="form-control" id="catStatus">'
+    +       '<option value="active"'+(/active/i.test(c.status||'')?' selected':'')+'>Active</option>'
+    +       '<option value="draft"'+(/draft/i.test(c.status||'')?' selected':'')+'>Draft</option>'
+    +       '<option value="archived"'+(/archived/i.test(c.status||'')?' selected':'')+'>Archived</option>'
+    +     '</select></div>'
+    + '</div>'
+    + '<div class="form-row"><label>Eligibility requirements</label>'
+    + '<textarea class="form-control" id="catElig">'+esc(c.eligibility||'')+'</textarea></div>';
+  openModal({
+    title: existing?'Edit Category':'Add Category',
+    sub: 'Award categories and eligibility',
+    body: body,
+    foot: '<button class="btn btn-ghost" data-close>Cancel</button>'
+        + '<button class="btn btn-primary" id="saveCategory"><i class="fas fa-check"></i> Save</button>',
+    onFoot: function(){
+      $('#saveCategory').addEventListener('click', function(){
+        var title = $('#catTitle').value.trim();
+        if(!title){ toast('Title required','Enter a category title.', true); return; }
+        var payload = {
+          programme_id: state.selectedProgrammeId,
+          title: title,
+          description: $('#catDesc').value.trim(),
+          max_nominees: parseInt($('#catMax').value,10) || null,
+          status: $('#catStatus').value,
+          eligibility: $('#catElig').value.trim()
+        };
+        var pr = existing
+          ? api('/api/awards/categories/'+encodeURIComponent(c.id||c.category_id), {method:'PUT', body:payload})
+          : api('/api/awards/categories', {method:'POST', body:payload});
+        pr.then(function(){ closeModal(); toast('Saved', title); loadCategories(state.selectedProgrammeId); })
+          .catch(function(err){ toast('Save failed', err.message, true); });
+      });
+    }
+  });
+}
+
+function openNomineeForm(existing){
+  var n = existing || {};
+  var catOpts = state.categories.map(function(c){
+    var cid = c.id||c.category_id||'';
+    var sel = (n.category_id||n.category) === cid ? ' selected' : '';
+    return '<option value="'+esc(cid)+'"'+sel+'>'+esc(c.title||c.name)+'</option>';
+  }).join('');
+  var body =
+    '<div class="form-row"><label>Full name <span class="req">*</span></label>'
+    + '<input type="text" class="form-control" id="nomName" value="'+esc(n.full_name||n.name||'')+'" required></div>'
+    + '<div class="form-grid">'
+    +   '<div class="form-row"><label>Matric number</label>'
+    +     '<input type="text" class="form-control" id="nomMatric" value="'+esc(n.matric_no||n.matric||'')+'"></div>'
+    +   '<div class="form-row"><label>Level</label>'
+    +     '<input type="text" class="form-control" id="nomLevel" value="'+esc(n.level||'')+'" placeholder="e.g. 400"></div>'
+    + '</div>'
+    + '<div class="form-row"><label>Department</label>'
+    +   '<input type="text" class="form-control" id="nomDept" value="'+esc(n.department||'')+'"></div>'
+    + '<div class="form-row"><label>Category <span class="req">*</span></label>'
+    +   '<select class="form-control" id="nomCat" required>'
+    +     '<option value="">Select a category…</option>'+catOpts+'</select></div>'
+    + '<div class="form-row"><label>Nomination reason</label>'
+    +   '<textarea class="form-control" id="nomReason">'+esc(n.reason||n.nomination_reason||'')+'</textarea></div>';
+  openModal({
+    title: existing?'Edit Nominee':'Add Nominee',
+    sub: 'Register a nominee for an award category',
+    body: body,
+    foot: '<button class="btn btn-ghost" data-close>Cancel</button>'
+        + '<button class="btn btn-primary" id="saveNominee"><i class="fas fa-check"></i> Save</button>',
+    onFoot: function(){
+      $('#saveNominee').addEventListener('click', function(){
+        var name = $('#nomName').value.trim();
+        var cat = $('#nomCat').value;
+        if(!name || !cat){ toast('Required fields','Name and category are required.', true); return; }
+        var payload = {
+          programme_id: state.selectedProgrammeId,
+          full_name: name,
+          matric_no: $('#nomMatric').value.trim(),
+          level: $('#nomLevel').value.trim(),
+          department: $('#nomDept').value.trim(),
+          category_id: cat,
+          reason: $('#nomReason').value.trim()
+        };
+        var pr = existing
+          ? api('/api/awards/nominees/'+encodeURIComponent(n.id||n.nominee_id), {method:'PUT', body:payload})
+          : api('/api/awards/nominees', {method:'POST', body:payload});
+        pr.then(function(){ closeModal(); toast('Saved', name); loadNominees(state.selectedProgrammeId); })
+          .catch(function(err){ toast('Save failed', err.message, true); });
+      });
+    }
+  });
+}
+
+/* ============================================================
+   WIRE EVENTS
+   ============================================================ */
+$('#createProgrammeBtn').addEventListener('click', function(){ openProgrammeForm(null); });
+$('#addCategoryBtn').addEventListener('click', function(){ openCategoryForm(null); });
+$('#addNomineeBtn').addEventListener('click', function(){ openNomineeForm(null); });
+$('#analyticsRefresh').addEventListener('click', function(){ loadAnalytics(state.selectedProgrammeId); });
+$('#awardSettingsBtn').addEventListener('click', function(){
+  toast('Settings', 'Award settings panel will open when the endpoint is available.');
+});
+$('#exportBtn').addEventListener('click', function(){
+  toast('Export', 'Export will download when the /api/awards/export endpoint is available.');
+});
+$('#verifyAllBtn').addEventListener('click', function(){
+  confirmDialog({
+    title:'Verify Results', heading:'Mark all results as verified?',
+    message:'Only proceed if totals have been reconciled against valid ballots and voter participation.',
+    confirmLabel:'Verify all', icon:'fa-shield-halved'
+  }).then(function(ok){
+    if(!ok) return;
+    api('/api/awards/programmes/'+encodeURIComponent(state.selectedProgrammeId)+'/results/verify', {method:'POST'})
+      .then(function(){ toast('Verified','Results marked as verified.'); loadResults(state.selectedProgrammeId); })
+      .catch(function(err){ toast('Verify failed', err.message, true); });
+  });
+});
+$('#declareWinnersBtn').addEventListener('click', function(){
+  confirmDialog({
+    title:'Declare Winners', heading:'Declare winners for all categories?',
+    message:'Winners will be announced publicly. This action is logged and cannot be undone without a correction request.',
+    confirmLabel:'Declare winners', icon:'fa-crown', gold:true
+  }).then(function(ok){
+    if(!ok) return;
+    api('/api/awards/programmes/'+encodeURIComponent(state.selectedProgrammeId)+'/results/declare', {method:'POST'})
+      .then(function(){ toast('Winners declared','Public announcements queued.'); loadResults(state.selectedProgrammeId); loadActivity(); })
+      .catch(function(err){ toast('Declaration failed', err.message, true); });
+  });
+});
+$('#resultsAuditBtn').addEventListener('click', openAdjustmentHistory);
+$('#refreshAll').addEventListener('click', function(){
+  ['programmes','active','categories','nominees','votes','winners'].forEach(function(k){
+    var card = $('.stat[data-stat="'+k+'"]');
+    if(card){
+      var v = card.querySelector('[data-value]');
+      v.classList.add('loading'); v.textContent = '—';
+      card.querySelector('[data-foot]').innerHTML = '&nbsp;';
+    }
+  });
+  state.programmes = [];
+  loadStats();
+  loadProgrammes();
+  loadActivity();
+  loadSecurity();
+});
+
+/* search/filter */
+$('#programmeSearch').addEventListener('input', function(){
+  filterProgrammes();
+});
+$('#programmeFilter').addEventListener('change', function(){
+  filterProgrammes();
+});
+function filterProgrammes(){
+  var q = ($('#programmeSearch').value || '').toLowerCase();
+  var st = $('#programmeFilter').value;
+  var filtered = state.programmes.filter(function(x){
+    var matchQ = (x.title||x.name||'').toLowerCase().indexOf(q) !== -1;
+    var matchS = !st || (x.status||'').toLowerCase() === st;
+    return matchQ && matchS;
+  });
+  renderProgrammes(filtered);
+}
+$('#nomineeSearch').addEventListener('input', function(e){
+  var q = e.target.value.toLowerCase();
+  var filtered = state.nominees.filter(function(x){
+    return (x.full_name||x.name||'').toLowerCase().indexOf(q) !== -1
+        || (x.matric_no||x.matric||'').toLowerCase().indexOf(q) !== -1
+        || (x.category_title||x.category||'').toLowerCase().indexOf(q) !== -1;
+  });
+  renderNominees(filtered);
+});
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+function boot(){
+  loadStats();
+  loadProgrammes();
+  loadActivity();
+  loadSecurity();
+}
+boot();
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Election Management — NUESA DEV</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root{
+  --bg:#09131C; --sidebar:#0D1B27; --card:#122431; --card-elevated:#172D3B;
+  --teal:#65D6C0; --teal-dim:rgba(101,214,192,.14);
+  --gold:#D9B66F; --gold-dim:rgba(217,182,111,.14);
+  --text:#F3F6FA; --muted:#91A4B6;
+  --border:#263D4C; --border-soft:rgba(38,61,76,.6);
+  --danger:#E57070; --danger-dim:rgba(229,112,112,.14);
+  --warn:#E5B96F; --warn-dim:rgba(229,185,111,.14);
+  --blue:#6AA7E6; --blue-dim:rgba(106,167,230,.14);
+  --purple:#A08CE6; --purple-dim:rgba(160,140,230,.14);
+  --sidebar-w:250px; --sidebar-w-collapsed:72px;
+  --topbar-h:70px; --radius:14px; --radius-sm:10px;
+  --shadow:0 1px 2px rgba(0,0,0,.25), 0 8px 24px -12px rgba(0,0,0,.5);
+  --font:'Inter',system-ui,-apple-system,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow:hidden}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+::selection{background:var(--teal-dim);color:var(--teal)}
+
+/* ============ LAYOUT ============ */
+.app{display:grid;grid-template-columns:var(--sidebar-w) 1fr;height:100vh;transition:grid-template-columns .25s ease}
+.app.rail{grid-template-columns:var(--sidebar-w-collapsed) 1fr}
+
+/* ============ SIDEBAR ============ */
+.sidebar{background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;z-index:30}
+.brand{height:var(--topbar-h);display:flex;align-items:center;gap:.75rem;padding:0 1.25rem;border-bottom:1px solid var(--border);flex-shrink:0}
+.brand-mark{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--teal),#3aa894);color:#062018;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0}
+.brand-text{min-width:0;display:flex;flex-direction:column;line-height:1.2}
+.brand-name{font-weight:800;font-size:14px;letter-spacing:-.01em;white-space:nowrap}
+.brand-sub{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-weight:600;white-space:nowrap}
+.app.rail .brand-text{display:none}
+.app.rail .brand{padding:0;justify-content:center}
+.nav{flex:1;overflow-y:auto;padding:.75rem .75rem 1rem;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.nav::-webkit-scrollbar{width:6px}
+.nav::-webkit-scrollbar-thumb{background:var(--border);border-radius:6px}
+.nav-group{padding:.85rem 0 .35rem}
+.nav-group:first-child{padding-top:.25rem}
+.nav-group-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.14em;padding:0 .75rem;margin-bottom:.5rem;white-space:nowrap;overflow:hidden;transition:opacity .2s}
+.app.rail .nav-group-label{opacity:0;height:0;margin:0;padding:0}
+.nav-item{display:flex;align-items:center;gap:.75rem;padding:.55rem .75rem;border-radius:9px;color:var(--muted);font-size:13.5px;font-weight:500;margin-bottom:2px;position:relative;white-space:nowrap;overflow:hidden;transition:background .15s,color .15s}
+.nav-item i{width:18px;text-align:center;font-size:14px;flex-shrink:0;opacity:.9}
+.nav-item:hover{background:rgba(255,255,255,.03);color:var(--text)}
+.nav-item.active{background:var(--teal-dim);color:var(--teal)}
+.nav-item.active::before{content:'';position:absolute;left:-.75rem;top:50%;transform:translateY(-50%);width:3px;height:18px;background:var(--teal);border-radius:0 3px 3px 0}
+.nav-label{overflow:hidden;text-overflow:ellipsis}
+.app.rail .nav-label{opacity:0;width:0}
+.app.rail .nav-item{justify-content:center;padding:.65rem}
+.sidebar-foot{border-top:1px solid var(--border);padding:.75rem;flex-shrink:0}
+.sys-pill{display:flex;align-items:center;gap:.5rem;padding:.55rem .75rem;border-radius:9px;background:var(--card);border:1px solid var(--border);font-size:11.5px;font-weight:600;color:var(--muted);white-space:nowrap;overflow:hidden}
+.sys-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;box-shadow:0 0 0 3px rgba(145,164,182,.15)}
+.sys-dot.ok{background:var(--teal);box-shadow:0 0 0 3px var(--teal-dim)}
+.sys-dot.warn{background:var(--warn);box-shadow:0 0 0 3px var(--warn-dim)}
+.sys-dot.bad{background:var(--danger);box-shadow:0 0 0 3px var(--danger-dim)}
+.app.rail .sys-pill{justify-content:center;padding:.6rem}
+.app.rail .sys-pill span:last-child{display:none}
+
+/* ============ MAIN ============ */
+.main{display:flex;flex-direction:column;min-width:0;height:100vh;overflow:hidden}
+.topbar{height:var(--topbar-h);background:rgba(9,19,28,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:1rem;padding:0 1.5rem;flex-shrink:0;position:relative;z-index:20}
+.tb-toggle{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:.15s}
+.tb-toggle:hover{background:var(--card);color:var(--text)}
+.crumb{display:flex;align-items:center;gap:.5rem;font-size:12.5px;color:var(--muted);white-space:nowrap}
+.crumb .sep{opacity:.5;font-size:10px}
+.crumb .current{color:var(--text);font-weight:600}
+.tb-spacer{flex:1}
+.tb-search{flex:0 1 320px;min-width:0;display:flex;align-items:center;gap:.5rem;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:.45rem .75rem;color:var(--muted);font-size:12.5px;transition:.15s;cursor:text}
+.tb-search:hover{border-color:var(--border-soft)}
+.tb-search i{font-size:12px}
+.tb-search kbd{margin-left:auto;font-family:var(--font);font-size:10.5px;background:var(--bg);border:1px solid var(--border);padding:.1rem .35rem;border-radius:4px;color:var(--muted)}
+.tb-btn{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--muted);position:relative;transition:.15s}
+.tb-btn:hover{background:var(--card);color:var(--text)}
+.tb-btn .badge{position:absolute;top:6px;right:6px;min-width:15px;height:15px;padding:0 4px;border-radius:999px;background:var(--danger);color:#fff;font-size:9px;font-weight:800;display:none;align-items:center;justify-content:center;border:2px solid var(--bg)}
+.tb-btn .badge.show{display:flex}
+.avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#b8944f);color:#231a06;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.tb-profile{display:flex;align-items:center;gap:.6rem;padding:.25rem .5rem .25rem .25rem;border-radius:999px;transition:.15s}
+.tb-profile:hover{background:var(--card)}
+.tb-profile-text{display:flex;flex-direction:column;line-height:1.2;font-size:12px}
+.tb-profile-text b{font-weight:700}
+.tb-profile-text span{color:var(--muted);font-size:10.5px}
+.content{flex:1;overflow-y:auto;padding:2rem;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.content::-webkit-scrollbar{width:10px}
+.content::-webkit-scrollbar-thumb{background:var(--border);border-radius:10px;border:2px solid var(--bg)}
+.wrap{max-width:1400px;margin:0 auto}
+
+/* ============ PAGE HEADER ============ */
+.page-head{display:flex;flex-wrap:wrap;gap:1rem;align-items:flex-end;justify-content:space-between;margin-bottom:1.75rem}
+.page-head h1{font-size:clamp(1.5rem,2.6vw,1.85rem);font-weight:800;letter-spacing:-.02em;margin-bottom:.35rem}
+.page-head p{color:var(--muted);font-size:13.5px;max-width:44rem}
+.page-actions{display:flex;gap:.5rem;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;padding:.6rem 1.05rem;border-radius:9px;font-size:12.5px;font-weight:600;transition:.15s;white-space:nowrap}
+.btn-primary{background:var(--teal);color:#062018}
+.btn-primary:hover{background:#7fe0cc}
+.btn-gold{background:var(--gold);color:#231a06}
+.btn-gold:hover{background:#e4c383}
+.btn-ghost{background:var(--card);border:1px solid var(--border);color:var(--text)}
+.btn-ghost:hover{background:var(--card-elevated);border-color:var(--border-soft)}
+.btn-danger{background:var(--danger-dim);color:var(--danger);border:1px solid rgba(229,112,112,.3)}
+.btn-danger:hover{background:rgba(229,112,112,.22)}
+.btn-sm{padding:.4rem .75rem;font-size:11.5px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* ============ STATS ============ */
+.stats{display:grid;gap:1rem;grid-template-columns:repeat(6,1fr);margin-bottom:1.75rem}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.1rem 1.2rem;transition:border-color .2s}
+.stat:hover{border-color:var(--border-soft)}
+.stat-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.8rem}
+.stat-ico{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;background:var(--teal-dim);color:var(--teal)}
+.stat-ico.gold{background:var(--gold-dim);color:var(--gold)}
+.stat-ico.blue{background:var(--blue-dim);color:var(--blue)}
+.stat-ico.purple{background:var(--purple-dim);color:var(--purple)}
+.stat-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.stat-value{font-size:1.75rem;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.1;margin-top:.1rem}
+.stat-value.loading{display:inline-block;min-width:48px;height:1.75rem;background:linear-gradient(90deg,var(--card-elevated) 25%,var(--border) 50%,var(--card-elevated) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:6px;color:transparent}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.stat-foot{font-size:11px;color:var(--muted);margin-top:.35rem}
+
+/* ============ PANELS ============ */
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.35rem 1.4rem;margin-bottom:1.5rem;min-width:0}
+.panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;margin-bottom:1.15rem;flex-wrap:wrap}
+.panel-title{font-size:15px;font-weight:700;letter-spacing:-.01em}
+.panel-sub{font-size:12px;color:var(--muted);margin-top:.15rem}
+.panel-actions{display:flex;gap:.4rem;flex-wrap:wrap;align-items:center}
+.grid-2{display:grid;grid-template-columns:1.4fr 1fr;gap:1.25rem}
+.grid-2 > .panel{margin-bottom:0}
+@media(max-width:1100px){.grid-2{grid-template-columns:1fr}}
+@media(max-width:1280px){.stats{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}}
+
+/* ============ ACTIVE ELECTION HERO ============ */
+.hero-election{
+  background:linear-gradient(135deg,var(--card),var(--card-elevated));
+  border:1px solid var(--border);border-radius:var(--radius);
+  padding:1.5rem 1.6rem;margin-bottom:1.75rem;
+  display:grid;grid-template-columns:1.5fr 1fr;gap:1.5rem;align-items:center;
+  position:relative;overflow:hidden;
+}
+.hero-election::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:var(--teal)}
+@media(max-width:900px){.hero-election{grid-template-columns:1fr}}
+.he-label{display:inline-flex;align-items:center;gap:.4rem;padding:.25rem .7rem;border-radius:999px;background:var(--teal-dim);color:var(--teal);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.6rem}
+.he-label .dot{width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 3px var(--teal-dim)}
+.he-title{font-size:1.35rem;font-weight:800;letter-spacing:-.02em;margin-bottom:.25rem;line-height:1.2}
+.he-sub{font-size:12.5px;color:var(--muted);margin-bottom:1rem}
+.he-progress{margin-top:1rem}
+.he-progress-head{display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:.4rem}
+.he-progress-head .pct{font-size:15px;font-weight:800;color:var(--teal);font-variant-numeric:tabular-nums}
+.bar{height:7px;border-radius:99px;background:var(--bg);overflow:hidden;position:relative}
+.bar>span{display:block;height:100%;background:var(--teal);border-radius:99px;transition:width .5s}
+.bar.gold>span{background:var(--gold)}
+.he-meta{display:flex;flex-wrap:wrap;gap:1rem;margin-top:1rem;font-size:11.5px;color:var(--muted)}
+.he-meta div{display:flex;align-items:center;gap:.35rem}
+.he-meta i{color:var(--teal)}
+.he-controls{display:flex;flex-direction:column;gap:.5rem;border-left:1px solid var(--border);padding-left:1.5rem}
+@media(max-width:900px){.he-controls{border-left:none;border-top:1px solid var(--border);padding-left:0;padding-top:1.25rem}}
+.he-controls h4{font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem}
+
+/* ============ TABLE ============ */
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px}
+table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:640px}
+thead th{background:var(--bg);text-align:left;padding:.7rem .9rem;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);white-space:nowrap}
+tbody td{padding:.7rem .9rem;border-bottom:1px solid var(--border-soft);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:rgba(255,255,255,.02)}
+td .row-name{font-weight:600;color:var(--text)}
+td .row-sub{font-size:11px;color:var(--muted);margin-top:.1rem}
+.tag{display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .55rem;border-radius:999px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.tag i{font-size:7px}
+.tag.live{background:var(--teal-dim);color:var(--teal)}
+.tag.pending{background:var(--gold-dim);color:var(--gold)}
+.tag.closed{background:rgba(145,164,182,.14);color:var(--muted)}
+.tag.draft{background:rgba(145,164,182,.14);color:var(--muted)}
+.tag.approved{background:var(--teal-dim);color:var(--teal)}
+.tag.rejected{background:var(--danger-dim);color:var(--danger)}
+.tag.verified{background:var(--teal-dim);color:var(--teal)}
+.tag.corrected{background:var(--warn-dim);color:var(--warn)}
+.tag.provisional{background:var(--gold-dim);color:var(--gold)}
+.row-actions{display:flex;gap:.3rem;justify-content:flex-end}
+.icon-btn{width:28px;height:28px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);transition:.15s;font-size:11.5px}
+.icon-btn:hover{background:var(--card-elevated);color:var(--text)}
+.icon-btn.danger:hover{background:var(--danger-dim);color:var(--danger)}
+.icon-btn.teal:hover{background:var(--teal-dim);color:var(--teal)}
+
+/* ============ EMPTY / LOADING ============ */
+.empty-block{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;padding:2rem 1rem;text-align:center;color:var(--muted)}
+.empty-block i{font-size:22px;opacity:.5}
+.empty-block p{font-size:12.5px}
+.skeleton{background:linear-gradient(90deg,var(--card-elevated) 25%,var(--border) 50%,var(--card-elevated) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:6px;height:14px}
+
+/* ============ VOTING ANALYTICS ============ */
+.analytics-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.25rem}
+@media(max-width:900px){.analytics-grid{grid-template-columns:1fr}}
+.analytics-metric{background:var(--card-elevated);border:1px solid var(--border);border-radius:10px;padding:.9rem 1rem}
+.analytics-metric .am-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.3rem}
+.analytics-metric .am-value{font-size:1.5rem;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.analytics-metric .am-foot{font-size:11px;color:var(--muted);margin-top:.2rem}
+.analytics-metric.teal .am-value{color:var(--teal)}
+.analytics-metric.gold .am-value{color:var(--gold)}
+.analytics-chart{height:220px;position:relative;margin-top:.5rem}
+
+/* ============ RESULTS CONTROL ============ */
+.results-list{display:flex;flex-direction:column;gap:.6rem}
+.result-row{display:grid;grid-template-columns:auto 1fr auto auto;gap:1rem;align-items:center;padding:.85rem 1rem;background:var(--card-elevated);border:1px solid var(--border);border-radius:10px;transition:.15s}
+.result-row:hover{border-color:var(--border-soft)}
+.result-rank{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--muted);font-weight:800;font-size:12px}
+.result-row.winner .result-rank{background:var(--gold-dim);color:var(--gold)}
+.result-info{min-width:0}
+.result-info .rn{font-weight:700;font-size:13.5px}
+.result-info .rp{font-size:11px;color:var(--muted);margin-top:.1rem}
+.result-votes{text-align:right}
+.result-votes .rv{font-size:1.15rem;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text);line-height:1.1}
+.result-votes .rvs{font-size:10.5px;color:var(--muted);margin-top:.15rem}
+.result-row .adjust-btn{font-size:11.5px;padding:.35rem .7rem;border-radius:7px;background:var(--bg);border:1px solid var(--border);color:var(--muted)}
+.result-row .adjust-btn:hover{color:var(--teal);border-color:var(--teal)}
+@media(max-width:640px){
+  .result-row{grid-template-columns:auto 1fr;gap:.6rem}
+  .result-votes{grid-column:1/-1;text-align:left;display:flex;align-items:baseline;gap:.5rem}
+  .result-row .adjust-btn{grid-column:2;justify-self:start}
+}
+
+/* ============ ACTIVITY LOG ============ */
+.log{display:flex;flex-direction:column;gap:0;max-height:360px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.log::-webkit-scrollbar{width:6px}
+.log::-webkit-scrollbar-thumb{background:var(--border);border-radius:6px}
+.log-item{display:flex;gap:.85rem;padding:.75rem 0;border-bottom:1px solid var(--border-soft)}
+.log-item:last-child{border-bottom:none}
+.log-ico{width:28px;height:28px;border-radius:7px;background:var(--card-elevated);color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.log-ico.teal{background:var(--teal-dim);color:var(--teal)}
+.log-ico.gold{background:var(--gold-dim);color:var(--gold)}
+.log-ico.danger{background:var(--danger-dim);color:var(--danger)}
+.log-body{flex:1;min-width:0}
+.log-text{font-size:12.5px;line-height:1.35}
+.log-text b{font-weight:600;color:var(--text)}
+.log-meta{font-size:11px;color:var(--muted);margin-top:.15rem}
+
+/* ============ MODAL ============ */
+.modal-back{position:fixed;inset:0;background:rgba(4,8,12,.72);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;padding:1rem}
+.modal-back.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:14px;width:100%;max-width:560px;max-height:90vh;display:flex;flex-direction:column;box-shadow:var(--shadow);overflow:hidden}
+.modal.wide{max-width:720px}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--border);flex-shrink:0}
+.modal-title{font-size:15px;font-weight:700}
+.modal-sub{font-size:12px;color:var(--muted);margin-top:.15rem}
+.modal-close{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.modal-close:hover{background:var(--card-elevated);color:var(--text)}
+.modal-body{padding:1.25rem;overflow-y:auto;flex:1}
+.modal-foot{display:flex;gap:.5rem;justify-content:flex-end;padding:1rem 1.25rem;border-top:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
+
+/* form */
+.form-row{margin-bottom:1rem}
+.form-row label{display:block;font-size:11.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.35rem}
+.form-row label .req{color:var(--danger);margin-left:.15rem}
+.form-row .hint{font-size:11px;color:var(--muted);margin-top:.3rem;font-weight:400;text-transform:none;letter-spacing:0}
+.form-control{width:100%;padding:.6rem .8rem;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;transition:.15s}
+.form-control:focus{outline:none;border-color:var(--teal)}
+textarea.form-control{min-height:80px;resize:vertical}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:520px){.form-grid{grid-template-columns:1fr}}
+.file-drop{border:2px dashed var(--border);border-radius:10px;padding:1.25rem;text-align:center;color:var(--muted);font-size:12.5px;transition:.15s;cursor:pointer}
+.file-drop:hover{border-color:var(--teal);color:var(--teal);background:var(--teal-dim)}
+
+/* adjustment warning */
+.adj-warning{display:flex;gap:.7rem;padding:.85rem 1rem;border-radius:10px;background:var(--warn-dim);border:1px solid rgba(229,185,111,.3);color:var(--warn);font-size:12px;margin-bottom:1rem}
+.adj-warning i{margin-top:.1rem}
+.adj-warning b{color:var(--text);display:block;margin-bottom:.2rem}
+.adj-preview{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:.9rem 1rem;margin-bottom:1rem}
+.adj-preview-row{display:flex;justify-content:space-between;font-size:12.5px;padding:.25rem 0}
+.adj-preview-row.total{border-top:1px solid var(--border);margin-top:.4rem;padding-top:.5rem;font-weight:700}
+.adj-preview-row .was{color:var(--muted);text-decoration:line-through}
+.adj-preview-row .now{color:var(--teal);font-weight:700}
+.adj-preview-row .delta.pos{color:var(--teal)}
+.adj-preview-row .delta.neg{color:var(--danger)}
+
+/* drawer */
+.drawer-back{position:fixed;inset:0;background:rgba(4,8,12,.6);z-index:190;display:none}
+.drawer-back.open{display:block}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(460px,100vw);background:var(--card);border-left:1px solid var(--border);z-index:200;transform:translateX(100%);transition:transform .28s ease;display:flex;flex-direction:column;box-shadow:-8px 0 30px -10px rgba(0,0,0,.6)}
+.drawer.open{transform:none}
+.drawer-head{padding:1.1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.drawer-body{flex:1;overflow-y:auto;padding:1.25rem}
+.drawer-foot{padding:1rem 1.25rem;border-top:1px solid var(--border);display:flex;gap:.5rem;justify-content:flex-end;flex-shrink:0}
+
+/* expandable row */
+.expand-btn{width:24px;height:24px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);transition:.15s;background:var(--bg);border:1px solid var(--border)}
+.expand-btn:hover{color:var(--text)}
+.expand-btn.open i{transform:rotate(90deg)}
+.expand-btn i{font-size:9px;transition:transform .2s}
+.expand-row td{background:var(--bg);padding:0!important;border-bottom:1px solid var(--border)}
+.expand-inner{padding:1rem 1.25rem;font-size:12px;color:var(--muted)}
+.expand-inner .kv{display:grid;grid-template-columns:130px 1fr;gap:.35rem 1rem}
+.expand-inner .kv dt{font-weight:600;color:var(--muted)}
+.expand-inner .kv dd{color:var(--text)}
+
+/* toast */
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--card-elevated);border:1px solid var(--border);border-left:4px solid var(--teal);border-radius:10px;padding:.85rem 1rem;font-size:12.5px;box-shadow:var(--shadow);z-index:300;transform:translateY(150%);transition:transform .3s;max-width:340px}
+.toast.show{transform:none}
+.toast.error{border-left-color:var(--danger)}
+.toast b{display:block;margin-bottom:.15rem;color:var(--text)}
+.toast span{color:var(--muted)}
+
+/* confirm dialog */
+.confirm-body{text-align:center;padding:.5rem 0}
+.confirm-body .ci{width:52px;height:52px;border-radius:50%;background:var(--warn-dim);color:var(--warn);display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto .85rem}
+.confirm-body .ct{font-size:14.5px;font-weight:700;margin-bottom:.4rem}
+.confirm-body .cd{font-size:12.5px;color:var(--muted);max-width:340px;margin:0 auto}
+
+/* ============ RESPONSIVE ============ */
+@media(max-width:1024px){
+  .tb-profile-text{display:none}
+  .tb-search{flex:0 1 220px}
+}
+@media(max-width:768px){
+  .app{grid-template-columns:1fr}
+  .sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);transform:translateX(-100%);transition:transform .25s ease;z-index:100;box-shadow:0 0 0 100vmax rgba(0,0,0,0)}
+  .sidebar.open{transform:none;box-shadow:0 0 0 100vmax rgba(0,0,0,.55)}
+  .content{padding:1.25rem}
+  .tb-search kbd{display:none}
+}
+@media(max-width:520px){
+  .tb-search{display:none}
+  .content{padding:1rem}
+  .panel{padding:1.1rem}
+}
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <!-- ================= SIDEBAR ================= -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">N</div>
+      <div class="brand-text">
+        <span class="brand-name">NUESA DEV</span>
+        <span class="brand-sub">Super Admin</span>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-group">
+        <div class="nav-group-label">Main</div>
+        <a href="overview.html" class="nav-item"><i class="fas fa-gauge-high"></i><span class="nav-label">Overview</span></a>
+        <a href="election-management.html" class="nav-item active"><i class="fas fa-check-to-slot"></i><span class="nav-label">Election Management</span></a>
+        <a href="#" class="nav-item"><i class="fas fa-trophy"></i><span class="nav-label">Award Management</span></a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Platform</div>
+        <a href="#" class="nav-item"><i class="fas fa-globe"></i><span class="nav-label">Website Management</span></a>
+        <a href="#" class="nav-item"><i class="fas fa-users-gear"></i><span class="nav-label">Users &amp; Executives</span></a>
+        <a href="#" class="nav-item"><i class="fas fa-newspaper"></i><span class="nav-label">Content Management</span></a>
+        <a href="#" class="nav-item"><i class="fas fa-photo-film"></i><span class="nav-label">Media Library</span></a>
+        <a href="#" class="nav-item"><i class="fas fa-bell"></i><span class="nav-label">Notifications</span></a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">System</div>
+        <a href="#" class="nav-item"><i class="fas fa-chart-line"></i><span class="nav-label">Reports &amp; Analytics</span></a>
+        <a href="#" class="nav-item"><i class="fas fa-clipboard-list"></i><span class="nav-label">Audit Logs</span></a>
+        <a href="#" class="nav-item"><i class="fas fa-shield-halved"></i><span class="nav-label">Security &amp; Access</span></a>
+        <a href="#" class="nav-item"><i class="fas fa-sliders"></i><span class="nav-label">Settings</span></a>
+      </div>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="sys-pill"><span class="sys-dot ok"></span><span>System operational</span></div>
+    </div>
+  </aside>
+
+  <!-- ================= MAIN ================= -->
+  <div class="main">
+
+    <header class="topbar">
+      <button class="tb-toggle" id="toggleBtn" aria-label="Toggle sidebar"><i class="fas fa-bars"></i></button>
+      <div class="crumb">
+        <span>NUESA DEV</span>
+        <i class="fas fa-chevron-right sep"></i>
+        <span class="current">Election Management</span>
+      </div>
+      <div class="tb-spacer"></div>
+      <div class="tb-search" id="searchBtn"><i class="fas fa-magnifying-glass"></i><span>Search elections, candidates, voters…</span><kbd>⌘K</kbd></div>
+      <button class="tb-btn" aria-label="Notifications"><i class="fas fa-bell"></i><span class="badge" id="notifBadge"></span></button>
+      <button class="tb-btn" aria-label="Help"><i class="fas fa-circle-question"></i></button>
+      <div class="tb-profile">
+        <div class="avatar">O</div>
+        <div class="tb-profile-text"><b>Owner</b><span>Super Admin</span></div>
+      </div>
+    </header>
+
+    <main class="content" id="content">
+      <div class="wrap">
+
+        <div id="topNotice"></div>
+
+        <!-- PAGE HEADER -->
+        <section class="page-head">
+          <div>
+            <h1>Election Management</h1>
+            <p>Create and manage elections, positions, candidates, voters, voting control, analytics and results — all in one place.</p>
+          </div>
+          <div class="page-actions">
+            <button class="btn btn-ghost" id="refreshAll"><i class="fas fa-rotate"></i> Refresh</button>
+            <button class="btn btn-gold" id="createElectionBtn"><i class="fas fa-plus"></i> Create Election</button>
+          </div>
+        </section>
+
+        <!-- ELECTION OVERVIEW STATS -->
+        <section class="stats" id="stats">
+          <div class="stat" data-stat="total">
+            <div class="stat-head"><div class="stat-ico"><i class="fas fa-check-to-slot"></i></div></div>
+            <div class="stat-label">Total Elections</div>
+            <div class="stat-value loading" data-value>—</div>
+            <div class="stat-foot" data-foot>&nbsp;</div>
+          </div>
+          <div class="stat" data-stat="active">
+            <div class="stat-head"><div class="stat-ico gold"><i class="fas fa-tower-broadcast"></i></div></div>
+            <div class="stat-label">Active Elections</div>
+            <div class="stat-value loading" data-value>—</div>
+            <div class="stat-foot" data-foot>&nbsp;</div>
+          </div>
+          <div class="stat" data-stat="candidates">
+            <div class="stat-head"><div class="stat-ico blue"><i class="fas fa-user-group"></i></div></div>
+            <div class="stat-label">Total Candidates</div>
+            <div class="stat-value loading" data-value>—</div>
+            <div class="stat-foot" data-foot>&nbsp;</div>
+          </div>
+          <div class="stat" data-stat="voters">
+            <div class="stat-head"><div class="stat-ico purple"><i class="fas fa-address-book"></i></div></div>
+            <div class="stat-label">Eligible Voters</div>
+            <div class="stat-value loading" data-value>—</div>
+            <div class="stat-foot" data-foot>&nbsp;</div>
+          </div>
+          <div class="stat" data-stat="votes">
+            <div class="stat-head"><div class="stat-ico"><i class="fas fa-ballot-check"></i></div></div>
+            <div class="stat-label">Votes Cast</div>
+            <div class="stat-value loading" data-value>—</div>
+            <div class="stat-foot" data-foot>&nbsp;</div>
+          </div>
+          <div class="stat" data-stat="turnout">
+            <div class="stat-head"><div class="stat-ico gold"><i class="fas fa-percent"></i></div></div>
+            <div class="stat-label">Voter Turnout</div>
+            <div class="stat-value loading" data-value>—</div>
+            <div class="stat-foot" data-foot>&nbsp;</div>
+          </div>
+        </section>
+
+        <!-- ACTIVE ELECTION HERO -->
+        <section class="hero-election" id="activeElectionHero">
+          <div id="heLeft">
+            <div class="empty-block"><i class="fas fa-hourglass-half"></i><p>Loading active election…</p></div>
+          </div>
+          <div class="he-controls" id="heControls">
+            <h4>Voting Controls</h4>
+            <button class="btn btn-ghost btn-sm" disabled><i class="fas fa-pause"></i> Pause voting</button>
+            <button class="btn btn-ghost btn-sm" disabled><i class="fas fa-stop"></i> Close election</button>
+            <button class="btn btn-ghost btn-sm" disabled><i class="fas fa-gear"></i> Manage details</button>
+          </div>
+        </section>
+
+        <!-- ELECTION RECORDS -->
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Election Records</div>
+              <div class="panel-sub">All created elections. Click a row to expand details.</div>
+            </div>
+            <div class="panel-actions">
+              <input type="text" class="form-control" id="electionSearch" placeholder="Search elections…" style="width:200px;padding:.45rem .7rem;font-size:12px">
+              <button class="btn btn-primary btn-sm" id="createElectionBtn2"><i class="fas fa-plus"></i> Create Election</button>
+            </div>
+          </div>
+          <div id="electionsTable">
+            <div class="empty-block"><i class="fas fa-hourglass-half"></i><p>Loading elections…</p></div>
+          </div>
+        </section>
+
+        <!-- POSITIONS & CANDIDATES -->
+        <section class="grid-2">
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">Positions</div>
+                <div class="panel-sub">Offices available in the selected election.</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" id="addPositionBtn"><i class="fas fa-plus"></i> Add Position</button>
+            </div>
+            <div id="positionsList"><div class="empty-block"><i class="fas fa-hourglass-half"></i><p>Loading positions…</p></div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">Candidates</div>
+                <div class="panel-sub">Applications, approvals and profiles.</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" id="addCandidateBtn"><i class="fas fa-plus"></i> Add Candidate</button>
+            </div>
+            <div id="candidatesList"><div class="empty-block"><i class="fas fa-hourglass-half"></i><p>Loading candidates…</p></div></div>
+          </div>
+        </section>
+
+        <!-- VOTER MANAGEMENT -->
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Voter Management</div>
+              <div class="panel-sub">Eligibility, registration, verification and participation.</div>
+            </div>
+            <div class="panel-actions">
+              <input type="text" class="form-control" id="voterSearch" placeholder="Search voters…" style="width:200px;padding:.45rem .7rem;font-size:12px">
+              <button class="btn btn-ghost btn-sm" id="manageVotersBtn"><i class="fas fa-address-book"></i> Manage Voters</button>
+            </div>
+          </div>
+          <div id="votersTable"><div class="empty-block"><i class="fas fa-hourglass-half"></i><p>Loading voters…</p></div></div>
+        </section>
+
+        <!-- VOTING ANALYTICS -->
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Voting Analytics</div>
+              <div class="panel-sub">Turnout, participation and voting progress.</div>
+            </div>
+            <div class="panel-actions">
+              <button class="btn btn-ghost btn-sm" id="analyticsRefresh"><i class="fas fa-rotate"></i> Refresh</button>
+            </div>
+          </div>
+          <div class="analytics-grid" id="analyticsMetrics">
+            <div class="analytics-metric teal"><div class="am-label">Votes Cast</div><div class="am-value" data-am="votes">—</div><div class="am-foot" data-amf="votes">Loading…</div></div>
+            <div class="analytics-metric"><div class="am-label">Eligible Voters</div><div class="am-value" data-am="voters">—</div><div class="am-foot" data-amf="voters">Loading…</div></div>
+            <div class="analytics-metric gold"><div class="am-label">Turnout</div><div class="am-value" data-am="turnout">—</div><div class="am-foot" data-amf="turnout">Loading…</div></div>
+          </div>
+          <div class="analytics-chart" id="analyticsChart">
+            <div class="empty-block"><i class="fas fa-chart-line"></i><p>Voting activity will display here when data is available.</p></div>
+          </div>
+        </section>
+
+        <!-- RESULTS CONTROL -->
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Election Results</div>
+              <div class="panel-sub">Review standings, verify totals and manage corrections.</div>
+            </div>
+            <div class="panel-actions">
+              <button class="btn btn-ghost btn-sm" id="verifyAllBtn"><i class="fas fa-shield-halved"></i> Verify All</button>
+              <button class="btn btn-ghost btn-sm" id="resultsAuditBtn"><i class="fas fa-clipboard-list"></i> Adjustment History</button>
+            </div>
+          </div>
+          <div class="adj-warning" style="margin-bottom:1.15rem">
+            <i class="fas fa-circle-info"></i>
+            <div>
+              <b>Results Control Policy</b>
+              Every adjustment to vote totals requires a written justification and approval. Original totals, the corrected total, the reason, evidence and the acting administrator are preserved in an immutable audit trail. Manipulation without a trace is not possible.
+            </div>
+          </div>
+          <div id="resultsList"><div class="empty-block"><i class="fas fa-hourglass-half"></i><p>Loading results…</p></div></div>
+        </section>
+
+        <!-- ACTIVITY & SECURITY -->
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Election Activity &amp; Security</div>
+              <div class="panel-sub">Administrative actions, voting events and election changes.</div>
+            </div>
+            <a href="#" class="btn btn-ghost btn-sm">View all <i class="fas fa-arrow-right"></i></a>
+          </div>
+          <div class="log" id="activityLog">
+            <div class="empty-block"><i class="fas fa-hourglass-half"></i><p>Loading activity…</p></div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ============ MODALS ============ -->
+<div class="modal-back" id="modalBack">
+  <div class="modal" id="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="modalTitle">Title</div>
+        <div class="modal-sub" id="modalSub"></div>
+      </div>
+      <button class="modal-close" id="modalClose"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot" id="modalFoot"></div>
+  </div>
+</div>
+
+<!-- ============ VOTERS DRAWER ============ -->
+<div class="drawer-back" id="drawerBack"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div>
+      <div class="modal-title" id="drawerTitle">Manage Voters</div>
+      <div class="modal-sub" id="drawerSub">Add, verify, or remove voters</div>
+    </div>
+    <button class="modal-close" id="drawerClose"><i class="fas fa-xmark"></i></button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+  <div class="drawer-foot">
+    <button class="btn btn-ghost" id="drawerCancel">Close</button>
+    <button class="btn btn-primary" id="drawerSave"><i class="fas fa-check"></i> Save Changes</button>
+  </div>
+</aside>
+
+<!-- ============ TOAST ============ -->
+<div class="toast" id="toast"><b id="toastTitle">Done</b><span id="toastMsg"></span></div>
+
+<script>
+/* ============================================================
+   NUESA DEV — Election Management
+   Single page. No tabs. Modals + drawers + expandable rows.
+   No mock data. No fallback data. Live API only.
+   ============================================================ */
+(function(){
+'use strict';
+
+var API = 'https://nuesa-biu-pjp0.onrender.com';
+var TIMEOUT = 12000;
+
+function api(path, opts){
+  opts = opts || {};
+  var ctrl = new AbortController();
+  var t = setTimeout(function(){ ctrl.abort(); }, opts.timeout || TIMEOUT);
+  var fetchOpts = {
+    method: opts.method || 'GET',
+    headers: Object.assign({ 'Accept': 'application/json' }, opts.headers || {}),
+    signal: ctrl.signal
+  };
+  if(opts.body){
+    fetchOpts.headers['Content-Type'] = 'application/json';
+    fetchOpts.body = JSON.stringify(opts.body);
+  }
+  return fetch(API + path, fetchOpts).then(function(r){
+    clearTimeout(t);
+    if(!r.ok){
+      return r.text().then(function(txt){
+        throw new Error('HTTP ' + r.status + (txt ? ' — ' + txt.slice(0,200) : ''));
+      });
+    }
+    return r.json();
+  }).catch(function(e){ clearTimeout(t); throw e; });
+}
+
+/* ---- dom helpers ---- */
+function $(s, root){ return (root||document).querySelector(s); }
+function $$(s, root){ return Array.prototype.slice.call((root||document).querySelectorAll(s)); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]}); }
+function num(n){ if(n == null || isNaN(n)) return '—'; return Number(n).toLocaleString('en-GB'); }
+function pct(n){ if(n == null || isNaN(n)) return '—'; return Number(n).toFixed(1) + '%'; }
+function relTime(d){ if(!d) return ''; var t = new Date(d).getTime(); if(isNaN(t)) return '';
+  var s = Math.floor((Date.now()-t)/1000);
+  if(s < 60) return 'just now';
+  if(s < 3600) return Math.floor(s/60) + 'm ago';
+  if(s < 86400) return Math.floor(s/3600) + 'h ago';
+  if(s < 604800) return Math.floor(s/86400) + 'd ago';
+  return new Date(t).toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+}
+function fmtDate(d){ if(!d) return '—'; var t = new Date(d); if(isNaN(t)) return '—'; return t.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
+
+/* ============================================================
+   STATE
+   ============================================================ */
+var state = {
+  elections: [],
+  activeElection: null,
+  positions: [],
+  candidates: [],
+  voters: [],
+  results: [],
+  activity: [],
+  analytics: null,
+  voterDraft: [],
+  selectedElectionId: null
+};
+
+/* ============================================================
+   SHELL: sidebar toggle, topbar
+   ============================================================ */
+var app = $('#app'), sidebar = $('#sidebar');
+var isMobile = function(){ return window.matchMedia('(max-width:768px)').matches; };
+$('#toggleBtn').addEventListener('click', function(){
+  if(isMobile()) sidebar.classList.toggle('open');
+  else app.classList.toggle('rail');
+});
+document.addEventListener('click', function(e){
+  if(isMobile() && sidebar.classList.contains('open') && !sidebar.contains(e.target) && !$('#toggleBtn').contains(e.target)){
+    sidebar.classList.remove('open');
+  }
+});
+$('#searchBtn').addEventListener('click', function(){
+  toast('Search', 'Global search will be wired to /api/search when available.');
+});
+document.addEventListener('keydown', function(e){
+  if((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k'){
+    e.preventDefault(); $('#searchBtn').click();
+  }
+});
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+var toastTimer;
+function toast(title, msg, isError){
+  var t = $('#toast');
+  $('#toastTitle').textContent = title;
+  $('#toastMsg').textContent = msg || '';
+  t.classList.toggle('error', !!isError);
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 4000);
+}
+
+/* ============================================================
+   MODAL FRAMEWORK
+   ============================================================ */
+var modalBack = $('#modalBack'), modalEl = $('#modal');
+function openModal(opts){
+  $('#modalTitle').textContent = opts.title || '';
+  $('#modalSub').textContent = opts.sub || '';
+  $('#modalBody').innerHTML = opts.body || '';
+  $('#modalFoot').innerHTML = opts.foot || '<button class="btn btn-ghost" data-close>Cancel</button>';
+  modalEl.classList.toggle('wide', !!opts.wide);
+  modalBack.classList.add('open');
+  if(opts.onMount) opts.onMount($('#modalBody'));
+  modalEl.querySelectorAll('[data-close]').forEach(function(b){
+    b.addEventListener('click', closeModal);
+  });
+  if(opts.onFoot && $('#modalFoot')) opts.onFoot($('#modalFoot'));
+}
+function closeModal(){ modalBack.classList.remove('open'); }
+$('#modalClose').addEventListener('click', closeModal);
+modalBack.addEventListener('click', function(e){ if(e.target === modalBack) closeModal(); });
+
+/* confirm dialog */
+function confirmDialog(opts){
+  return new Promise(function(resolve){
+    var foot = '<button class="btn btn-ghost" data-close>Cancel</button>'
+             + '<button class="btn ' + (opts.danger?'btn-danger':'btn-primary') + '" id="confirmYes">' + (opts.confirmLabel||'Confirm') + '</button>';
+    openModal({
+      title: opts.title || 'Confirm',
+      sub: opts.sub || '',
+      body: '<div class="confirm-body"><div class="ci"><i class="fas '+(opts.icon||'fa-circle-exclamation')+'"></i></div>'
+          + '<div class="ct">'+(opts.heading||opts.title||'Are you sure?')+'</div>'
+          + '<div class="cd">'+(opts.message||'This action cannot be undone.')+'</div></div>',
+      foot: foot,
+      onMount: function(){
+        var yes = $('#confirmYes');
+        if(yes) yes.addEventListener('click', function(){
+          closeModal(); resolve(true);
+        });
+      }
+    });
+    var orig = closeModal;
+    modalBack.addEventListener('click', function once(e){
+      if(e.target === modalBack || (e.target.closest && e.target.closest('[data-close]'))){
+        modalBack.removeEventListener('click', once); resolve(false);
+      }
+    }, {once:false});
+  });
+}
+
+/* ============================================================
+   DRAWER FRAMEWORK
+   ============================================================ */
+var drawerBack = $('#drawerBack'), drawer = $('#drawer');
+function openDrawer(opts){
+  $('#drawerTitle').textContent = opts.title || '';
+  $('#drawerSub').textContent = opts.sub || '';
+  $('#drawerBody').innerHTML = opts.body || '';
+  drawerBack.classList.add('open');
+  drawer.classList.add('open');
+  if(opts.onMount) opts.onMount($('#drawerBody'));
+}
+function closeDrawer(){
+  drawerBack.classList.remove('open');
+  drawer.classList.remove('open');
+}
+$('#drawerClose').addEventListener('click', closeDrawer);
+$('#drawerCancel').addEventListener('click', closeDrawer);
+drawerBack.addEventListener('click', closeDrawer);
+
+/* ============================================================
+   LOADERS
+   ============================================================ */
+function setStat(key, value, foot){
+  var card = $('.stat[data-stat="'+key+'"]');
+  if(!card) return;
+  var v = card.querySelector('[data-value]'), f = card.querySelector('[data-foot]');
+  v.classList.remove('loading');
+  v.textContent = (value == null) ? '—' : (typeof value === 'string' ? value : num(value));
+  f.innerHTML = foot || '&nbsp;';
+}
+
+function loadOverviewStats(){
+  return api('/api/elections/overview').then(function(res){
+    var d = (res && res.data) ? res.data : res;
+    setStat('total', d.elections_total);
+    setStat('active', d.elections_active);
+    setStat('candidates', d.candidates_total);
+    setStat('voters', d.eligible_voters);
+    setStat('votes', d.votes_cast);
+    setStat('turnout', d.voter_turnout != null ? pct(d.voter_turnout) : null);
+  }).catch(function(){
+    // fallback: derive from /api/elections list where possible
+    return loadElectionsList().then(function(items){
+      var total = items.length;
+      var active = items.filter(function(e){ return /active|live/i.test(e.status||''); }).length;
+      setStat('total', total);
+      setStat('active', active);
+      setStat('candidates', null, 'Unavailable');
+      setStat('voters', null, 'Unavailable');
+      setStat('votes', null, 'Unavailable');
+      setStat('turnout', null, 'Unavailable');
+    }).catch(function(){
+      ['total','active','candidates','voters','votes','turnout'].forEach(function(k){
+        var card = $('.stat[data-stat="'+k+'"]');
+        if(card){
+          var v = card.querySelector('[data-value]');
+          v.classList.remove('loading'); v.textContent = '—';
+          card.querySelector('[data-foot]').textContent = 'Unavailable';
+        }
+      });
+    });
+  });
+}
+
+function loadElectionsList(){
+  if(state.elections.length) return Promise.resolve(state.elections);
+  return api('/api/elections').then(function(res){
+    var d = (res && res.data) ? res.data : res;
+    var items = Array.isArray(d) ? d : (d.elections || d.items || []);
+    state.elections = items;
+    return items;
+  });
+}
+
+function loadElections(){
+  return loadElectionsList().then(function(items){
+    renderElectionsTable(items);
+    var active = items.filter(function(e){ return /active|live/i.test(e.status||''); })[0]
+              || items.find(function(e){ return /scheduled|pending/i.test(e.status||''); })
+              || null;
+    state.activeElection = active;
+    if(active && !state.selectedElectionId) state.selectedElectionId = active.id;
+    renderActiveHero(active);
+    if(!state.selectedElectionId && items.length) state.selectedElectionId = items[0].id;
+    loadPositions(state.selectedElectionId);
+    loadCandidates(state.selectedElectionId);
+    loadResults(state.selectedElectionId);
+    loadAnalytics(state.selectedElectionId);
+    return items;
+  }).catch(function(){
+    $('#electionsTable').innerHTML = '<div class="empty-block"><i class="fas fa-plug-circle-xmark"></i><p>Election records unavailable</p></div>';
+    renderActiveHero(null, true);
+  });
+}
+
+function renderElectionsTable(items){
+  var host = $('#electionsTable');
+  if(!items || !items.length){
+    host.innerHTML = '<div class="empty-block"><i class="fas fa-check-to-slot"></i><p>No elections created yet</p><p style="font-size:11px;margin-top:.35rem">Click <b>Create Election</b> above to begin.</p></div>';
+    return;
+  }
+  var rows = items.map(function(e){
+    var id = e.id || e.election_id || '';
+    var status = (e.status||'').toLowerCase();
+    var tagCls = /active|live/.test(status) ? 'live'
+               : /scheduled|pending/.test(status) ? 'pending'
+               : /closed|completed/.test(status) ? 'closed' : 'draft';
+    return '<tr data-election-id="'+esc(id)+'">'
+      + '<td><div class="row-name">'+esc(e.title||e.name||'Untitled')+'</div>'
+      +     '<div class="row-sub">'+esc(e.session||e.academic_session||'')+'</div></td>'
+      + '<td><span class="tag '+tagCls+'"><i class="fas fa-circle"></i>'+esc(e.status||'draft')+'</span></td>'
+      + '<td>'+esc(fmtDate(e.starts_at||e.start_date))+'</td>'
+      + '<td>'+esc(fmtDate(e.ends_at||e.end_date))+'</td>'
+      + '<td>'+num(e.candidates_count || (e.candidates && e.candidates.length) || null)+'</td>'
+      + '<td class="row-actions">'
+      +   '<button class="icon-btn teal" data-action="select" data-id="'+esc(id)+'" title="Select"><i class="fas fa-crosshairs"></i></button>'
+      +   '<button class="icon-btn" data-action="edit" data-id="'+esc(id)+'" title="Edit"><i class="fas fa-pen"></i></button>'
+      +   '<button class="icon-btn danger" data-action="delete" data-id="'+esc(id)+'" title="Archive"><i class="fas fa-box-archive"></i></button>'
+      +   '<button class="expand-btn" data-action="expand" data-id="'+esc(id)+'"><i class="fas fa-chevron-right"></i></button>'
+      + '</td></tr>';
+  }).join('');
+  host.innerHTML =
+    '<div class="table-wrap"><table>'
+    + '<thead><tr><th>Election</th><th>Status</th><th>Starts</th><th>Ends</th><th>Candidates</th><th></th></tr></thead>'
+    + '<tbody>'+rows+'</tbody></table></div>';
+  wireElectionRows(items);
+}
+
+function wireElectionRows(items){
+  $$('#electionsTable tbody tr').forEach(function(tr){
+    var id = tr.getAttribute('data-election-id');
+    var e = items.find(function(x){ return String(x.id||x.election_id) === id; });
+    $$('[data-action]', tr).forEach(function(btn){
+      btn.addEventListener('click', function(e2){
+        e2.stopPropagation();
+        var act = btn.getAttribute('data-action');
+        if(act === 'select'){
+          state.selectedElectionId = id;
+          var active = state.elections.find(function(x){ return String(x.id||x.election_id) === id; });
+          state.activeElection = active;
+          renderActiveHero(active);
+          loadPositions(id); loadCandidates(id); loadResults(id); loadAnalytics(id);
+          toast('Election selected', active.title || active.name || id);
+        } else if(act === 'edit'){
+          openElectionForm(e);
+        } else if(act === 'delete'){
+          confirmDialog({
+            title:'Archive Election', heading:'Archive this election?',
+            message:'It will be hidden from active records but preserved for audit history.',
+            confirmLabel:'Archive', danger:true, icon:'fa-box-archive'
+          }).then(function(ok){ if(ok) archiveElection(id); });
+        } else if(act === 'expand'){
+          toggleExpand(tr, e);
+        }
+      });
+    });
+  });
+}
+
+function toggleExpand(tr, e){
+  var next = tr.nextElementSibling;
+  var btn = tr.querySelector('[data-action="expand"]');
+  if(next && next.classList.contains('expand-row')){
+    next.remove(); btn.classList.remove('open'); return;
+  }
+  btn.classList.add('open');
+  var row = document.createElement('tr');
+  row.className = 'expand-row';
+  row.innerHTML = '<td colspan="6"><div class="expand-inner">'
+    + '<dl class="kv">'
+    + '<dt>Election ID</dt><dd>'+esc(String(e.id||e.election_id||'—'))+'</dd>'
+    + '<dt>Description</dt><dd>'+esc(e.description||'—')+'</dd>'
+    + '<dt>Positions</dt><dd>'+esc(String(e.positions_count ?? (e.positions && e.positions.length) ?? '—'))+'</dd>'
+    + '<dt>Eligible voters</dt><dd>'+esc(String(e.eligible_voters ?? '—'))+'</dd>'
+    + '<dt>Votes cast</dt><dd>'+esc(String(e.votes_cast ?? '—'))+'</dd>'
+    + '<dt>Created</dt><dd>'+esc(fmtDate(e.created_at))+'</dd>'
+    + '</dl></div></td>';
+  tr.parentNode.insertBefore(row, tr.nextSibling);
+}
+
+/* ============================================================
+   ACTIVE ELECTION HERO
+   ============================================================ */
+function renderActiveHero(e, failed){
+  var left = $('#heLeft'), controls = $('#heControls');
+  if(failed){
+    left.innerHTML = '<div class="empty-block"><i class="fas fa-plug-circle-xmark"></i><p>Active election data unavailable</p></div>';
+    return;
+  }
+  if(!e){
+    left.innerHTML = '<div class="empty-block"><i class="fas fa-tower-broadcast"></i><p>No active election right now</p></div>';
+    controls.innerHTML = '<h4>Voting Controls</h4><button class="btn btn-ghost btn-sm" disabled><i class="fas fa-pause"></i> Pause voting</button>'
+                       + '<button class="btn btn-ghost btn-sm" disabled><i class="fas fa-stop"></i> Close election</button>';
+    return;
+  }
+  var status = (e.status||'').toLowerCase();
+  var isLive = /active|live/.test(status);
+  var totalVoters = e.eligible_voters ?? e.total_voters ?? null;
+  var votesCast = e.votes_cast ?? e.total_votes ?? null;
+  var pctNum = (totalVoters && votesCast != null) ? Math.round((votesCast/totalVoters)*1000)/10 : null;
+  var endDate = e.ends_at || e.end_date;
+  left.innerHTML =
+    '<span class="he-label"><span class="dot"></span>'+(isLive?'Active Election':'Upcoming Election')+'</span>'
+    + '<div class="he-title">'+esc(e.title||e.name||'Untitled election')+'</div>'
+    + '<div class="he-sub">'+esc(e.description || 'Current election details and voting progress.')+'</div>'
+    + '<div class="he-progress">'
+    +   '<div class="he-progress-head"><span>Voting participation</span><span class="pct">'+(pctNum!=null?pctNum+'%':'—')+'</span></div>'
+    +   '<div class="bar"><span style="width:'+(pctNum!=null?pctNum:0)+'%"></span></div>'
+    + '</div>'
+    + '<div class="he-meta">'
+    +   '<div><i class="fas fa-users"></i>'+num(totalVoters)+' eligible</div>'
+    +   '<div><i class="fas fa-ballot-check"></i>'+num(votesCast)+' votes cast</div>'
+    +   (endDate ? '<div><i class="far fa-calendar"></i>Closes '+esc(fmtDate(endDate))+'</div>' : '')
+    + '</div>';
+  controls.innerHTML = '<h4>Voting Controls</h4>'
+    + (isLive
+        ? '<button class="btn btn-ghost btn-sm" id="pauseVoteBtn"><i class="fas fa-pause"></i> Pause voting</button>'
+        + '<button class="btn btn-danger btn-sm" id="closeVoteBtn"><i class="fas fa-stop"></i> Close election</button>'
+        : '<button class="btn btn-primary btn-sm" id="startVoteBtn"><i class="fas fa-play"></i> Start voting</button>')
+    + '<button class="btn btn-ghost btn-sm" id="manageElectionBtn"><i class="fas fa-gear"></i> Manage details</button>';
+  if($('#pauseVoteBtn')) $('#pauseVoteBtn').addEventListener('click', function(){ pauseVoting(e); });
+  if($('#closeVoteBtn')) $('#closeVoteBtn').addEventListener('click', function(){ closeElection(e); });
+  if($('#startVoteBtn')) $('#startVoteBtn').addEventListener('click', function(){ startVoting(e); });
+  if($('#manageElectionBtn')) $('#manageElectionBtn').addEventListener('click', function(){ openElectionForm(e); });
+}
+
+function pauseVoting(e){
+  confirmDialog({
+    title:'Pause Voting', heading:'Pause voting on this election?',
+    message:'Voters will not be able to cast ballots until you resume. This action is logged.',
+    confirmLabel:'Pause', icon:'fa-pause'
+  }).then(function(ok){
+    if(!ok) return;
+    api('/api/elections/'+encodeURIComponent(e.id||e.election_id)+'/pause', {method:'POST'})
+      .then(function(){ toast('Voting paused','The election has been paused.'); loadElections(); })
+      .catch(function(err){ toast('Pause failed', err.message, true); });
+  });
+}
+function startVoting(e){
+  confirmDialog({
+    title:'Start Voting', heading:'Open voting for this election?',
+    message:'Voters will be able to cast ballots immediately. This action is logged.',
+    confirmLabel:'Start voting', icon:'fa-play'
+  }).then(function(ok){
+    if(!ok) return;
+    api('/api/elections/'+encodeURIComponent(e.id||e.election_id)+'/start', {method:'POST'})
+      .then(function(){ toast('Voting started','The election is now live.'); loadElections(); })
+      .catch(function(err){ toast('Start failed', err.message, true); });
+  });
+}
+function closeElection(e){
+  confirmDialog({
+    title:'Close Election', heading:'Close this election permanently?',
+    message:'Voting will end and results will be locked for verification. This action is logged.',
+    confirmLabel:'Close election', danger:true, icon:'fa-stop'
+  }).then(function(ok){
+    if(!ok) return;
+    api('/api/elections/'+encodeURIComponent(e.id||e.election_id)+'/close', {method:'POST'})
+      .then(function(){ toast('Election closed','Results are now locked.'); loadElections(); })
+      .catch(function(err){ toast('Close failed', err.message, true); });
+  });
+}
+function archiveElection(id){
+  api('/api/elections/'+encodeURIComponent(id)+'/archive', {method:'POST'})
+    .then(function(){ toast('Archived','The election has been archived.'); loadElections(); })
+    .catch(function(err){ toast('Archive failed', err.message, true); });
+}
+
+/* ============================================================
+   POSITIONS & CANDIDATES
+   ============================================================ */
+function loadPositions(electionId){
+  var host = $('#positionsList');
+  if(!electionId){ host.innerHTML = '<div class="empty-block"><i class="fas fa-circle-info"></i><p>Select an election to view positions</p></div>'; return; }
+  host.innerHTML = '<div class="empty-block"><i class="fas fa-hourglass-half"></i><p>Loading…</p></div>';
+  api('/api/elections/'+encodeURIComponent(electionId)+'/positions').then(function(res){
+    var d = (res && res.data) ? res.data : res;
+    var items = Array.isArray(d) ? d : (d.positions || d.items || []);
+    state.positions = items;
+    renderPositions(items);
+  }).catch(function(){
+    state.positions = [];
+    host.innerHTML = '<div class="empty-block"><i class="fas fa-plug-circle-xmark"></i><p>Positions unavailable</p></div>';
+  });
+}
+function renderPositions(items){
+  var host = $('#positionsList');
+  if(!items.length){
+    host.innerHTML = '<div class="empty-block"><i class="fas fa-briefcase"></i><p>No positions created yet</p></div>';
+    return;
+  }
+  host.innerHTML = '<div class="table-wrap"><table style="min-width:auto">'
+    + '<thead><tr><th>Position</th><th>Applicants</th><th></th></tr></thead><tbody>'
+    + items.map(function(p){
+      var id = p.id || p.position_id || '';
+      return '<tr>'
+        + '<td><div class="row-name">'+esc(p.title||p.name||'—')+'</div>'
+        +     (p.description?'<div class="row-sub">'+esc(p.description)+'</div>':'')+'</td>'
+        + '<td>'+num(p.applicants_count ?? (p.candidates && p.candidates.length) ?? null)+'</td>'
+        + '<td class="row-actions">'
+        +   '<button class="icon-btn" data-pos-edit="'+esc(id)+'" title="Edit"><i class="fas fa-pen"></i></button>'
+        +   '<button class="icon-btn danger" data-pos-del="'+esc(id)+'" title="Delete"><i class="fas fa-trash"></i></button>'
+        + '</td></tr>';
+    }).join('')
+    + '</tbody></table></div>';
+  $$('[data-pos-edit]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var p = items.find(function(x){ return String(x.id||x.position_id) === b.getAttribute('data-pos-edit'); });
+      openPositionForm(p);
+    });
+  });
+  $$('[data-pos-del]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var id = b.getAttribute('data-pos-del');
+      confirmDialog({
+        title:'Delete Position', heading:'Delete this position?',
+        message:'Candidates assigned to this position will need reassignment.',
+        confirmLabel:'Delete', danger:true, icon:'fa-trash'
+      }).then(function(ok){
+        if(!ok) return;
+        api('/api/positions/'+encodeURIComponent(id), {method:'DELETE'})
+          .then(function(){ toast('Deleted','Position removed.'); loadPositions(state.selectedElectionId); })
+          .catch(function(err){ toast('Delete failed', err.message, true); });
+      });
+    });
+  });
+}
+
+function loadCandidates(electionId){
+  var host = $('#candidatesList');
+  if(!electionId){ host.innerHTML = '<div class="empty-block"><i class="fas fa-circle-info"></i><p>Select an election to view candidates</p></div>'; return; }
+  host.innerHTML = '<div class="empty-block"><i class="fas fa-hourglass-half"></i><p>Loading…</p></div>';
+  api('/api/elections/'+encodeURIComponent(electionId)+'/candidates').then(function(res){
+    var d = (res && res.data) ? res.data : res;
+    var items = Array.isArray(d) ? d : (d.candidates || d.items || []);
+    state.candidates = items;
+    renderCandidates(items);
+  }).catch(function(){
+    state.candidates = [];
+    host.innerHTML = '<div class="empty-block"><i class="fas fa-plug-circle-xmark"></i><p>Candidates unavailable</p></div>';
+  });
+}
+function renderCandidates(items){
+  var host = $('#candidatesList');
+  if(!items.length){
+    host.innerHTML = '<div class="empty-block"><i class="fas fa-user-group"></i><p>No candidates registered yet</p></div>';
+    return;
+  }
+  host.innerHTML = '<div class="table-wrap"><table style="min-width:auto">'
+    + '<thead><tr><th>Candidate</th><th>Position</th><th>Status</th><th></th></tr></thead><tbody>'
+    + items.map(function(c){
+      var id = c.id || c.candidate_id || '';
+      var st = (c.status||'pending').toLowerCase();
+      var tagCls = /approved/.test(st)?'approved':/rejected/.test(st)?'rejected':'pending';
+      return '<tr>'
+        + '<td><div class="row-name">'+esc(c.full_name || c.name || '—')+'</div>'
+        +     '<div class="row-sub">'+esc(c.matric_no || c.matric || '')+'</div></td>'
+        + '<td>'+esc(c.position_title || c.position || '—')+'</td>'
+        + '<td><span class="tag '+tagCls+'"><i class="fas fa-circle"></i>'+esc(st)+'</span></td>'
+        + '<td class="row-actions">'
+        +   (st!=='approved'?'<button class="icon-btn teal" data-cand-approve="'+esc(id)+'" title="Approve"><i class="fas fa-check"></i></button>':'')
+        +   '<button class="icon-btn" data-cand-edit="'+esc(id)+'" title="Edit"><i class="fas fa-pen"></i></button>'
+        +   '<button class="icon-btn danger" data-cand-del="'+esc(id)+'" title="Remove"><i class="fas fa-trash"></i></button>'
+        + '</td></tr>';
+    }).join('')
+    + '</tbody></table></div>';
+  $$('[data-cand-approve]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var id = b.getAttribute('data-cand-approve');
+      confirmDialog({
+        title:'Approve Candidate', heading:'Approve this candidate?',
+        message:'They will appear on the ballot. Logged for audit.',
+        confirmLabel:'Approve', icon:'fa-user-check'
+      }).then(function(ok){
+        if(!ok) return;
+        api('/api/candidates/'+encodeURIComponent(id)+'/approve', {method:'POST'})
+          .then(function(){ toast('Approved','Candidate is now on the ballot.'); loadCandidates(state.selectedElectionId); })
+          .catch(function(err){ toast('Approval failed', err.message, true); });
+      });
+    });
+  });
+  $$('[data-cand-edit]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var c = items.find(function(x){ return String(x.id||x.candidate_id) === b.getAttribute('data-cand-edit'); });
+      openCandidateForm(c);
+    });
+  });
+  $$('[data-cand-del]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var id = b.getAttribute('data-cand-del');
+      confirmDialog({
+        title:'Remove Candidate', heading:'Remove this candidate?',
+        message:'This will be recorded in the election audit log.',
+        confirmLabel:'Remove', danger:true, icon:'fa-trash'
+      }).then(function(ok){
+        if(!ok) return;
+        api('/api/candidates/'+encodeURIComponent(id), {method:'DELETE'})
+          .then(function(){ toast('Removed','Candidate removed.'); loadCandidates(state.selectedElectionId); })
+          .catch(function(err){ toast('Remove failed', err.message, true); });
+      });
+    });
+  });
+}
+
+/* ============================================================
+   VOTERS
+   ============================================================ */
+function loadVoters(){
+  var host = $('#votersTable');
+  host.innerHTML = '<div class="empty-block"><i class="fas fa-hourglass-half"></i><p>Loading voters…</p></div>';
+  return api('/api/voters?limit=50').then(function(res){
+    var d = (res && res.data) ? res.data : res;
+    var items = Array.isArray(d) ? d : (d.voters || d.items || []);
+    state.voters = items;
+    renderVoters(items);
+  }).catch(function(){
+    state.voters = [];
+    host.innerHTML = '<div class="empty-block"><i class="fas fa-plug-circle-xmark"></i><p>Voter list unavailable</p></div>';
+  });
+}
+function renderVoters(items){
+  var host = $('#votersTable');
+  if(!items.length){
+    host.innerHTML = '<div class="empty-block"><i class="fas fa-address-book"></i><p>No voters registered yet</p></div>';
+    return;
+  }
+  host.innerHTML = '<div class="table-wrap"><table>'
+    + '<thead><tr><th>Voter</th><th>Matric No.</th><th>Level</th><th>Verified</th><th>Voted</th></tr></thead><tbody>'
+    + items.slice(0,50).map(function(v){
+      return '<tr>'
+        + '<td><div class="row-name">'+esc(v.full_name || v.name || '—')+'</div>'
+        +     '<div class="row-sub">'+esc(v.email||'')+'</div></td>'
+        + '<td>'+esc(v.matric_no || v.matric || '—')+'</td>'
+        + '<td>'+esc(v.level||'—')+'</td>'
+        + '<td>'+(v.is_verified || v.verified ? '<span class="tag approved"><i class="fas fa-circle"></i>verified</span>' : '<span class="tag pending"><i class="fas fa-circle"></i>pending</span>')+'</td>'
+        + '<td>'+(v.has_voted || v.voted ? '<span class="tag live"><i class="fas fa-circle"></i>voted</span>' : '<span class="tag closed"><i class="fas fa-circle"></i>not yet</span>')+'</td>'
+        + '</tr>';
+    }).join('')
+    + '</tbody></table></div>'
+    + (items.length > 50 ? '<div style="text-align:center;padding:.75rem;color:var(--muted);font-size:11.5px">Showing first 50 of '+items.length+' voters</div>' : '');
+}
+
+/* ============================================================
+   ANALYTICS
+   ============================================================ */
+function loadAnalytics(electionId){
+  if(!electionId){
+    $('#analyticsChart').innerHTML = '<div class="empty-block"><i class="fas fa-chart-line"></i><p>Select an election to view analytics.</p></div>';
+    return;
+  }
+  api('/api/elections/'+encodeURIComponent(electionId)+'/analytics').then(function(res){
+    var d = (res && res.data) ? res.data : res;
+    state.analytics = d;
+    $('[data-am="votes"]').textContent = num(d.votes_cast);
+    $('[data-am="voters"]').textContent = num(d.eligible_voters);
+    $('[data-am="turnout"]').textContent = d.turnout != null ? pct(d.turnout) : '—';
+    $('[data-amf="votes"]').textContent = (d.votes_cast!=null ? 'Live count' : 'Not available');
+    $('[data-amf="voters"]').textContent = (d.eligible_voters!=null ? 'Registered voters' : 'Not available');
+    $('[data-amf="turnout"]').textContent = (d.turnout!=null ? 'of eligible voters' : 'Not available');
+    renderAnalyticsChart(d.series || null);
+  }).catch(function(){
+    state.analytics = null;
+    $('[data-am="votes"]').textContent = '—';
+    $('[data-am="voters"]').textContent = '—';
+    $('[data-am="turnout"]').textContent = '—';
+    $('[data-amf="votes"]').textContent = 'Unavailable';
+    $('[data-amf="voters"]').textContent = 'Unavailable';
+    $('[data-amf="turnout"]').textContent = 'Unavailable';
+    $('#analyticsChart').innerHTML = '<div class="empty-block"><i class="fas fa-chart-line"></i><p>Voting analytics unavailable</p></div>';
+  });
+}
+function renderAnalyticsChart(series){
+  var host = $('#analyticsChart');
+  if(!series || !series.length){
+    host.innerHTML = '<div class="empty-block"><i class="fas fa-chart-line"></i><p>Voting activity will display here once votes are recorded.</p></div>';
+    return;
+  }
+  var W = 600, H = 200, P = {l:30, r:12, t:12, b:24};
+  var iw = W-P.l-P.r, ih = H-P.t-P.b;
+  var max = Math.max(1, Math.max.apply(null, series.map(function(s){ return s.votes || 0; })));
+  var pts = series.map(function(s,i){
+    var x = P.l + (iw * (series.length===1?0.5:i/(series.length-1)));
+    var y = P.t + ih - (ih * ((s.votes||0)/max));
+    return [x,y];
+  });
+  var line = 'M' + pts.map(function(p){ return p[0]+','+p[1]; }).join(' L');
+  var area = line + ' L' + pts[pts.length-1][0] + ',' + (P.t+ih) + ' L' + pts[0][0] + ',' + (P.t+ih) + ' Z';
+  host.innerHTML = '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" style="width:100%;height:100%">'
+    + '<defs><linearGradient id="aGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#65D6C0" stop-opacity=".35"/><stop offset="100%" stop-color="#65D6C0" stop-opacity="0"/></linearGradient></defs>'
+    + '<path d="'+area+'" fill="url(#aGrad)"/>'
+    + '<path d="'+line+'" fill="none" stroke="#65D6C0" stroke-width="2" stroke-linejoin="round"/>'
+    + pts.map(function(p){ return '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="3" fill="#65D6C0"/>'; }).join('')
+    + '</svg>';
+}
+
+/* ============================================================
+   RESULTS + ADJUSTMENT SYSTEM
+   ============================================================ */
+function loadResults(electionId){
+  if(!electionId){
+    $('#resultsList').innerHTML = '<div class="empty-block"><i class="fas fa-circle-info"></i><p>Select an election to view results.</p></div>';
+    return;
+  }
+  api('/api/elections/'+encodeURIComponent(electionId)+'/results').then(function(res){
+    var d = (res && res.data) ? res.data : res;
+    var items = Array.isArray(d) ? d : (d.results || d.items || []);
+    state.results = items;
+    renderResults(items);
+  }).catch(function(){
+    state.results = [];
+    $('#resultsList').innerHTML = '<div class="empty-block"><i class="fas fa-plug-circle-xmark"></i><p>Results unavailable</p></div>';
+  });
+}
+function renderResults(items){
+  var host = $('#resultsList');
+  if(!items.length){
+    host.innerHTML = '<div class="empty-block"><i class="fas fa-clipboard-check"></i><p>No results recorded yet</p></div>';
+    return;
+  }
+  // group by position
+  var byPos = {};
+  items.forEach(function(r){
+    var k = r.position_title || r.position || 'Uncategorised';
+    (byPos[k] = byPos[k] || []).push(r);
+  });
+  var html = '';
+  Object.keys(byPos).forEach(function(pos){
+    var group = byPos[pos].sort(function(a,b){ return (b.votes||0) - (a.votes||0); });
+    html += '<div style="margin-bottom:1.25rem"><div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">'+esc(pos)+'</div>'
+         + '<div class="results-list">';
+    group.forEach(function(r, i){
+      var votes = r.votes ?? r.total_votes ?? null;
+      var verif = (r.verification_status || r.status || 'provisional').toLowerCase();
+      var isVerified = /verified/.test(verif);
+      var isCorrected = /corrected/.test(verif);
+      var isWinner = r.is_winner || i === 0;
+      html += '<div class="result-row '+(isWinner?'winner':'')+'">'
+        + '<div class="result-rank">'+(i+1)+'</div>'
+        + '<div class="result-info">'
+        +   '<div class="rn">'+esc(r.candidate_name || r.full_name || r.name || '—')+'</div>'
+        +   '<div class="rp">'
+        +     (isWinner?'<span class="tag live" style="margin-right:.35rem"><i class="fas fa-crown"></i>leading</span>':'')
+        +     '<span class="tag '+(isVerified?'verified':isCorrected?'corrected':'provisional')+'"><i class="fas fa-circle"></i>'+esc(verif)+'</span>'
+        +   '</div>'
+        + '</div>'
+        + '<div class="result-votes"><div class="rv">'+num(votes)+'</div><div class="rvs">votes</div></div>'
+        + '<button class="adjust-btn" data-adjust="'+esc(r.id||r.result_id||'')+'" data-cand="'+esc(r.candidate_name||r.full_name||r.name||'')+'"><i class="fas fa-sliders"></i> Adjust</button>'
+        + '</div>';
+    });
+    html += '</div></div>';
+  });
+  host.innerHTML = html;
+  $$('[data-adjust]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var rid = b.getAttribute('data-adjust');
+      var candName = b.getAttribute('data-cand');
+      var result = items.find(function(x){ return String(x.id||x.result_id) === rid; });
+      openAdjustmentModal(result, candName);
+    });
+  });
+}
+
+function openAdjustmentModal(result, candName){
+  if(!result) return;
+  var originalVotes = result.votes ?? result.total_votes ?? 0;
+  var currentPosition = result.position_title || result.position || '';
+  var body =
+    '<div class="adj-warning"><i class="fas fa-circle-exclamation"></i><div><b>Auditable Correction Only</b>This adjustment will be permanently recorded. You must provide a written justification and supporting evidence. The original total will remain visible in the audit trail. This is not a way to secretly alter results.</div></div>'
+    + '<div class="form-row"><label>Candidate</label>'
+    +   '<input type="text" class="form-control" value="'+esc(candName)+'" disabled></div>'
+    + '<div class="form-row"><label>Position</label>'
+    +   '<input type="text" class="form-control" value="'+esc(currentPosition)+'" disabled></div>'
+    + '<div class="form-grid">'
+    +   '<div class="form-row"><label>Current verified total</label>'
+    +     '<input type="text" class="form-control" value="'+esc(num(originalVotes))+'" disabled></div>'
+    +   '<div class="form-row"><label>Correction amount <span class="req">*</span></label>'
+    +     '<input type="number" class="form-control" id="adjDelta" placeholder="e.g. -2 or +5" required>'
+    +     '<div class="hint">Positive or negative integer. Use a negative number to correct an over-count.</div></div>'
+    + '</div>'
+    + '<div class="adj-preview">'
+    +   '<div class="adj-preview-row"><span>Original total</span><span class="was" id="adjOrig">'+num(originalVotes)+'</span></div>'
+    +   '<div class="adj-preview-row"><span>Correction</span><span class="delta" id="adjDeltaShow">—</span></div>'
+    +   '<div class="adj-preview-row total"><span>New total (pending approval)</span><span class="now" id="adjNew">'+num(originalVotes)+'</span></div>'
+    + '</div>'
+    + '<div class="form-row"><label>Reason for correction <span class="req">*</span></label>'
+    +   '<textarea class="form-control" id="adjReason" placeholder="e.g. Recount found 2 ballots mis-attributed to this candidate in Ward 3." required></textarea>'
+    +   '<div class="hint">Be specific. Vague reasons will be rejected by the approval workflow.</div></div>'
+    + '<div class="form-row"><label>Supporting evidence reference <span class="req">*</span></label>'
+    +   '<input type="text" class="form-control" id="adjEvidence" placeholder="e.g. Ward 3 recount sheet #W3-2026-04, signed by Presiding Officer" required>'
+    +   '<div class="hint">File reference, document ID or description of physical/digital evidence kept on record.</div></div>'
+    + '<div class="form-row"><label>Second approver <span class="req">*</span></label>'
+    +   '<select class="form-control" id="adjApprover" required>'
+    +     '<option value="">Select an authorised approver…</option>'
+    +     '<option value="electoral-committee-chair">Electoral Committee Chair</option>'
+    +     '<option value="deputy-owner">Deputy Owner</option>'
+    +     '<option value="auditor">Independent Auditor</option>'
+    +   '</select>'
+    +   '<div class="hint">A second authorised administrator must approve before the correction is committed.</div></div>';
+
+  openModal({
+    title: 'Request Vote Correction',
+    sub: 'This request will be queued for approval. No totals change until approved.',
+    body: body,
+    wide: true,
+    foot: '<button class="btn btn-ghost" data-close>Cancel</button>'
+        + '<button class="btn btn-gold" id="submitAdjustment"><i class="fas fa-paper-plane"></i> Submit for Approval</button>',
+    onMount: function(){
+      var delta = $('#adjDelta');
+      delta.addEventListener('input', function(){
+        var v = parseInt(delta.value, 10) || 0;
+        var nv = Math.max(0, originalVotes + v);
+        $('#adjNew').textContent = num(nv);
+        var dshow = $('#adjDeltaShow');
+        dshow.textContent = (v > 0 ? '+' : '') + v;
+        dshow.className = 'delta ' + (v >= 0 ? 'pos' : 'neg');
+      });
+    },
+    onFoot: function(){
+      $('#submitAdjustment').addEventListener('click', function(){
+        var delta = parseInt($('#adjDelta').value, 10);
+        var reason = $('#adjReason').value.trim();
+        var evidence = $('#adjEvidence').value.trim();
+        var approver = $('#adjApprover').value;
+        if(!delta || isNaN(delta)){ toast('Invalid amount','Enter a non-zero correction amount.', true); return; }
+        if(originalVotes + delta < 0){ toast('Invalid','Corrected total cannot be negative.', true); return; }
+        if(reason.length < 20){ toast('Reason too short','Please describe the correction in at least 20 characters.', true); return; }
+        if(!evidence){ toast('Evidence required','Provide a document reference for the correction.', true); return; }
+        if(!approver){ toast('Approver required','Select a second authorised approver.', true); return; }
+        api('/api/elections/'+encodeURIComponent(state.selectedElectionId)+'/results/'+encodeURIComponent(result.id||result.result_id)+'/adjust', {
+          method:'POST',
+          body: { delta: delta, reason: reason, evidence: evidence, approver: approver }
+        }).then(function(){
+          closeModal();
+          toast('Adjustment submitted','Queued for approval by '+approver+'. Original total preserved.');
+          loadResults(state.selectedElectionId);
+        }).catch(function(err){
+          toast('Submission failed', err.message, true);
+        });
+      });
+    }
+  });
+}
+
+function openAdjustmentHistory(){
+  api('/api/elections/'+encodeURIComponent(state.selectedElectionId)+'/results/adjustments').then(function(res){
+    var d = (res && res.data) ? res.data : res;
+    var items = Array.isArray(d) ? d : (d.adjustments || d.items || []);
+    var body = items.length
+      ? '<div class="table-wrap"><table style="min-width:auto"><thead><tr><th>Date</th><th>Candidate</th><th>Change</th><th>Reason</th><th>Status</th></tr></thead><tbody>'
+        + items.map(function(a){
+          var delta = a.delta || 0;
+          var st = (a.status||'pending').toLowerCase();
+          var tagCls = /approved/.test(st)?'approved':/rejected/.test(st)?'rejected':'pending';
+          return '<tr>'
+            + '<td>'+esc(fmtDate(a.created_at))+'</td>'
+            + '<td>'+esc(a.candidate_name || a.candidate || '—')+'</td>'
+            + '<td style="color:'+(delta>=0?'var(--teal)':'var(--danger)')+';font-weight:700">'+(delta>0?'+':'')+num(delta)+'</td>'
+            + '<td style="max-width:280px"><div style="font-size:11.5px">'+esc(a.reason||'—')+'</div><div class="row-sub">'+esc(a.evidence||'')+'</div></td>'
+            + '<td><span class="tag '+tagCls+'"><i class="fas fa-circle"></i>'+esc(st)+'</span></td>'
+            + '</tr>';
+        }).join('')
+        + '</tbody></table></div>'
+      : '<div class="empty-block"><i class="fas fa-clipboard-check"></i><p>No adjustments recorded for this election</p></div>';
+    openModal({
+      title: 'Adjustment History',
+      sub: 'Every correction request with original totals, reasons and approver status.',
+      body: body,
+      wide: true
+    });
+  }).catch(function(){
+    openModal({
+      title: 'Adjustment History',
+      sub: 'Audit data unavailable',
+      body: '<div class="empty-block"><i class="fas fa-plug-circle-xmark"></i><p>Adjustment history endpoint not available.</p></div>'
+    });
+  });
+}
+
+/* ============================================================
+   ACTIVITY & SECURITY
+   ============================================================ */
+function loadActivity(){
+  api('/api/elections/activity?limit=15').then(function(res){
+    var d = (res && res.data) ? res.data : res;
+    var items = Array.isArray(d) ? d : (d.activity || d.items || d.logs || []);
+    state.activity = items;
+    renderActivity(items);
+  }).catch(function(){
+    state.activity = [];
+    $('#activityLog').innerHTML = '<div class="empty-block"><i class="fas fa-plug-circle-xmark"></i><p>Activity log unavailable</p></div>';
+  });
+}
+function renderActivity(items){
+  var host = $('#activityLog');
+  if(!items.length){
+    host.innerHTML = '<div class="empty-block"><i class="fas fa-clipboard-list"></i><p>No election activity recorded yet</p></div>';
+    return;
+  }
+  var ICONS = {
+    election_created:    {i:'fa-plus-circle', cls:'teal'},
+    election_started:    {i:'fa-play', cls:'teal'},
+    election_paused:     {i:'fa-pause', cls:'gold'},
+    election_closed:     {i:'fa-stop', cls:'danger'},
+    candidate_approved:  {i:'fa-user-check', cls:'teal'},
+    candidate_added:     {i:'fa-user-plus', cls:'teal'},
+    candidate_removed:   {i:'fa-user-minus', cls:'danger'},
+    vote_adjusted:       {i:'fa-sliders', cls:'gold'},
+    adjustment_approved: {i:'fa-check-double', cls:'teal'},
+    adjustment_rejected: {i:'fa-xmark', cls:'danger'},
+    voter_added:         {i:'fa-address-book', cls:'teal'},
+    voter_removed:       {i:'fa-address-book', cls:'danger'},
+    results_verified:    {i:'fa-shield-halved', cls:'teal'}
+  };
+  host.innerHTML = items.map(function(it){
+    var type = it.action || it.type || 'unknown';
+    var ico = ICONS[type] || {i:'fa-circle-info', cls:''};
+    var who = it.actor || it.user || it.admin || null;
+    var when = it.created_at || it.timestamp || it.time || null;
+    return '<div class="log-item">'
+      + '<div class="log-ico '+ico.cls+'"><i class="fas '+ico.i+'"></i></div>'
+      + '<div class="log-body">'
+      +   '<div class="log-text"><b>'+esc(who||'System')+'</b> — '+esc(it.description||it.message||type.replace(/_/g,' '))+'</div>'
+      +   '<div class="log-meta">'+esc(relTime(when))+'</div>'
+      + '</div></div>';
+  }).join('');
+}
+
+/* ============================================================
+   FORMS (CREATE / EDIT)
+   ============================================================ */
+function openElectionForm(existing){
+  var isEdit = !!existing;
+  var e = existing || {};
+  var body =
+    '<div class="form-row"><label>Election title <span class="req">*</span></label>'
+    + '<input type="text" class="form-control" id="fTitle" value="'+esc(e.title||e.name||'')+'" required></div>'
+    + '<div class="form-row"><label>Description</label>'
+    + '<textarea class="form-control" id="fDesc" placeholder="Short description for voters and admins.">'+esc(e.description||'')+'</textarea></div>'
+    + '<div class="form-grid">'
+    +   '<div class="form-row"><label>Starts <span class="req">*</span></label>'
+    +     '<input type="date" class="form-control" id="fStarts" value="'+esc((e.starts_at||e.start_date||'').slice(0,10))+'" required></div>'
+    +   '<div class="form-row"><label>Ends <span class="req">*</span></label>'
+    +     '<input type="date" class="form-control" id="fEnds" value="'+esc((e.ends_at||e.end_date||'').slice(0,10))+'" required></div>'
+    + '</div>'
+    + '<div class="form-row"><label>Eligible levels</label>'
+    +   '<input type="text" class="form-control" id="fLevels" value="'+esc(e.levels || e.eligible_levels || '')+'" placeholder="e.g. 100,200,300,400,500"></div>';
+  openModal({
+    title: isEdit ? 'Edit Election' : 'Create Election',
+    sub: isEdit ? 'Update election details' : 'Set up a new election for the association',
+    body: body,
+    foot: '<button class="btn btn-ghost" data-close>Cancel</button>'
+        + '<button class="btn btn-primary" id="saveElection"><i class="fas fa-check"></i> '+(isEdit?'Save changes':'Create')+'</button>',
+    onFoot: function(){
+      $('#saveElection').addEventListener('click', function(){
+        var title = $('#fTitle').value.trim();
+        var starts = $('#fStarts').value;
+        var ends = $('#fEnds').value;
+        if(!title){ toast('Title required','Enter an election title.', true); return; }
+        if(!starts || !ends){ toast('Dates required','Set start and end dates.', true); return; }
+        if(new Date(ends) <= new Date(starts)){ toast('Invalid dates','End date must be after start date.', true); return; }
+        var payload = {
+          title: title,
+          description: $('#fDesc').value.trim(),
+          starts_at: starts,
+          ends_at: ends,
+          levels: $('#fLevels').value.trim()
+        };
+        var p = isEdit
+          ? api('/api/elections/'+encodeURIComponent(e.id||e.election_id), {method:'PUT', body:payload})
+          : api('/api/elections', {method:'POST', body:payload});
+        p.then(function(){
+          closeModal();
+          toast(isEdit?'Election updated':'Election created', title);
+          loadElections();
+        }).catch(function(err){ toast('Save failed', err.message, true); });
+      });
+    }
+  });
+}
+
+function openPositionForm(existing){
+  var p = existing || {};
+  var body =
+    '<div class="form-row"><label>Position title <span class="req">*</span></label>'
+    + '<input type="text" class="form-control" id="pTitle" value="'+esc(p.title||p.name||'')+'" placeholder="e.g. President" required></div>'
+    + '<div class="form-row"><label>Description</label>'
+    + '<textarea class="form-control" id="pDesc" placeholder="Duties and scope of the position.">'+esc(p.description||'')+'</textarea></div>';
+  openModal({
+    title: existing?'Edit Position':'Add Position',
+    sub: 'Election offices available for candidacy',
+    body: body,
+    foot: '<button class="btn btn-ghost" data-close>Cancel</button>'
+        + '<button class="btn btn-primary" id="savePosition"><i class="fas fa-check"></i> Save</button>',
+    onFoot: function(){
+      $('#savePosition').addEventListener('click', function(){
+        var title = $('#pTitle').value.trim();
+        if(!title){ toast('Title required','Enter a position title.', true); return; }
+        var payload = { title: title, description: $('#pDesc').value.trim(), election_id: state.selectedElectionId };
+        var p = existing
+          ? api('/api/positions/'+encodeURIComponent(p.id||p.position_id), {method:'PUT', body:payload})
+          : api('/api/positions', {method:'POST', body:payload});
+        p.then(function(){ closeModal(); toast('Saved', title); loadPositions(state.selectedElectionId); })
+         .catch(function(err){ toast('Save failed', err.message, true); });
+      });
+    }
+  });
+}
+
+function openCandidateForm(existing){
+  var c = existing || {};
+  var posOpts = state.positions.map(function(p){
+    var pid = p.id||p.position_id||'';
+    var sel = (c.position_id||c.position) === pid ? ' selected' : '';
+    return '<option value="'+esc(pid)+'"'+sel+'>'+esc(p.title||p.name)+'</option>';
+  }).join('');
+  var body =
+    '<div class="form-row"><label>Full name <span class="req">*</span></label>'
+    + '<input type="text" class="form-control" id="cName" value="'+esc(c.full_name||c.name||'')+'" required></div>'
+    + '<div class="form-grid">'
+    +   '<div class="form-row"><label>Matric number</label>'
+    +     '<input type="text" class="form-control" id="cMatric" value="'+esc(c.matric_no||c.matric||'')+'"></div>'
+    +   '<div class="form-row"><label>Level</label>'
+    +     '<input type="text" class="form-control" id="cLevel" value="'+esc(c.level||'')+'" placeholder="e.g. 400"></div>'
+    + '</div>'
+    + '<div class="form-row"><label>Position <span class="req">*</span></label>'
+    +   '<select class="form-control" id="cPos" required>'
+    +     '<option value="">Select a position…</option>'+posOpts+'</select></div>'
+    + '<div class="form-row"><label>Manifesto / bio</label>'
+    +   '<textarea class="form-control" id="cBio" placeholder="Short bio or manifesto summary.">'+esc(c.bio||c.manifesto||'')+'</textarea></div>';
+  openModal({
+    title: existing?'Edit Candidate':'Add Candidate',
+    sub: 'Register a candidate for an election position',
+    body: body,
+    foot: '<button class="btn btn-ghost" data-close>Cancel</button>'
+        + '<button class="btn btn-primary" id="saveCandidate"><i class="fas fa-check"></i> Save</button>',
+    onFoot: function(){
+      $('#saveCandidate').addEventListener('click', function(){
+        var name = $('#cName').value.trim();
+        var pos = $('#cPos').value;
+        if(!name || !pos){ toast('Required fields','Name and position are required.', true); return; }
+        var payload = {
+          election_id: state.selectedElectionId,
+          full_name: name,
+          matric_no: $('#cMatric').value.trim(),
+          level: $('#cLevel').value.trim(),
+          position_id: pos,
+          bio: $('#cBio').value.trim()
+        };
+        var p = existing
+          ? api('/api/candidates/'+encodeURIComponent(c.id||c.candidate_id), {method:'PUT', body:payload})
+          : api('/api/candidates', {method:'POST', body:payload});
+        p.then(function(){ closeModal(); toast('Saved', name); loadCandidates(state.selectedElectionId); })
+         .catch(function(err){ toast('Save failed', err.message, true); });
+      });
+    }
+  });
+}
+
+/* ============================================================
+   DRAWER: MANAGE VOTERS
+   ============================================================ */
+function openVoterDrawer(){
+  var body = '<div class="form-row"><label>Add voter (search existing users)</label>'
+    + '<input type="text" class="form-control" id="vSearch" placeholder="Search by name, email or matric…" autocomplete="off">'
+    + '<div id="vResults" style="margin-top:.5rem"></div></div>'
+    + '<div class="form-row"><label>Currently eligible</label>'
+    + '<div id="vList"></div></div>';
+  openDrawer({
+    title: 'Manage Voters',
+    sub: 'Search and add voters to this election',
+    body: body,
+    onMount: function(){
+      renderDrawerVoters();
+      var t;
+      $('#vSearch').addEventListener('input', function(e){
+        clearTimeout(t);
+        var q = e.target.value.trim();
+        if(q.length < 2){ $('#vResults').innerHTML = ''; return; }
+        t = setTimeout(function(){
+          api('/api/users/search?q='+encodeURIComponent(q)+'&limit=10').then(function(res){
+            var d = (res && res.data) ? res.data : res;
+            var items = Array.isArray(d) ? d : (d.users || d.items || []);
+            if(!items.length){ $('#vResults').innerHTML = '<div style="font-size:12px;color:var(--muted);padding:.5rem">No matching users</div>'; return; }
+            $('#vResults').innerHTML = items.map(function(u){
+              var id = u.id || u.user_id;
+              var already = state.voterDraft.indexOf(id) !== -1;
+              return '<div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem .65rem;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:.35rem">'
+                + '<div><div style="font-size:12.5px;font-weight:600">'+esc(u.full_name||u.name||'—')+'</div>'
+                + '<div style="font-size:11px;color:var(--muted)">'+esc(u.email||u.matric_no||'')+'</div></div>'
+                + (already ? '<span class="tag approved"><i class="fas fa-check"></i>added</span>'
+                           : '<button class="btn btn-primary btn-sm" data-add-voter="'+esc(id)+'">Add</button>')
+                + '</div>';
+            }).join('');
+            $$('[data-add-voter]').forEach(function(b){
+              b.addEventListener('click', function(){
+                var id = b.getAttribute('data-add-voter');
+                if(state.voterDraft.indexOf(id) === -1) state.voterDraft.push(id);
+                renderDrawerVoters();
+                b.outerHTML = '<span class="tag approved"><i class="fas fa-check"></i>added</span>';
+              });
+            });
+          }).catch(function(){ $('#vResults').innerHTML = '<div style="font-size:12px;color:var(--danger);padding:.5rem">Search unavailable</div>'; });
+        }, 300);
+      });
+    }
+  });
+  $('#drawerSave').onclick = function(){
+    if(!state.voterDraft.length){ toast('No changes','Add at least one voter before saving.', true); return; }
+    api('/api/elections/'+encodeURIComponent(state.selectedElectionId)+'/voters', {
+      method:'POST', body:{ voter_ids: state.voterDraft }
+    }).then(function(){
+      closeDrawer(); toast('Saved', state.voterDraft.length+' voters added.');
+      loadVoters();
+    }).catch(function(err){ toast('Save failed', err.message, true); });
+  };
+}
+function renderDrawerVoters(){
+  var host = $('#vList');
+  if(!host) return;
+  if(!state.voterDraft.length){
+    host.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:.5rem">No voters added yet.</div>';
+    return;
+  }
+  host.innerHTML = state.voterDraft.map(function(id, i){
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:.45rem .65rem;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:.35rem;font-size:12px">'
+      + '<span>Voter #'+esc(String(id))+'</span>'
+      + '<button class="icon-btn danger" data-rm="'+i+'"><i class="fas fa-xmark"></i></button>'
+      + '</div>';
+  }).join('');
+  $$('[data-rm]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var i = parseInt(b.getAttribute('data-rm'),10);
+      state.voterDraft.splice(i,1);
+      renderDrawerVoters();
+    });
+  });
+}
+
+/* ============================================================
+   WIRE EVENTS
+   ============================================================ */
+$('#createElectionBtn').addEventListener('click', function(){ openElectionForm(null); });
+$('#createElectionBtn2').addEventListener('click', function(){ openElectionForm(null); });
+$('#addPositionBtn').addEventListener('click', function(){ openPositionForm(null); });
+$('#addCandidateBtn').addEventListener('click', function(){ openCandidateForm(null); });
+$('#manageVotersBtn').addEventListener('click', function(){ state.voterDraft = []; openVoterDrawer(); });
+$('#analyticsRefresh').addEventListener('click', function(){ loadAnalytics(state.selectedElectionId); });
+$('#verifyAllBtn').addEventListener('click', function(){
+  confirmDialog({
+    title:'Verify Results', heading:'Mark all results as verified?',
+    message:'Only proceed if totals have been reconciled against valid ballots and voter participation.',
+    confirmLabel:'Verify all', icon:'fa-shield-halved'
+  }).then(function(ok){
+    if(!ok) return;
+    api('/api/elections/'+encodeURIComponent(state.selectedElectionId)+'/results/verify', {method:'POST'})
+      .then(function(){ toast('Verified','Results marked as verified.'); loadResults(state.selectedElectionId); })
+      .catch(function(err){ toast('Verify failed', err.message, true); });
+  });
+});
+$('#resultsAuditBtn').addEventListener('click', openAdjustmentHistory);
+$('#refreshAll').addEventListener('click', function(){
+  ['total','active','candidates','voters','votes','turnout'].forEach(function(k){
+    var card = $('.stat[data-stat="'+k+'"]');
+    if(card){
+      var v = card.querySelector('[data-value]');
+      v.classList.add('loading'); v.textContent = '—';
+      card.querySelector('[data-foot]').innerHTML = '&nbsp;';
+    }
+  });
+  loadOverviewStats();
+  loadElections();
+  loadVoters();
+  loadActivity();
+});
+
+/* election search */
+$('#electionSearch').addEventListener('input', function(e){
+  var q = e.target.value.toLowerCase();
+  var filtered = state.elections.filter(function(x){
+    return (x.title||x.name||'').toLowerCase().indexOf(q) !== -1
+        || (x.status||'').toLowerCase().indexOf(q) !== -1;
+  });
+  renderElectionsTable(filtered);
+});
+$('#voterSearch').addEventListener('input', function(e){
+  var q = e.target.value.toLowerCase();
+  var filtered = state.voters.filter(function(x){
+    return (x.full_name||x.name||'').toLowerCase().indexOf(q) !== -1
+        || (x.email||'').toLowerCase().indexOf(q) !== -1
+        || (x.matric_no||x.matric||'').toLowerCase().indexOf(q) !== -1;
+  });
+  renderVoters(filtered);
+});
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+function boot(){
+  loadOverviewStats();
+  loadElections();
+  loadVoters();
+  loadActivity();
+}
+boot();
+
+})();
+</script>
+</body>
+</html>
