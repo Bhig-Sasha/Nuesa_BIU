@@ -637,8 +637,8 @@ function parseCodeLevelSem(code){
   var m = String(code||'').toUpperCase().match(/([A-Z]{2,4})\s*-?\s*(\d)(\d)(\d)/);
   if(!m) return null;
   var lv = parseInt(m[2],10), sm = parseInt(m[3],10);
-  if(lv < 1 || lv > 7 || (sm !== 1 && sm !== 2)) return null;
-  return { level: String(lv*100), sem: String(sm) };
+  if(lv < 1 || lv > 7) return null;
+  return { level: String(lv*100), sem: (sm === 1 || sm === 2) ? String(sm) : '' };
 }
 function normSem(v){
   var s = String(v==null?'':v).toLowerCase().trim();
@@ -920,6 +920,14 @@ function renderExamItem(e){
        + '</li>';
 }
 
+function undatedHtml(pool){
+ var u=pool.filter(function(e){return !e.dateISO});
+ if(!u.length) return '';
+ return '<div class="exam-day" style="margin-top:1rem"><div class="exam-day-head"><h3>Date to be announced<small>No valid date from the timetable</small></h3>'
+  +'<span class="exam-day-count">'+u.length+' exam'+(u.length===1?'':'s')+'</span></div>'
+  +'<ul class="exam-list">'+u.map(renderExamItem).join('')+'</ul></div>';
+}
+
 function renderExams(){
  var l=document.getElementById('examLevel').value;
  var s=document.getElementById('examSem').value;
@@ -932,17 +940,21 @@ function renderExams(){
 
  if(!validPool.length){
   summary.style.display='none';
-  document.getElementById('examBody').innerHTML=msg('fa-file-circle-xmark',state.exams.length?'No examination timetable has been published yet.':'No exam data available.');
+  var dEl=document.getElementById('examDay');
+  dEl.innerHTML='<option value="">No dates</option>';
+  document.getElementById('examBody').innerHTML=undatedHtml(pool)||msg('fa-file-circle-xmark',state.exams.length?'No exams found for this selection.':'No exam data available.');
   return;
  }
 
  var allDates=uniq(validPool.map(function(e){return e.dateISO})).sort();
+ var dayEl=document.getElementById('examDay');
  if(!start||allDates.indexOf(start)===-1){
   var today=todayISO();
   var futureDates=allDates.filter(function(d){return d>=today});
   start=futureDates.length?futureDates[0]:allDates[0];
-  document.getElementById('examDay').value=start;
  }
+ dayEl.innerHTML=allDates.map(function(d){return '<option value="'+esc(d)+'">'+esc(longDayLabel(d))+'</option>'}).join('');
+ dayEl.value=start;
 
  var day1=start;
  var day2=addDaysISO(start,1);
@@ -965,7 +977,7 @@ function renderExams(){
  }
 
  if(!rows1.length&&!rows2.length){
-  document.getElementById('examBody').innerHTML=msg('fa-file-circle-xmark','No examinations on these two days for this selection.');
+  document.getElementById('examBody').innerHTML=msg('fa-file-circle-xmark','No examinations on these two days for this selection.')+undatedHtml(pool);
   return;
  }
 
@@ -989,7 +1001,7 @@ function renderExams(){
       +'</div>';
  }
  html+='</div>';
- document.getElementById('examBody').innerHTML=html;
+ document.getElementById('examBody').innerHTML=html+undatedHtml(pool);
 }
 
 /* ===== SMART EXAM PLANNER ===== */
