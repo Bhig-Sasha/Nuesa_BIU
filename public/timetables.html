@@ -648,6 +648,14 @@ function normSem(v){
 }
 function semLabel(v){ return v==='1' ? '1st Semester' : v==='2' ? '2nd Semester' : v; }
 
+/* ===== EXAM GROUP TAG (e.g. "Energy Tech (BMAS)" -> BMAS) ===== */
+function examGroupTag(title,explicit){
+  if(explicit) return String(explicit).trim().toUpperCase();
+  var m = String(title||'').match(/\(([^)]{2,14})\)\s*$/);
+  return m ? m[1].trim().toUpperCase() : '';
+}
+function normCode(c){ return String(c||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
+
 /* ===== NORMALISE ===== */
 function normalise(res){
  var d=res.data||res;
@@ -708,8 +716,16 @@ function normalise(res){
    venue:pick(e,'venue','room')||'TBA',
    examType:String(pick(e,'exam_type','type','examType')||'written').toLowerCase(),
    level:ls.level || String(pick(e,'level')),
-   sem:ls.sem || normSem(pick(e,'semester','sem'))
+   sem:ls.sem || normSem(pick(e,'semester','sem')),
+   group:examGroupTag(pick(e,'course_title','title','name'),pick(e,'group','college','faculty'))
   };
+ });
+ /* remove exact duplicate exam rows (same code, date, time, venue, title) */
+ var seenEx={};
+ state.exams=state.exams.filter(function(e){
+  var k=[normCode(e.code),e.dateISO,timeKey(e.start||e.time),timeKey(e.end),String(e.venue).toLowerCase().trim(),String(e.title||'').toLowerCase().trim()].join('|');
+  if(seenEx[k]) return false;
+  seenEx[k]=true;return true;
  });
  state.announcements=(d.announcements||d.notices||[]).map(function(a){
   return{title:pick(a,'title'),text:pick(a,'message','text','content','body'),by:pick(a,'posted_by','author','by')};
@@ -979,7 +995,7 @@ function renderExams(){
 /* ===== SMART EXAM PLANNER ===== */
 var plannerState={level:'', selected:{}};  /* selected: code|dateISO|start -> true */
 
-function plannerExamKey(e){return e.code+'|'+e.dateISO+'|'+timeKey(e.start||e.time);}
+function plannerExamKey(e){return [e.code,e.dateISO,timeKey(e.start||e.time),e.venue,e.title||''].join('|');}
 
 function getAllSelectedExams(){
   return state.exams.filter(function(e){
@@ -1005,6 +1021,10 @@ function getPlannerExamsForLevel(level){
 
 function examsClash(a, b) {
   if (a.dateISO !== b.dateISO) return false;
+  /* same course code = same course (duplicate row or a group variant): never a clash */
+  if (normCode(a.code) === normCode(b.code)) return false;
+  /* different college/group tags (e.g. CMAS vs BMAS): student is in only one, not a clash */
+  if (a.group && b.group && a.group !== b.group) return false;
   var ai = toMin(a.start || a.time), ae = toMin(a.end || a.time);
   var bi = toMin(b.start || b.time), be = toMin(b.end || b.time);
   if (!(ai < be && bi < ae)) return false;
