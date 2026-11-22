@@ -292,6 +292,12 @@ h1,h2,h3{font-weight:900;line-height:1.2}
 .planner-empty i{font-size:2rem;display:block;margin-bottom:.6rem;color:var(--emerald-300)}
 .planner-empty strong{color:var(--slate-700)}
 
+/* ANNOUNCEMENTS (kept for backwards compat, unused) */
+.ann{display:flex;gap:1rem;padding:1.25rem 1.5rem;border:2px solid var(--amber-300);border-left:6px solid var(--amber-500);border-radius:.5rem;background:#fffbeb;margin-top:1.5rem}
+.ann i{color:var(--amber-500);font-size:1.25rem;margin-top:.2rem}
+.ann h3{font-size:1.1rem;margin-bottom:.25rem;color:var(--slate-800)}
+.ann .by{font-family:'Roboto Mono',monospace;font-size:.7rem;color:var(--slate-500);margin-top:.5rem}
+
 /* FOOTER */
 .footer{background:linear-gradient(135deg,var(--slate-800) 0%,var(--slate-900) 100%);border-top:4px solid var(--emerald-500);padding:4rem 0 2rem}
 .footer-container{max-width:80rem;margin:0 auto;padding:0 1rem}
@@ -422,7 +428,7 @@ h1,h2,h3{font-weight:900;line-height:1.2}
  <!-- 5. SMART EXAM PLANNER -->
  <section class="tt-section" id="exam-planner"><div class="container">
   <div class="sec-head">
-   <div><span class="tag tag-emerald">Plan Ahead</span><h2>Smart Exam Planner</h2><p>Pick your level, select the exams you're taking and instantly see clashes, dates and times. Course codes like EEE 312 (300 Level, 1st Semester) or MEE 412 (400 Level, 1st Semester) automatically determine level and semester.</p></div>
+   <div><span class="tag tag-emerald">Plan Ahead</span><h2>Smart Exam Planner</h2><p>Pick your level, select the exams you're taking and instantly see clashes, dates and times. Department clashes (EEE, MEE, CVE) are automatically ignored.</p></div>
   </div>
 
   <div class="planner-shell">
@@ -626,97 +632,368 @@ function courseBucket(c){
   return kind + ':' + prefix + ':' + (group || '—');
 }
 
-/* ===== COURSE CODE PARSING (LEVEL & SEMESTER) ===== */
-/* Course code format: PREFIX NNN (e.g., EEE 312, MEE 412, GST 101)
-   - First digit of the numeric part = level (1=100, 2=200, 3=300, 4=400, 5=500)
-   - Second digit = semester (1=first, 2=second) — the usual Nigerian convention
-   - Third digit is the course number within the semester
-   Examples:
-     EEE 312 -> prefix EEE, digits 312 -> level 300, semester 1
-     MEE 412 -> prefix MEE, digits 412 -> level 400, semester 1
-     GST 101 -> prefix GST, digits 101 -> level 100, semester 1
-     CVE 222 -> prefix CVE, digits 222 -> level 200, semester 2 */
-function parseCourseCode(code){
-  var s = String(code||'').trim().toUpperCase();
-  var m = s.match(/^([A-Z]{2,4})\s*(\d{3})/);
-  if(!m) return null;
-  var digits = m[2];
-  var levelDigit = parseInt(digits[0], 10);
-  var semDigit = parseInt(digits[1], 10);
-  var level = levelDigit * 100; // 1->100, 2->200, 3->300, 4->400, 5->500
-  var semester = semDigit === 2 ? 2 : 1; // only 2 means second semester, otherwise first
-  return {prefix: m[1], digits: digits, level: level, semester: semester};
-}
-
-/* Effective level for an exam:
-   - Prefer explicit level field if present and valid
-   - Otherwise derive from course code
-   - Fallback to empty string */
-function examLevel(e){
-  if(e.level && String(e.level).trim() !== '') {
-    var lv = String(e.level).trim();
-    var m = lv.match(/(\d{3})/);
-    if(m) return m[1];
-    return lv;
+/* ===== NORMALISE ===== */
+function normalise(res){
+ var d=res.data||res;
+ var m=d.settings||d;
+ state.meta={
+  session:pick(m,'session','academic_session'),
+  semester:pick(m,'semester','current_semester'),
+  published:pick(m,'published','is_published','schedule_status'),
+  updated:pick(m,'last_updated','lastUpdated','updated_at'),
+  classStatus:statusOf(pick(m,'class_status','classStatus','class_timetable_status')),
+  examStatus:statusOf(pick(m,'exam_status','examStatus','exam_timetable_status')),
+  classPdf:pick(m,'class_pdf','class_pdf_url','classPdf'),
+  examPdf:pick(m,'exam_pdf','exam_pdf_url','examPdf')
+ };
+ state.classes=(d.classes||d.class_timetable||[]).map(function(c){
+  var t=pick(c,'time');if(!t){var a=pick(c,'start_time'),b=pick(c,'end_time');t=a&&b?prettyTime(a)+' – '+prettyTime(b):prettyTime(a)}
+  var start=pick(c,'start_time'),end=pick(c,'end_time');
+  if(!start || !end){
+    var mm = String(t||'').match(/(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\s*[-–—]\s*(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)/);
+    if(mm){ start = mm[1]; end = mm[2]; }
   }
-  var parsed = parseCourseCode(e.code);
-  if(parsed) return String(parsed.level);
-  return '';
-}
-
-/* Effective semester for an exam:
-   - Prefer explicit sem field if present and valid
-   - Otherwise derive from course code
-   - Fallback to empty string */
-function examSemester(e){
-  if(e.sem && String(e.sem).trim() !== '') {
-    var sm = String(e.sem).trim().toLowerCase();
-    if(sm === '1' || sm === 'first' || sm === 'first semester') return '1';
-    if(sm === '2' || sm === 'second' || sm === 'second semester') return '2';
-    return sm;
+  return{
+    day:fmtDay(pick(c,'day','weekday')),
+    code:pick(c,'course_code','code'),
+    dept:pick(c,'department','dept','course_title','title'),
+    time:t||'TBA',
+    start:start,
+    end:end,
+    venue:pick(c,'venue','room')||'TBA',
+    lecturer:pick(c,'lecturer','lecturer_name','instructor','staff','lecturerName')||'',
+    level:String(pick(c,'level')),
+    sem:String(pick(c,'semester','sem')),
+    type:pick(c,'type')||'class'
+  };
+ });
+ state.exams=(d.exams||d.exam_timetable||[]).map(function(e){
+  var rawDate=pick(e,'date','exam_date');
+  var startRaw=pick(e,'start_time','time');
+  var endRaw=pick(e,'end_time');
+  var start=startRaw,end=endRaw;
+  if(!end && startRaw && /[-–—]/.test(startRaw)){
+    var parts=startRaw.split(/[-–—]/);
+    start=parts[0].trim();
+    end=parts[1]?parts[1].trim():'';
   }
-  var parsed = parseCourseCode(e.code);
-  if(parsed) return String(parsed.semester);
-  return '';
+  return{
+   code:pick(e,'course_code','code'),
+   title:pick(e,'course_title','title','name'),
+   status:pick(e,'status')||'Scheduled',
+   dateISO:isoDate(rawDate),
+   start:start,
+   end:end,
+   time:startRaw||'TBA',
+   venue:pick(e,'venue','room')||'TBA',
+   examType:String(pick(e,'exam_type','type','examType')||'written').toLowerCase(),
+   level:String(pick(e,'level')),
+   sem:String(pick(e,'semester','sem'))
+  };
+ });
+ state.announcements=(d.announcements||d.notices||[]).map(function(a){
+  return{title:pick(a,'title'),text:pick(a,'message','text','content','body'),by:pick(a,'posted_by','author','by')};
+ });
 }
 
-/* ===== EXAM CLASH LOGIC (uses level & semester from course code) ===== */
-function examsClash(a, b) {
-  if (a.dateISO !== b.dateISO) return false;
-
-  // Time overlap
-  var ai = toMin(a.start || a.time), ae = toMin(a.end || a.time);
-  var bi = toMin(b.start || b.time), be = toMin(b.end || b.time);
-  if (!(ai < be && bi < ae)) return false;
-
-  // Level check (from course code, e.g., 3xx -> 300)
-  var la = examLevel(a), lb = examLevel(b);
-  if (la !== lb) return false;
-
-  // Semester check (from course code, middle digit)
-  var sa = examSemester(a), sb = examSemester(b);
-  if (sa !== sb) return false;
-
-  // Department check
-  var pa = coursePrefix(a.code), pb = coursePrefix(b.code);
-  var ga = GENERAL_PREFIXES.indexOf(pa) !== -1;
-  var gb = GENERAL_PREFIXES.indexOf(pb) !== -1;
-
-  if (pa === pb) return true;          // same department (EEE vs EEE, MEE vs MEE, CVE vs CVE)
-  if (ga && gb) return true;           // both general (GST vs GST)
-  if (ga || gb) return true;           // general vs departmental (usually clash)
-  return false;                        // different departments (EEE vs MEE etc.) → NOT a clash
+/* ===== RENDER HELPERS ===== */
+var WEEKDAYS=['Monday','Tuesday','Wednesday','Thursday','Friday'];
+function uniq(arr){return arr.filter(function(v,i){return v&&arr.indexOf(v)===i}).sort()}
+function fillSelect(id,values,allLabel,suffix){
+ var el=document.getElementById(id),cur=el.value;
+ el.innerHTML='<option value="">'+allLabel+'</option>'+values.map(function(v){return '<option value="'+esc(v)+'">'+esc(v)+suffix+'</option>'}).join('');
+ el.value=values.indexOf(cur)>-1?cur:'';
 }
+function setStatus(id,s){var el=document.getElementById(id);if(s){el.className='status '+s;el.textContent=s;el.style.display=''}else el.style.display='none'}
+function msg(icon,text){return '<div class="empty"><i class="fas '+icon+'"></i>'+text+'</div>'}
+
+/* ===== WEEKLY SCHEDULE RENDERERS ===== */
+function filterSchedule(level,sem){
+  return state.classes.filter(function(c){return(!level||c.level===level)&&(!sem||c.sem===sem)});
+}
+function dayList(rows, day){
+  return rows.filter(function(c){return c.day===day}).sort(function(a,b){
+    var ta=a.start?timeKey(a.start):timeKey(a.time), tb=b.start?timeKey(b.start):timeKey(b.time);
+    return ta.localeCompare(tb);
+  });
+}
+function detectConflicts(rows){
+  var out=[];
+  var buckets={};
+  rows.forEach(function(c){
+    var lvl = c.level || '__';
+    var key = lvl + '|' + courseBucket(c);
+    (buckets[key] = buckets[key] || []).push(c);
+  });
+  Object.keys(buckets).forEach(function(key){
+    var list = buckets[key];
+    WEEKDAYS.forEach(function(d){
+      var dayItems = list.filter(function(c){return c.day===d});
+      dayItems.sort(function(a,b){
+        return (a.start?timeKey(a.start):timeKey(a.time)).localeCompare(b.start?timeKey(b.start):timeKey(b.time));
+      });
+      for(var i=0;i<dayItems.length;i++){
+        for(var j=i+1;j<dayItems.length;j++){
+          var ai=toMin(dayItems[i].start||dayItems[i].time), ae=toMin(dayItems[i].end||dayItems[i].time);
+          var bi=toMin(dayItems[j].start||dayItems[j].time), be=toMin(dayItems[j].end||dayItems[j].time);
+          if(ai<be && bi<ae) out.push({day:d, a:dayItems[i], b:dayItems[j]});
+        }
+      }
+    });
+  });
+  return out;
+}
+function buildClashSet(conflicts){
+  var s={};
+  conflicts.forEach(function(c){
+    s[c.a.code+'|'+c.a.start+'|'+c.a.day+'|'+c.a.level]=true;
+    s[c.b.code+'|'+c.b.start+'|'+c.b.day+'|'+c.b.level]=true;
+  });
+  return s;
+}
+function clashKey(c){return c.code+'|'+c.start+'|'+c.day+'|'+c.level;}
+
+function renderWeeklyGrid(rows){
+  var minH=8,maxH=18;
+  rows.forEach(function(c){
+    var s=toMin(c.start||c.time), e=toMin(c.end||c.time);
+    if(s>0) minH=Math.min(minH,Math.floor(s/60));
+    if(e>0) maxH=Math.max(maxH,Math.ceil(e/60));
+  });
+  var hours=maxH-minH, cols=hours*2, origin=minH*60;
+  var bg='background-size:calc(100% / '+hours+') 100%';
+  var clashSet=buildClashSet(detectConflicts(rows));
+
+  var head='<div class="ws-head">'
+    +'<div class="ws-corner">Day / Time</div>'
+    +'<div class="ws-hours" style="grid-template-columns:repeat('+hours+',1fr)">'
+    +Array.from({length:hours},function(_,i){return '<span>'+prettyTime(String(minH+i).padStart(2,'0')+':00')+'</span>'}).join('')
+    +'</div></div>';
+
+  var todayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date().getDay()];
+
+  var body=WEEKDAYS.map(function(day){
+    var list=dayList(rows,day);
+    var isToday=day===todayName;
+    var laneEnds=[], placed=[];
+    list.forEach(function(c){
+      var s=toMin(c.start||c.time), e=toMin(c.end||c.time);
+      var lane=laneEnds.findIndex(function(end){return end<=s});
+      if(lane===-1) lane=laneEnds.length;
+      laneEnds[lane]=e;
+      var colStart=Math.floor((s-origin)/30)+1;
+      var colEnd=Math.max(colStart+1,Math.ceil((e-origin)/30)+1);
+      placed.push({c:c,lane:lane,colStart:colStart,colEnd:colEnd});
+    });
+    var lanes=Math.max(1,laneEnds.length);
+    var cells = placed.length ? placed.map(function(p){
+      var c=p.c;
+      var clash=clashSet[clashKey(c)];
+      return '<div class="ws-slot '+(c.type==='test'?'t-test':'t-class')+' '+(clash?'clash':'')+'" style="grid-column:'+p.colStart+' / '+p.colEnd+';grid-row:'+(p.lane+1)+'">'
+        +'<div class="ws-slot-time"><span>'+prettyTime(c.start||c.time)+' - '+prettyTime(c.end||c.time)+'</span>'+(clash?'<i class="fas fa-triangle-exclamation"></i>':'')+'</div>'
+        +'<div class="ws-slot-code">'+esc(c.code)+'</div>'
+        +'<div class="ws-slot-title">'+esc(c.dept)+'</div>'
+        +'<div class="ws-slot-meta">'
+        +'<span class="ws-slot-venue"><i class="fas fa-map-marker-alt"></i> '+esc(c.venue)+'</span>'
+        +(c.lecturer?'<span class="ws-slot-lecturer"><i class="fas fa-user"></i> '+esc(c.lecturer)+'</span>':'')
+        +'</div>'
+        +'</div>';
+    }).join('') : '<div class="ws-free"><i class="fas fa-book-open"></i> Free</div>';
+
+    return '<div class="ws-row '+(isToday?'today':'')+'">'
+      +'<div class="ws-day"><span>'+day.slice(0,3)+(isToday?' <i class="fas fa-circle" style="font-size:.4rem;color:var(--emerald-500)"></i>':'')+'</span><span style="font-weight:400;font-size:.65rem;text-transform:none;letter-spacing:0">'+day+'</span></div>'
+      +'<div class="ws-track" style="grid-template-columns:repeat('+cols+',1fr);grid-template-rows:repeat('+lanes+',auto);'+bg+'">'+cells+'</div>'
+      +'</div>';
+  }).join('');
+
+  return '<div class="ws-wrap"><div class="ws-grid">'+head+body+'</div></div>';
+}
+
+function renderWeeklyList(rows){
+  var clashSet=buildClashSet(detectConflicts(rows));
+  var html='<div class="ws-list">';
+  WEEKDAYS.forEach(function(day){
+    var list=dayList(rows,day);
+    if(!list.length) return;
+    html+='<div class="ws-list-day">'
+      +'<div class="ws-list-day-head"><h3>'+day+'</h3><span class="count">'+list.length+(list.length===1?' class':' classes')+'</span></div>'
+      +'<div class="ws-list-items">'
+      +list.map(function(c){
+        var clash=clashSet[clashKey(c)];
+        return '<div class="ws-list-item '+(clash?'clash':'')+'">'
+          +'<div class="ws-list-time"><span class="start">'+prettyTime(c.start||c.time)+'</span><span class="end">'+prettyTime(c.end||c.time)+'</span></div>'
+          +'<div class="ws-list-info"><div class="code">'+esc(c.code)+(clash?' <span class="clash-tag"><i class="fas fa-triangle-exclamation"></i> Conflict</span>':'')+'</div><div class="title">'+esc(c.dept)+'</div></div>'
+          +'<div class="ws-list-meta">'
+          +'<span class="ws-list-venue"><i class="fas fa-map-marker-alt"></i> '+esc(c.venue)+'</span>'
+          +(c.lecturer?'<span class="ws-list-lecturer"><i class="fas fa-user"></i> '+esc(c.lecturer)+'</span>':'')
+          +'</div>'
+          +'</div>';
+      }).join('')
+      +'</div></div>';
+  });
+  html+='</div>';
+  return html;
+}
+
+function renderClasses(){
+  var l=document.getElementById('classLevel').value;
+  var s=document.getElementById('classSem').value;
+  var view=document.getElementById('classView').value;
+  var rows=filterSchedule(l,s);
+  if(!rows.length){
+    document.getElementById('classBody').innerHTML=msg('fa-calendar-times',state.classes.length?'No classes found for this selection.':'No class timetable has been published yet.');
+    return;
+  }
+  document.getElementById('classBody').innerHTML = view==='list' ? renderWeeklyList(rows) : renderWeeklyGrid(rows);
+}
+
+/* ===== EXAM RENDERERS ===== */
+function fillExamDaySelect(){
+ var el=document.getElementById('examDay');
+ var cur=el.value;
+ var dates=uniq(state.exams.map(function(e){return e.dateISO}).filter(Boolean));
+ dates.sort(function(a,b){return a<b?-1:a>b?1:0});
+ el.innerHTML=dates.map(function(d){
+  return '<option value="'+esc(d)+'">'+esc(longDayLabel(d))+'</option>';
+ }).join('');
+ if(dates.length){
+  el.value=dates.indexOf(cur)>-1?cur:dates[0];
+ } else {
+  el.innerHTML='<option value="">No dates</option>';
+ }
+}
+
+function renderExamItem(e){
+  var tCls=['written','cbt','practical','oral'].indexOf(e.examType)>-1?e.examType:'written';
+  var startTime=prettyTime(e.start||e.time)||'TBA';
+  var endTime=prettyTime(e.end);
+  return '<li class="exam-item">'
+       + '<div class="exam-time">'
+       + '<span class="start">'+esc(startTime)+'</span>'
+       + (endTime?'<span class="end">'+esc(endTime)+'</span>':'')
+       + '</div>'
+       + '<div class="exam-info">'
+       + '<div class="ecode">'+esc(e.code)+'</div>'
+       + '<div class="etitle">'+esc(e.title||'')+'</div>'
+       + (e.level?'<span class="elevel">'+esc(e.level)+' Level</span>':'')
+       + '</div>'
+       + '<span class="exam-type-tag '+tCls+'">'+esc(e.examType)+'</span>'
+       + '<div class="evena"><i class="fas fa-map-marker-alt"></i>'+esc(e.venue)+'</div>'
+       + '</li>';
+}
+
+function renderExams(){
+ var l=document.getElementById('examLevel').value;
+ var s=document.getElementById('examSem').value;
+ var start=document.getElementById('examDay').value;
+ var summary=document.getElementById('examSummary');
+
+ var pool=state.exams.filter(function(c){return(!l||c.level===l)&&(!s||c.sem===s)});
+ var validPool=pool.filter(function(e){return !!e.dateISO});
+ var missingDates=pool.length-validPool.length;
+
+ if(!validPool.length){
+  summary.style.display='none';
+  document.getElementById('examBody').innerHTML=msg('fa-file-circle-xmark',state.exams.length?'No examination timetable has been published yet.':'No exam data available.');
+  return;
+ }
+
+ var allDates=uniq(validPool.map(function(e){return e.dateISO})).sort();
+ if(!start||allDates.indexOf(start)===-1){
+  var today=todayISO();
+  var futureDates=allDates.filter(function(d){return d>=today});
+  start=futureDates.length?futureDates[0]:allDates[0];
+  document.getElementById('examDay').value=start;
+ }
+
+ var day1=start;
+ var day2=addDaysISO(start,1);
+
+ var rows1=validPool.filter(function(e){return e.dateISO===day1});
+ var rows2=day2?validPool.filter(function(e){return e.dateISO===day2}):[];
+
+ rows1.sort(function(a,b){return timeKey(a.start||a.time).localeCompare(timeKey(b.start||b.time))});
+ rows2.sort(function(a,b){return timeKey(a.start||a.time).localeCompare(timeKey(b.start||b.time))});
+
+ if(rows1.length+rows2.length>0){
+  summary.style.display='flex';
+  var parts=[];
+  if(rows1.length)parts.push('<strong>'+rows1.length+'</strong> on <strong>'+esc(longDayLabel(day1))+'</strong>');
+  if(rows2.length)parts.push('<strong>'+rows2.length+'</strong> on <strong>'+esc(longDayLabel(day2))+'</strong>');
+  summary.innerHTML='<span class="dot"></span><span>Showing '+parts.join(' &amp; ')+'</span>'
+   +'<span class="grow"></span><span>'+validPool.length+' total'+(missingDates>0?' ('+missingDates+' undated)':'')+'</span>';
+ } else {
+  summary.style.display='none';
+ }
+
+ if(!rows1.length&&!rows2.length){
+  document.getElementById('examBody').innerHTML=msg('fa-file-circle-xmark','No examinations on these two days for this selection.');
+  return;
+ }
+
+ var html='<div class="exam-days">';
+ if(rows1.length){
+  html+='<div class="exam-day">'
+      +'<div class="exam-day-head">'
+      +'<h3>'+esc(longDayLabel(day1))+'<small>'+esc(fmtDate(day1))+'</small></h3>'
+      +'<span class="exam-day-count">'+rows1.length+' exam'+(rows1.length===1?'':'s')+'</span>'
+      +'</div>'
+      +'<ul class="exam-list">'+rows1.map(renderExamItem).join('')+'</ul>'
+      +'</div>';
+ }
+ if(rows2.length){
+  html+='<div class="exam-day">'
+      +'<div class="exam-day-head">'
+      +'<h3>'+esc(longDayLabel(day2))+'<small>'+esc(fmtDate(day2))+'</small></h3>'
+      +'<span class="exam-day-count">'+rows2.length+' exam'+(rows2.length===1?'':'s')+'</span>'
+      +'</div>'
+      +'<ul class="exam-list">'+rows2.map(renderExamItem).join('')+'</ul>'
+      +'</div>';
+ }
+ html+='</div>';
+ document.getElementById('examBody').innerHTML=html;
+}
+
+/* ===== SMART EXAM PLANNER (uses class-based clash logic) ===== */
+var plannerState={level:'', selected:{}};  /* selected: code|dateISO|start -> true */
 
 function plannerExamKey(e){return e.code+'|'+e.dateISO+'|'+timeKey(e.start||e.time);}
 
 function getPlannerExamsForLevel(level){
   return state.exams.filter(function(e){
-    return level && examLevel(e) === level && !!e.dateISO;
+    return level && e.level===level && !!e.dateISO;
   }).sort(function(a,b){
     if(a.dateISO!==b.dateISO) return a.dateISO<b.dateISO?-1:1;
     return timeKey(a.start||a.time).localeCompare(timeKey(b.start||b.time));
   });
+}
+
+/* Determine if two exams belong to the same "department bucket" — a clash only matters
+   if the courses share the same prefix or both are general (GST, MTH, etc.) AND
+   are the same level. This mirrors the logic used in the class timetable.
+   For exams, we use the course prefix (EEE, MEE, CVE, GST, etc.) and the level. */
+function examsClash(a, b) {
+  if (a.dateISO !== b.dateISO) return false;
+  // Time overlap check
+  var ai = toMin(a.start || a.time), ae = toMin(a.end || a.time);
+  var bi = toMin(b.start || b.time), be = toMin(b.end || b.time);
+  if (!(ai < be && bi < ae)) return false;
+  // Department check: same prefix OR both general OR same level & same bucket
+  var pa = coursePrefix(a.code), pb = coursePrefix(b.code);
+  var ga = GENERAL_PREFIXES.indexOf(pa) !== -1;
+  var gb = GENERAL_PREFIXES.indexOf(pb) !== -1;
+  var la = a.level, lb = b.level;
+  // If different levels, they don't clash (exams for different levels are at different times)
+  if (la !== lb) return false;
+  // If same prefix → clash (e.g., EEE 301 vs EEE 302)
+  if (pa === pb) return true;
+  // If both general → clash (e.g., GST 101 vs GST 102)
+  if (ga && gb) return true;
+  // If one general and one departmental → possible clash? General exams usually block
+  // all departments, so we treat them as clashing if times overlap and same level.
+  if (ga || gb) return true;
+  // Different departmental prefixes (EEE vs MEE) → NOT a clash
+  return false;
 }
 
 function plannerConflicts(selectedExams){
@@ -732,7 +1009,7 @@ function plannerConflicts(selectedExams){
 
 function renderPlannerLevelChips(){
   var wrap=document.getElementById('plannerLevelChips');
-  var levels=uniq(state.exams.map(function(e){return examLevel(e)}).filter(Boolean));
+  var levels=uniq(state.exams.map(function(e){return e.level}).filter(Boolean));
   if(!levels.length){
     wrap.innerHTML='<span class="note">No exam levels available yet.</span>';
     return;
@@ -764,7 +1041,7 @@ function renderPlannerExamList(){
     return;
   }
 
-  /* Pre-compute clashes among ALL level exams using examsClash */
+  /* Pre-compute clashes among ALL level exams using the new examsClash logic */
   var allClashPairs=plannerConflicts(exams);
   var allClashSet={};
   allClashPairs.forEach(function(p){
@@ -854,7 +1131,7 @@ function renderPlannerResults(){
     clashHtml='<div class="clash-report"><div class="clash-alert">'
       +'<i class="fas fa-triangle-exclamation"></i>'
       +'<div><h4>'+conflicts.length+' clash'+(conflicts.length===1?'':'es')+' detected</h4>'
-      +'<div class="cmeta">The following exam pairs overlap in time, belong to the same level and semester, and are in the same department (or are general courses). Contact your course rep or exams officer as soon as possible.</div></div>'
+      +'<div class="cmeta">The following exam pairs overlap in time and belong to the same department or are general courses. Contact your course rep or exams officer as soon as possible.</div></div>'
       +'</div>';
     conflicts.forEach(function(p){
       clashHtml+='<div class="clash-alert">'
@@ -900,7 +1177,7 @@ function renderPlannerResults(){
 
   var note='<div class="planner-note" style="margin-top:1rem">'
     +'<i class="fas fa-circle-info"></i>'
-    +'<span>Clashes are detected when two selected exams share the same date, their times overlap, they have the same level and semester derived from the course code (e.g. EEE 312 = 300 Level, 1st Semester; MEE 412 = 400 Level, 1st Semester), and they belong to the same department (same prefix) or are general courses. Different departments (e.g. EEE vs MEE) are not flagged as clashes. Always confirm with the official examination timetable and your exams officer.</span>'
+    +'<span>Clashes are detected when two selected exams share the same date, their times overlap, and they belong to the same department (same course prefix like EEE, MEE, CVE) or are general courses (GST, MTH, etc.). Different departments (e.g., EEE vs MEE) are not flagged as clashes. Always confirm with the official examination timetable and your exams officer.</span>'
     +'</div>';
 
   box.innerHTML=summaryHtml+clashHtml+timeline+note;
@@ -943,7 +1220,7 @@ function render(){
 
  /* Planner */
  if(!plannerState.level){
-   var levels=uniq(state.exams.map(function(e){return examLevel(e)}).filter(Boolean));
+   var levels=uniq(state.exams.map(function(e){return e.level}).filter(Boolean));
    if(levels.length) plannerState.level=levels[0];
  }
  renderPlannerLevelChips();
