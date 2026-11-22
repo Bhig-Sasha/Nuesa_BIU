@@ -425,16 +425,16 @@ h1,h2,h3{font-weight:900;line-height:1.2}
   </div>
  </div></section>
 
- <!-- 5. SMART EXAM PLANNER (replaces Timetable Announcements) -->
+ <!-- 5. SMART EXAM PLANNER -->
  <section class="tt-section" id="exam-planner"><div class="container">
   <div class="sec-head">
-   <div><span class="tag tag-emerald">Plan Ahead</span><h2>Smart Exam Planner</h2><p>Pick your level, select the exams you're taking and instantly see clashes, dates and times.</p></div>
+   <div><span class="tag tag-emerald">Plan Ahead</span><h2>Smart Exam Planner</h2><p>Pick your level, select the exams you're taking and instantly see clashes, dates and times. Department clashes (EEE, MEE, CVE) are automatically ignored.</p></div>
   </div>
 
   <div class="planner-shell">
    <div class="planner-head">
     <h2><i class="fas fa-calendar-check"></i> Personal Exam Planner</h2>
-    <p>Select your level, then tick every exam you're registered for. The planner automatically detects time clashes and builds your personal exam schedule.</p>
+    <p>Select your level, then tick every exam you're registered for. The planner automatically detects time clashes and builds your personal exam schedule. Only genuine clashes within your department or general courses are flagged.</p>
    </div>
    <div class="planner-body">
 
@@ -954,7 +954,7 @@ function renderExams(){
  document.getElementById('examBody').innerHTML=html;
 }
 
-/* ===== SMART EXAM PLANNER ===== */
+/* ===== SMART EXAM PLANNER (uses class-based clash logic) ===== */
 var plannerState={level:'', selected:{}};  /* selected: code|dateISO|start -> true */
 
 function plannerExamKey(e){return e.code+'|'+e.dateISO+'|'+timeKey(e.start||e.time);}
@@ -968,15 +968,40 @@ function getPlannerExamsForLevel(level){
   });
 }
 
+/* Determine if two exams belong to the same "department bucket" — a clash only matters
+   if the courses share the same prefix or both are general (GST, MTH, etc.) AND
+   are the same level. This mirrors the logic used in the class timetable.
+   For exams, we use the course prefix (EEE, MEE, CVE, GST, etc.) and the level. */
+function examsClash(a, b) {
+  if (a.dateISO !== b.dateISO) return false;
+  // Time overlap check
+  var ai = toMin(a.start || a.time), ae = toMin(a.end || a.time);
+  var bi = toMin(b.start || b.time), be = toMin(b.end || b.time);
+  if (!(ai < be && bi < ae)) return false;
+  // Department check: same prefix OR both general OR same level & same bucket
+  var pa = coursePrefix(a.code), pb = coursePrefix(b.code);
+  var ga = GENERAL_PREFIXES.indexOf(pa) !== -1;
+  var gb = GENERAL_PREFIXES.indexOf(pb) !== -1;
+  var la = a.level, lb = b.level;
+  // If different levels, they don't clash (exams for different levels are at different times)
+  if (la !== lb) return false;
+  // If same prefix → clash (e.g., EEE 301 vs EEE 302)
+  if (pa === pb) return true;
+  // If both general → clash (e.g., GST 101 vs GST 102)
+  if (ga && gb) return true;
+  // If one general and one departmental → possible clash? General exams usually block
+  // all departments, so we treat them as clashing if times overlap and same level.
+  if (ga || gb) return true;
+  // Different departmental prefixes (EEE vs MEE) → NOT a clash
+  return false;
+}
+
 function plannerConflicts(selectedExams){
   var out=[];
   for(var i=0;i<selectedExams.length;i++){
     for(var j=i+1;j<selectedExams.length;j++){
       var a=selectedExams[i],b=selectedExams[j];
-      if(a.dateISO!==b.dateISO) continue;
-      var ai=toMin(a.start||a.time), ae=toMin(a.end||a.time);
-      var bi=toMin(b.start||b.time), be=toMin(b.end||b.time);
-      if(ai<be && bi<ae) out.push({a:a,b:b});
+      if(examsClash(a,b)) out.push({a:a,b:b});
     }
   }
   return out;
@@ -1016,8 +1041,7 @@ function renderPlannerExamList(){
     return;
   }
 
-  /* Pre-compute clashes among ALL level exams so the user can see them
-     even before selecting everything. */
+  /* Pre-compute clashes among ALL level exams using the new examsClash logic */
   var allClashPairs=plannerConflicts(exams);
   var allClashSet={};
   allClashPairs.forEach(function(p){
@@ -1107,7 +1131,7 @@ function renderPlannerResults(){
     clashHtml='<div class="clash-report"><div class="clash-alert">'
       +'<i class="fas fa-triangle-exclamation"></i>'
       +'<div><h4>'+conflicts.length+' clash'+(conflicts.length===1?'':'es')+' detected</h4>'
-      +'<div class="cmeta">The following exam pairs overlap in time. Contact your course rep or exams officer as soon as possible.</div></div>'
+      +'<div class="cmeta">The following exam pairs overlap in time and belong to the same department or are general courses. Contact your course rep or exams officer as soon as possible.</div></div>'
       +'</div>';
     conflicts.forEach(function(p){
       clashHtml+='<div class="clash-alert">'
@@ -1153,7 +1177,7 @@ function renderPlannerResults(){
 
   var note='<div class="planner-note" style="margin-top:1rem">'
     +'<i class="fas fa-circle-info"></i>'
-    +'<span>Clashes are detected when two selected exams share the same date and their times overlap. Always confirm with the official examination timetable and your exams officer.</span>'
+    +'<span>Clashes are detected when two selected exams share the same date, their times overlap, and they belong to the same department (same course prefix like EEE, MEE, CVE) or are general courses (GST, MTH, etc.). Different departments (e.g., EEE vs MEE) are not flagged as clashes. Always confirm with the official examination timetable and your exams officer.</span>'
     +'</div>';
 
   box.innerHTML=summaryHtml+clashHtml+timeline+note;
