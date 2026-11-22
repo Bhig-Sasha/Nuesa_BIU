@@ -32,26 +32,36 @@ section{padding:5.5rem 0}
 .js .rv{opacity:0;transform:translateY(20px);transition:opacity .6s,transform .6s}
 .js .rv.in{opacity:1;transform:none}
 
-/* SIDE NAVIGATION (no header bar) */
-.side{position:fixed;top:0;bottom:0;left:0;width:16rem;z-index:1000;background:linear-gradient(180deg,var(--e900),var(--e800));padding:1.5rem 1rem;display:flex;flex-direction:column;overflow-y:auto;transition:transform .35s}
-.logo{display:block;font-size:1.5rem;font-weight:900;letter-spacing:-.05em;color:var(--w);padding:0 .5rem}
-.logo i{font-style:normal;color:var(--a400)}
-.logo-s{display:block;padding:.35rem .5rem 1.5rem;font-family:'Roboto Mono',monospace;font-size:.55rem;color:var(--e200);line-height:1.4;border-bottom:1px solid rgba(255,255,255,.15);margin-bottom:1rem}
-.side nav{flex:1}
-.side nav a,.side summary{display:block;padding:.65rem .5rem;font-family:'Roboto Mono',monospace;font-size:.72rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.9);cursor:pointer;list-style:none;border-radius:.4rem;transition:.2s}
-.side summary::-webkit-details-marker{display:none}
-.side summary::after{content:'\f078';font-family:'Font Awesome 6 Free';font-weight:900;font-size:.5rem;float:right;margin-top:.3rem;transition:.2s}
-.side details[open]>summary::after{transform:rotate(180deg)}
-.side nav a:hover,.side summary:hover,.side a.active{color:var(--a400);background:rgba(255,255,255,.06)}
-.side details a{padding-left:1.4rem;font-weight:500;text-transform:none;letter-spacing:.02em;font-size:.8rem}
-.side .btn{margin-top:1rem;width:100%;background:var(--a400);color:var(--e900);padding:.8rem 1rem;font-size:.75rem}
-.side .btn:hover{background:var(--w);transform:none}
-.fab{display:none;position:fixed;right:1.25rem;bottom:1.25rem;z-index:1100;width:3.4rem;height:3.4rem;border-radius:50%;border:0;background:var(--e600);color:var(--w);font-size:1.25rem;cursor:pointer;box-shadow:var(--shx);transition:.3s}
-.fab.open{background:var(--a400);color:var(--e900)}
-.scrim{position:fixed;inset:0;background:rgba(6,78,59,.6);z-index:999;opacity:0;visibility:hidden;transition:.3s}
-.scrim.open{opacity:1;visibility:visible}
-@media(min-width:1101px){.page{margin-left:16rem}}
-@media(max-width:1100px){.side{transform:translateX(-100%)}.side.open{transform:none}.fab{display:block}}
+/* NAVBAR (from original page) */
+.navbar{position:fixed;top:0;left:0;right:0;width:100%;z-index:1000;transition:all .3s ease;background-color:rgba(6,78,59,.95);padding:1rem 0;backdrop-filter:blur(8px)}
+.navbar.scrolled{background-color:rgba(6,78,59,.98);backdrop-filter:blur(10px);box-shadow:var(--sh);padding:.5rem 0}
+.nav-container{max-width:80rem;margin:0 auto;padding:0 2rem}
+.nav-flex{display:flex;justify-content:space-between;align-items:center}
+.logo-link{display:flex;align-items:center;gap:.25rem;transition:transform .3s ease}
+.logo-link:hover{transform:scale(1.05)}
+.logo-main,.logo-highlight{font-size:1.5rem;font-weight:900;letter-spacing:-.05em}
+.logo-main{color:var(--w)}.logo-highlight{color:var(--a400)}
+.nav-menu{display:flex;align-items:center}
+.nav-links{display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap}
+.nav-links li a{font-family:'Roboto Mono',monospace;font-size:.7rem;font-weight:600;letter-spacing:.08em;color:rgba(255,255,255,.9);transition:color .2s;position:relative;padding:.5rem 0;white-space:nowrap}
+.nav-links li a::after{content:'';position:absolute;bottom:0;left:0;width:0;height:2px;background-color:var(--a400);transition:width .3s}
+.nav-links li a:hover,.nav-links li a.active{color:var(--a400)}
+.nav-links li a:hover::after,.nav-links li a.active::after{width:100%}
+.hamburger{display:none;cursor:pointer;z-index:1001;background:none;border:none;padding:.5rem}
+.hamburger span{display:block;width:25px;height:3px;background-color:var(--w);margin:5px 0;transition:all .3s ease;border-radius:3px}
+.hamburger.active span:nth-child(1){transform:rotate(45deg) translate(5px,6px);background-color:var(--a400)}
+.hamburger.active span:nth-child(2){opacity:0}
+.hamburger.active span:nth-child(3){transform:rotate(-45deg) translate(5px,-6px);background-color:var(--a400)}
+.mobile-nav{position:fixed;top:0;left:0;width:100%;height:100vh;background:linear-gradient(135deg,var(--e900),var(--e800));display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:999;opacity:0;visibility:hidden;transition:all .4s ease;padding:2rem;overflow-y:auto}
+.mobile-nav.active{opacity:1;visibility:visible}
+.mobile-nav ul{text-align:center}
+.mobile-nav ul li{margin:.9rem 0;opacity:0;transform:translateY(20px);transition:all .4s ease}
+.mobile-nav.active ul li{opacity:1;transform:translateY(0)}
+.mobile-nav ul li a{font-family:'Roboto Mono',monospace;font-size:1.25rem;font-weight:600;letter-spacing:.08em;color:var(--w);transition:color .3s;display:inline-block;padding:.5rem 1rem}
+.mobile-nav ul li a:hover{color:var(--a400);transform:translateX(10px)}
+.mobile-nav ul li a.active{color:var(--a400);border-left:4px solid var(--a400)}
+@media screen and (max-width:1200px){.nav-links{display:none}.hamburger{display:block}}
+.page{padding-top:80px}
 
 /* HERO (split) */
 .hero{padding:6rem 0 7rem;background:linear-gradient(135deg,var(--e500) 0%,var(--e600) 50%,var(--teal) 100%);position:relative;overflow:hidden}
@@ -164,25 +174,43 @@ section{padding:5.5rem 0}
 </head>
 <body>
 
-<!-- SIDE NAVIGATION: fixed on desktop, slides in on mobile; there is no top header -->
-<aside class="side" id="side">
- <a href="index.html" class="logo">N.U.E.S.A<i>BIU</i></a>
- <span class="logo-s">Nigerian Universities Engineering Students' Association</span>
- <nav>
-  <a href="index.html" class="active">Home</a>
-  <a href="about.html">About</a>
-  <details><summary>Academics</summary><a href="resources.html">Resources</a><a href="timetables.html">Timetables</a><a href="admission.html">Admissions</a></details>
-  <details><summary>Community</summary><a href="members.html">Members</a><a href="courseReps.html">Course Representatives</a></details>
-  <details><summary>Activities</summary><a href="events.html">Events</a><a href="news.html">News</a></details>
-  <details><summary>Media</summary><a href="gallery.html">Gallery</a></details>
-  <a href="elections.html">Elections</a>
-  <a href="awards.html">Awards</a>
-  <a href="contacts.html">Contact</a>
- </nav>
- <a href="resources.html" class="btn">Student Portal</a>
-</aside>
-<div class="scrim" id="scrim"></div>
-<button class="fab" id="fab" aria-label="Open menu"><i class="fas fa-bars"></i></button>
+<!-- NAVBAR (from original page) -->
+<nav class="navbar" id="navbar">
+ <div class="nav-container"><div class="nav-flex">
+  <a href="/" class="logo-link"><span class="logo-main">N.U.E.S.A</span><span class="logo-highlight">BIU</span></a>
+  <div class="nav-menu"><ul class="nav-links">
+   <li><a href="index.html" class="active">HOME</a></li>
+   <li><a href="about.html">ABOUT</a></li>
+   <li><a href="members.html">MEMBERS</a></li>
+   <li><a href="events.html">EVENTS</a></li>
+   <li><a href="resources.html">RESOURCES</a></li>
+   <li><a href="timetables.html">TIME TABLES</a></li>
+   <li><a href="admission.html">ADMISSION</a></li>
+   <li><a href="courseReps.html">COURSE REPS</a></li>
+   <li><a href="news.html">NEWS</a></li>
+   <li><a href="contacts.html">CONTACT</a></li>
+   <li><a href="elections.html">ELECTIONS</a></li>
+   <li><a href="awards.html">AWARDS</a></li>
+   <li><a href="gallery.html">GALLERY</a></li>
+  </ul></div>
+  <button class="hamburger" id="hamburger" aria-label="Menu"><span></span><span></span><span></span></button>
+ </div></div>
+ <div class="mobile-nav" id="mobileNav"><ul>
+  <li><a href="index.html" class="active">HOME</a></li>
+  <li><a href="about.html">ABOUT</a></li>
+  <li><a href="members.html">MEMBERS</a></li>
+  <li><a href="events.html">EVENTS</a></li>
+  <li><a href="resources.html">RESOURCES</a></li>
+  <li><a href="timetables.html">TIME TABLES</a></li>
+  <li><a href="admission.html">ADMISSION</a></li>
+  <li><a href="courseReps.html">COURSE REPS</a></li>
+  <li><a href="news.html">NEWS</a></li>
+  <li><a href="contacts.html">CONTACT</a></li>
+  <li><a href="elections.html">ELECTIONS</a></li>
+  <li><a href="awards.html">AWARDS</a></li>
+  <li><a href="gallery.html">GALLERY</a></li>
+ </ul></div>
+</nav>
 
 <div class="page">
 <main>
@@ -278,18 +306,25 @@ section{padding:5.5rem 0}
 document.documentElement.classList.add('js');
 document.addEventListener('DOMContentLoaded',function(){
  var $=function(id){return document.getElementById(id)};
- /* SIDE NAV */
- var side=$('side'),fab=$('fab'),scrim=$('scrim');
- function tog(o){side.classList.toggle('open',o);scrim.classList.toggle('open',o);fab.classList.toggle('open',o);fab.innerHTML=o?'<i class="fas fa-xmark"></i>':'<i class="fas fa-bars"></i>';document.body.classList.toggle('lock',o)}
- fab.addEventListener('click',function(){tog(!side.classList.contains('open'))});
- scrim.addEventListener('click',function(){tog(false)});
- side.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){tog(false)})});
- document.addEventListener('keydown',function(e){if(e.key==='Escape')tog(false)});
- var page=location.pathname.split('/').pop()||'index.html';
- side.querySelectorAll('nav a').forEach(function(a){
-  var on=a.getAttribute('href')===page;a.classList.toggle('active',on);
-  if(on&&a.parentNode.tagName==='DETAILS')a.parentNode.open=true;
- });
+ /* NAVBAR (from original page) */
+ var navbar=$('navbar'),hamburger=$('hamburger'),mobileNav=$('mobileNav');
+ var mobileLinks=document.querySelectorAll('.mobile-nav ul li a'),desktopLinks=document.querySelectorAll('.nav-links li a');
+ document.querySelectorAll('.mobile-nav ul li').forEach(function(li,i){li.style.transitionDelay=(0.05*(i+1))+'s'});
+ var cp=window.location.pathname;
+ if(cp.endsWith('.html'))cp=cp.replace('.html','');
+ if(cp==='/'||cp==='/index')cp='/';
+ function updateActive(){
+  Array.prototype.forEach.call(desktopLinks,mark);Array.prototype.forEach.call(mobileLinks,mark);
+  function mark(l){var h=(l.getAttribute('href')||'').replace('.html','');l.classList.toggle('active',h===cp||(cp==='/'&&h==='index'))}
+ }
+ function onScroll(){navbar.classList.toggle('scrolled',window.scrollY>20)}
+ window.addEventListener('scroll',onScroll,{passive:true});onScroll();
+ function toggleMobile(o){hamburger.classList.toggle('active',o);mobileNav.classList.toggle('active',o);document.body.classList.toggle('lock',o)}
+ hamburger.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();toggleMobile(!hamburger.classList.contains('active'))});
+ mobileLinks.forEach(function(l){l.addEventListener('click',function(){toggleMobile(false)})});
+ document.addEventListener('click',function(e){if(mobileNav.classList.contains('active')&&!mobileNav.contains(e.target)&&!hamburger.contains(e.target))toggleMobile(false)});
+ document.addEventListener('keydown',function(e){if(e.key==='Escape')toggleMobile(false)});
+ updateActive();
 
  /* HELPERS */
  var API='https://nuesa-biu-pjp0.onrender.com';
