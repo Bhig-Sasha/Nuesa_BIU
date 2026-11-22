@@ -981,6 +981,19 @@ var plannerState={level:'', selected:{}};  /* selected: code|dateISO|start -> tr
 
 function plannerExamKey(e){return e.code+'|'+e.dateISO+'|'+timeKey(e.start||e.time);}
 
+function getAllSelectedExams(){
+  return state.exams.filter(function(e){
+    return e.dateISO && plannerState.selected[plannerExamKey(e)];
+  }).sort(function(a,b){
+    if(a.dateISO!==b.dateISO) return a.dateISO<b.dateISO?-1:1;
+    return timeKey(a.start||a.time).localeCompare(timeKey(b.start||b.time));
+  });
+}
+function selectedCountForLevel(lv){
+  return state.exams.filter(function(e){
+    return e.level===lv && e.dateISO && plannerState.selected[plannerExamKey(e)];
+  }).length;
+}
 function getPlannerExamsForLevel(level){
   return state.exams.filter(function(e){
     return level && e.level===level && !!e.dateISO;
@@ -998,7 +1011,6 @@ function examsClash(a, b) {
   var pa = coursePrefix(a.code), pb = coursePrefix(b.code);
   var ga = GENERAL_PREFIXES.indexOf(pa) !== -1;
   var gb = GENERAL_PREFIXES.indexOf(pb) !== -1;
-  if (a.level !== b.level) return false;
   if (pa === pb) return true;
   if (ga && gb) return true;
   if (ga || gb) return true;
@@ -1025,12 +1037,12 @@ function renderPlannerLevelChips(){
   }
   wrap.innerHTML=levels.map(function(lv){
     var active=lv===plannerState.level?' active':'';
-    return '<button type="button" class="level-chip'+active+'" data-level="'+esc(lv)+'">'+esc(lv)+' Level</button>';
+    var n=selectedCountForLevel(lv);
+    return '<button type="button" class="level-chip'+active+'" data-level="'+esc(lv)+'">'+esc(lv)+' Level'+(n?' <span class="pick-badge clash" style="background:var(--emerald-600);margin-left:.35rem">'+n+'</span>':'')+'</button>';
   }).join('');
   wrap.querySelectorAll('.level-chip').forEach(function(btn){
     btn.addEventListener('click',function(){
       plannerState.level=btn.dataset.level;
-      plannerState.selected={};
       renderPlannerLevelChips();
       renderPlannerExamList();
       renderPlannerResults();
@@ -1050,7 +1062,8 @@ function renderPlannerExamList(){
     return;
   }
 
-  var allClashPairs=plannerConflicts(exams);
+  var others=getAllSelectedExams().filter(function(e){return e.level!==plannerState.level});
+  var allClashPairs=plannerConflicts(exams.concat(others));
   var allClashSet={};
   allClashPairs.forEach(function(p){
     allClashSet[plannerExamKey(p.a)]=true;
@@ -1084,6 +1097,7 @@ function renderPlannerExamList(){
       ev.preventDefault();
       if(plannerState.selected[k]) delete plannerState.selected[k];
       else plannerState.selected[k]=true;
+      renderPlannerLevelChips();
       renderPlannerExamList();
       renderPlannerResults();
     });
@@ -1094,14 +1108,7 @@ function renderPlannerExamList(){
 function renderPlannerResults(){
   var box=document.getElementById('plannerResults');
   var countEl=document.getElementById('plannerSelCount');
-  var chosen=[];
-  var seen={};
-  if(plannerState.level){
-    getPlannerExamsForLevel(plannerState.level).forEach(function(e){
-      var k=plannerExamKey(e);
-      if(plannerState.selected[k] && !seen[k]){seen[k]=true;chosen.push(e);}
-    });
-  }
+  var chosen=getAllSelectedExams();
   chosen.sort(function(a,b){
     if(a.dateISO!==b.dateISO) return a.dateISO<b.dateISO?-1:1;
     return timeKey(a.start||a.time).localeCompare(timeKey(b.start||b.time));
@@ -1194,11 +1201,13 @@ function bindPlannerToolbar(){
     getPlannerExamsForLevel(plannerState.level).forEach(function(e){
       plannerState.selected[plannerExamKey(e)]=true;
     });
+    renderPlannerLevelChips();
     renderPlannerExamList();
     renderPlannerResults();
   });
   document.getElementById('plannerClear').addEventListener('click',function(){
     plannerState.selected={};
+    renderPlannerLevelChips();
     renderPlannerExamList();
     renderPlannerResults();
   });
