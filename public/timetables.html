@@ -292,12 +292,6 @@ h1,h2,h3{font-weight:900;line-height:1.2}
 .planner-empty i{font-size:2rem;display:block;margin-bottom:.6rem;color:var(--emerald-300)}
 .planner-empty strong{color:var(--slate-700)}
 
-/* ANNOUNCEMENTS (kept for backwards compat, unused) */
-.ann{display:flex;gap:1rem;padding:1.25rem 1.5rem;border:2px solid var(--amber-300);border-left:6px solid var(--amber-500);border-radius:.5rem;background:#fffbeb;margin-top:1.5rem}
-.ann i{color:var(--amber-500);font-size:1.25rem;margin-top:.2rem}
-.ann h3{font-size:1.1rem;margin-bottom:.25rem;color:var(--slate-800)}
-.ann .by{font-family:'Roboto Mono',monospace;font-size:.7rem;color:var(--slate-500);margin-top:.5rem}
-
 /* FOOTER */
 .footer{background:linear-gradient(135deg,var(--slate-800) 0%,var(--slate-900) 100%);border-top:4px solid var(--emerald-500);padding:4rem 0 2rem}
 .footer-container{max-width:80rem;margin:0 auto;padding:0 1rem}
@@ -428,7 +422,7 @@ h1,h2,h3{font-weight:900;line-height:1.2}
  <!-- 5. SMART EXAM PLANNER -->
  <section class="tt-section" id="exam-planner"><div class="container">
   <div class="sec-head">
-   <div><span class="tag tag-emerald">Plan Ahead</span><h2>Smart Exam Planner</h2><p>Pick your level, select the exams you're taking and instantly see clashes, dates and times. Course codes like EEE 312 or MEE 412 automatically determine level and semester.</p></div>
+   <div><span class="tag tag-emerald">Plan Ahead</span><h2>Smart Exam Planner</h2><p>Pick your level, select the exams you're taking and instantly see clashes, dates and times. Course codes like EEE 312 (300 Level, 1st Semester) or MEE 412 (400 Level, 1st Semester) automatically determine level and semester.</p></div>
   </div>
 
   <div class="planner-shell">
@@ -634,15 +628,16 @@ function courseBucket(c){
 
 /* ===== COURSE CODE PARSING (LEVEL & SEMESTER) ===== */
 /* Course code format: PREFIX NNN (e.g., EEE 312, MEE 412, GST 101)
-   The first digit of the numeric part is the level (1=100, 2=200, 3=300, 4=400, 5=500)
-   The middle digit is the semester (1=first, 2=second) — in most Nigerian universities,
-   the second digit of the 3-digit code indicates the semester.
-   For codes like 312: level = 300, semester = 1 (first semester).
-   For codes like 412: level = 400, semester = 1 (first semester).
-   If the middle digit is 2, it's second semester. */
+   - First digit of the numeric part = level (1=100, 2=200, 3=300, 4=400, 5=500)
+   - Second digit = semester (1=first, 2=second) — the usual Nigerian convention
+   - Third digit is the course number within the semester
+   Examples:
+     EEE 312 -> prefix EEE, digits 312 -> level 300, semester 1
+     MEE 412 -> prefix MEE, digits 412 -> level 400, semester 1
+     GST 101 -> prefix GST, digits 101 -> level 100, semester 1
+     CVE 222 -> prefix CVE, digits 222 -> level 200, semester 2 */
 function parseCourseCode(code){
   var s = String(code||'').trim().toUpperCase();
-  // Match prefix followed by 3 digits
   var m = s.match(/^([A-Z]{2,4})\s*(\d{3})/);
   if(!m) return null;
   var digits = m[2];
@@ -653,14 +648,13 @@ function parseCourseCode(code){
   return {prefix: m[1], digits: digits, level: level, semester: semester};
 }
 
-/* For an exam, get its effective level and semester:
-   - Prefer explicit level/semester fields if present and valid
+/* Effective level for an exam:
+   - Prefer explicit level field if present and valid
    - Otherwise derive from course code
    - Fallback to empty string */
 function examLevel(e){
-  if(e.level && e.level.trim() !== '') {
+  if(e.level && String(e.level).trim() !== '') {
     var lv = String(e.level).trim();
-    // If it's already "300" or "300 Level", extract digits
     var m = lv.match(/(\d{3})/);
     if(m) return m[1];
     return lv;
@@ -669,8 +663,13 @@ function examLevel(e){
   if(parsed) return String(parsed.level);
   return '';
 }
+
+/* Effective semester for an exam:
+   - Prefer explicit sem field if present and valid
+   - Otherwise derive from course code
+   - Fallback to empty string */
 function examSemester(e){
-  if(e.sem && e.sem.trim() !== '') {
+  if(e.sem && String(e.sem).trim() !== '') {
     var sm = String(e.sem).trim().toLowerCase();
     if(sm === '1' || sm === 'first' || sm === 'first semester') return '1';
     if(sm === '2' || sm === 'second' || sm === 'second semester') return '2';
@@ -684,28 +683,29 @@ function examSemester(e){
 /* ===== EXAM CLASH LOGIC (uses level & semester from course code) ===== */
 function examsClash(a, b) {
   if (a.dateISO !== b.dateISO) return false;
-  // Time overlap check
+
+  // Time overlap
   var ai = toMin(a.start || a.time), ae = toMin(a.end || a.time);
   var bi = toMin(b.start || b.time), be = toMin(b.end || b.time);
   if (!(ai < be && bi < ae)) return false;
 
-  // Level check: use parsed level from course code
+  // Level check (from course code, e.g., 3xx -> 300)
   var la = examLevel(a), lb = examLevel(b);
   if (la !== lb) return false;
 
-  // Semester check: use parsed semester from course code
+  // Semester check (from course code, middle digit)
   var sa = examSemester(a), sb = examSemester(b);
   if (sa !== sb) return false;
 
-  // Department check: same prefix OR both general OR one general
+  // Department check
   var pa = coursePrefix(a.code), pb = coursePrefix(b.code);
   var ga = GENERAL_PREFIXES.indexOf(pa) !== -1;
   var gb = GENERAL_PREFIXES.indexOf(pb) !== -1;
 
-  if (pa === pb) return true;          // same department
-  if (ga && gb) return true;           // both general
-  if (ga || gb) return true;           // general vs departmental (usually clashes)
-  return false;                        // different departments → no clash
+  if (pa === pb) return true;          // same department (EEE vs EEE, MEE vs MEE, CVE vs CVE)
+  if (ga && gb) return true;           // both general (GST vs GST)
+  if (ga || gb) return true;           // general vs departmental (usually clash)
+  return false;                        // different departments (EEE vs MEE etc.) → NOT a clash
 }
 
 function plannerExamKey(e){return e.code+'|'+e.dateISO+'|'+timeKey(e.start||e.time);}
@@ -764,7 +764,7 @@ function renderPlannerExamList(){
     return;
   }
 
-  /* Pre-compute clashes among ALL level exams using the new examsClash logic */
+  /* Pre-compute clashes among ALL level exams using examsClash */
   var allClashPairs=plannerConflicts(exams);
   var allClashSet={};
   allClashPairs.forEach(function(p){
@@ -854,7 +854,7 @@ function renderPlannerResults(){
     clashHtml='<div class="clash-report"><div class="clash-alert">'
       +'<i class="fas fa-triangle-exclamation"></i>'
       +'<div><h4>'+conflicts.length+' clash'+(conflicts.length===1?'':'es')+' detected</h4>'
-      +'<div class="cmeta">The following exam pairs overlap in time, belong to the same level, semester and department (or are general courses). Contact your course rep or exams officer as soon as possible.</div></div>'
+      +'<div class="cmeta">The following exam pairs overlap in time, belong to the same level and semester, and are in the same department (or are general courses). Contact your course rep or exams officer as soon as possible.</div></div>'
       +'</div>';
     conflicts.forEach(function(p){
       clashHtml+='<div class="clash-alert">'
@@ -900,7 +900,7 @@ function renderPlannerResults(){
 
   var note='<div class="planner-note" style="margin-top:1rem">'
     +'<i class="fas fa-circle-info"></i>'
-    +'<span>Clashes are detected when two selected exams share the same date, their times overlap, they have the same level and semester (derived from course codes like EEE 312 = 300 Level, 1st Semester), and they belong to the same department (same prefix) or are general courses. Different departments (e.g., EEE vs MEE) are not flagged as clashes. Always confirm with the official examination timetable and your exams officer.</span>'
+    +'<span>Clashes are detected when two selected exams share the same date, their times overlap, they have the same level and semester derived from the course code (e.g. EEE 312 = 300 Level, 1st Semester; MEE 412 = 400 Level, 1st Semester), and they belong to the same department (same prefix) or are general courses. Different departments (e.g. EEE vs MEE) are not flagged as clashes. Always confirm with the official examination timetable and your exams officer.</span>'
     +'</div>';
 
   box.innerHTML=summaryHtml+clashHtml+timeline+note;
