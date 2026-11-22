@@ -564,7 +564,7 @@ function fmtDate(iso){
   return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
 }
 
-/* ===== CORRECTED TIME HELPERS ===== */
+/* ===== TIME HELPERS ===== */
 function prettyTime(t){
   if(!t) return '';
   var s = String(t).trim();
@@ -632,6 +632,22 @@ function courseBucket(c){
   return kind + ':' + prefix + ':' + (group || '—');
 }
 
+/* ===== LEVEL / SEMESTER FROM COURSE CODE (e.g. EEE 312 -> 300L, sem 1) ===== */
+function parseCodeLevelSem(code){
+  var m = String(code||'').toUpperCase().match(/([A-Z]{2,4})\s*-?\s*(\d)(\d)(\d)/);
+  if(!m) return null;
+  var lv = parseInt(m[2],10), sm = parseInt(m[3],10);
+  if(lv < 1 || lv > 7 || (sm !== 1 && sm !== 2)) return null;
+  return { level: String(lv*100), sem: String(sm) };
+}
+function normSem(v){
+  var s = String(v==null?'':v).toLowerCase().trim();
+  if(/^1$|1st|first/.test(s)) return '1';
+  if(/^2$|2nd|second/.test(s)) return '2';
+  return String(v==null?'':v);
+}
+function semLabel(v){ return v==='1' ? '1st Semester' : v==='2' ? '2nd Semester' : v; }
+
 /* ===== NORMALISE ===== */
 function normalise(res){
  var d=res.data||res;
@@ -653,17 +669,19 @@ function normalise(res){
     var mm = String(t||'').match(/(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\s*[-–—]\s*(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)/);
     if(mm){ start = mm[1]; end = mm[2]; }
   }
+  var code=pick(c,'course_code','code');
+  var ls=parseCodeLevelSem(code)||{};
   return{
     day:fmtDay(pick(c,'day','weekday')),
-    code:pick(c,'course_code','code'),
+    code:code,
     dept:pick(c,'department','dept','course_title','title'),
     time:t||'TBA',
     start:start,
     end:end,
     venue:pick(c,'venue','room')||'TBA',
     lecturer:pick(c,'lecturer','lecturer_name','instructor','staff','lecturerName')||'',
-    level:String(pick(c,'level')),
-    sem:String(pick(c,'semester','sem')),
+    level:ls.level || String(pick(c,'level')),
+    sem:ls.sem || normSem(pick(c,'semester','sem')),
     type:pick(c,'type')||'class'
   };
  });
@@ -677,8 +695,10 @@ function normalise(res){
     start=parts[0].trim();
     end=parts[1]?parts[1].trim():'';
   }
+  var code=pick(e,'course_code','code');
+  var ls=parseCodeLevelSem(code)||{};
   return{
-   code:pick(e,'course_code','code'),
+   code:code,
    title:pick(e,'course_title','title','name'),
    status:pick(e,'status')||'Scheduled',
    dateISO:isoDate(rawDate),
@@ -687,8 +707,8 @@ function normalise(res){
    time:startRaw||'TBA',
    venue:pick(e,'venue','room')||'TBA',
    examType:String(pick(e,'exam_type','type','examType')||'written').toLowerCase(),
-   level:String(pick(e,'level')),
-   sem:String(pick(e,'semester','sem'))
+   level:ls.level || String(pick(e,'level')),
+   sem:ls.sem || normSem(pick(e,'semester','sem'))
   };
  });
  state.announcements=(d.announcements||d.notices||[]).map(function(a){
@@ -699,9 +719,11 @@ function normalise(res){
 /* ===== RENDER HELPERS ===== */
 var WEEKDAYS=['Monday','Tuesday','Wednesday','Thursday','Friday'];
 function uniq(arr){return arr.filter(function(v,i){return v&&arr.indexOf(v)===i}).sort()}
-function fillSelect(id,values,allLabel,suffix){
+function fillSelect(id,values,allLabel,suffix,labelFn){
  var el=document.getElementById(id),cur=el.value;
- el.innerHTML='<option value="">'+allLabel+'</option>'+values.map(function(v){return '<option value="'+esc(v)+'">'+esc(v)+suffix+'</option>'}).join('');
+ el.innerHTML='<option value="">'+allLabel+'</option>'+values.map(function(v){
+   return '<option value="'+esc(v)+'">'+esc(labelFn?labelFn(v):v+suffix)+'</option>';
+ }).join('');
  el.value=values.indexOf(cur)>-1?cur:'';
 }
 function setStatus(id,s){var el=document.getElementById(id);if(s){el.className='status '+s;el.textContent=s;el.style.display=''}else el.style.display='none'}
@@ -954,7 +976,7 @@ function renderExams(){
  document.getElementById('examBody').innerHTML=html;
 }
 
-/* ===== SMART EXAM PLANNER (uses class-based clash logic) ===== */
+/* ===== SMART EXAM PLANNER ===== */
 var plannerState={level:'', selected:{}};  /* selected: code|dateISO|start -> true */
 
 function plannerExamKey(e){return e.code+'|'+e.dateISO+'|'+timeKey(e.start||e.time);}
@@ -968,31 +990,18 @@ function getPlannerExamsForLevel(level){
   });
 }
 
-/* Determine if two exams belong to the same "department bucket" — a clash only matters
-   if the courses share the same prefix or both are general (GST, MTH, etc.) AND
-   are the same level. This mirrors the logic used in the class timetable.
-   For exams, we use the course prefix (EEE, MEE, CVE, GST, etc.) and the level. */
 function examsClash(a, b) {
   if (a.dateISO !== b.dateISO) return false;
-  // Time overlap check
   var ai = toMin(a.start || a.time), ae = toMin(a.end || a.time);
   var bi = toMin(b.start || b.time), be = toMin(b.end || b.time);
   if (!(ai < be && bi < ae)) return false;
-  // Department check: same prefix OR both general OR same level & same bucket
   var pa = coursePrefix(a.code), pb = coursePrefix(b.code);
   var ga = GENERAL_PREFIXES.indexOf(pa) !== -1;
   var gb = GENERAL_PREFIXES.indexOf(pb) !== -1;
-  var la = a.level, lb = b.level;
-  // If different levels, they don't clash (exams for different levels are at different times)
-  if (la !== lb) return false;
-  // If same prefix → clash (e.g., EEE 301 vs EEE 302)
+  if (a.level !== b.level) return false;
   if (pa === pb) return true;
-  // If both general → clash (e.g., GST 101 vs GST 102)
   if (ga && gb) return true;
-  // If one general and one departmental → possible clash? General exams usually block
-  // all departments, so we treat them as clashing if times overlap and same level.
   if (ga || gb) return true;
-  // Different departmental prefixes (EEE vs MEE) → NOT a clash
   return false;
 }
 
@@ -1041,7 +1050,6 @@ function renderPlannerExamList(){
     return;
   }
 
-  /* Pre-compute clashes among ALL level exams using the new examsClash logic */
   var allClashPairs=plannerConflicts(exams);
   var allClashSet={};
   allClashPairs.forEach(function(p){
@@ -1112,7 +1120,6 @@ function renderPlannerResults(){
   var clashSet={};
   conflicts.forEach(function(p){clashSet[plannerExamKey(p.a)]=true;clashSet[plannerExamKey(p.b)]=true;});
 
-  /* Summary cards */
   var days={};
   chosen.forEach(function(e){days[e.dateISO]=(days[e.dateISO]||0)+1});
   var dayCount=Object.keys(days).length;
@@ -1125,7 +1132,6 @@ function renderPlannerResults(){
       : '<div class="res-stat ok"><div class="n">0</div><div class="l">No clashes</div></div>')
     +'</div>';
 
-  /* Clash alerts */
   var clashHtml='';
   if(conflicts.length){
     clashHtml='<div class="clash-report"><div class="clash-alert">'
@@ -1147,7 +1153,6 @@ function renderPlannerResults(){
     clashHtml+='</div>';
   }
 
-  /* Timeline grouped by day */
   var timeline='<div class="schedule-timeline">';
   var byDay={};
   chosen.forEach(function(e){(byDay[e.dateISO]=byDay[e.dateISO]||[]).push(e)});
@@ -1212,13 +1217,12 @@ function render(){
  document.getElementById('class-timetable').classList.toggle('archived',m.classStatus==='archived');
  document.getElementById('exam-timetable').classList.toggle('archived',m.examStatus==='archived');
  fillSelect('classLevel',uniq(state.classes.map(function(c){return c.level})),'All levels',' Level');
- fillSelect('classSem',uniq(state.classes.map(function(c){return c.sem})),'All semesters','');
+ fillSelect('classSem',uniq(state.classes.map(function(c){return c.sem})),'All semesters','',semLabel);
  fillSelect('examLevel',uniq(state.exams.map(function(c){return c.level})),'All levels',' Level');
- fillSelect('examSem',uniq(state.exams.map(function(c){return c.sem})),'All semesters','');
+ fillSelect('examSem',uniq(state.exams.map(function(c){return c.sem})),'All semesters','',semLabel);
  fillExamDaySelect();
  renderClasses();renderExams();
 
- /* Planner */
  if(!plannerState.level){
    var levels=uniq(state.exams.map(function(e){return e.level}).filter(Boolean));
    if(levels.length) plannerState.level=levels[0];
