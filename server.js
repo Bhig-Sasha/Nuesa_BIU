@@ -7876,9 +7876,15 @@ app.delete('/api/upload/:filename', verifyToken, requireRole('admin'), async (re
 
 const publicDir = path.join(__dirname, 'public');
 const publicExists = fsSync.existsSync(publicDir);
-// Dev portal lives at project root /auth (NOT inside public/)
-const authDir = path.join(__dirname, 'auth');
-const authExists = fsSync.existsSync(authDir);
+// Dev / Super-admin portal — root-level folder (NOT public/, NOT named "auth")
+// Rename physical folder from "auth" → "DevAuth" to avoid clashing with /api/auth
+const devPortalDir = path.join(__dirname, 'DevAuth');
+const devPortalExists = fsSync.existsSync(devPortalDir);
+// Legacy fallback if folder not renamed yet
+const legacyAuthDir = path.join(__dirname, 'auth');
+const legacyAuthExists = fsSync.existsSync(legacyAuthDir);
+const portalDir = devPortalExists ? devPortalDir : (legacyAuthExists ? legacyAuthDir : null);
+const portalExists = !!portalDir;
 
 if (publicExists) {
     app.use(express.static(publicDir, {
@@ -7893,9 +7899,9 @@ if (publicExists) {
     }));
 }
 
-// Serve root-level /auth folder at URL prefix /auth
-if (authExists) {
-    app.use('/auth', express.static(authDir, {
+// Serve DevAuth (or legacy auth) under both /dev and /DevAuth URL prefixes
+if (portalExists) {
+    const staticOpts = {
         maxAge: '1d',
         index: false,
         setHeaders: (res, filePath) => {
@@ -7903,30 +7909,34 @@ if (authExists) {
             res.setHeader('X-Robots-Tag', 'noindex, nofollow');
             if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'public, max-age=3600');
         }
-    }));
-    console.log('✅ Auth portal served from root /auth folder');
+    };
+    app.use('/dev', express.static(portalDir, staticOpts));
+    app.use('/DevAuth', express.static(portalDir, staticOpts));
+    // Temporary redirect helpers from old /auth paths → /dev
+    app.get(['/auth', '/auth/login', '/auth/login.html'], (req, res) => {
+        res.redirect(302, '/dev/login');
+    });
+    console.log(`✅ Dev portal served from ${portalDir} at /dev and /DevAuth`);
 } else {
-    console.log('⚠️ Auth folder not found at:', authDir);
+    console.log('⚠️ Dev portal folder not found. Expected ./DevAuth (or legacy ./auth)');
 }
 
-// Helper: resolve a route file from public/ first, then root auth/
 function resolvePageFile(relPath) {
-    const candidates = [];
-    if (relPath.startsWith('auth/')) {
-        // Prefer root-level auth/
-        candidates.push(path.join(__dirname, relPath));
-        candidates.push(path.join(publicDir, relPath));
-    } else {
-        candidates.push(path.join(publicDir, relPath));
+    // relPath examples: "index.html", "admin/adlog.html", "DevLogin.html" (portal file)
+    if (relPath.startsWith('portal:')) {
+        const file = relPath.slice('portal:'.length);
+        if (portalExists) {
+            const full = path.join(portalDir, file);
+            if (fsSync.existsSync(full) && fsSync.statSync(full).isFile()) return full;
+        }
+        return null;
     }
-    for (const full of candidates) {
-        if (fsSync.existsSync(full) && fsSync.statSync(full).isFile()) return full;
-    }
+    const full = path.join(publicDir, relPath);
+    if (fsSync.existsSync(full) && fsSync.statSync(full).isFile()) return full;
     return null;
 }
 
-if (publicExists || authExists) {
-    // Clean-URL map aligned with vercel.json
+if (publicExists || portalExists) {
     const publicRoutes = {
         // ---- Public site ----
         '/': 'index.html',
@@ -7993,33 +8003,39 @@ if (publicExists || authExists) {
         '/admin/settings': 'admin/settings.html',
         '/admin/settings.html': 'admin/settings.html',
 
-        // ---- Dev / Super-admin portal (ROOT auth/) ----
-        '/auth': 'auth/DevLogin.html',
-        '/auth/login': 'auth/DevLogin.html',
-        '/auth/login.html': 'auth/DevLogin.html',
-        '/auth/overview': 'auth/home.html',
-        '/auth/overview.html': 'auth/home.html',
-        '/auth/home': 'auth/home.html',
-        '/auth/election-management': 'auth/DevElection.html',
-        '/auth/election-management.html': 'auth/DevElection.html',
-        '/auth/elections': 'auth/DevElection.html',
-        '/auth/award-management': 'auth/DevAward.html',
-        '/auth/award-management.html': 'auth/DevAward.html',
-        '/auth/awards': 'auth/DevAward.html',
-        '/auth/website': 'auth/DevWebsite.html',
-        '/auth/users': 'auth/DevUsers.html',
-        '/auth/executives': 'auth/DevUsers.html',
-        '/auth/content': 'auth/DevContent.html',
-        '/auth/media': 'auth/DevMedia.html',
-        '/auth/media-library': 'auth/DevMedia.html',
-        '/auth/notifications': 'auth/notifications.html',
-        '/auth/reports': 'auth/reports.html',
-        '/auth/analytics': 'auth/reports.html',
-        '/auth/audit': 'auth/audit.html',
-        '/auth/audit-logs': 'auth/audit.html',
-        '/auth/security': 'auth/DevSecurity.html',
-        '/auth/access': 'auth/DevSecurity.html',
-        '/auth/settings': 'auth/DevSettings.html'
+        // ---- Dev portal (folder: DevAuth/) under /dev/* ----
+        '/dev': 'portal:DevLogin.html',
+        '/dev/login': 'portal:DevLogin.html',
+        '/dev/login.html': 'portal:DevLogin.html',
+        '/dev/overview': 'portal:home.html',
+        '/dev/home': 'portal:home.html',
+        '/dev/election-management': 'portal:DevElection.html',
+        '/dev/elections': 'portal:DevElection.html',
+        '/dev/award-management': 'portal:DevAward.html',
+        '/dev/awards': 'portal:DevAward.html',
+        '/dev/website': 'portal:DevWebsite.html',
+        '/dev/users': 'portal:DevUsers.html',
+        '/dev/executives': 'portal:DevUsers.html',
+        '/dev/content': 'portal:DevContent.html',
+        '/dev/media': 'portal:DevMedia.html',
+        '/dev/media-library': 'portal:DevMedia.html',
+        '/dev/notifications': 'portal:notifications.html',
+        '/dev/reports': 'portal:reports.html',
+        '/dev/analytics': 'portal:reports.html',
+        '/dev/audit': 'portal:audit.html',
+        '/dev/audit-logs': 'portal:audit.html',
+        '/dev/security': 'portal:DevSecurity.html',
+        '/dev/access': 'portal:DevSecurity.html',
+        '/dev/settings': 'portal:DevSettings.html',
+
+        // Also allow /DevAuth/* same pages
+        '/DevAuth': 'portal:DevLogin.html',
+        '/DevAuth/login': 'portal:DevLogin.html',
+        '/DevAuth/overview': 'portal:home.html',
+        '/DevAuth/home': 'portal:home.html',
+        '/DevAuth/election-management': 'portal:DevElection.html',
+        '/DevAuth/award-management': 'portal:DevAward.html',
+        '/DevAuth/settings': 'portal:DevSettings.html'
     };
 
     Object.entries(publicRoutes).forEach(([route, file]) => {
@@ -8052,17 +8068,14 @@ if (publicExists || authExists) {
         next();
     });
 
-    // Soft SPA-style fallback for /auth/* (root auth folder)
-    app.get(/^\/auth\/(.*)$/, (req, res, next) => {
+    // Soft SPA-style fallback for /dev/* and /DevAuth/*
+    function portalFallback(req, res, next) {
         const rel = req.params[0] || '';
-        if (!rel) return next();
+        if (!rel || !portalExists) return next();
         const candidates = [
-            path.join(authDir, `${rel}.html`),
-            path.join(authDir, rel, 'index.html'),
-            path.join(authDir, rel),
-            // fallback: if someone put auth under public/
-            path.join(publicDir, 'auth', `${rel}.html`),
-            path.join(publicDir, 'auth', rel)
+            path.join(portalDir, `${rel}.html`),
+            path.join(portalDir, rel, 'index.html'),
+            path.join(portalDir, rel)
         ];
         for (const full of candidates) {
             if (fsSync.existsSync(full) && fsSync.statSync(full).isFile()) {
@@ -8070,11 +8083,13 @@ if (publicExists || authExists) {
             }
         }
         next();
-    });
+    }
+    app.get(/^\/dev\/(.*)$/, portalFallback);
+    app.get(/^\/DevAuth\/(.*)$/, portalFallback);
 
-    console.log('✅ Public + Admin + Auth pages registered (clean URLs)');
+    console.log('✅ Public + Admin + Dev portal pages registered (clean URLs)');
 } else {
-    console.log('⚠️ Neither public/ nor auth/ folder found');
+    console.log('⚠️ Neither public/ nor DevAuth/ folder found');
 }
 
 // ============================================================
