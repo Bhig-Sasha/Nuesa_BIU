@@ -213,7 +213,86 @@ h1,h2,h3{font-weight:900;line-height:1.2}
  .ws-list-item .ws-list-type{grid-column:2;justify-self:start;margin-top:.25rem}
 }
 
-/* ANNOUNCEMENTS */
+/* ===== SMART PLANNER ===== */
+.planner-shell{background:var(--white);border:2px solid var(--emerald-200);border-radius:.75rem;box-shadow:var(--shadow-lg);overflow:hidden}
+.planner-head{background:linear-gradient(135deg,var(--emerald-600),var(--emerald-700));padding:1.5rem 1.75rem;color:#fff}
+.planner-head h2{font-size:1.5rem;font-weight:900;color:#fff;margin-bottom:.25rem;display:flex;align-items:center;gap:.6rem}
+.planner-head p{color:var(--emerald-100);font-size:.875rem;max-width:44rem}
+.planner-body{padding:1.75rem}
+@media(max-width:640px){.planner-head{padding:1.25rem}.planner-body{padding:1rem}}
+.planner-step{display:flex;align-items:center;gap:.6rem;font-family:'Roboto Mono',monospace;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--emerald-700);margin-bottom:.9rem}
+.planner-step .num{width:1.4rem;height:1.4rem;border-radius:50%;background:var(--emerald-600);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.65rem;flex-shrink:0}
+.level-chips{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1.75rem}
+.level-chip{font-family:'Roboto Mono',monospace;font-size:.8rem;font-weight:700;padding:.55rem 1.1rem;border-radius:.5rem;border:2px solid var(--emerald-200);background:#fff;color:var(--slate-700);cursor:pointer;transition:all .2s}
+.level-chip:hover{border-color:var(--emerald-400);background:var(--emerald-50)}
+.level-chip.active{background:var(--emerald-600);border-color:var(--emerald-600);color:#fff;box-shadow:0 4px 10px -2px rgba(5,150,105,.4)}
+.exam-pick-grid{display:grid;grid-template-columns:1fr;gap:.6rem;max-height:440px;overflow-y:auto;padding:.25rem;margin:0 -.25rem .5rem}
+@media(min-width:640px){.exam-pick-grid{grid-template-columns:repeat(2,1fr)}}
+.exam-pick{display:flex;align-items:flex-start;gap:.7rem;padding:.8rem .9rem;border:2px solid var(--slate-200);border-radius:.5rem;cursor:pointer;transition:all .2s;background:#fff;position:relative;user-select:none}
+.exam-pick:hover{border-color:var(--emerald-300);background:var(--emerald-50)}
+.exam-pick.selected{border-color:var(--emerald-500);background:var(--emerald-50);box-shadow:0 0 0 3px rgba(16,185,129,.12)}
+.exam-pick.clashing{border-color:var(--amber-500);background:var(--amber-100)}
+.exam-pick input{position:absolute;opacity:0;pointer-events:none}
+.exam-pick .box{width:1.2rem;height:1.2rem;border-radius:.3rem;border:2px solid var(--slate-300);flex-shrink:0;margin-top:.15rem;display:flex;align-items:center;justify-content:center;transition:all .2s;color:transparent;font-size:.7rem}
+.exam-pick.selected .box{background:var(--emerald-600);border-color:var(--emerald-600);color:#fff}
+.exam-pick.clashing .box{border-color:var(--amber-500)}
+.exam-pick.clashing.selected .box{background:var(--amber-500);border-color:var(--amber-500)}
+.exam-pick-info{min-width:0;flex:1}
+.exam-pick-code{font-weight:800;font-size:.9rem;color:var(--slate-800);line-height:1.2;display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
+.exam-pick-title{font-size:.72rem;color:var(--slate-500);line-height:1.3;margin-top:.1rem}
+.exam-pick-meta{display:flex;flex-wrap:wrap;gap:.35rem .75rem;margin-top:.4rem;font-family:'Roboto Mono',monospace;font-size:.65rem;color:var(--slate-600)}
+.exam-pick-meta span{display:inline-flex;align-items:center;gap:.3rem}
+.exam-pick-meta i{color:var(--emerald-600)}
+.pick-badge{font-family:'Roboto Mono',monospace;font-size:.55rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:.12rem .45rem;border-radius:9999px;white-space:nowrap}
+.pick-badge.clash{background:var(--amber-500);color:#fff}
+.planner-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.75rem;padding-top:1rem;border-top:1px solid var(--slate-200);margin-top:1rem}
+.sel-count{font-family:'Roboto Mono',monospace;font-size:.75rem;font-weight:600;color:var(--slate-500)}
+.sel-count strong{color:var(--slate-800)}
+.btn-ghost{background:transparent;border:2px solid var(--slate-300);color:var(--slate-600);font-family:'Roboto Mono',monospace;font-size:.7rem;font-weight:700;padding:.5rem 1rem;border-radius:.4rem;cursor:pointer;transition:all .2s}
+.btn-ghost:hover{border-color:var(--emerald-400);color:var(--emerald-700);background:var(--emerald-50)}
+
+/* planner results */
+.planner-results{margin-top:1.75rem;padding-top:1.5rem;border-top:2px dashed var(--emerald-200)}
+.result-summary{display:flex;flex-wrap:wrap;gap:.75rem;margin-bottom:1.25rem}
+.res-stat{flex:1 1 140px;padding:.85rem 1rem;border-radius:.5rem;border:2px solid var(--slate-200);background:#fff;text-align:center}
+.res-stat .n{font-size:1.5rem;font-weight:900;line-height:1;color:var(--slate-800)}
+.res-stat .l{font-family:'Roboto Mono',monospace;font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--slate-500);margin-top:.3rem}
+.res-stat.ok{border-color:var(--emerald-200);background:var(--emerald-50)}
+.res-stat.ok .n{color:var(--emerald-700)}
+.res-stat.warn{border-color:var(--amber-300);background:var(--amber-100)}
+.res-stat.warn .n{color:var(--amber-700)}
+.res-stat.info{border-color:var(--blue-100);background:var(--blue-50)}
+.res-stat.info .n{color:var(--blue-700)}
+.clash-report{margin-bottom:1.5rem}
+.clash-alert{display:flex;gap:.8rem;padding:1rem 1.15rem;border-radius:.5rem;border:2px solid var(--amber-500);border-left:6px solid var(--amber-500);background:#fffbeb;margin-bottom:.75rem}
+.clash-alert>i{color:var(--amber-500);font-size:1.15rem;margin-top:.15rem;flex-shrink:0}
+.clash-alert h4{font-size:.9rem;font-weight:800;color:var(--slate-800);margin-bottom:.3rem}
+.clash-alert .cmeta{font-family:'Roboto Mono',monospace;font-size:.7rem;color:var(--slate-600);margin-bottom:.4rem}
+.clash-alert .cmeta i{color:var(--emerald-600);margin-right:.25rem}
+.clash-pair{font-family:'Roboto Mono',monospace;font-size:.75rem;color:var(--slate-700)}
+.clash-pair strong{color:var(--slate-900);background:rgba(245,158,11,.2);padding:.05rem .35rem;border-radius:.25rem}
+.planner-note{display:flex;gap:.6rem;align-items:flex-start;font-family:'Roboto Mono',monospace;font-size:.7rem;color:var(--slate-500);background:var(--slate-50);border:1px solid var(--slate-200);border-radius:.4rem;padding:.7rem .9rem}
+.planner-note i{color:var(--emerald-600);margin-top:.1rem}
+.schedule-timeline{display:grid;gap:.75rem}
+.tl-day{border:2px solid var(--emerald-200);border-radius:.5rem;overflow:hidden;background:#fff}
+.tl-day-head{display:flex;justify-content:space-between;align-items:center;gap:.5rem;padding:.55rem .9rem;background:var(--emerald-50);border-bottom:1px solid var(--emerald-200);font-family:'Roboto Mono',monospace;font-size:.7rem;font-weight:700;color:var(--emerald-800);flex-wrap:wrap}
+.tl-day-head .dcount{font-size:.6rem;background:var(--emerald-600);color:#fff;padding:.1rem .5rem;border-radius:9999px}
+.tl-items{display:grid}
+.tl-item{display:grid;grid-template-columns:auto 1fr;gap:.75rem;align-items:center;padding:.6rem .9rem;border-bottom:1px solid var(--slate-200)}
+.tl-item:last-child{border-bottom:none}
+.tl-item.clash{background:var(--amber-100)}
+.tl-time{font-family:'Roboto Mono',monospace;font-size:.72rem;font-weight:800;color:var(--emerald-700);min-width:74px;text-align:center;padding:.3rem .35rem;background:var(--emerald-100);border-radius:.35rem}
+.tl-item.clash .tl-time{background:var(--amber-500);color:#fff}
+.tl-info{min-width:0}
+.tl-code{font-weight:800;font-size:.85rem;color:var(--slate-800);display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;line-height:1.2}
+.tl-title{font-size:.68rem;color:var(--slate-500);margin-top:.1rem}
+.tl-venue{font-family:'Roboto Mono',monospace;font-size:.62rem;color:var(--slate-500);margin-top:.2rem;display:flex;align-items:center;gap:.25rem}
+.tl-venue i{color:var(--emerald-600)}
+.planner-empty{text-align:center;padding:2rem 1rem;color:var(--slate-500)}
+.planner-empty i{font-size:2rem;display:block;margin-bottom:.6rem;color:var(--emerald-300)}
+.planner-empty strong{color:var(--slate-700)}
+
+/* ANNOUNCEMENTS (kept for backwards compat, unused) */
 .ann{display:flex;gap:1rem;padding:1.25rem 1.5rem;border:2px solid var(--amber-300);border-left:6px solid var(--amber-500);border-radius:.5rem;background:#fffbeb;margin-top:1.5rem}
 .ann i{color:var(--amber-500);font-size:1.25rem;margin-top:.2rem}
 .ann h3{font-size:1.1rem;margin-bottom:.25rem;color:var(--slate-800)}
@@ -346,10 +425,41 @@ h1,h2,h3{font-weight:900;line-height:1.2}
   </div>
  </div></section>
 
- <!-- 5. ANNOUNCEMENTS -->
- <section class="tt-section" id="announcements"><div class="container">
-  <div class="sec-head"><div><span class="tag tag-amber">Notices</span><h2>Timetable Announcements</h2><p>Corrections and important notices</p></div></div>
-  <div id="annBody"></div>
+ <!-- 5. SMART EXAM PLANNER (replaces Timetable Announcements) -->
+ <section class="tt-section" id="exam-planner"><div class="container">
+  <div class="sec-head">
+   <div><span class="tag tag-emerald">Plan Ahead</span><h2>Smart Exam Planner</h2><p>Pick your level, select the exams you're taking and instantly see clashes, dates and times.</p></div>
+  </div>
+
+  <div class="planner-shell">
+   <div class="planner-head">
+    <h2><i class="fas fa-calendar-check"></i> Personal Exam Planner</h2>
+    <p>Select your level, then tick every exam you're registered for. The planner automatically detects time clashes and builds your personal exam schedule.</p>
+   </div>
+   <div class="planner-body">
+
+    <div class="planner-step"><span class="num">1</span> Choose your level</div>
+    <div class="level-chips" id="plannerLevelChips"></div>
+
+    <div class="planner-step"><span class="num">2</span> Select the exams you are taking</div>
+    <div class="exam-pick-grid" id="plannerExamGrid">
+     <div class="planner-empty"><i class="fas fa-hand-pointer"></i><strong>Pick a level above</strong> to see the exams available.</div>
+    </div>
+
+    <div class="planner-toolbar">
+     <span class="sel-count" id="plannerSelCount">No exams selected</span>
+     <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+      <button class="btn-ghost" id="plannerSelectAll" type="button"><i class="fas fa-check-double"></i> Select all</button>
+      <button class="btn-ghost" id="plannerClear" type="button"><i class="fas fa-rotate-left"></i> Clear</button>
+     </div>
+    </div>
+
+    <div class="planner-results" id="plannerResults">
+     <div class="planner-empty"><i class="fas fa-clipboard-check"></i><strong>Your plan will appear here.</strong><br>Select at least two exams to check for clashes.</div>
+    </div>
+
+   </div>
+  </div>
  </div></section>
 </div>
 
@@ -440,6 +550,12 @@ function longDayLabel(iso){
   var d=new Date(p.y,p.m-1,p.d);
   return d.toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'long'});
 }
+function shortDayLabel(iso){
+  if(!iso)return '';
+  var p=parseISOParts(iso);if(!p)return iso;
+  var d=new Date(p.y,p.m-1,p.d);
+  return d.toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short'});
+}
 function fmtDate(iso){
   if(!iso)return 'TBA';
   var p=parseISOParts(iso);
@@ -491,9 +607,15 @@ function timeKey(t){
   return String(hh).padStart(2,'0') + ':' + mm2;
 }
 
+function toMin(t){
+  var k=timeKey(t);
+  if(k==='99:99') return 0;
+  var p=k.split(':');
+  return parseInt(p[0],10)*60 + parseInt(p[1],10);
+}
+
 /* ===== COURSE GROUP / DEPARTMENT PARSERS ===== */
 var GENERAL_PREFIXES = ['GST','GEN','ENT','CHM','PHY','MTH','COS','BIO','STA','GEO','LAW','ENG','ACC','ECO','BUS','FRE','IGB','YOR','HIS','GNS'];
-
 function coursePrefix(code){
   var m = String(code||'').trim().toUpperCase().match(/^([A-Z]{2,4})/);
   return m ? m[1] : '';
@@ -574,7 +696,7 @@ function normalise(res){
  });
 }
 
-/* ===== RENDER ===== */
+/* ===== RENDER HELPERS ===== */
 var WEEKDAYS=['Monday','Tuesday','Wednesday','Thursday','Friday'];
 function uniq(arr){return arr.filter(function(v,i){return v&&arr.indexOf(v)===i}).sort()}
 function fillSelect(id,values,allLabel,suffix){
@@ -586,29 +708,15 @@ function setStatus(id,s){var el=document.getElementById(id);if(s){el.className='
 function msg(icon,text){return '<div class="empty"><i class="fas '+icon+'"></i>'+text+'</div>'}
 
 /* ===== WEEKLY SCHEDULE RENDERERS ===== */
-function toMin(t){
-  var k=timeKey(t);
-  if(k==='99:99') return 0;
-  var p=k.split(':');
-  return parseInt(p[0],10)*60 + parseInt(p[1],10);
-}
-
 function filterSchedule(level,sem){
   return state.classes.filter(function(c){return(!level||c.level===level)&&(!sem||c.sem===sem)});
 }
-
 function dayList(rows, day){
   return rows.filter(function(c){return c.day===day}).sort(function(a,b){
     var ta=a.start?timeKey(a.start):timeKey(a.time), tb=b.start?timeKey(b.start):timeKey(b.time);
     return ta.localeCompare(tb);
   });
 }
-
-/* Conflict detection is scoped by LEVEL + COURSE OWNERSHIP.
-   Two entries clash only if they share the same level AND the same
-   ownership bucket (course prefix + group letter). Because level is part
-   of the bucket key, MEE 312 (300L) and MEE 413 (400L) at the same time
-   are NEVER flagged — they belong to different levels. */
 function detectConflicts(rows){
   var out=[];
   var buckets={};
@@ -635,7 +743,6 @@ function detectConflicts(rows){
   });
   return out;
 }
-
 function buildClashSet(conflicts){
   var s={};
   conflicts.forEach(function(c){
@@ -704,7 +811,6 @@ function renderWeeklyGrid(rows){
 
 function renderWeeklyList(rows){
   var clashSet=buildClashSet(detectConflicts(rows));
-
   var html='<div class="ws-list">';
   WEEKDAYS.forEach(function(day){
     var list=dayList(rows,day);
@@ -734,7 +840,6 @@ function renderClasses(){
   var s=document.getElementById('classSem').value;
   var view=document.getElementById('classView').value;
   var rows=filterSchedule(l,s);
-
   if(!rows.length){
     document.getElementById('classBody').innerHTML=msg('fa-calendar-times',state.classes.length?'No classes found for this selection.':'No class timetable has been published yet.');
     return;
@@ -849,6 +954,228 @@ function renderExams(){
  document.getElementById('examBody').innerHTML=html;
 }
 
+/* ===== SMART EXAM PLANNER ===== */
+var plannerState={level:'', selected:{}};  /* selected: code|dateISO|start -> true */
+
+function plannerExamKey(e){return e.code+'|'+e.dateISO+'|'+timeKey(e.start||e.time);}
+
+function getPlannerExamsForLevel(level){
+  return state.exams.filter(function(e){
+    return level && e.level===level && !!e.dateISO;
+  }).sort(function(a,b){
+    if(a.dateISO!==b.dateISO) return a.dateISO<b.dateISO?-1:1;
+    return timeKey(a.start||a.time).localeCompare(timeKey(b.start||b.time));
+  });
+}
+
+function plannerConflicts(selectedExams){
+  var out=[];
+  for(var i=0;i<selectedExams.length;i++){
+    for(var j=i+1;j<selectedExams.length;j++){
+      var a=selectedExams[i],b=selectedExams[j];
+      if(a.dateISO!==b.dateISO) continue;
+      var ai=toMin(a.start||a.time), ae=toMin(a.end||a.time);
+      var bi=toMin(b.start||b.time), be=toMin(b.end||b.time);
+      if(ai<be && bi<ae) out.push({a:a,b:b});
+    }
+  }
+  return out;
+}
+
+function renderPlannerLevelChips(){
+  var wrap=document.getElementById('plannerLevelChips');
+  var levels=uniq(state.exams.map(function(e){return e.level}).filter(Boolean));
+  if(!levels.length){
+    wrap.innerHTML='<span class="note">No exam levels available yet.</span>';
+    return;
+  }
+  wrap.innerHTML=levels.map(function(lv){
+    var active=lv===plannerState.level?' active':'';
+    return '<button type="button" class="level-chip'+active+'" data-level="'+esc(lv)+'">'+esc(lv)+' Level</button>';
+  }).join('');
+  wrap.querySelectorAll('.level-chip').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      plannerState.level=btn.dataset.level;
+      plannerState.selected={};
+      renderPlannerLevelChips();
+      renderPlannerExamList();
+      renderPlannerResults();
+    });
+  });
+}
+
+function renderPlannerExamList(){
+  var grid=document.getElementById('plannerExamGrid');
+  if(!plannerState.level){
+    grid.innerHTML='<div class="planner-empty"><i class="fas fa-hand-pointer"></i><strong>Pick a level above</strong> to see the exams available.</div>';
+    return;
+  }
+  var exams=getPlannerExamsForLevel(plannerState.level);
+  if(!exams.length){
+    grid.innerHTML='<div class="planner-empty"><i class="fas fa-calendar-xmark"></i><strong>No exams found</strong> for this level.</div>';
+    return;
+  }
+
+  /* Pre-compute clashes among ALL level exams so the user can see them
+     even before selecting everything. */
+  var allClashPairs=plannerConflicts(exams);
+  var allClashSet={};
+  allClashPairs.forEach(function(p){
+    allClashSet[plannerExamKey(p.a)]=true;
+    allClashSet[plannerExamKey(p.b)]=true;
+  });
+
+  grid.innerHTML=exams.map(function(e){
+    var k=plannerExamKey(e);
+    var sel=!!plannerState.selected[k];
+    var clash=!!allClashSet[k];
+    var cls='exam-pick'+(sel?' selected':'')+(clash?' clashing':'');
+    return '<label class="'+cls+'" data-key="'+esc(k)+'">'
+      +'<input type="checkbox" '+(sel?'checked':'')+'>'
+      +'<span class="box"><i class="fas fa-check"></i></span>'
+      +'<span class="exam-pick-info">'
+      +'<span class="exam-pick-code">'+esc(e.code)+(clash?'<span class="pick-badge clash"><i class="fas fa-triangle-exclamation"></i> Clash</span>':'')+'</span>'
+      +(e.title?'<span class="exam-pick-title">'+esc(e.title)+'</span>':'')
+      +'<span class="exam-pick-meta">'
+      +'<span><i class="fas fa-calendar-day"></i>'+esc(shortDayLabel(e.dateISO))+'</span>'
+      +'<span><i class="fas fa-clock"></i>'+esc(prettyTime(e.start||e.time)||'TBA')+(e.end?' – '+esc(prettyTime(e.end)):'')+'</span>'
+      +'<span><i class="fas fa-map-marker-alt"></i>'+esc(e.venue)+'</span>'
+      +'</span>'
+      +'</span>'
+      +'</label>';
+  }).join('');
+
+  grid.querySelectorAll('.exam-pick').forEach(function(lbl){
+    var k=lbl.dataset.key;
+    var input=lbl.querySelector('input');
+    lbl.addEventListener('click',function(ev){
+      ev.preventDefault();
+      if(plannerState.selected[k]) delete plannerState.selected[k];
+      else plannerState.selected[k]=true;
+      renderPlannerExamList();
+      renderPlannerResults();
+    });
+    input.addEventListener('click',function(ev){ev.preventDefault()});
+  });
+}
+
+function renderPlannerResults(){
+  var box=document.getElementById('plannerResults');
+  var countEl=document.getElementById('plannerSelCount');
+  var chosen=[];
+  var seen={};
+  if(plannerState.level){
+    getPlannerExamsForLevel(plannerState.level).forEach(function(e){
+      var k=plannerExamKey(e);
+      if(plannerState.selected[k] && !seen[k]){seen[k]=true;chosen.push(e);}
+    });
+  }
+  chosen.sort(function(a,b){
+    if(a.dateISO!==b.dateISO) return a.dateISO<b.dateISO?-1:1;
+    return timeKey(a.start||a.time).localeCompare(timeKey(b.start||b.time));
+  });
+
+  countEl.innerHTML=chosen.length
+    ? '<strong>'+chosen.length+'</strong> exam'+(chosen.length===1?'':'s')+' selected'
+    : 'No exams selected';
+
+  if(!chosen.length){
+    box.innerHTML='<div class="planner-empty"><i class="fas fa-clipboard-check"></i><strong>Your plan will appear here.</strong><br>Select at least two exams to check for clashes.</div>';
+    return;
+  }
+
+  var conflicts=plannerConflicts(chosen);
+  var clashSet={};
+  conflicts.forEach(function(p){clashSet[plannerExamKey(p.a)]=true;clashSet[plannerExamKey(p.b)]=true;});
+
+  /* Summary cards */
+  var days={};
+  chosen.forEach(function(e){days[e.dateISO]=(days[e.dateISO]||0)+1});
+  var dayCount=Object.keys(days).length;
+
+  var summaryHtml='<div class="result-summary">'
+    +'<div class="res-stat info"><div class="n">'+chosen.length+'</div><div class="l">Exams selected</div></div>'
+    +'<div class="res-stat"><div class="n">'+dayCount+'</div><div class="l">Exam day'+(dayCount===1?'':'s')+'</div></div>'
+    +(conflicts.length
+      ? '<div class="res-stat warn"><div class="n">'+conflicts.length+'</div><div class="l">Clash'+(conflicts.length===1?'':'es')+' found</div></div>'
+      : '<div class="res-stat ok"><div class="n">0</div><div class="l">No clashes</div></div>')
+    +'</div>';
+
+  /* Clash alerts */
+  var clashHtml='';
+  if(conflicts.length){
+    clashHtml='<div class="clash-report"><div class="clash-alert">'
+      +'<i class="fas fa-triangle-exclamation"></i>'
+      +'<div><h4>'+conflicts.length+' clash'+(conflicts.length===1?'':'es')+' detected</h4>'
+      +'<div class="cmeta">The following exam pairs overlap in time. Contact your course rep or exams officer as soon as possible.</div></div>'
+      +'</div>';
+    conflicts.forEach(function(p){
+      clashHtml+='<div class="clash-alert">'
+        +'<i class="fas fa-clock"></i>'
+        +'<div>'
+        +'<div class="cmeta"><i class="fas fa-calendar-day"></i>'+esc(longDayLabel(p.a.dateISO))
+        +' &nbsp;·&nbsp; '+esc(prettyTime(p.a.start||p.a.time))+' – '+esc(prettyTime(p.a.end))
+        +'</div>'
+        +'<div class="clash-pair"><strong>'+esc(p.a.code)+'</strong> ('+esc(p.a.venue)+') &nbsp;↔&nbsp; <strong>'+esc(p.b.code)+'</strong> ('+esc(p.b.venue)+')</div>'
+        +'</div>'
+        +'</div>';
+    });
+    clashHtml+='</div>';
+  }
+
+  /* Timeline grouped by day */
+  var timeline='<div class="schedule-timeline">';
+  var byDay={};
+  chosen.forEach(function(e){(byDay[e.dateISO]=byDay[e.dateISO]||[]).push(e)});
+  Object.keys(byDay).sort().forEach(function(iso){
+    var items=byDay[iso];
+    items.sort(function(a,b){return timeKey(a.start||a.time).localeCompare(timeKey(b.start||b.time))});
+    timeline+='<div class="tl-day">'
+      +'<div class="tl-day-head"><span><i class="fas fa-calendar-day"></i> '+esc(longDayLabel(iso))+'</span>'
+      +'<span class="dcount">'+items.length+' exam'+(items.length===1?'':'s')+'</span></div>'
+      +'<div class="tl-items">'
+      +items.map(function(e){
+        var clash=!!clashSet[plannerExamKey(e)];
+        var t=prettyTime(e.start||e.time)||'TBA';
+        var te=e.end?' – '+prettyTime(e.end):'';
+        return '<div class="tl-item'+(clash?' clash':'')+'">'
+          +'<div class="tl-time">'+esc(t)+'<br><span style="font-size:.58rem;font-weight:600;opacity:.85">'+esc(te)+'</span></div>'
+          +'<div class="tl-info">'
+          +'<div class="tl-code">'+esc(e.code)+(clash?' <span class="pick-badge clash"><i class="fas fa-triangle-exclamation"></i> Clash</span>':'')+'</div>'
+          +(e.title?'<div class="tl-title">'+esc(e.title)+'</div>':'')
+          +'<div class="tl-venue"><i class="fas fa-map-marker-alt"></i> '+esc(e.venue)+'</div>'
+          +'</div>'
+          +'</div>';
+      }).join('')
+      +'</div></div>';
+  });
+  timeline+='</div>';
+
+  var note='<div class="planner-note" style="margin-top:1rem">'
+    +'<i class="fas fa-circle-info"></i>'
+    +'<span>Clashes are detected when two selected exams share the same date and their times overlap. Always confirm with the official examination timetable and your exams officer.</span>'
+    +'</div>';
+
+  box.innerHTML=summaryHtml+clashHtml+timeline+note;
+}
+
+function bindPlannerToolbar(){
+  document.getElementById('plannerSelectAll').addEventListener('click',function(){
+    if(!plannerState.level) return;
+    getPlannerExamsForLevel(plannerState.level).forEach(function(e){
+      plannerState.selected[plannerExamKey(e)]=true;
+    });
+    renderPlannerExamList();
+    renderPlannerResults();
+  });
+  document.getElementById('plannerClear').addEventListener('click',function(){
+    plannerState.selected={};
+    renderPlannerExamList();
+    renderPlannerResults();
+  });
+}
+
+/* ===== MAIN RENDER ===== */
 function render(){
  var m=state.meta;
  document.getElementById('heroSession').textContent=m.session?m.session+' Academic Session':'Academic Session';
@@ -865,9 +1192,16 @@ function render(){
  fillSelect('examLevel',uniq(state.exams.map(function(c){return c.level})),'All levels',' Level');
  fillSelect('examSem',uniq(state.exams.map(function(c){return c.sem})),'All semesters','');
  fillExamDaySelect();
- document.getElementById('annBody').innerHTML=state.announcements.length?state.announcements.map(function(a){
-  return '<div class="ann"><i class="fas fa-bullhorn"></i><div><h3>'+esc(a.title)+'</h3><p>'+esc(a.text)+'</p>'+(a.by?'<div class="by">Posted by '+esc(a.by)+'</div>':'')+'</div></div>'}).join(''):msg('fa-bell-slash','No announcements at the moment.');
  renderClasses();renderExams();
+
+ /* Planner */
+ if(!plannerState.level){
+   var levels=uniq(state.exams.map(function(e){return e.level}).filter(Boolean));
+   if(levels.length) plannerState.level=levels[0];
+ }
+ renderPlannerLevelChips();
+ renderPlannerExamList();
+ renderPlannerResults();
 }
 
 ['class','exam'].forEach(function(p){
@@ -877,6 +1211,7 @@ function render(){
 });
 document.getElementById('classView').addEventListener('change',renderClasses);
 document.getElementById('examDay').addEventListener('change',renderExams);
+bindPlannerToolbar();
 
 document.querySelectorAll('[data-pdf]').forEach(function(b){
  b.addEventListener('click',function(e){
@@ -890,11 +1225,12 @@ document.querySelectorAll('[data-pdf]').forEach(function(b){
 var LOADING='<div class="empty"><div class="loading-spinner"></div><p style="margin-top:.75rem">Loading…</p></div>';
 function showError(){
  var html='<div class="empty"><i class="fas fa-triangle-exclamation"></i>Unable to load the timetable right now.<br><button class="btn btn-emerald retry" style="margin-top:1rem">Try again</button></div>';
- ['classBody','examBody','annBody'].forEach(function(id){document.getElementById(id).innerHTML=html});
+ ['classBody','examBody'].forEach(function(id){document.getElementById(id).innerHTML=html});
+ document.getElementById('plannerExamGrid').innerHTML='<div class="planner-empty"><i class="fas fa-triangle-exclamation"></i><strong>Could not load exams.</strong><br>Please refresh the page.</div>';
  document.querySelectorAll('.retry').forEach(function(b){b.addEventListener('click',load)});
 }
 function load(){
- ['classBody','examBody','annBody'].forEach(function(id){document.getElementById(id).innerHTML=LOADING});
+ ['classBody','examBody'].forEach(function(id){document.getElementById(id).innerHTML=LOADING});
  fetchAPI(TIMETABLE_ENDPOINT).then(function(res){normalise(res);render()}).catch(showError);
 }
 load();

@@ -7876,7 +7876,6 @@ app.delete('/api/upload/:filename', verifyToken, requireRole('admin'), async (re
 
 const publicDir = path.join(__dirname, 'public');
 const publicExists = fsSync.existsSync(publicDir);
-// Super-admin portal — root-level folder DevAuth only (no auth/, no /dev)
 const portalDir = path.join(__dirname, 'DevAuth');
 const portalExists = fsSync.existsSync(portalDir);
 
@@ -8044,7 +8043,6 @@ if (publicExists || portalExists) {
         next();
     });
 
-    // Soft SPA-style fallback for /DevAuth/* only
     app.get(/^\/DevAuth\/(.*)$/, (req, res, next) => {
         const rel = req.params[0] || '';
         if (!rel || !portalExists) return next();
