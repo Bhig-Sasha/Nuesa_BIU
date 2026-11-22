@@ -7876,6 +7876,9 @@ app.delete('/api/upload/:filename', verifyToken, requireRole('admin'), async (re
 
 const publicDir = path.join(__dirname, 'public');
 const publicExists = fsSync.existsSync(publicDir);
+// Dev portal lives at project root /auth (NOT inside public/)
+const authDir = path.join(__dirname, 'auth');
+const authExists = fsSync.existsSync(authDir);
 
 if (publicExists) {
     app.use(express.static(publicDir, {
@@ -7883,14 +7886,47 @@ if (publicExists) {
         setHeaders: (res, filePath) => {
             res.setHeader('X-Content-Type-Options', 'nosniff');
             if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'public, max-age=3600');
-            // Don't index admin pages
             if (filePath.includes(`${path.sep}admin${path.sep}`)) {
                 res.setHeader('X-Robots-Tag', 'noindex, nofollow');
             }
         }
     }));
+}
 
-    // Clean-URL map aligned with vercel.json (trailingSlash: false, cleanUrls: true)
+// Serve root-level /auth folder at URL prefix /auth
+if (authExists) {
+    app.use('/auth', express.static(authDir, {
+        maxAge: '1d',
+        index: false,
+        setHeaders: (res, filePath) => {
+            res.setHeader('X-Content-Type-Options', 'nosniff');
+            res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+            if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'public, max-age=3600');
+        }
+    }));
+    console.log('✅ Auth portal served from root /auth folder');
+} else {
+    console.log('⚠️ Auth folder not found at:', authDir);
+}
+
+// Helper: resolve a route file from public/ first, then root auth/
+function resolvePageFile(relPath) {
+    const candidates = [];
+    if (relPath.startsWith('auth/')) {
+        // Prefer root-level auth/
+        candidates.push(path.join(__dirname, relPath));
+        candidates.push(path.join(publicDir, relPath));
+    } else {
+        candidates.push(path.join(publicDir, relPath));
+    }
+    for (const full of candidates) {
+        if (fsSync.existsSync(full) && fsSync.statSync(full).isFile()) return full;
+    }
+    return null;
+}
+
+if (publicExists || authExists) {
+    // Clean-URL map aligned with vercel.json
     const publicRoutes = {
         // ---- Public site ----
         '/': 'index.html',
@@ -7957,12 +7993,13 @@ if (publicExists) {
         '/admin/settings': 'admin/settings.html',
         '/admin/settings.html': 'admin/settings.html',
 
-        // Dev / Super-admin portal (auth/)
+        // ---- Dev / Super-admin portal (ROOT auth/) ----
         '/auth': 'auth/DevLogin.html',
         '/auth/login': 'auth/DevLogin.html',
         '/auth/login.html': 'auth/DevLogin.html',
         '/auth/overview': 'auth/home.html',
         '/auth/overview.html': 'auth/home.html',
+        '/auth/home': 'auth/home.html',
         '/auth/election-management': 'auth/DevElection.html',
         '/auth/election-management.html': 'auth/DevElection.html',
         '/auth/elections': 'auth/DevElection.html',
@@ -7987,18 +8024,18 @@ if (publicExists) {
 
     Object.entries(publicRoutes).forEach(([route, file]) => {
         app.get(route, (req, res) => {
-            const full = path.join(publicDir, file);
-            if (fsSync.existsSync(full)) {
-                return res.sendFile(full);
+            const full = resolvePageFile(file);
+            if (full) return res.sendFile(full);
+
+            const notFound = path.join(publicDir, '404.html');
+            if (publicExists && fsSync.existsSync(notFound)) {
+                return res.status(404).sendFile(notFound);
             }
-            // Fallback: try without assuming exact filename casing
-            res.status(404).sendFile(path.join(publicDir, '404.html'), (err) => {
-                if (err) res.status(404).json({ status: 'error', message: 'Page not found' });
-            });
+            res.status(404).json({ status: 'error', message: 'Page not found' });
         });
     });
 
-        // Soft SPA-style fallback for any other /admin/* path → try .html then 404
+    // Soft SPA-style fallback for /admin/*
     app.get(/^\/admin\/(.*)$/, (req, res, next) => {
         const rel = req.params[0] || '';
         if (!rel) return next();
@@ -8015,13 +8052,16 @@ if (publicExists) {
         next();
     });
 
-    // Soft SPA-style fallback for /auth/* portal pages
+    // Soft SPA-style fallback for /auth/* (root auth folder)
     app.get(/^\/auth\/(.*)$/, (req, res, next) => {
         const rel = req.params[0] || '';
         if (!rel) return next();
         const candidates = [
+            path.join(authDir, `${rel}.html`),
+            path.join(authDir, rel, 'index.html'),
+            path.join(authDir, rel),
+            // fallback: if someone put auth under public/
             path.join(publicDir, 'auth', `${rel}.html`),
-            path.join(publicDir, 'auth', rel, 'index.html'),
             path.join(publicDir, 'auth', rel)
         ];
         for (const full of candidates) {
@@ -8032,9 +8072,9 @@ if (publicExists) {
         next();
     });
 
-    console.log('✅ Public + Admin pages served from /public folder (clean URLs)');
+    console.log('✅ Public + Admin + Auth pages registered (clean URLs)');
 } else {
-    console.log('⚠️ Public folder not found at:', publicDir);
+    console.log('⚠️ Neither public/ nor auth/ folder found');
 }
 
 // ============================================================
