@@ -7883,27 +7883,161 @@ if (publicExists) {
         setHeaders: (res, filePath) => {
             res.setHeader('X-Content-Type-Options', 'nosniff');
             if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'public, max-age=3600');
+            // Don't index admin pages
+            if (filePath.includes(`${path.sep}admin${path.sep}`)) {
+                res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+            }
         }
     }));
 
+    // Clean-URL map aligned with vercel.json (trailingSlash: false, cleanUrls: true)
     const publicRoutes = {
-        '/': 'index.html', '/index.html': 'index.html',
-        '/about': 'about.html', '/about.html': 'about.html',
-        '/events': 'event.html', '/event.html': 'event.html',
-        '/members': 'member.html', '/member.html': 'member.html',
-        '/resources': 'resources.html', '/resources.html': 'resources.html',
-        '/news': 'news.html', '/news.html': 'news.html',
-        '/contact': 'contacts.html', '/contacts.html': 'contacts.html',
-        '/gallery': 'gallery.html', '/gallery.html': 'gallery.html',
-        '/elections': 'elections.html', '/elections.html': 'elections.html',
-        '/awards': 'awards.html', '/awards.html': 'awards.html'
+        // ---- Public site ----
+        '/': 'index.html',
+        '/home': 'index.html',
+        '/index.html': 'index.html',
+        '/about': 'about.html',
+        '/about.html': 'about.html',
+        '/members': 'members.html',
+        '/members.html': 'members.html',
+        '/executives': 'members.html',
+        '/events': 'events.html',
+        '/events.html': 'events.html',
+        '/event': 'events.html',
+        '/event.html': 'events.html',
+        '/resources': 'resources.html',
+        '/resources.html': 'resources.html',
+        '/past-questions': 'resources.html',
+        '/admission': 'admission.html',
+        '/admission.html': 'admission.html',
+        '/course-reps': 'courseReps.html',
+        '/coursereps': 'courseReps.html',
+        '/courseReps.html': 'courseReps.html',
+        '/news': 'news.html',
+        '/news.html': 'news.html',
+        '/articles': 'news.html',
+        '/contact': 'contacts.html',
+        '/contacts': 'contacts.html',
+        '/contacts.html': 'contacts.html',
+        '/election': 'elections.html',
+        '/elections': 'elections.html',
+        '/elections.html': 'elections.html',
+        '/payment': 'payment.html',
+        '/payments': 'payment.html',
+        '/payment.html': 'payment.html',
+        '/gallery': 'gallery.html',
+        '/gallery.html': 'gallery.html',
+        '/awards': 'awards.html',
+        '/awards.html': 'awards.html',
+
+        // ---- Admin portal (public/admin/) ----
+        '/admin': 'admin/adlog.html',
+        '/admin/login': 'admin/adlog.html',
+        '/admin/adlog': 'admin/adlog.html',
+        '/admin/adlog.html': 'admin/adlog.html',
+        '/admin/dash': 'admin/dashboard.html',
+        '/admin/dashboard': 'admin/dashboard.html',
+        '/admin/dashboard.html': 'admin/dashboard.html',
+        '/admin/members': 'admin/members.html',
+        '/admin/members.html': 'admin/members.html',
+        '/admin/course-reps': 'admin/courseReps.html',
+        '/admin/coursereps': 'admin/courseReps.html',
+        '/admin/courseReps.html': 'admin/courseReps.html',
+        '/admin/events': 'admin/events.html',
+        '/admin/events.html': 'admin/events.html',
+        '/admin/election': 'admin/Election.html',
+        '/admin/elections': 'admin/Election.html',
+        '/admin/Election.html': 'admin/Election.html',
+        '/admin/articles': 'admin/articles.html',
+        '/admin/news': 'admin/articles.html',
+        '/admin/articles.html': 'admin/articles.html',
+        '/admin/resources': 'admin/resources.html',
+        '/admin/resources.html': 'admin/resources.html',
+        '/admin/media': 'admin/media.html',
+        '/admin/media.html': 'admin/media.html',
+        '/admin/payments': 'admin/payments.html',
+        '/admin/payments.html': 'admin/payments.html',
+        '/admin/messages': 'admin/messages.html',
+        '/admin/messages.html': 'admin/messages.html',
+        '/admin/settings': 'admin/settings.html',
+        '/admin/settings.html': 'admin/settings.html',
+
+        // Dev / Super-admin portal (auth/)
+        '/auth': 'auth/login.html',
+        '/auth/login': 'auth/login.html',
+        '/auth/login.html': 'auth/login.html',
+        '/auth/overview': 'auth/overview.html',
+        '/auth/overview.html': 'auth/overview.html',
+        '/auth/election-management': 'auth/election-management.html',
+        '/auth/election-management.html': 'auth/election-management.html',
+        '/auth/elections': 'auth/election-management.html',
+        '/auth/award-management': 'auth/award-management.html',
+        '/auth/award-management.html': 'auth/award-management.html',
+        '/auth/awards': 'auth/award-management.html',
+        '/auth/website': 'auth/website.html',
+        '/auth/users': 'auth/users.html',
+        '/auth/executives': 'auth/users.html',
+        '/auth/content': 'auth/content.html',
+        '/auth/media': 'auth/media.html',
+        '/auth/media-library': 'auth/media.html',
+        '/auth/notifications': 'auth/notifications.html',
+        '/auth/reports': 'auth/reports.html',
+        '/auth/analytics': 'auth/reports.html',
+        '/auth/audit': 'auth/audit.html',
+        '/auth/audit-logs': 'auth/audit.html',
+        '/auth/security': 'auth/security.html',
+        '/auth/access': 'auth/security.html',
+        '/auth/settings': 'auth/settings.html'
     };
 
     Object.entries(publicRoutes).forEach(([route, file]) => {
-        app.get(route, (req, res) => res.sendFile(path.join(publicDir, file)));
+        app.get(route, (req, res) => {
+            const full = path.join(publicDir, file);
+            if (fsSync.existsSync(full)) {
+                return res.sendFile(full);
+            }
+            // Fallback: try without assuming exact filename casing
+            res.status(404).sendFile(path.join(publicDir, '404.html'), (err) => {
+                if (err) res.status(404).json({ status: 'error', message: 'Page not found' });
+            });
+        });
     });
 
-    console.log('✅ Public pages served from /public folder');
+        // Soft SPA-style fallback for any other /admin/* path → try .html then 404
+    app.get(/^\/admin\/(.*)$/, (req, res, next) => {
+        const rel = req.params[0] || '';
+        if (!rel) return next();
+        const candidates = [
+            path.join(publicDir, 'admin', `${rel}.html`),
+            path.join(publicDir, 'admin', rel, 'index.html'),
+            path.join(publicDir, 'admin', rel)
+        ];
+        for (const full of candidates) {
+            if (fsSync.existsSync(full) && fsSync.statSync(full).isFile()) {
+                return res.sendFile(full);
+            }
+        }
+        next();
+    });
+
+    // Soft SPA-style fallback for /auth/* portal pages
+    app.get(/^\/auth\/(.*)$/, (req, res, next) => {
+        const rel = req.params[0] || '';
+        if (!rel) return next();
+        const candidates = [
+            path.join(publicDir, 'auth', `${rel}.html`),
+            path.join(publicDir, 'auth', rel, 'index.html'),
+            path.join(publicDir, 'auth', rel)
+        ];
+        for (const full of candidates) {
+            if (fsSync.existsSync(full) && fsSync.statSync(full).isFile()) {
+                return res.sendFile(full);
+            }
+        }
+        next();
+    });
+
+    console.log('✅ Public + Admin pages served from /public folder (clean URLs)');
 } else {
     console.log('⚠️ Public folder not found at:', publicDir);
 }
