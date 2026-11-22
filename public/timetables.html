@@ -1005,33 +1005,43 @@ function renderExams(){
 }
 
 /* ===== SMART EXAM PLANNER ===== */
-var plannerState={level:'', selected:{}};  /* selected: code|dateISO|start -> true */
+var plannerState={level:'', selected:{}, query:''};  /* selected: code|dateISO|start -> true */
 
 function plannerExamKey(e){return [e.code,e.dateISO,timeKey(e.start||e.time),e.venue,e.title||''].join('|');}
 
+function plannerSort(a,b){
+  if(a.dateISO!==b.dateISO){
+    if(!a.dateISO) return 1;
+    if(!b.dateISO) return -1;
+    return a.dateISO<b.dateISO?-1:1;
+  }
+  return timeKey(a.start||a.time).localeCompare(timeKey(b.start||b.time));
+}
 function getAllSelectedExams(){
   return state.exams.filter(function(e){
-    return e.dateISO && plannerState.selected[plannerExamKey(e)];
-  }).sort(function(a,b){
-    if(a.dateISO!==b.dateISO) return a.dateISO<b.dateISO?-1:1;
-    return timeKey(a.start||a.time).localeCompare(timeKey(b.start||b.time));
-  });
+    return plannerState.selected[plannerExamKey(e)];
+  }).sort(plannerSort);
 }
 function selectedCountForLevel(lv){
   return state.exams.filter(function(e){
-    return e.level===lv && e.dateISO && plannerState.selected[plannerExamKey(e)];
+    return e.level===lv && plannerState.selected[plannerExamKey(e)];
   }).length;
 }
 function getPlannerExamsForLevel(level){
+  var q=plannerState.query;
+  if(q){
+    var qc=normCode(q);
+    return state.exams.filter(function(e){
+      return (qc && normCode(e.code).indexOf(qc)>-1) || String(e.title||'').toLowerCase().indexOf(q)>-1;
+    }).sort(plannerSort);
+  }
   return state.exams.filter(function(e){
-    return level && e.level===level && !!e.dateISO;
-  }).sort(function(a,b){
-    if(a.dateISO!==b.dateISO) return a.dateISO<b.dateISO?-1:1;
-    return timeKey(a.start||a.time).localeCompare(timeKey(b.start||b.time));
-  });
+    return level && e.level===level;
+  }).sort(plannerSort);
 }
 
 function examsClash(a, b) {
+  if (!a.dateISO || !b.dateISO) return false;
   if (a.dateISO !== b.dateISO) return false;
   /* same course code = same course (duplicate row or a group variant): never a clash */
   if (normCode(a.code) === normCode(b.code)) return false;
@@ -1075,6 +1085,7 @@ function renderPlannerLevelChips(){
   wrap.querySelectorAll('.level-chip').forEach(function(btn){
     btn.addEventListener('click',function(){
       plannerState.level=btn.dataset.level;
+      plannerState.query='';var si=document.getElementById('plannerSearch');if(si)si.value='';
       renderPlannerLevelChips();
       renderPlannerExamList();
       renderPlannerResults();
@@ -1084,13 +1095,13 @@ function renderPlannerLevelChips(){
 
 function renderPlannerExamList(){
   var grid=document.getElementById('plannerExamGrid');
-  if(!plannerState.level){
+  if(!plannerState.level && !plannerState.query){
     grid.innerHTML='<div class="planner-empty"><i class="fas fa-hand-pointer"></i><strong>Pick a level above</strong> to see the exams available.</div>';
     return;
   }
   var exams=getPlannerExamsForLevel(plannerState.level);
   if(!exams.length){
-    grid.innerHTML='<div class="planner-empty"><i class="fas fa-calendar-xmark"></i><strong>No exams found</strong> for this level.</div>';
+    grid.innerHTML='<div class="planner-empty"><i class="fas fa-calendar-xmark"></i><strong>No exams found</strong> '+(plannerState.query?'matching your search.':'for this level.')+'</div>';
     return;
   }
 
@@ -1114,7 +1125,7 @@ function renderPlannerExamList(){
       +'<span class="exam-pick-code">'+esc(e.code)+(clash?'<span class="pick-badge clash"><i class="fas fa-triangle-exclamation"></i> Clash</span>':'')+'</span>'
       +(e.title?'<span class="exam-pick-title">'+esc(e.title)+'</span>':'')
       +'<span class="exam-pick-meta">'
-      +'<span><i class="fas fa-calendar-day"></i>'+esc(shortDayLabel(e.dateISO))+'</span>'
+      +'<span><i class="fas fa-calendar-day"></i>'+esc(shortDayLabel(e.dateISO)||'Date TBA')+'</span>'
       +'<span><i class="fas fa-clock"></i>'+esc(prettyTime(e.start||e.time)||'TBA')+(e.end?' – '+esc(prettyTime(e.end)):'')+'</span>'
       +'<span><i class="fas fa-map-marker-alt"></i>'+esc(e.venue)+'</span>'
       +'</span>'
@@ -1141,10 +1152,6 @@ function renderPlannerResults(){
   var box=document.getElementById('plannerResults');
   var countEl=document.getElementById('plannerSelCount');
   var chosen=getAllSelectedExams();
-  chosen.sort(function(a,b){
-    if(a.dateISO!==b.dateISO) return a.dateISO<b.dateISO?-1:1;
-    return timeKey(a.start||a.time).localeCompare(timeKey(b.start||b.time));
-  });
 
   countEl.innerHTML=chosen.length
     ? '<strong>'+chosen.length+'</strong> exam'+(chosen.length===1?'':'s')+' selected'
@@ -1160,7 +1167,7 @@ function renderPlannerResults(){
   conflicts.forEach(function(p){clashSet[plannerExamKey(p.a)]=true;clashSet[plannerExamKey(p.b)]=true;});
 
   var days={};
-  chosen.forEach(function(e){days[e.dateISO]=(days[e.dateISO]||0)+1});
+  chosen.forEach(function(e){if(e.dateISO)days[e.dateISO]=(days[e.dateISO]||0)+1});
   var dayCount=Object.keys(days).length;
 
   var summaryHtml='<div class="result-summary">'
@@ -1195,11 +1202,11 @@ function renderPlannerResults(){
   var timeline='<div class="schedule-timeline">';
   var byDay={};
   chosen.forEach(function(e){(byDay[e.dateISO]=byDay[e.dateISO]||[]).push(e)});
-  Object.keys(byDay).sort().forEach(function(iso){
+  Object.keys(byDay).sort(function(x,y){if(!x)return 1;if(!y)return -1;return x<y?-1:1}).forEach(function(iso){
     var items=byDay[iso];
     items.sort(function(a,b){return timeKey(a.start||a.time).localeCompare(timeKey(b.start||b.time))});
     timeline+='<div class="tl-day">'
-      +'<div class="tl-day-head"><span><i class="fas fa-calendar-day"></i> '+esc(longDayLabel(iso))+'</span>'
+      +'<div class="tl-day-head"><span><i class="fas fa-calendar-day"></i> '+esc(longDayLabel(iso)||'Date to be announced')+'</span>'
       +'<span class="dcount">'+items.length+' exam'+(items.length===1?'':'s')+'</span></div>'
       +'<div class="tl-items">'
       +items.map(function(e){
@@ -1228,6 +1235,17 @@ function renderPlannerResults(){
 }
 
 function bindPlannerToolbar(){
+  var gridEl=document.getElementById('plannerExamGrid');
+  var sb=document.createElement('input');
+  sb.type='search';sb.id='plannerSearch';
+  sb.placeholder='Search any course across all levels (e.g. ENT 312)';
+  sb.setAttribute('aria-label','Search courses');
+  sb.style.cssText="width:100%;padding:.65rem 1rem;margin-bottom:.75rem;font-family:'Inter',sans-serif;font-size:.9rem;border:2px solid var(--emerald-200);border-radius:.5rem;background:#fff;color:var(--slate-800)";
+  gridEl.parentNode.insertBefore(sb,gridEl);
+  sb.addEventListener('input',function(){
+    plannerState.query=sb.value.trim().toLowerCase();
+    renderPlannerExamList();
+  });
   document.getElementById('plannerSelectAll').addEventListener('click',function(){
     if(!plannerState.level) return;
     getPlannerExamsForLevel(plannerState.level).forEach(function(e){
