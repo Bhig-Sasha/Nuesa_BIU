@@ -31,35 +31,38 @@ p{color:var(--g600);line-height:1.7}
 .js .rv{opacity:0;transform:translateY(24px);transition:opacity .7s,transform .7s}
 .js .rv.in{opacity:1;transform:none}
 
-/* NAVBAR (unchanged) */
-.navbar{position:fixed;top:0;left:0;right:0;width:100%;z-index:1000;transition:all .3s ease;background-color:rgba(6,78,59,.95);padding:1rem 0;backdrop-filter:blur(8px)}
-.navbar.scrolled{background-color:rgba(6,78,59,.98);backdrop-filter:blur(10px);box-shadow:var(--sh);padding:.5rem 0}
+/* UPDATED NAVBAR */
+.navbar{position:fixed;top:0;left:0;right:0;width:100%;z-index:1000;transition:padding .3s ease,background .3s ease,box-shadow .3s ease;background-color:rgba(6,78,59,.94);border-bottom:1px solid rgba(255,255,255,.08);padding:.95rem 0;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.navbar.scrolled{background-color:rgba(2,44,34,.98);box-shadow:var(--sh);padding:.55rem 0}
 .nav-container{max-width:80rem;margin:0 auto;padding:0 2rem}
-.nav-flex{display:flex;justify-content:space-between;align-items:center}
-.logo-link{display:flex;align-items:center;gap:.25rem;transition:transform .3s ease}
-.logo-link:hover{transform:scale(1.05)}
-.logo-main,.logo-highlight{font-size:1.5rem;font-weight:900;letter-spacing:-.05em}
+@media(max-width:640px){.nav-container{padding:0 1rem}}
+.nav-flex{display:flex;justify-content:space-between;align-items:center;gap:1rem}
+.logo-link{display:inline-flex;align-items:center;gap:.2rem;padding:.25rem .4rem;border-radius:6px;flex-shrink:0;transition:transform .3s ease}
+.logo-link:hover{transform:translateY(-1px) scale(1.03)}
+.logo-link:focus-visible,.nav-links li a:focus-visible,.hamburger:focus-visible,.mobile-nav ul li a:focus-visible{outline:2px solid var(--a400);outline-offset:3px;border-radius:6px}
+.logo-main,.logo-highlight{font-size:1.45rem;font-weight:900;letter-spacing:-.05em;line-height:1}
 .logo-main{color:var(--w)}.logo-highlight{color:var(--a400)}
 .nav-menu{display:flex;align-items:center}
-.nav-links{display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap}
-.nav-links li a{font-family:'Roboto Mono',monospace;font-size:.7rem;font-weight:600;letter-spacing:.08em;color:rgba(255,255,255,.9);transition:color .2s;position:relative;padding:.5rem 0;white-space:nowrap}
-.nav-links li a::after{content:'';position:absolute;bottom:0;left:0;width:0;height:2px;background-color:var(--a400);transition:width .3s}
+.nav-links{display:flex;align-items:center;gap:1.15rem}
+.nav-links li a{font-family:'Roboto Mono',monospace;font-size:.68rem;font-weight:600;letter-spacing:.07em;color:rgba(255,255,255,.88);transition:color .2s ease;position:relative;padding:.45rem .1rem;white-space:nowrap;display:inline-block}
+.nav-links li a::after{content:'';position:absolute;bottom:0;left:0;width:0;height:2px;border-radius:999px;background-color:var(--a400);transition:width .3s ease}
 .nav-links li a:hover,.nav-links li a.active{color:var(--a400)}
 .nav-links li a:hover::after,.nav-links li a.active::after{width:100%}
-.hamburger{display:none;cursor:pointer;z-index:1001;background:none;border:none;padding:.5rem}
-.hamburger span{display:block;width:25px;height:3px;background-color:var(--w);margin:5px 0;transition:all .3s ease;border-radius:3px}
-.hamburger.active span:nth-child(1){transform:rotate(45deg) translate(5px,6px);background-color:var(--a400)}
+.hamburger{display:none;cursor:pointer;z-index:1001;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:.5rem;min-width:44px;min-height:44px;align-items:center;justify-content:center;flex-direction:column;transition:background .2s ease,border-color .2s ease}
+.hamburger:hover{background:rgba(255,255,255,.12);border-color:rgba(251,191,36,.45)}
+.hamburger span{display:block;width:22px;height:2.5px;background-color:var(--w);margin:2.5px 0;transition:transform .3s ease,opacity .2s ease,background .2s ease;border-radius:999px}
+.hamburger.active span:nth-child(1){transform:translateY(7.5px) rotate(45deg);background-color:var(--a400)}
 .hamburger.active span:nth-child(2){opacity:0}
-.hamburger.active span:nth-child(3){transform:rotate(-45deg) translate(5px,-6px);background-color:var(--a400)}
-.mobile-nav{position:fixed;top:0;left:0;width:100%;height:100vh;background:linear-gradient(135deg,var(--e900),var(--e800));display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:999;opacity:0;visibility:hidden;transition:all .4s ease;padding:2rem;overflow-y:auto}
-.mobile-nav.active{opacity:1;visibility:visible}
-.mobile-nav ul{text-align:center}
-.mobile-nav ul li{margin:.9rem 0;opacity:0;transform:translateY(20px);transition:all .4s ease}
+.hamburger.active span:nth-child(3){transform:translateY(-7.5px) rotate(-45deg);background-color:var(--a400)}
+.mobile-nav{position:fixed;inset:0;width:100%;height:100vh;height:100dvh;background:linear-gradient(155deg,var(--e900),var(--e800));display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:999;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .35s ease,visibility .35s ease;padding:4.5rem 2rem 2rem;overflow-y:auto;overscroll-behavior:contain}
+.mobile-nav.active{opacity:1;visibility:visible;pointer-events:auto}
+.mobile-nav ul{text-align:center;width:100%;max-width:24rem}
+.mobile-nav ul li{margin:.35rem 0;opacity:0;transform:translateY(16px);transition:opacity .35s ease,transform .35s ease}
 .mobile-nav.active ul li{opacity:1;transform:translateY(0)}
-.mobile-nav ul li a{font-family:'Roboto Mono',monospace;font-size:1.25rem;font-weight:600;letter-spacing:.08em;color:var(--w);transition:color .3s;display:inline-block;padding:.5rem 1rem}
-.mobile-nav ul li a:hover{color:var(--a400);transform:translateX(10px)}
-.mobile-nav ul li a.active{color:var(--a400);border-left:4px solid var(--a400)}
-@media screen and (max-width:1200px){.nav-links{display:none}.hamburger{display:block}}
+.mobile-nav ul li a{font-family:'Roboto Mono',monospace;font-size:1rem;font-weight:600;letter-spacing:.08em;color:var(--w);transition:color .25s ease,transform .25s ease,background .25s ease;display:inline-block;padding:.5rem 1rem;border-radius:8px}
+.mobile-nav ul li a:hover{color:var(--a400);background:rgba(255,255,255,.06);transform:translateX(6px)}
+.mobile-nav ul li a.active{color:var(--a400);background:rgba(251,191,36,.12);border-left:3px solid var(--a400)}
+@media screen and (max-width:1240px){.nav-links{display:none}.hamburger{display:flex}}
 
 /* HERO */
 .hero{background:var(--w);border-bottom:2px dashed var(--g300);padding:5rem 0}
@@ -165,7 +168,7 @@ p{color:var(--g600);line-height:1.7}
 .btn.p{background:var(--e600);color:#fff}.btn.p:hover{background:var(--e700);border-color:var(--e700);transform:translateY(-4px);box-shadow:var(--sh)}
 .btn.o{color:#fff;border-color:rgba(255,255,255,.4)}.btn.o:hover{background:#fff;color:var(--s800);border-color:#fff;transform:translateY(-4px)}
 
-/* FOOTER (unchanged) */
+/* FOOTER */
 .footer{background:linear-gradient(135deg,var(--s800) 0%,var(--s900) 100%);border-top:4px solid var(--e500);padding:4rem 0 2rem}
 .footer-container{max-width:80rem;margin:0 auto;padding:0 1rem}
 .footer-grid{display:grid;grid-template-columns:1fr;gap:3rem;margin-bottom:3rem}
@@ -187,44 +190,17 @@ p{color:var(--g600);line-height:1.7}
 .footer-bottom-links a:hover{color:var(--e400)}
 @media(min-width:768px){.footer-grid{grid-template-columns:repeat(4,1fr)}.footer-bottom{flex-direction:row}.footer-bottom p{margin-bottom:0}}
 @media(max-width:640px){section{padding:3.5rem 0}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
-<nav class="navbar" id="navbar">
+<nav class="navbar" id="navbar" aria-label="Primary navigation">
  <div class="nav-container"><div class="nav-flex">
-  <a href="/" class="logo-link"><span class="logo-main">N.U.E.S.A</span><span class="logo-highlight">BIU</span></a>
-  <div class="nav-menu"><ul class="nav-links">
-   <li><a href="index.html">HOME</a></li>
-   <li><a href="about.html" class="active">ABOUT</a></li>
-   <li><a href="members.html">MEMBERS</a></li>
-   <li><a href="events.html">EVENTS</a></li>
-   <li><a href="resources.html">RESOURCES</a></li>
-   <li><a href="timetables.html">TIME TABLES</a></li>
-   <li><a href="admission.html">ADMISSION</a></li>
-   <li><a href="courseReps.html">COURSE REPS</a></li>
-   <li><a href="news.html">NEWS</a></li>
-   <li><a href="contacts.html">CONTACT</a></li>
-   <li><a href="elections.html">ELECTIONS</a></li>
-   <li><a href="awards.html">AWARDS</a></li>
-   <li><a href="gallery.html">GALLERY</a></li>
-  </ul></div>
-  <button class="hamburger" id="hamburger" aria-label="Menu"><span></span><span></span><span></span></button>
+  <a href="index.html" class="logo-link" aria-label="NUESA BIU Home"><span class="logo-main">N.U.E.S.A</span><span class="logo-highlight">BIU</span></a>
+  <div class="nav-menu"><ul class="nav-links" id="desktopNavLinks"></ul></div>
+  <button class="hamburger" id="hamburger" type="button" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="mobileNav"><span></span><span></span><span></span></button>
  </div></div>
- <div class="mobile-nav" id="mobileNav"><ul>
-  <li><a href="index.html">HOME</a></li>
-  <li><a href="about.html" class="active">ABOUT</a></li>
-  <li><a href="members.html">MEMBERS</a></li>
-  <li><a href="events.html">EVENTS</a></li>
-  <li><a href="resources.html">RESOURCES</a></li>
-  <li><a href="timetables.html">TIME TABLES</a></li>
-  <li><a href="admission.html">ADMISSION</a></li>
-  <li><a href="courseReps.html">COURSE REPS</a></li>
-  <li><a href="news.html">NEWS</a></li>
-  <li><a href="contacts.html">CONTACT</a></li>
-  <li><a href="elections.html">ELECTIONS</a></li>
-  <li><a href="awards.html">AWARDS</a></li>
-  <li><a href="gallery.html">GALLERY</a></li>
- </ul></div>
+ <div class="mobile-nav" id="mobileNav" aria-hidden="true" inert><ul id="mobileNavLinks"></ul></div>
 </nav>
 
 <main>
@@ -350,30 +326,120 @@ p{color:var(--g600);line-height:1.7}
 <script>
 document.documentElement.classList.add('js');
 (function(){
- var navbar=document.getElementById('navbar'),hamburger=document.getElementById('hamburger'),mobileNav=document.getElementById('mobileNav');
- var mobileLinks=document.querySelectorAll('.mobile-nav ul li a'),desktopLinks=document.querySelectorAll('.nav-links li a');
- document.querySelectorAll('.mobile-nav ul li').forEach(function(li,i){li.style.transitionDelay=(0.05*(i+1))+'s'});
- var cp=window.location.pathname;
- if(cp.endsWith('.html'))cp=cp.replace('.html','');
- if(cp==='/'||cp==='/index')cp='/';
- function mark(l){var h=(l.getAttribute('href')||'').replace('.html','');l.classList.toggle('active',h===cp||(cp==='/'&&h==='index'))}
- /* keep ABOUT highlighted when the server serves the page at an unexpected path */
- var known=Array.prototype.some.call(desktopLinks,function(l){return (l.getAttribute('href')||'').replace('.html','')===cp||(cp==='/'&&l.getAttribute('href')==='index.html')});
- if(known){desktopLinks.forEach(mark);mobileLinks.forEach(mark)}
- function onScroll(){navbar.classList.toggle('scrolled',window.scrollY>20)}
- window.addEventListener('scroll',onScroll,{passive:true});onScroll();
- function tog(o){hamburger.classList.toggle('active',o);mobileNav.classList.toggle('active',o);document.body.classList.toggle('menu-open',o)}
- hamburger.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();tog(!hamburger.classList.contains('active'))});
- mobileLinks.forEach(function(l){l.addEventListener('click',function(){tog(false)})});
- document.addEventListener('click',function(e){if(mobileNav.classList.contains('active')&&!mobileNav.contains(e.target)&&!hamburger.contains(e.target))tog(false)});
- document.addEventListener('keydown',function(e){if(e.key==='Escape')tog(false)});
+ const NAV_ITEMS = [
+  { label: 'HOME', href: 'index.html' },
+  { label: 'ABOUT', href: 'about.html' },
+  { label: 'MEMBERS', href: 'members.html' },
+  { label: 'EVENTS', href: 'events.html' },
+  { label: 'RESOURCES', href: 'resources.html' },
+  { label: 'TIME TABLES', href: 'timetables.html' },
+  { label: 'ADMISSION', href: 'admission.html' },
+  { label: 'COURSE REPS', href: 'courseReps.html' },
+  { label: 'NEWS', href: 'news.html' },
+  { label: 'CONTACT', href: 'contacts.html' },
+  { label: 'ELECTIONS', href: 'elections.html' },
+  { label: 'AWARDS', href: 'awards.html' },
+  { label: 'GALLERY', href: 'gallery.html' }
+ ];
+
+ const navbar = document.getElementById('navbar');
+ const hamburger = document.getElementById('hamburger');
+ const mobileNav = document.getElementById('mobileNav');
+ const desktopList = document.getElementById('desktopNavLinks');
+ const mobileList = document.getElementById('mobileNavLinks');
+
+ let currentPage = (window.location.pathname.split('/').pop() || 'about.html').toLowerCase();
+ if (!currentPage) currentPage = 'index.html';
+
+ const hasKnownMatch = NAV_ITEMS.some(({ href }) => {
+  const target = href.toLowerCase();
+  return target === currentPage || target.replace('.html', '') === currentPage.replace('.html', '');
+ });
+
+ function renderLinks(container) {
+  if (!container) return;
+  container.innerHTML = NAV_ITEMS.map(({ label, href }) => {
+   const target = href.toLowerCase();
+   const isActive = hasKnownMatch
+    ? (target === currentPage || target.replace('.html', '') === currentPage.replace('.html', ''))
+    : (target === 'about.html' || currentPage.includes('about'));
+   return `<li><a href="${href}" class="${isActive ? 'active' : ''}"${isActive ? ' aria-current="page"' : ''}>${label}</a></li>`;
+  }).join('');
+ }
+
+ renderLinks(desktopList);
+ renderLinks(mobileList);
+
+ mobileList.querySelectorAll('li').forEach((li, i) => {
+  li.style.transitionDelay = `${0.03 * (i + 1)}s`;
+ });
+
+ function onScroll() {
+  navbar.classList.toggle('scrolled', window.scrollY > 20);
+ }
+ window.addEventListener('scroll', onScroll, { passive: true });
+ onScroll();
+
+ function tog(o) {
+  hamburger.classList.toggle('active', o);
+  hamburger.setAttribute('aria-expanded', String(o));
+  hamburger.setAttribute('aria-label', o ? 'Close navigation menu' : 'Toggle navigation menu');
+
+  mobileNav.classList.toggle('active', o);
+  mobileNav.setAttribute('aria-hidden', String(!o));
+  if ('inert' in mobileNav) mobileNav.inert = !o;
+  document.body.classList.toggle('menu-open', o);
+ }
+
+ tog(false);
+
+ hamburger.addEventListener('click', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  tog(!mobileNav.classList.contains('active'));
+ });
+
+ mobileList.addEventListener('click', (e) => {
+  if (e.target.closest('a')) tog(false);
+ });
+
+ document.addEventListener('click', (e) => {
+  if (mobileNav.classList.contains('active') && !mobileNav.contains(e.target) && !hamburger.contains(e.target)) {
+   tog(false);
+  }
+ });
+
+ document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && mobileNav.classList.contains('active')) {
+   tog(false);
+   hamburger.focus();
+  }
+ });
+
+ window.addEventListener('resize', () => {
+  if (window.innerWidth > 1240 && mobileNav.classList.contains('active')) {
+   tog(false);
+  }
+ }, { passive: true });
 
  /* scroll reveal (content stays visible if JS or IntersectionObserver fails) */
- var items=document.querySelectorAll('.rv');
- if('IntersectionObserver' in window){
-  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.1});
-  items.forEach(function(s,i){s.style.transitionDelay=((i%3)*0.1)+'s';io.observe(s)});
- }else items.forEach(function(s){s.classList.add('in')});
+ const items = document.querySelectorAll('.rv');
+ if ('IntersectionObserver' in window) {
+  const io = new IntersectionObserver((es) => {
+   es.forEach((e) => {
+    if (e.isIntersecting) {
+     e.target.classList.add('in');
+     io.unobserve(e.target);
+    }
+   });
+  }, { threshold: .1 });
+  items.forEach((s, i) => {
+   s.style.transitionDelay = `${(i % 3) * 0.1}s`;
+   io.observe(s);
+  });
+ } else {
+  items.forEach((s) => s.classList.add('in'));
+ }
 })();
 </script>
 </body>

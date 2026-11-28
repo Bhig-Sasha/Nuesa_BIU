@@ -18,12 +18,12 @@
             --amber-600: #d97706;    --amber-700: #b45309;    --amber-100: #fef3c7;
             --blue-100: #dbeafe;     --blue-500: #3b82f6;     --purple-500: #8b5cf6;
             --slate-50: #f8fafc;     --slate-100: #f1f5f9;    --slate-200: #e2e8f0;
-            --slate-300: #cbd5e1;     --slate-400: #94a3b8;    --slate-500: #64748b;
-            --slate-600: #475569;     --slate-700: #334155;    --slate-800: #1e293b;
-            --slate-900: #0f172a;     --white: #ffffff;        --gray-50: #f9fafb;
-            --gray-100: #f3f4f6;      --gray-200: #e5e7eb;    --gray-300: #d1d5db;
-            --gray-400: #9ca3af;      --gray-500: #6b7280;    --gray-600: #4b5563;
-            --gray-700: #374151;      --gray-800: #1f2937;    --gray-900: #111827;
+            --slate-300: #cbd5e1;    --slate-400: #94a3b8;    --slate-500: #64748b;
+            --slate-600: #475569;    --slate-700: #334155;    --slate-800: #1e293b;
+            --slate-900: #0f172a;    --white: #ffffff;        --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;     --gray-200: #e5e7eb;    --gray-300: #d1d5db;
+            --gray-400: #9ca3af;     --gray-500: #6b7280;    --gray-600: #4b5563;
+            --gray-700: #374151;     --gray-800: #1f2937;    --gray-900: #111827;
             --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
             --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
             --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
@@ -44,92 +44,236 @@
         }
         body.menu-open { overflow: hidden; }
 
-        /* ===== UNIFIED NAVBAR (12 items) — SAME AS EVENTS ===== */
+        /* ===== UPDATED NAVBAR ===== */
         .navbar {
             position: fixed;
-            top: 0; left: 0; right: 0;
+            top: 0;
+            left: 0;
+            right: 0;
             width: 100%;
             z-index: 1000;
-            transition: all 0.3s ease;
-            background-color: rgba(6, 78, 59, 0.95);
-            padding: 1rem 0;
-            backdrop-filter: blur(8px);
-        }
-        .navbar.scrolled {
-            background-color: rgba(6, 78, 59, 0.98);
+            transition: padding 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
+            background-color: rgba(6, 78, 59, 0.94);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 0.95rem 0;
             backdrop-filter: blur(10px);
-            box-shadow: var(--shadow-lg);
-            padding: 0.5rem 0;
+            -webkit-backdrop-filter: blur(10px);
         }
-        .nav-container { max-width: 80rem; margin: 0 auto; padding: 0 2rem; }
-        .nav-flex { display: flex; justify-content: space-between; align-items: center; }
-        .logo-link {
-            display: flex; align-items: center; gap: 0.25rem;
-            text-decoration: none; transition: transform 0.3s ease;
-        }
-        .logo-link:hover { transform: scale(1.05); }
-        .logo-main { font-size: 1.5rem; font-weight: 900; color: var(--white); letter-spacing: -0.05em; }
-        .logo-highlight { font-size: 1.5rem; font-weight: 900; color: var(--amber-400); letter-spacing: -0.05em; }
-        .nav-menu { display: flex; align-items: center; }
-        .nav-links { display: flex; align-items: center; gap: 1.5rem; list-style: none; flex-wrap: wrap; }
-        .nav-links li a {
-            font-family: 'Roboto Mono', monospace; font-size: 0.7rem; font-weight: 600;
-            letter-spacing: 0.08em; text-decoration: none; color: rgba(255, 255, 255, 0.9);
-            transition: color 0.2s; position: relative; padding: 0.5rem 0; white-space: nowrap;
-        }
-        .nav-links li a::after {
-            content: ''; position: absolute; bottom: 0; left: 0; width: 0; height: 2px;
-            background-color: var(--amber-400); transition: width 0.3s;
-        }
-        .nav-links li a:hover { color: var(--amber-400); }
-        .nav-links li a:hover::after { width: 100%; }
-        .nav-links li a.active { color: var(--amber-400); }
-        .nav-links li a.active::after { width: 100%; }
-        .hamburger {
-            display: none; cursor: pointer; z-index: 1001;
-            background: none; border: none; padding: 0.5rem;
-        }
-        .hamburger span {
-            display: block; width: 25px; height: 3px; background-color: var(--white);
-            margin: 5px 0; transition: all 0.3s ease; border-radius: 3px;
-        }
-        .hamburger.active span:nth-child(1) { transform: rotate(45deg) translate(5px, 6px); background-color: var(--amber-400); }
-        .hamburger.active span:nth-child(2) { opacity: 0; }
-        .hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(5px, -6px); background-color: var(--amber-400); }
-        .mobile-nav {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
-            background: linear-gradient(135deg, var(--emerald-900), var(--emerald-800));
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            z-index: 999; opacity: 0; visibility: hidden; transition: all 0.4s ease; padding: 2rem;
-            overflow-y: auto;
-        }
-        .mobile-nav.active { opacity: 1; visibility: visible; }
-        .mobile-nav ul { list-style: none; text-align: center; }
-        .mobile-nav ul li { margin: 0.9rem 0; opacity: 0; transform: translateY(20px); transition: all 0.4s ease; }
-        .mobile-nav.active ul li { opacity: 1; transform: translateY(0); }
-        .mobile-nav.active ul li:nth-child(1)  { transition-delay: 0.05s; }
-        .mobile-nav.active ul li:nth-child(2)  { transition-delay: 0.10s; }
-        .mobile-nav.active ul li:nth-child(3)  { transition-delay: 0.15s; }
-        .mobile-nav.active ul li:nth-child(4)  { transition-delay: 0.20s; }
-        .mobile-nav.active ul li:nth-child(5)  { transition-delay: 0.25s; }
-        .mobile-nav.active ul li:nth-child(6)  { transition-delay: 0.30s; }
-        .mobile-nav.active ul li:nth-child(7)  { transition-delay: 0.35s; }
-        .mobile-nav.active ul li:nth-child(8)  { transition-delay: 0.40s; }
-        .mobile-nav.active ul li:nth-child(9)  { transition-delay: 0.45s; }
-        .mobile-nav.active ul li:nth-child(10) { transition-delay: 0.50s; }
-        .mobile-nav.active ul li:nth-child(11) { transition-delay: 0.55s; }
-        .mobile-nav.active ul li:nth-child(12) { transition-delay: 0.60s; }
-        .mobile-nav ul li a {
-            font-family: 'Roboto Mono', monospace; font-size: 1.25rem; font-weight: 600;
-            letter-spacing: 0.08em; text-decoration: none; color: var(--white);
-            transition: color 0.3s; display: inline-block; padding: 0.5rem 1rem;
-        }
-        .mobile-nav ul li a:hover { color: var(--amber-400); transform: translateX(10px); }
-        .mobile-nav ul li a.active { color: var(--amber-400); border-left: 4px solid var(--amber-400); }
 
-        @media screen and (max-width: 1200px) {
+        .navbar.scrolled {
+            background-color: rgba(2, 44, 34, 0.98);
+            box-shadow: var(--shadow-lg);
+            padding: 0.55rem 0;
+        }
+
+        .nav-container {
+            max-width: 80rem;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        @media (max-width: 640px) {
+            .nav-container { padding: 0 1rem; }
+        }
+
+        .nav-flex {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.2rem;
+            text-decoration: none;
+            padding: 0.25rem 0.4rem;
+            border-radius: 6px;
+            flex-shrink: 0;
+            transition: transform 0.3s ease;
+        }
+
+        .logo-link:hover { transform: translateY(-1px) scale(1.03); }
+
+        .logo-link:focus-visible,
+        .nav-links li a:focus-visible,
+        .hamburger:focus-visible,
+        .mobile-nav ul li a:focus-visible {
+            outline: 2px solid var(--amber-400);
+            outline-offset: 3px;
+            border-radius: 6px;
+        }
+
+        .logo-main,
+        .logo-highlight {
+            font-size: 1.45rem;
+            font-weight: 900;
+            letter-spacing: -0.05em;
+            line-height: 1;
+        }
+
+        .logo-main { color: var(--white); }
+        .logo-highlight { color: var(--amber-400); }
+
+        .nav-menu {
+            display: flex;
+            align-items: center;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 1.15rem;
+            list-style: none;
+        }
+
+        .nav-links li a {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.68rem;
+            font-weight: 600;
+            letter-spacing: 0.07em;
+            text-decoration: none;
+            color: rgba(255, 255, 255, 0.88);
+            transition: color 0.2s ease;
+            position: relative;
+            padding: 0.45rem 0.1rem;
+            white-space: nowrap;
+            display: inline-block;
+        }
+
+        .nav-links li a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            border-radius: 999px;
+            background-color: var(--amber-400);
+            transition: width 0.3s ease;
+        }
+
+        .nav-links li a:hover,
+        .nav-links li a.active { color: var(--amber-400); }
+        .nav-links li a:hover::after,
+        .nav-links li a.active::after { width: 100%; }
+
+        .hamburger {
+            display: none;
+            cursor: pointer;
+            z-index: 1001;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 8px;
+            padding: 0.5rem;
+            min-width: 44px;
+            min-height: 44px;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+
+        .hamburger:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(251, 191, 36, 0.45);
+        }
+
+        .hamburger span {
+            display: block;
+            width: 22px;
+            height: 2.5px;
+            background-color: var(--white);
+            margin: 2.5px 0;
+            transition: transform 0.3s ease, opacity 0.2s ease, background 0.2s ease;
+            border-radius: 999px;
+        }
+
+        .hamburger.active span:nth-child(1) {
+            transform: translateY(7.5px) rotate(45deg);
+            background-color: var(--amber-400);
+        }
+        .hamburger.active span:nth-child(2) { opacity: 0; }
+        .hamburger.active span:nth-child(3) {
+            transform: translateY(-7.5px) rotate(-45deg);
+            background-color: var(--amber-400);
+        }
+
+        .mobile-nav {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100vh;
+            height: 100dvh;
+            background: linear-gradient(155deg, var(--emerald-900), var(--emerald-800));
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.35s ease, visibility 0.35s ease;
+            padding: 4.5rem 2rem 2rem;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+        }
+
+        .mobile-nav.active {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .mobile-nav ul {
+            list-style: none;
+            text-align: center;
+            width: 100%;
+            max-width: 24rem;
+        }
+
+        .mobile-nav ul li {
+            margin: 0.35rem 0;
+            opacity: 0;
+            transform: translateY(16px);
+            transition: opacity 0.35s ease, transform 0.35s ease;
+        }
+
+        .mobile-nav.active ul li {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .mobile-nav ul li a {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 1rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-decoration: none;
+            color: var(--white);
+            transition: color 0.25s ease, transform 0.25s ease, background 0.25s ease;
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+        }
+
+        .mobile-nav ul li a:hover {
+            color: var(--amber-400);
+            background: rgba(255, 255, 255, 0.06);
+            transform: translateX(6px);
+        }
+
+        .mobile-nav ul li a.active {
+            color: var(--amber-400);
+            background: rgba(251, 191, 36, 0.12);
+            border-left: 3px solid var(--amber-400);
+        }
+
+        @media screen and (max-width: 1240px) {
             .nav-links { display: none; }
-            .hamburger { display: block; }
+            .hamburger { display: flex; }
         }
 
         .main-content {
@@ -1190,40 +1334,33 @@
             .section { padding: 3rem 0; }
             .modal-container { border-radius: 0.75rem; }
         }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
     </style>
 </head>
 <body>
 
-    <!-- ===== UNIFIED NAVBAR (12 items) ===== -->
-    <nav class="navbar" id="navbar">
+    <!-- ===== UPDATED NAVBAR ===== -->
+    <nav class="navbar" id="navbar" aria-label="Primary navigation">
         <div class="nav-container">
             <div class="nav-flex">
-                <a href="/" class="logo-link">
+                <a href="index.html" class="logo-link" aria-label="NUESA BIU Home">
                     <span class="logo-main">N.U.E.S.A</span>
                     <span class="logo-highlight">BIU</span>
                 </a>
 
-                <!-- Desktop Navigation -->
                 <div class="nav-menu">
-                    <ul class="nav-links">
-                        <li><a href="index.html">HOME</a></li>
-                        <li><a href="about.html">ABOUT</a></li>
-                        <li><a href="members.html">MEMBERS</a></li>
-                        <li><a href="events.html">EVENTS</a></li>
-                        <li><a href="resources.html">RESOURCES</a></li>
-                        <li><a href="timetables.html">TIME TABLES</a></li>
-                        <li><a href="admission.html">ADMISSION</a></li>
-                        <li><a href="courseReps.html">COURSE REPS</a></li>
-                        <li><a href="news.html">NEWS</a></li>
-                        <li><a href="contacts.html">CONTACT</a></li>
-                        <li><a href="elections.html">ELECTIONS</a></li>
-                        <li><a href="awards.html">AWARDS</a></li>
-                        <li><a href="gallery.html">GALLERY</a></li>
-                    </ul>
+                    <ul class="nav-links" id="desktopNavLinks"></ul>
                 </div>
 
-                <!-- Hamburger Menu Button -->
-                <button class="hamburger" id="hamburger" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobileNav">
+                <button class="hamburger" id="hamburger" type="button" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="mobileNav">
                     <span></span>
                     <span></span>
                     <span></span>
@@ -1231,23 +1368,8 @@
             </div>
         </div>
 
-        <!-- Mobile Navigation -->
-        <div class="mobile-nav" id="mobileNav" aria-hidden="true">
-            <ul>
-                <li><a href="index.html">HOME</a></li>
-                <li><a href="about.html">ABOUT</a></li>
-                <li><a href="members.html">MEMBERS</a></li>
-                <li><a href="events.html">EVENTS</a></li>
-                <li><a href="resources.html">RESOURCES</a></li>
-                <li><a href="timetables.html">TIME TABLES</a></li>
-                <li><a href="admission.html">ADMISSION</a></li>
-                <li><a href="courseReps.html">COURSE REPS</a></li>
-                <li><a href="news.html">NEWS</a></li>
-                <li><a href="contacts.html">CONTACT</a></li>
-                <li><a href="elections.html">ELECTIONS</a></li>
-                <li><a href="awards.html">AWARDS</a></li>
-                <li><a href="gallery.html">GALLERY</a></li>
-            </ul>
+        <div class="mobile-nav" id="mobileNav" aria-hidden="true" inert>
+            <ul id="mobileNavLinks"></ul>
         </div>
     </nav>
 
@@ -1598,67 +1720,100 @@
     document.addEventListener('DOMContentLoaded', function() {
         const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
 
-        // ==================== NAVBAR ====================
+        // ==================== UPDATED NAVBAR ====================
+        const NAV_ITEMS = [
+            { label: 'HOME', href: 'index.html' },
+            { label: 'ABOUT', href: 'about.html' },
+            { label: 'MEMBERS', href: 'members.html' },
+            { label: 'EVENTS', href: 'events.html' },
+            { label: 'RESOURCES', href: 'resources.html' },
+            { label: 'TIME TABLES', href: 'timetables.html' },
+            { label: 'ADMISSION', href: 'admission.html' },
+            { label: 'COURSE REPS', href: 'courseReps.html' },
+            { label: 'NEWS', href: 'news.html' },
+            { label: 'CONTACT', href: 'contacts.html' },
+            { label: 'ELECTIONS', href: 'elections.html' },
+            { label: 'AWARDS', href: 'awards.html' },
+            { label: 'GALLERY', href: 'gallery.html' }
+        ];
+
         const navbar = document.getElementById('navbar');
         const hamburger = document.getElementById('hamburger');
         const mobileNav = document.getElementById('mobileNav');
-        const mobileLinks = document.querySelectorAll('.mobile-nav ul li a');
-        const desktopLinks = document.querySelectorAll('.nav-links li a');
+        const desktopList = document.getElementById('desktopNavLinks');
+        const mobileList = document.getElementById('mobileNavLinks');
 
-        let currentPath = window.location.pathname;
-        if (currentPath.endsWith('.html')) currentPath = currentPath.replace('.html', '');
-        if (currentPath === '/' || currentPath === '/index') currentPath = '/';
+        let currentPage = (window.location.pathname.split('/').pop() || 'awards.html').toLowerCase();
+        if (!currentPage) currentPage = 'index.html';
 
-        function updateActiveLinks() {
-            desktopLinks.forEach(link => {
-                const href = link.getAttribute('href').replace('.html', '');
-                if (href === currentPath || (currentPath === '/' && href === 'index')) link.classList.add('active');
-                else link.classList.remove('active');
-            });
-            mobileLinks.forEach(link => {
-                const href = link.getAttribute('href').replace('.html', '');
-                if (href === currentPath || (currentPath === '/' && href === 'index')) link.classList.add('active');
-                else link.classList.remove('active');
-            });
+        function renderLinks(container) {
+            if (!container) return;
+            container.innerHTML = NAV_ITEMS.map(({ label, href }) => {
+                const target = href.toLowerCase();
+                const isActive =
+                    target === currentPage ||
+                    target.replace('.html', '') === currentPage.replace('.html', '') ||
+                    (target === 'awards.html' && currentPage.includes('award'));
+                return `<li><a href="${href}" class="${isActive ? 'active' : ''}"${isActive ? ' aria-current="page"' : ''}>${label}</a></li>`;
+            }).join('');
         }
+
+        renderLinks(desktopList);
+        renderLinks(mobileList);
+
+        mobileList.querySelectorAll('li').forEach((li, i) => {
+            li.style.transitionDelay = `${0.03 * (i + 1)}s`;
+        });
 
         function handleScroll() {
-            if (window.scrollY > 20) navbar.classList.add('scrolled');
-            else navbar.classList.remove('scrolled');
+            navbar.classList.toggle('scrolled', window.scrollY > 20);
         }
-        window.addEventListener('scroll', handleScroll);
+        window.addEventListener('scroll', handleScroll, { passive: true });
         handleScroll();
 
         function toggleMobileMenu(open) {
-            if (open) {
-                hamburger.classList.add('active');
-                hamburger.setAttribute('aria-expanded', 'true');
-                mobileNav.setAttribute('aria-hidden', 'false');
-                mobileNav.classList.add('active');
-                document.body.classList.add('menu-open');
-            } else {
-                hamburger.classList.remove('active');
-                hamburger.setAttribute('aria-expanded', 'false');
-                mobileNav.setAttribute('aria-hidden', 'true');
-                mobileNav.classList.remove('active');
-                document.body.classList.remove('menu-open');
-            }
+            hamburger.classList.toggle('active', open);
+            hamburger.setAttribute('aria-expanded', String(open));
+            hamburger.setAttribute('aria-label', open ? 'Close navigation menu' : 'Toggle navigation menu');
+
+            mobileNav.classList.toggle('active', open);
+            mobileNav.setAttribute('aria-hidden', String(!open));
+            if ('inert' in mobileNav) mobileNav.inert = !open;
+            document.body.classList.toggle('menu-open', open);
         }
 
+        toggleMobileMenu(false);
+
         hamburger.addEventListener('click', (e) => {
-            e.preventDefault(); e.stopPropagation();
-            toggleMobileMenu(!hamburger.classList.contains('active'));
+            e.preventDefault();
+            e.stopPropagation();
+            toggleMobileMenu(!mobileNav.classList.contains('active'));
         });
 
-        mobileLinks.forEach(link => link.addEventListener('click', () => toggleMobileMenu(false)));
+        mobileList.addEventListener('click', (e) => {
+            if (e.target.closest('a')) toggleMobileMenu(false);
+        });
+
         document.addEventListener('click', (e) => {
-            if (mobileNav.classList.contains('active') && !mobileNav.contains(e.target) && !hamburger.contains(e.target)) toggleMobileMenu(false);
-        });
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && mobileNav.classList.contains('active')) toggleMobileMenu(false);
+            if (mobileNav.classList.contains('active') &&
+                !mobileNav.contains(e.target) &&
+                !hamburger.contains(e.target)) {
+                toggleMobileMenu(false);
+            }
         });
 
-        updateActiveLinks();
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && mobileNav.classList.contains('active')) {
+                toggleMobileMenu(false);
+                hamburger.focus();
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 1240 && mobileNav.classList.contains('active')) {
+                toggleMobileMenu(false);
+            }
+        }, { passive: true });
 
         // ==================== AWARDS STATE ====================
         let edition = null;
@@ -1745,12 +1900,24 @@
             const list = categories.length ? categories : DEFAULT_CATEGORIES.map((name, i) => ({ id: `default-${i}`, name }));
 
             grid.innerHTML = list.map((cat, i) => `
-                <div class="category-card" onclick="document.getElementById('nominees').scrollIntoView({behavior:'smooth'})">
+                <div class="category-card" data-category-id="${escapeHtml(cat.id)}">
                     <div class="category-number">${String(i + 1).padStart(2, '0')}</div>
                     <div class="category-name">${escapeHtml(cat.name)}</div>
                     <span class="category-link">View category <i class="fas fa-arrow-right"></i></span>
                 </div>
             `).join('');
+
+            grid.querySelectorAll('.category-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const catId = card.dataset.categoryId;
+                    if (catId && !catId.startsWith('default-')) {
+                        activeCategoryFilter = catId;
+                        renderNomineeFilters();
+                        renderNominees();
+                    }
+                    document.getElementById('nominees').scrollIntoView({ behavior: 'smooth' });
+                });
+            });
         }
 
         // ==================== RENDER FILTERS ====================
@@ -1759,7 +1926,7 @@
             const list = categories.length ? categories : DEFAULT_CATEGORIES.map((name, i) => ({ id: `default-${i}`, name }));
 
             let html = `
-                <button class="filter-btn ${activeCategoryFilter === 'all' ? 'active' : ''}" data-filter="all">
+                <button type="button" class="filter-btn ${activeCategoryFilter === 'all' ? 'active' : ''}" data-filter="all">
                     <span class="filter-count">${nominees.length}</span>
                     All Awards
                 </button>
@@ -1767,7 +1934,7 @@
             list.forEach(cat => {
                 const count = nominees.filter(n => n.category_id === cat.id).length;
                 html += `
-                    <button class="filter-btn ${activeCategoryFilter === cat.id ? 'active' : ''}" data-filter="${escapeHtml(cat.id)}">
+                    <button type="button" class="filter-btn ${activeCategoryFilter === cat.id ? 'active' : ''}" data-filter="${escapeHtml(cat.id)}">
                         <span class="filter-count">${count}</span>
                         ${escapeHtml(cat.name)}
                     </button>
@@ -1814,26 +1981,30 @@
                         <div class="nominee-meta">
                             ${escapeHtml(n.department || '')}${n.level ? ' · ' + escapeHtml(n.level) : ''}
                         </div>
-                        <button class="nominee-btn" onclick="openNomineeModal('${escapeHtml(n.id)}')">
+                        <button type="button" class="nominee-btn" data-nominee-id="${escapeHtml(n.id)}">
                             View Profile <i class="fas fa-arrow-right"></i>
                         </button>
                     </div>
                 </div>
             `).join('');
+
+            grid.querySelectorAll('.nominee-btn').forEach(btn => {
+                btn.addEventListener('click', () => openNomineeModal(btn.dataset.nomineeId));
+            });
         }
 
         // ==================== NOMINEE MODAL ====================
-        window.openNomineeModal = function(id) {
+        function openNomineeModal(id) {
             const n = nominees.find(x => x.id === id);
             if (!n) return;
 
             const modal = document.createElement('div');
             modal.className = 'modal-overlay';
             modal.innerHTML = `
-                <div class="modal-container">
+                <div class="modal-container" role="dialog" aria-modal="true" aria-label="Nominee Profile">
                     <div class="modal-header">
                         <h2>Nominee Profile</h2>
-                        <button class="modal-close" onclick="this.closest('.modal-overlay').remove(); document.body.style.overflow=''">
+                        <button type="button" class="modal-close" aria-label="Close modal">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
@@ -1850,15 +2021,26 @@
                     </div>
                 </div>
             `;
+
+            const closeModal = () => {
+                modal.remove();
+                document.body.style.overflow = '';
+                document.removeEventListener('keydown', onEsc);
+            };
+
+            const onEsc = (e) => {
+                if (e.key === 'Escape') closeModal();
+            };
+
+            modal.querySelector('.modal-close').addEventListener('click', closeModal);
             modal.addEventListener('click', e => {
-                if (e.target === modal) {
-                    modal.remove();
-                    document.body.style.overflow = '';
-                }
+                if (e.target === modal) closeModal();
             });
+            document.addEventListener('keydown', onEsc);
+
             document.body.appendChild(modal);
             document.body.style.overflow = 'hidden';
-        };
+        }
 
         // ==================== VOTING STATUS ====================
         function updateVotingStatus() {

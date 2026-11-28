@@ -23,33 +23,38 @@ body.menu-open{overflow:hidden}
 .hidden{display:none!important}
 
 /* NAVBAR */
-.navbar{position:fixed;top:0;left:0;right:0;z-index:1000;transition:all .3s ease;background:rgba(6,78,59,.95);padding:1rem 0;backdrop-filter:blur(8px)}
-.navbar.scrolled{background:rgba(6,78,59,.98);box-shadow:var(--sh-lg);padding:.5rem 0}
+.navbar{position:fixed;top:0;left:0;right:0;z-index:1000;transition:padding .3s ease,background .3s ease,box-shadow .3s ease;background:rgba(6,78,59,.94);border-bottom:1px solid rgba(255,255,255,.08);padding:.95rem 0;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.navbar.scrolled{background:rgba(2,44,34,.98);box-shadow:var(--sh-lg);padding:.55rem 0}
 .nav-container{max-width:80rem;margin:0 auto;padding:0 2rem}
-.nav-flex{display:flex;justify-content:space-between;align-items:center}
-.logo-link{display:flex;align-items:center;gap:.25rem;text-decoration:none;transition:transform .3s}
-.logo-link:hover{transform:scale(1.05)}
-.logo-main,.logo-highlight{font-size:1.5rem;font-weight:900;letter-spacing:-.05em}
-.logo-main{color:#fff}.logo-highlight{color:var(--a400)}
-.nav-links{display:flex;align-items:center;gap:1.5rem;list-style:none;flex-wrap:wrap}
-.nav-links li a{font-family:'Roboto Mono',monospace;font-size:.7rem;font-weight:600;letter-spacing:.08em;text-decoration:none;color:rgba(255,255,255,.9);transition:color .2s;position:relative;padding:.5rem 0;white-space:nowrap}
-.nav-links li a::after{content:'';position:absolute;bottom:0;left:0;width:0;height:2px;background:var(--a400);transition:width .3s}
+@media(max-width:640px){.nav-container{padding:0 1rem}}
+.nav-flex{display:flex;justify-content:space-between;align-items:center;gap:1rem}
+.logo-link{display:inline-flex;align-items:center;gap:.2rem;text-decoration:none;padding:.25rem .4rem;border-radius:6px;flex-shrink:0;transition:transform .3s ease}
+.logo-link:hover{transform:translateY(-1px) scale(1.03)}
+.logo-link:focus-visible,.nav-links li a:focus-visible,.hamburger:focus-visible,.mobile-nav ul li a:focus-visible{outline:2px solid var(--a400);outline-offset:3px;border-radius:6px}
+.logo-main,.logo-highlight{font-size:1.45rem;font-weight:900;letter-spacing:-.05em;line-height:1}
+.logo-main{color:#fff}
+.logo-highlight{color:var(--a400)}
+.nav-menu{display:flex;align-items:center}
+.nav-links{display:flex;align-items:center;gap:1.15rem;list-style:none}
+.nav-links li a{font-family:'Roboto Mono',monospace;font-size:.68rem;font-weight:600;letter-spacing:.07em;text-decoration:none;color:rgba(255,255,255,.88);transition:color .2s ease;position:relative;padding:.45rem .1rem;white-space:nowrap;display:inline-block}
+.nav-links li a::after{content:'';position:absolute;bottom:0;left:0;width:0;height:2px;border-radius:999px;background:var(--a400);transition:width .3s ease}
 .nav-links li a:hover,.nav-links li a.active{color:var(--a400)}
 .nav-links li a:hover::after,.nav-links li a.active::after{width:100%}
-.hamburger{display:none;cursor:pointer;z-index:1001;background:none;border:none;padding:.5rem}
-.hamburger span{display:block;width:25px;height:3px;background:#fff;margin:5px 0;transition:all .3s;border-radius:3px}
-.hamburger.active span:nth-child(1){transform:rotate(45deg) translate(5px,6px);background:var(--a400)}
+.hamburger{display:none;cursor:pointer;z-index:1001;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:.5rem;min-width:44px;min-height:44px;align-items:center;justify-content:center;flex-direction:column;transition:background .2s ease,border-color .2s ease}
+.hamburger:hover{background:rgba(255,255,255,.12);border-color:rgba(251,191,36,.45)}
+.hamburger span{display:block;width:22px;height:2.5px;background:#fff;margin:2.5px 0;transition:transform .3s ease,opacity .2s ease,background .2s ease;border-radius:999px}
+.hamburger.active span:nth-child(1){transform:translateY(7.5px) rotate(45deg);background:var(--a400)}
 .hamburger.active span:nth-child(2){opacity:0}
-.hamburger.active span:nth-child(3){transform:rotate(-45deg) translate(5px,-6px);background:var(--a400)}
-.mobile-nav{position:fixed;inset:0;height:100vh;background:linear-gradient(135deg,var(--e900),var(--e800));display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:999;opacity:0;visibility:hidden;transition:all .4s;padding:2rem;overflow-y:auto}
-.mobile-nav.active{opacity:1;visibility:visible}
-.mobile-nav ul{list-style:none;text-align:center}
-.mobile-nav ul li{margin:.8rem 0;opacity:0;transform:translateY(20px);transition:all .4s}
+.hamburger.active span:nth-child(3){transform:translateY(-7.5px) rotate(-45deg);background:var(--a400)}
+.mobile-nav{position:fixed;inset:0;width:100%;height:100vh;height:100dvh;background:linear-gradient(155deg,var(--e900),var(--e800));display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:999;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .35s ease,visibility .35s ease;padding:4.5rem 2rem 2rem;overflow-y:auto;overscroll-behavior:contain}
+.mobile-nav.active{opacity:1;visibility:visible;pointer-events:auto}
+.mobile-nav ul{list-style:none;text-align:center;width:100%;max-width:24rem}
+.mobile-nav ul li{margin:.35rem 0;opacity:0;transform:translateY(16px);transition:opacity .35s ease,transform .35s ease}
 .mobile-nav.active ul li{opacity:1;transform:none}
-.mobile-nav ul li a{font-family:'Roboto Mono',monospace;font-size:1.2rem;font-weight:600;letter-spacing:.08em;text-decoration:none;color:#fff;display:inline-block;padding:.5rem 1rem;transition:color .3s}
-.mobile-nav ul li a:hover,.mobile-nav ul li a.active{color:var(--a400)}
-.mobile-nav ul li a.active{border-left:4px solid var(--a400)}
-@media(max-width:1200px){.nav-links{display:none}.hamburger{display:block}}
+.mobile-nav ul li a{font-family:'Roboto Mono',monospace;font-size:1rem;font-weight:600;letter-spacing:.08em;text-decoration:none;color:#fff;display:inline-block;padding:.5rem 1rem;border-radius:8px;transition:color .25s ease,transform .25s ease,background .25s ease}
+.mobile-nav ul li a:hover{color:var(--a400);background:rgba(255,255,255,.06);transform:translateX(6px)}
+.mobile-nav ul li a.active{color:var(--a400);background:rgba(251,191,36,.12);border-left:3px solid var(--a400)}
+@media(max-width:1240px){.nav-links{display:none}.hamburger{display:flex}}
 
 /* HERO */
 .hero{position:relative;background:linear-gradient(135deg,var(--e800),var(--e600),var(--teal500));background-size:200% 200%;padding:4rem 1rem;overflow:hidden;animation:gradientShift 10s ease infinite}
@@ -87,7 +92,6 @@ body.menu-open{overflow:hidden}
 .search-icon{position:absolute;left:1rem;top:50%;transform:translateY(-50%);width:1.25rem;height:1.25rem;color:var(--s400);pointer-events:none}
 .search-input:focus+.search-icon{color:var(--e500)}
 
-/* ✅ NEW — sticky toolbar on scroll (desktop only) */
 @media(min-width:1024px){
   .toolbar.sticky{position:sticky;top:80px;z-index:50;backdrop-filter:blur(6px);background:rgba(255,255,255,.96)}
 }
@@ -99,7 +103,6 @@ body.menu-open{overflow:hidden}
 .chip.active{background:linear-gradient(135deg,var(--e500),var(--e600));color:#fff;border-color:transparent;box-shadow:var(--sh-lg)}
 .chip i{font-size:.75rem}
 
-/* ✅ NEW — chip count badge */
 .chip .chip-count{background:rgba(0,0,0,.06);border-radius:999px;padding:.05rem .45rem;font-size:.7rem;font-weight:700;font-family:'Roboto Mono',monospace}
 .chip.active .chip-count{background:rgba(255,255,255,.25);color:#fff}
 
@@ -109,7 +112,7 @@ body.menu-open{overflow:hidden}
 .info-banner h4{font-weight:700;color:var(--a900);margin-bottom:.25rem;font-size:1.125rem}
 .info-banner p{color:var(--a800);font-size:.875rem}
 
-/* ===== REP CARDS (photo layout) ===== */
+/* REP CARDS */
 .reps-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1.75rem;align-items:start;transition:opacity .4s}
 .rep-card{background:#fff;border-radius:1.25rem;box-shadow:var(--sh-md);border:1px solid var(--s100);overflow:hidden;transition:transform var(--t),box-shadow var(--t);animation:pop .5s cubic-bezier(.4,0,.2,1) both}
 @keyframes pop{from{opacity:0;transform:scale(.94) translateY(20px)}to{opacity:1;transform:none}}
@@ -118,7 +121,6 @@ body.menu-open{overflow:hidden}
 .rc-level{font-weight:800;font-size:1.25rem;display:flex;align-items:center;gap:.6rem}
 .rc-count{background:rgba(255,255,255,.2);border-radius:999px;padding:.25rem .75rem;font-size:.72rem;font-weight:600;font-family:'Roboto Mono',monospace}
 
-/* ✅ FIX — photo container now uses absolute-positioned img + placeholder */
 .rc-leaders{display:block;background:var(--s100)}
 .rc-leader{background:#fff;display:flex;flex-direction:column}
 .rc-photo{aspect-ratio:4/3.4;background:linear-gradient(135deg,var(--e100),var(--e200));overflow:hidden;position:relative}
@@ -130,7 +132,6 @@ body.menu-open{overflow:hidden}
 .rc-name{font-weight:700;color:var(--s900);line-height:1.3;font-size:.95rem;overflow-wrap:anywhere}
 .rc-name.not-assigned{color:var(--s400);font-style:italic;font-weight:500}
 
-/* ✅ NEW — image placeholder (initial letter) shared by all avatars */
 .img-placeholder{
   position:absolute;inset:0;
   display:flex;align-items:center;justify-content:center;
@@ -142,7 +143,6 @@ body.menu-open{overflow:hidden}
 }
 .rc-leader .img-placeholder{font-size:2.25rem}
 
-/* ✅ NEW — soft shimmer while the image loads (only in the photo boxes) */
 .rc-photo.loading::after,
 .rc-dept-photo.loading::after{
   content:'';position:absolute;inset:0;z-index:3;
@@ -150,7 +150,7 @@ body.menu-open{overflow:hidden}
   background-size:200% 100%;animation:shimmer 1.2s infinite;
 }
 
-/* departments */
+/* DEPARTMENTS */
 .expand-section{max-height:0;overflow:hidden;transition:max-height .4s cubic-bezier(.4,0,.2,1);background:var(--s50);border-top:1px solid var(--s100)}
 .expand-section.open{max-height:900px;overflow-y:auto}
 .rc-depts{padding:1rem;display:grid;grid-template-columns:repeat(2,1fr);gap:.75rem}
@@ -178,7 +178,6 @@ body.menu-open{overflow:hidden}
 .list-summary{display:flex;flex:1;flex-wrap:wrap;gap:1rem;align-items:center}
 .list-person{display:flex;align-items:center;gap:.75rem;background:var(--s50);padding:.5rem 1rem .5rem .5rem;border-radius:999px;font-size:.85rem;color:var(--s600)}
 
-/* ✅ FIX — list avatar uses a sized wrapper so the placeholder can fill it */
 .list-person .list-avatar{width:44px;height:44px;border-radius:50%;flex-shrink:0;overflow:hidden;position:relative;border:2px solid #fff;box-shadow:var(--sh-sm);background:linear-gradient(135deg,var(--e200),var(--teal400))}
 .list-person .list-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top center}
 .list-person .list-avatar .img-placeholder{font-size:1rem}
@@ -189,7 +188,6 @@ body.menu-open{overflow:hidden}
 .list-expand.open{max-height:1400px}
 .list-dept-grid{padding:1.5rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:1rem}
 
-/* ✅ NEW — list-level divider + avatar-left alignment on wider screens */
 @media(min-width:768px){
   .list-summary{padding-left:.5rem;border-left:2px dashed var(--s200)}
 }
@@ -204,14 +202,6 @@ body.menu-open{overflow:hidden}
 .loading-spinner{display:inline-block;width:4rem;height:4rem;border:4px solid var(--e200);border-radius:50%;border-top-color:var(--e600);animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading-container p{margin-top:1rem;color:var(--s600)}
-
-/* ✅ NEW — skeleton card grid (show while loading instead of a blank spinner block) */
-.skeleton-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1.75rem}
-.skeleton-card{background:#fff;border-radius:1.25rem;border:1px solid var(--s100);overflow:hidden;box-shadow:var(--sh-md)}
-.skeleton-banner{height:52px;background:linear-gradient(90deg,var(--e700),var(--e500))}
-.skeleton-photo{aspect-ratio:4/3.4;background:linear-gradient(90deg,var(--s100) 25%,var(--s200) 50%,var(--s100) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite}
-.skeleton-line{height:14px;margin:.75rem auto;border-radius:999px;background:linear-gradient(90deg,var(--s100) 25%,var(--s200) 50%,var(--s100) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite}
-.skeleton-line.w-40{width:40%}.skeleton-line.w-60{width:60%}
 
 /* FOOTER */
 .footer{background:linear-gradient(135deg,var(--s800),var(--s900));border-top:4px solid var(--e500);padding:4rem 0 2rem;margin-top:3rem}
@@ -243,46 +233,22 @@ body.menu-open{overflow:hidden}
 </head>
 <body>
 
-<nav class="navbar" id="navbar">
+<nav class="navbar" id="navbar" aria-label="Primary navigation">
   <div class="nav-container">
     <div class="nav-flex">
-      <a href="/" class="logo-link"><span class="logo-main">N.U.E.S.A</span><span class="logo-highlight">BIU</span></a>
+      <a href="index.html" class="logo-link" aria-label="NUESA BIU Home">
+        <span class="logo-main">N.U.E.S.A</span><span class="logo-highlight">BIU</span>
+      </a>
       <div class="nav-menu">
-        <ul class="nav-links">
-          <li><a href="index.html">HOME</a></li>
-          <li><a href="about.html">ABOUT</a></li>
-          <li><a href="members.html">MEMBERS</a></li>
-          <li><a href="events.html">EVENTS</a></li>
-          <li><a href="resources.html">RESOURCES</a></li>
-          <li><a href="timetables.html">TIME TABLES</a></li>
-          <li><a href="admission.html">ADMISSION</a></li>
-          <li><a href="courseReps.html">COURSE REPS</a></li>
-          <li><a href="news.html">NEWS</a></li>
-          <li><a href="contacts.html">CONTACT</a></li>
-          <li><a href="elections.html">ELECTIONS</a></li>
-          <li><a href="awards.html">AWARDS</a></li>
-          <li><a href="gallery.html">GALLERY</a></li>
-        </ul>
+        <ul class="nav-links" id="desktopNavLinks"></ul>
       </div>
-      <button class="hamburger" id="hamburger" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
+      <button class="hamburger" id="hamburger" type="button" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="mobileNav">
+        <span></span><span></span><span></span>
+      </button>
     </div>
   </div>
-  <div class="mobile-nav" id="mobileNav" aria-hidden="true">
-    <ul>
-      <li><a href="index.html">HOME</a></li>
-      <li><a href="about.html">ABOUT</a></li>
-      <li><a href="members.html">MEMBERS</a></li>
-      <li><a href="events.html">EVENTS</a></li>
-      <li><a href="resources.html">RESOURCES</a></li>
-      <li><a href="timetables.html">TIME TABLES</a></li>
-      <li><a href="admission.html">ADMISSION</a></li>
-      <li><a href="courseReps.html">COURSE REPS</a></li>
-      <li><a href="news.html">NEWS</a></li>
-      <li><a href="contacts.html">CONTACT</a></li>
-      <li><a href="elections.html">ELECTIONS</a></li>
-      <li><a href="awards.html">AWARDS</a></li>
-      <li><a href="gallery.html">GALLERY</a></li>
-    </ul>
+  <div class="mobile-nav" id="mobileNav" aria-hidden="true" inert>
+    <ul id="mobileNavLinks"></ul>
   </div>
 </nav>
 
@@ -390,8 +356,25 @@ body.menu-open{overflow:hidden}
 'use strict';
 const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
 
+const NAV_ITEMS = [
+  { label: 'HOME', href: 'index.html' },
+  { label: 'ABOUT', href: 'about.html' },
+  { label: 'MEMBERS', href: 'members.html' },
+  { label: 'EVENTS', href: 'events.html' },
+  { label: 'RESOURCES', href: 'resources.html' },
+  { label: 'TIME TABLES', href: 'timetables.html' },
+  { label: 'ADMISSION', href: 'admission.html' },
+  { label: 'COURSE REPS', href: 'courseReps.html' },
+  { label: 'NEWS', href: 'news.html' },
+  { label: 'CONTACT', href: 'contacts.html' },
+  { label: 'ELECTIONS', href: 'elections.html' },
+  { label: 'AWARDS', href: 'awards.html' },
+  { label: 'GALLERY', href: 'gallery.html' }
+];
+
 const $ = id => document.getElementById(id);
 const navbar = $('navbar'), hamburger = $('hamburger'), mobileNav = $('mobileNav');
+const desktopNavLinks = $('desktopNavLinks'), mobileNavLinks = $('mobileNavLinks');
 const sessionSelect = $('sessionSelect'), sessionTitle = $('sessionTitle'), searchInput = $('searchInput');
 const gridContainer = $('gridContainer'), listContainer = $('listContainer'), emptyState = $('emptyState');
 const loadingContainer = $('loadingContainer'), gridViewBtn = $('gridViewBtn'), listViewBtn = $('listViewBtn');
@@ -406,44 +389,78 @@ function esc(s) {
 }
 
 /* ===== NAVBAR ===== */
-const page = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
-document.querySelectorAll('.nav-links a, .mobile-nav a').forEach(a => {
-  const h = a.getAttribute('href').toLowerCase();
-  if (h === page || h.replace('.html','') === page.replace('.html','')) a.classList.add('active');
+const page = (window.location.pathname.split('/').pop() || 'courseReps.html').toLowerCase();
+
+function renderNavLinks(container) {
+  if (!container) return;
+  container.innerHTML = NAV_ITEMS.map(({ label, href }) => {
+    const target = href.toLowerCase();
+    const isActive = target === page || (target === 'coursereps.html' && page.includes('courserep'));
+    return `<li><a href="${esc(href)}" class="${isActive ? 'active' : ''}"${isActive ? ' aria-current="page"' : ''}>${esc(label)}</a></li>`;
+  }).join('');
+}
+
+renderNavLinks(desktopNavLinks);
+renderNavLinks(mobileNavLinks);
+
+mobileNavLinks.querySelectorAll('li').forEach((li, i) => {
+  li.style.transitionDelay = (0.03 * (i + 1)) + 's';
 });
-document.querySelectorAll('.mobile-nav ul li').forEach((li, i) => li.style.transitionDelay = (0.05 * (i + 1)) + 's');
 
 const onScroll = () => navbar.classList.toggle('scrolled', window.scrollY > 20);
-window.addEventListener('scroll', onScroll); onScroll();
+window.addEventListener('scroll', onScroll, { passive: true });
+onScroll();
 
 function toggleMobile(open) {
   hamburger.classList.toggle('active', open);
   hamburger.setAttribute('aria-expanded', String(open));
+  hamburger.setAttribute('aria-label', open ? 'Close navigation menu' : 'Toggle navigation menu');
   mobileNav.classList.toggle('active', open);
   mobileNav.setAttribute('aria-hidden', String(!open));
+  if ('inert' in mobileNav) mobileNav.inert = !open;
   document.body.classList.toggle('menu-open', open);
 }
-hamburger.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); toggleMobile(!hamburger.classList.contains('active')); });
-mobileNav.querySelectorAll('a').forEach(a => a.addEventListener('click', () => toggleMobile(false)));
-document.addEventListener('click', e => {
-  if (mobileNav.classList.contains('active') && !mobileNav.contains(e.target) && !hamburger.contains(e.target)) toggleMobile(false);
+
+toggleMobile(false);
+
+hamburger.addEventListener('click', e => {
+  e.preventDefault();
+  e.stopPropagation();
+  toggleMobile(!mobileNav.classList.contains('active'));
 });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') toggleMobile(false); });
+
+mobileNavLinks.addEventListener('click', e => {
+  if (e.target.closest('a')) toggleMobile(false);
+});
+
+document.addEventListener('click', e => {
+  if (mobileNav.classList.contains('active') && !mobileNav.contains(e.target) && !hamburger.contains(e.target)) {
+    toggleMobile(false);
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && mobileNav.classList.contains('active')) {
+    toggleMobile(false);
+    hamburger.focus();
+  }
+});
+
+window.addEventListener('resize', () => {
+  if (window.innerWidth > 1240 && mobileNav.classList.contains('active')) {
+    toggleMobile(false);
+  }
+}, { passive: true });
 
 /* ===== DATA ===== */
-
-// Normalise a picture value from the API into something <img> can use.
-// Handles: full URLs, Supabase public paths, relative paths, null/empty.
 function resolveImage(raw) {
   if (!raw || typeof raw !== 'string') return '';
   const val = raw.trim();
   if (!val) return '';
   if (/^(https?:)?\/\//i.test(val) || val.startsWith('data:') || val.startsWith('blob:')) return val;
-  // Fallback: treat as a path appended to the API base (change if you use a CDN/Supabase bucket)
   return `${API_BASE_URL}/${val.replace(/^\/+/, '')}`;
 }
 
-// Pick the first non-empty value from a list of possible field names.
 function pickImage(obj, keys) {
   if (!obj) return '';
   for (const k of keys) {
@@ -462,7 +479,6 @@ function processApiResponse(result) {
       }
       departments = Array.isArray(departments) ? departments : [];
 
-      // Accept every plausible field name the backend might emit.
       const genImg = pickImage(rep, [
         'gen_rep_image', 'gen_rep_photo', 'gen_rep_img',
         'general_rep_image', 'general_rep_picture', 'profile_picture'
@@ -472,7 +488,6 @@ function processApiResponse(result) {
         'assistant_rep_image', 'asst_profile_picture', 'asst_gen_picture'
       ]);
 
-      // Normalise each department's image too.
       const normalisedDepts = departments.map(d => ({
         name: d.name || d.department_name || 'Unknown Department',
         rep: d.rep || d.representative_name || d.full_name || 'Pending',
@@ -528,7 +543,6 @@ async function fetchCourseReps() {
     );
     clearTimeout(timeoutId);
 
-    // Fallback: some backends slugify the session (e.g. "2025-2026")
     if (response.status === 404) {
       const alt = await fetch(`${API_BASE_URL}/api/course-reps?session=${encodeURIComponent(session.replace('/', '-'))}`);
       if (alt.ok) { processApiResponse(await alt.json()); return; }
@@ -565,6 +579,7 @@ function renderLevelChips() {
       <i class="fas ${lvl === 'all' ? 'fa-layer-group' : 'fa-graduation-cap'}"></i> ${lvl === 'all' ? 'All Levels' : esc(lvl)}
     </button>`).join('');
 }
+
 levelFilters.addEventListener('click', e => {
   const chip = e.target.closest('.chip');
   if (!chip) return;
@@ -604,9 +619,6 @@ function filterAndRender() {
 }
 
 /* ===== RENDER ===== */
-
-// Render an <img>, with a graceful initial-letter placeholder when no src is present
-// or the image fails to load. This is what prevents "broken image" icons on the page.
 function avatar(src, name, extraClass) {
   const safeName = esc(name || '');
   const initial = (name || '?').trim().charAt(0).toUpperCase() || '?';
@@ -668,7 +680,7 @@ function renderGrid(levels) {
 function listPerson(label, name, src) {
   return `
     <span class="list-person">
-      ${avatar(src, name)}
+      <span class="list-avatar">${avatar(src, name)}</span>
       <span><small>${label}</small><strong>${esc(name || 'Not Assigned')}</strong></span>
     </span>`;
 }
@@ -698,14 +710,17 @@ gridContainer.addEventListener('click', e => {
   expandedLevel = expandedLevel === btn.dataset.level ? null : btn.dataset.level;
   filterAndRender();
 });
+
 const toggleList = header => {
   expandedListItem = expandedListItem === header.dataset.level ? null : header.dataset.level;
   filterAndRender();
 };
+
 listContainer.addEventListener('click', e => {
   const h = e.target.closest('[data-action="toggle-list"]');
   if (h) toggleList(h);
 });
+
 listContainer.addEventListener('keydown', e => {
   if (e.key !== 'Enter' && e.key !== ' ') return;
   const h = e.target.closest('[data-action="toggle-list"]');
@@ -713,7 +728,10 @@ listContainer.addEventListener('keydown', e => {
   e.preventDefault();
   toggleList(h);
 });
-emptyState.addEventListener('click', e => { if (e.target.closest('[data-action="reload"]')) location.reload(); });
+
+emptyState.addEventListener('click', e => {
+  if (e.target.closest('[data-action="reload"]')) location.reload();
+});
 
 function setView(view) {
   currentView = view;
@@ -723,6 +741,7 @@ function setView(view) {
   listViewBtn.setAttribute('aria-pressed', String(view === 'list'));
   filterAndRender();
 }
+
 gridViewBtn.addEventListener('click', () => setView('grid'));
 listViewBtn.addEventListener('click', () => setView('list'));
 
@@ -736,7 +755,7 @@ sessionSelect.addEventListener('change', async () => {
   expandedLevel = null; expandedListItem = null; selectedLevel = 'all';
   gridContainer.style.opacity = '0'; listContainer.style.opacity = '0';
   await new Promise(r => setTimeout(r, 200));
-  await fetchCourseReps();     // proper await — no .then() chain
+  await fetchCourseReps();
   gridContainer.style.opacity = '1'; listContainer.style.opacity = '1';
 });
 
