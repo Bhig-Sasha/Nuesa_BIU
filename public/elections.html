@@ -34,7 +34,7 @@
             --font-display: var(--font-sans);
 
             --radius-sm: 8px; --radius: 14px; --radius-lg: 20px; --radius-xl: 28px;
-            --nav-h: 76px;
+            --nav-h: 72px;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
@@ -54,32 +54,43 @@
         /* NAVBAR */
         .navbar {
             position: fixed; top: 0; left: 0; right: 0; width: 100%;
-            z-index: 1000; padding: 1rem 0;
-            padding-top: max(1rem, env(safe-area-inset-top));
-            background: rgba(6,78,59,.95);
-            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-            transition: all var(--dur) var(--ease);
+            z-index: 1000; padding: 0.95rem 0;
+            padding-top: max(0.95rem, env(safe-area-inset-top));
+            background: rgba(6, 78, 59, 0.94);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            transition: padding var(--dur) var(--ease), background var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
         }
         .navbar.scrolled {
-            background: rgba(6,78,59,.98);
-            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-            padding: .5rem 0;
-            box-shadow: 0 10px 30px rgba(2,44,34,.25);
+            background: rgba(2, 44, 34, 0.98);
+            padding: 0.55rem 0;
+            padding-top: max(0.55rem, env(safe-area-inset-top));
+            box-shadow: 0 10px 30px rgba(2, 44, 34, 0.28);
         }
         .nav-container { max-width: 80rem; margin: 0 auto; padding: 0 2rem; }
         @media (max-width: 640px) { .nav-container { padding: 0 1rem; } }
         .nav-flex { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
 
         .logo-link {
-            display: flex; align-items: center; gap: .15rem;
-            flex-shrink: 0;
+            display: inline-flex; align-items: center; gap: 0.15rem;
+            flex-shrink: 0; padding: 0.25rem 0.4rem;
+            border-radius: var(--radius-sm);
             transition: transform var(--dur) var(--ease);
-            text-decoration: none;
         }
-        .logo-link:hover { transform: scale(1.05); }
+        .logo-link:hover { transform: translateY(-1px) scale(1.03); }
+        .logo-link:focus-visible,
+        .nav-links li a:focus-visible,
+        .hamburger:focus-visible,
+        .mobile-nav ul li a:focus-visible,
+        .btn:focus-visible,
+        .candidate-card:focus-visible {
+            outline: 2px solid var(--amber-400);
+            outline-offset: 3px;
+            border-radius: 6px;
+        }
         .logo-main, .logo-highlight {
             font-family: var(--font-sans);
-            font-size: 1.5rem; font-weight: 900;
+            font-size: 1.45rem; font-weight: 900;
             letter-spacing: -0.05em; line-height: 1;
         }
         .logo-main { color: var(--white); }
@@ -88,93 +99,117 @@
         .nav-menu { display: flex; align-items: center; }
         .nav-links {
             display: flex; align-items: center;
-            gap: 1.5rem; list-style: none; flex-wrap: wrap;
+            gap: 1.15rem; list-style: none;
         }
         .nav-links li a {
             font-family: var(--font-mono);
-            font-size: .7rem; font-weight: 600;
-            letter-spacing: .08em;
-            color: rgba(255,255,255,.9);
-            position: relative; padding: .5rem 0;
-            white-space: nowrap;
+            font-size: 0.68rem; font-weight: 600;
+            letter-spacing: 0.07em;
+            color: rgba(255, 255, 255, 0.88);
+            position: relative; padding: 0.45rem 0.1rem;
+            white-space: nowrap; display: inline-block;
             transition: color var(--dur-fast) var(--ease);
         }
         .nav-links li a::after {
             content: ''; position: absolute; bottom: 0; left: 0;
-            width: 0; height: 2px; background: var(--amber-400);
+            width: 0; height: 2px; border-radius: 999px;
+            background: var(--amber-400);
             transition: width var(--dur) var(--ease);
         }
-        .nav-links li a:hover { color: var(--amber-400); }
+        .nav-links li a:hover,
+        .nav-links li a.active { color: var(--amber-400); }
         .nav-links li a:hover::after,
         .nav-links li a.active::after { width: 100%; }
-        .nav-links li a.active { color: var(--amber-400); }
 
         .hamburger {
             display: none; cursor: pointer;
-            background: none; border: none;
-            padding: .5rem; z-index: 1200;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: var(--radius-sm);
+            padding: 0.5rem; z-index: 1200;
             min-width: 44px; min-height: 44px;
             align-items: center; justify-content: center;
             flex-direction: column;
+            transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+        }
+        .hamburger:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(251, 191, 36, 0.45);
         }
         .hamburger span {
-            display: block; width: 25px; height: 3px;
-            background: var(--white); border-radius: 3px;
-            margin: 5px 0;
-            transition: all var(--dur) var(--ease);
+            display: block; width: 22px; height: 2.5px;
+            background: var(--white); border-radius: 999px;
+            margin: 2.5px 0;
+            transition: transform var(--dur) var(--ease), opacity var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
         }
-        .hamburger.active span:nth-child(1) { transform: rotate(45deg) translate(5px, 6px); background: var(--amber-400); }
+        .hamburger.active span:nth-child(1) {
+            transform: translateY(7.5px) rotate(45deg);
+            background: var(--amber-400);
+        }
         .hamburger.active span:nth-child(2) { opacity: 0; }
-        .hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(5px, -6px); background: var(--amber-400); }
+        .hamburger.active span:nth-child(3) {
+            transform: translateY(-7.5px) rotate(-45deg);
+            background: var(--amber-400);
+        }
 
         .mobile-nav {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100vh; height: 100dvh;
-            background: linear-gradient(135deg, var(--emerald-900), var(--emerald-800));
+            position: fixed; inset: 0; width: 100%;
+            height: 100vh; height: 100dvh;
+            background: linear-gradient(155deg, var(--emerald-950) 0%, var(--emerald-900) 55%, var(--emerald-800) 100%);
             display: flex; flex-direction: column;
             justify-content: center; align-items: center;
             z-index: 1100; opacity: 0; visibility: hidden;
+            pointer-events: none;
             transition: opacity var(--dur) var(--ease), visibility var(--dur);
             padding: 2rem;
-            padding-top: max(2rem, env(safe-area-inset-top) + 1rem);
+            padding-top: max(4.5rem, env(safe-area-inset-top) + 3.5rem);
             padding-bottom: max(2rem, env(safe-area-inset-bottom));
             overflow-y: auto; overscroll-behavior: contain;
         }
-        .mobile-nav.active { opacity: 1; visibility: visible; }
-        .mobile-nav ul { list-style: none; text-align: center; width: 100%; max-width: 26rem; }
+        .mobile-nav.active {
+            opacity: 1; visibility: visible; pointer-events: auto;
+        }
+        .mobile-nav ul { list-style: none; text-align: center; width: 100%; max-width: 24rem; }
         .mobile-nav ul li {
-            margin: .35rem 0; opacity: 0; transform: translateY(20px);
-            transition: all .4s var(--ease-out);
+            margin: 0.25rem 0; opacity: 0; transform: translateY(16px);
+            transition: opacity 0.35s var(--ease-out), transform 0.35s var(--ease-out);
         }
         .mobile-nav.active ul li { opacity: 1; transform: translateY(0); }
-        .mobile-nav.active ul li:nth-child(1)  { transition-delay: .04s; }
-        .mobile-nav.active ul li:nth-child(2)  { transition-delay: .08s; }
-        .mobile-nav.active ul li:nth-child(3)  { transition-delay: .12s; }
-        .mobile-nav.active ul li:nth-child(4)  { transition-delay: .16s; }
-        .mobile-nav.active ul li:nth-child(5)  { transition-delay: .20s; }
-        .mobile-nav.active ul li:nth-child(6)  { transition-delay: .24s; }
-        .mobile-nav.active ul li:nth-child(7)  { transition-delay: .28s; }
-        .mobile-nav.active ul li:nth-child(8)  { transition-delay: .32s; }
-        .mobile-nav.active ul li:nth-child(9)  { transition-delay: .36s; }
-        .mobile-nav.active ul li:nth-child(10) { transition-delay: .40s; }
-        .mobile-nav.active ul li:nth-child(11) { transition-delay: .44s; }
-        .mobile-nav.active ul li:nth-child(12) { transition-delay: .48s; }
-        .mobile-nav.active ul li:nth-child(13) { transition-delay: .52s; }
+        .mobile-nav.active ul li:nth-child(1)  { transition-delay: 0.03s; }
+        .mobile-nav.active ul li:nth-child(2)  { transition-delay: 0.06s; }
+        .mobile-nav.active ul li:nth-child(3)  { transition-delay: 0.09s; }
+        .mobile-nav.active ul li:nth-child(4)  { transition-delay: 0.12s; }
+        .mobile-nav.active ul li:nth-child(5)  { transition-delay: 0.15s; }
+        .mobile-nav.active ul li:nth-child(6)  { transition-delay: 0.18s; }
+        .mobile-nav.active ul li:nth-child(7)  { transition-delay: 0.21s; }
+        .mobile-nav.active ul li:nth-child(8)  { transition-delay: 0.24s; }
+        .mobile-nav.active ul li:nth-child(9)  { transition-delay: 0.27s; }
+        .mobile-nav.active ul li:nth-child(10) { transition-delay: 0.30s; }
+        .mobile-nav.active ul li:nth-child(11) { transition-delay: 0.33s; }
+        .mobile-nav.active ul li:nth-child(12) { transition-delay: 0.36s; }
+        .mobile-nav.active ul li:nth-child(13) { transition-delay: 0.39s; }
         .mobile-nav ul li a {
             font-family: var(--font-mono);
-            font-size: 1rem; font-weight: 600;
-            letter-spacing: .08em;
+            font-size: 0.95rem; font-weight: 600;
+            letter-spacing: 0.08em;
             color: var(--white);
             display: inline-block;
-            padding: .55rem 1rem;
-            transition: color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+            padding: 0.55rem 1rem;
+            border-radius: var(--radius-sm);
+            transition: color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
         }
-        .mobile-nav ul li a:hover { color: var(--amber-400); transform: translateX(8px); }
+        .mobile-nav ul li a:hover {
+            color: var(--amber-400);
+            background: rgba(255, 255, 255, 0.06);
+            transform: translateX(6px);
+        }
         .mobile-nav ul li a.active {
             color: var(--amber-400);
-            border-left: 4px solid var(--amber-400);
+            background: rgba(251, 191, 36, 0.12);
+            border-left: 3px solid var(--amber-400);
         }
 
-        @media screen and (max-width: 1200px) {
+        @media screen and (max-width: 1240px) {
             .nav-links { display: none; }
             .hamburger { display: flex; }
         }
@@ -184,13 +219,11 @@
         /* BUTTONS */
         .btn {
             display: inline-flex; align-items: center; justify-content: center;
-            gap: .55rem;
-            padding: .85rem 1.5rem;
+            gap: .55rem; padding: .85rem 1.5rem;
             border-radius: var(--radius); border: none;
             font-family: var(--font-sans); font-size: .875rem; font-weight: 700;
             letter-spacing: .01em; cursor: pointer;
             transition: all var(--dur) var(--ease);
-            text-decoration: none;
             min-height: 48px; white-space: nowrap;
         }
         .btn-gold {
@@ -233,8 +266,7 @@
             z-index: -1; opacity: .5;
         }
         .hero-grid {
-            max-width: 80rem; margin: 0 auto;
-            padding: 0 2rem;
+            max-width: 80rem; margin: 0 auto; padding: 0 2rem;
             display: grid; grid-template-columns: 1.15fr .85fr;
             gap: clamp(2rem, 5vw, 4.5rem); align-items: center;
             position: relative;
@@ -359,10 +391,8 @@
         /* STATUS STRIP */
         .status-strip { background: var(--white); border-bottom: 1px solid var(--slate-200); }
         .status-inner {
-            max-width: 80rem; margin: 0 auto;
-            padding: 0 2rem;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            max-width: 80rem; margin: 0 auto; padding: 0 2rem;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
         }
         @media (max-width: 640px) { .status-inner { padding: 0 1rem; } }
         .status-item {
@@ -445,15 +475,14 @@
             max-width: 44rem; line-height: 1.6;
         }
 
-        /* REGISTRATION STATUS BANNER (top of page) */
+        /* REGISTRATION STATUS BANNER */
         .reg-banner {
             display: flex; align-items: center; gap: 1rem;
             padding: 1.15rem 1.35rem;
             background: linear-gradient(135deg, var(--emerald-50), var(--white));
             border: 1px solid var(--emerald-200);
             border-radius: var(--radius-lg);
-            margin-bottom: 2rem;
-            flex-wrap: wrap;
+            margin-bottom: 2rem; flex-wrap: wrap;
         }
         .reg-banner-icon {
             width: 46px; height: 46px; border-radius: 12px;
@@ -466,9 +495,7 @@
             font-size: .95rem; font-weight: 800;
             color: var(--emerald-900); margin-bottom: .2rem;
         }
-        .reg-banner-body p {
-            font-size: .82rem; color: var(--emerald-800); line-height: 1.5;
-        }
+        .reg-banner-body p { font-size: .82rem; color: var(--emerald-800); line-height: 1.5; }
         .reg-banner .btn { flex-shrink: 0; }
         @media (max-width: 640px) { .reg-banner .btn { width: 100%; } }
 
@@ -479,16 +506,13 @@
             gap: 1rem;
         }
         .info-card {
-            background: var(--white);
-            border: 1px solid var(--slate-200);
-            border-radius: var(--radius-lg);
-            padding: 1.15rem 1.25rem;
+            background: var(--white); border: 1px solid var(--slate-200);
+            border-radius: var(--radius-lg); padding: 1.15rem 1.25rem;
             transition: border-color var(--dur) var(--ease), transform var(--dur) var(--ease);
         }
         .info-card:hover { border-color: var(--emerald-300); transform: translateY(-2px); }
         .info-card-icon {
-            width: 36px; height: 36px;
-            border-radius: 10px;
+            width: 36px; height: 36px; border-radius: 10px;
             background: var(--emerald-50); color: var(--emerald-700);
             display: flex; align-items: center; justify-content: center;
             font-size: .85rem; margin-bottom: .75rem;
@@ -498,84 +522,53 @@
             letter-spacing: .1em; text-transform: uppercase;
             color: var(--slate-400); margin-bottom: .25rem;
         }
-        .info-card-value {
-            font-size: .9rem; font-weight: 700; color: var(--slate-900);
-            line-height: 1.35;
-        }
+        .info-card-value { font-size: .9rem; font-weight: 700; color: var(--slate-900); line-height: 1.35; }
 
         /* NOMINATE CTA */
         .nominate-cta {
             background: linear-gradient(135deg, var(--emerald-900), var(--emerald-800));
-            border-radius: var(--radius-xl);
-            padding: clamp(1.5rem, 4vw, 2.5rem);
-            color: var(--white);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 1.5rem;
-            flex-wrap: wrap;
-            position: relative;
-            overflow: hidden;
-            isolation: isolate;
+            border-radius: var(--radius-xl); padding: clamp(1.5rem, 4vw, 2.5rem);
+            color: var(--white); display: flex; align-items: center;
+            justify-content: space-between; gap: 1.5rem; flex-wrap: wrap;
+            position: relative; overflow: hidden; isolation: isolate;
         }
         .nominate-cta::before {
-            content: '';
-            position: absolute;
-            top: -50%; right: -20%;
-            width: 400px; height: 400px;
-            border-radius: 50%;
+            content: ''; position: absolute; top: -50%; right: -20%;
+            width: 400px; height: 400px; border-radius: 50%;
             background: radial-gradient(circle, rgba(251,191,36,.22), transparent 70%);
             z-index: -1;
         }
         .nominate-cta-text { flex: 1; min-width: 240px; }
         .nominate-cta h3 {
-            font-family: var(--font-sans);
-            font-size: clamp(1.3rem, 3vw, 1.8rem);
-            font-weight: 800; margin-bottom: .55rem;
-            letter-spacing: -.02em; line-height: 1.2;
+            font-family: var(--font-sans); font-size: clamp(1.3rem, 3vw, 1.8rem);
+            font-weight: 800; margin-bottom: .55rem; letter-spacing: -.02em; line-height: 1.2;
         }
-        .nominate-cta p {
-            color: rgba(236,253,245,.82);
-            font-size: .9rem; line-height: 1.6;
-            max-width: 34rem;
-        }
-        .nominate-cta .btn-gold {
-            align-self: flex-start;
-            min-height: 52px;
-            padding: 1rem 1.9rem;
-        }
-        @media (max-width: 640px) {
-            .nominate-cta .btn-gold { width: 100%; }
-        }
+        .nominate-cta p { color: rgba(236,253,245,.82); font-size: .9rem; line-height: 1.6; max-width: 34rem; }
+        .nominate-cta .btn-gold { align-self: flex-start; min-height: 52px; padding: 1rem 1.9rem; }
+        @media (max-width: 640px) { .nominate-cta .btn-gold { width: 100%; } }
 
         /* CANDIDATES */
         .position-block { margin-bottom: 2.5rem; }
         .position-block:last-child { margin-bottom: 0; }
         .position-head {
             display: flex; align-items: center; justify-content: space-between;
-            gap: 1rem; padding: 0 .25rem;
-            margin-bottom: 1.1rem; flex-wrap: wrap;
+            gap: 1rem; padding: 0 .25rem; margin-bottom: 1.1rem; flex-wrap: wrap;
         }
         .position-head-left { display: flex; align-items: center; gap: .75rem; min-width: 0; }
         .position-pill {
             width: 40px; height: 40px; border-radius: 12px;
             background: linear-gradient(135deg, var(--emerald-800), var(--emerald-950));
-            color: var(--amber-400);
-            display: flex; align-items: center; justify-content: center;
+            color: var(--amber-400); display: flex; align-items: center; justify-content: center;
             font-size: .9rem; flex-shrink: 0;
         }
         .position-head h3 {
             font-family: var(--font-sans); font-size: clamp(1.1rem, 2.5vw, 1.3rem);
-            font-weight: 800; color: var(--slate-900);
-            letter-spacing: -.015em;
-            line-height: 1.2;
+            font-weight: 800; color: var(--slate-900); letter-spacing: -.015em; line-height: 1.2;
         }
         .position-head-count {
-            font-family: var(--font-mono); font-size: .7rem;
-            font-weight: 700; color: var(--slate-400);
-            padding: .3rem .75rem; background: var(--slate-100);
-            border-radius: 999px;
-            white-space: nowrap;
+            font-family: var(--font-mono); font-size: .7rem; font-weight: 700;
+            color: var(--slate-400); padding: .3rem .75rem;
+            background: var(--slate-100); border-radius: 999px; white-space: nowrap;
         }
 
         .candidate-grid {
@@ -586,13 +579,10 @@
         @media (max-width: 767px) {
             .candidate-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: .9rem; }
         }
-        @media (max-width: 420px) {
-            .candidate-grid { grid-template-columns: 1fr; }
-        }
+        @media (max-width: 420px) { .candidate-grid { grid-template-columns: 1fr; } }
 
         .candidate-card {
-            position: relative; border-radius: var(--radius-lg);
-            overflow: hidden; cursor: pointer;
+            position: relative; border-radius: var(--radius-lg); overflow: hidden; cursor: pointer;
             background: linear-gradient(160deg, var(--emerald-900) 0%, var(--emerald-950) 100%);
             aspect-ratio: 3/4; transition: all var(--dur) var(--ease);
             box-shadow: var(--shadow-md); isolation: isolate;
@@ -616,84 +606,62 @@
         .candidate-card:hover::before { opacity: .5; }
 
         .candidate-avatar-lg {
-            position: absolute; inset: 0;
-            display: flex; align-items: flex-start; justify-content: center;
-            padding-top: 15%;
-            font-family: var(--font-sans);
-            font-size: clamp(3.5rem, 10vw, 6rem);
-            font-weight: 900; color: rgba(251,191,36,.22);
-            z-index: 2; letter-spacing: -.03em;
-            transition: transform var(--dur-slow) var(--ease);
+            position: absolute; inset: 0; display: flex; align-items: flex-start;
+            justify-content: center; padding-top: 15%;
+            font-family: var(--font-sans); font-size: clamp(3.5rem, 10vw, 6rem);
+            font-weight: 900; color: rgba(251,191,36,.22); z-index: 2;
+            letter-spacing: -.03em; transition: transform var(--dur-slow) var(--ease);
         }
         .candidate-card:hover .candidate-avatar-lg { transform: scale(1.08) translateY(-4px); }
 
-        .candidate-body {
-            position: absolute; left: 0; right: 0; bottom: 0;
-            padding: 1.15rem; z-index: 3;
-        }
+        .candidate-body { position: absolute; left: 0; right: 0; bottom: 0; padding: 1.15rem; z-index: 3; }
         .candidate-position-tag {
             display: inline-block; padding: .22rem .7rem;
-            background: var(--amber-400); color: var(--emerald-950);
-            border-radius: 999px;
-            font-family: var(--font-mono); font-size: .58rem;
-            font-weight: 800; letter-spacing: .1em;
-            text-transform: uppercase; margin-bottom: .6rem;
+            background: var(--amber-400); color: var(--emerald-950); border-radius: 999px;
+            font-family: var(--font-mono); font-size: .58rem; font-weight: 800;
+            letter-spacing: .1em; text-transform: uppercase; margin-bottom: .6rem;
         }
         .candidate-name {
-            font-family: var(--font-sans); font-size: 1.15rem;
-            font-weight: 800; color: var(--white);
-            line-height: 1.2; margin-bottom: .2rem;
+            font-family: var(--font-sans); font-size: 1.15rem; font-weight: 800;
+            color: var(--white); line-height: 1.2; margin-bottom: .2rem;
         }
         .candidate-meta { font-size: .72rem; color: rgba(236,253,245,.7); font-family: var(--font-mono); }
         .candidate-cta {
-            display: inline-flex; align-items: center; gap: .35rem;
-            margin-top: .8rem; font-size: .72rem; font-weight: 700;
-            color: var(--amber-300);
+            display: inline-flex; align-items: center; gap: .35rem; margin-top: .8rem;
+            font-size: .72rem; font-weight: 700; color: var(--amber-300);
             transition: gap var(--dur-fast) var(--ease);
         }
         .candidate-card:hover .candidate-cta { gap: .65rem; }
 
         /* VOTE BANNER */
         .vote-banner {
-            display: flex; align-items: center; gap: .85rem;
-            padding: 1rem 1.25rem;
+            display: flex; align-items: center; gap: .85rem; padding: 1rem 1.25rem;
             background: linear-gradient(135deg, var(--emerald-50), var(--white));
-            border: 1px solid var(--emerald-200);
-            border-radius: var(--radius-lg);
-            margin-bottom: 1.5rem;
+            border: 1px solid var(--emerald-200); border-radius: var(--radius-lg); margin-bottom: 1.5rem;
         }
         .vote-banner-icon {
             width: 40px; height: 40px; border-radius: 12px;
             background: var(--emerald-600); color: var(--white);
-            display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
         }
         .vote-banner p { font-size: .82rem; color: var(--emerald-800); line-height: 1.5; }
         .vote-banner p strong { color: var(--emerald-900); }
 
-        .alert { white-space: pre-line; }
-
         /* VERIFY BOX */
         .verify-box {
-            background: var(--white);
-            border: 1px solid var(--slate-200);
-            border-radius: var(--radius-lg);
-            padding: clamp(1.25rem, 4vw, 2rem);
-            box-shadow: var(--shadow-sm);
-            max-width: 540px;
-            margin: 0 auto;
+            background: var(--white); border: 1px solid var(--slate-200);
+            border-radius: var(--radius-lg); padding: clamp(1.25rem, 4vw, 2rem);
+            box-shadow: var(--shadow-sm); max-width: 540px; margin: 0 auto;
         }
         .verify-head { text-align: center; margin-bottom: 1.5rem; }
         .verify-head-icon {
             width: 60px; height: 60px; border-radius: 50%;
             background: var(--emerald-50); color: var(--emerald-700);
             display: flex; align-items: center; justify-content: center;
-            font-size: 1.35rem; margin: 0 auto 1rem;
-            border: 2px solid var(--emerald-200);
+            font-size: 1.35rem; margin: 0 auto 1rem; border: 2px solid var(--emerald-200);
         }
         .verify-head h3 {
-            font-family: var(--font-sans);
-            font-size: 1.35rem; font-weight: 800;
+            font-family: var(--font-sans); font-size: 1.35rem; font-weight: 800;
             color: var(--slate-900); margin-bottom: .35rem;
         }
         .verify-head p { font-size: .85rem; color: var(--slate-500); line-height: 1.55; }
@@ -702,174 +670,106 @@
         .field { margin-bottom: 1.15rem; }
         .field label {
             display: block; font-size: .78rem; font-weight: 700;
-            color: var(--slate-700); margin-bottom: .4rem;
-            letter-spacing: .01em;
+            color: var(--slate-700); margin-bottom: .4rem; letter-spacing: .01em;
         }
         .field-input-wrap { position: relative; }
         .field-input-wrap i {
-            position: absolute; left: 1rem; top: 50%;
-            transform: translateY(-50%);
-            color: var(--slate-400); font-size: .85rem;
-            pointer-events: none;
+            position: absolute; left: 1rem; top: 50%; transform: translateY(-50%);
+            color: var(--slate-400); font-size: .85rem; pointer-events: none;
             transition: color var(--dur-fast) var(--ease);
         }
         .field-input-wrap:focus-within i { color: var(--emerald-600); }
-        .field input,
-        .field select,
-        .field textarea {
-            width: 100%; min-height: 50px;
-            padding: .85rem 1rem .85rem 2.75rem;
-            border: 1.5px solid var(--slate-200);
-            border-radius: var(--radius);
-            background: var(--white);
-            font-family: var(--font-sans);
+        .field input, .field select, .field textarea {
+            width: 100%; min-height: 50px; padding: .85rem 1rem .85rem 2.75rem;
+            border: 1.5px solid var(--slate-200); border-radius: var(--radius);
+            background: var(--white); font-family: var(--font-sans);
             font-size: .9rem; color: var(--slate-900);
-            transition: all var(--dur-fast) var(--ease);
-            appearance: none;
+            transition: all var(--dur-fast) var(--ease); appearance: none;
         }
-        .field input:disabled {
-            background: var(--slate-100); color: var(--slate-600);
-            cursor: not-allowed;
-        }
-        .field textarea {
-            min-height: 90px; padding-top: .85rem; resize: vertical;
-            font-family: var(--font-sans);
-        }
+        .field textarea { min-height: 90px; padding-top: .85rem; resize: vertical; }
         .field input::placeholder, .field textarea::placeholder { color: var(--slate-400); }
         .field input:focus, .field select:focus, .field textarea:focus {
-            outline: none;
-            border-color: var(--emerald-500);
+            outline: none; border-color: var(--emerald-500);
             box-shadow: 0 0 0 4px rgba(16,185,129,.14);
         }
         .field select {
             background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
-            background-repeat: no-repeat;
-            background-position: right 1rem center;
-            padding-right: 2.75rem;
+            background-repeat: no-repeat; background-position: right 1rem center; padding-right: 2.75rem;
         }
-        .field-error {
-            color: var(--danger); font-size: .72rem; margin-top: .35rem;
-            font-weight: 600; display: none;
-        }
-        .field.has-error input,
-        .field.has-error select,
-        .field.has-error textarea { border-color: #fca5a5; }
+        .field-error { color: var(--danger); font-size: .72rem; margin-top: .35rem; font-weight: 600; display: none; }
+        .field.has-error input, .field.has-error select, .field.has-error textarea { border-color: #fca5a5; }
         .field.has-error .field-error { display: block; }
 
         .alert {
-            padding: .85rem 1.1rem;
-            border-radius: var(--radius);
-            font-size: .82rem; font-weight: 600;
-            margin-bottom: 1.15rem; display: none;
+            padding: .85rem 1.1rem; border-radius: var(--radius);
+            font-size: .82rem; font-weight: 600; margin-bottom: 1.15rem;
+            display: none; white-space: pre-line;
         }
         .alert.show { display: flex; align-items: flex-start; gap: .6rem; }
         .alert i { flex-shrink: 0; margin-top: .1rem; }
         .alert-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
-        .alert-warning { background: var(--amber-100); color: var(--amber-700); border: 1px solid rgba(213,168,59,.4); }
-        .alert-success { background: var(--emerald-50); color: var(--emerald-800); border: 1px solid var(--emerald-200); }
 
         /* BALLOT */
         .ballot-group { margin-bottom: 1.5rem; }
         .ballot-group-head {
             display: flex; align-items: center; justify-content: space-between;
-            gap: .75rem; margin-bottom: .75rem;
-            padding: 0 .25rem; flex-wrap: wrap;
+            gap: .75rem; margin-bottom: .75rem; padding: 0 .25rem; flex-wrap: wrap;
         }
-        .ballot-group-head h4 {
-            font-family: var(--font-sans);
-            font-size: 1.05rem; font-weight: 800;
-            color: var(--slate-900);
-        }
+        .ballot-group-head h4 { font-family: var(--font-sans); font-size: 1.05rem; font-weight: 800; color: var(--slate-900); }
         .ballot-group-progress {
-            font-family: var(--font-mono);
-            font-size: .7rem; font-weight: 700;
-            color: var(--emerald-700);
-            padding: .25rem .7rem;
-            background: var(--emerald-50);
-            border-radius: 999px;
+            font-family: var(--font-mono); font-size: .7rem; font-weight: 700;
+            color: var(--emerald-700); padding: .25rem .7rem; background: var(--emerald-50); border-radius: 999px;
         }
         .ballot-list { display: flex; flex-direction: column; gap: .55rem; }
         .ballot-option {
-            display: flex; align-items: center; gap: .95rem;
-            padding: 1rem 1.15rem;
-            background: var(--white);
-            border: 2px solid var(--slate-200);
-            border-radius: var(--radius);
-            cursor: pointer;
-            transition: all var(--dur-fast) var(--ease);
-            text-align: left; width: 100%;
-            min-height: 60px;
+            display: flex; align-items: center; gap: .95rem; padding: 1rem 1.15rem;
+            background: var(--white); border: 2px solid var(--slate-200); border-radius: var(--radius);
+            cursor: pointer; transition: all var(--dur-fast) var(--ease); text-align: left; width: 100%; min-height: 60px;
         }
-        .ballot-option:hover {
-            border-color: var(--emerald-300);
-            transform: translateX(4px);
-            box-shadow: 0 6px 18px rgba(2,44,34,.06);
-        }
+        .ballot-option:hover { border-color: var(--emerald-300); transform: translateX(4px); box-shadow: 0 6px 18px rgba(2,44,34,.06); }
         .ballot-option.selected {
             border-color: var(--amber-400);
             background: linear-gradient(135deg, var(--amber-100) 0%, var(--white) 100%);
             box-shadow: 0 0 0 4px rgba(251,191,36,.15);
         }
         .ballot-radio {
-            width: 22px; height: 22px;
-            border-radius: 50%;
-            border: 2px solid var(--slate-300);
-            flex-shrink: 0;
-            display: flex; align-items: center; justify-content: center;
+            width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--slate-300);
+            flex-shrink: 0; display: flex; align-items: center; justify-content: center;
             transition: all var(--dur-fast) var(--ease);
         }
-        .ballot-option.selected .ballot-radio {
-            border-color: var(--amber-500);
-            background: var(--amber-500);
-        }
+        .ballot-option.selected .ballot-radio { border-color: var(--amber-500); background: var(--amber-500); }
         .ballot-radio-check {
-            color: var(--white); font-size: .65rem;
-            opacity: 0; transform: scale(0);
+            color: var(--white); font-size: .65rem; opacity: 0; transform: scale(0);
             transition: all var(--dur) var(--ease);
         }
         .ballot-option.selected .ballot-radio-check { opacity: 1; transform: scale(1); }
         .ballot-avatar {
-            width: 44px; height: 44px;
-            border-radius: 50%;
+            width: 44px; height: 44px; border-radius: 50%;
             background: linear-gradient(135deg, var(--emerald-800), var(--emerald-950));
-            color: var(--amber-300);
-            display: flex; align-items: center; justify-content: center;
-            font-family: var(--font-sans);
-            font-weight: 800; font-size: .9rem;
+            color: var(--amber-300); display: flex; align-items: center; justify-content: center;
+            font-family: var(--font-sans); font-weight: 800; font-size: .9rem;
             flex-shrink: 0; letter-spacing: -.02em;
         }
         .ballot-body { flex: 1; min-width: 0; }
         .ballot-body strong {
-            display: block; font-size: .9rem; font-weight: 700;
-            color: var(--slate-900); margin-bottom: .15rem;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            display: block; font-size: .9rem; font-weight: 700; color: var(--slate-900);
+            margin-bottom: .15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .ballot-body span { font-size: .72rem; color: var(--slate-500); font-family: var(--font-mono); }
 
-        .cast-bar {
-            margin-top: 1.75rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid var(--slate-200);
-        }
+        .cast-bar { margin-top: 1.75rem; padding-top: 1.5rem; border-top: 1px solid var(--slate-200); }
         .vote-error {
-            background: #fef2f2; color: #991b1b;
-            border: 1px solid #fecaca;
-            padding: .85rem 1rem;
-            border-radius: var(--radius);
-            font-size: .82rem; font-weight: 600;
-            margin-bottom: 1rem;
-            display: none;
+            background: #fef2f2; color: #991b1b; border: 1px solid #fecaca;
+            padding: .85rem 1rem; border-radius: var(--radius);
+            font-size: .82rem; font-weight: 600; margin-bottom: 1rem; display: none;
         }
         .vote-error.show { display: block; }
 
         /* RESULTS */
         .results-hero {
-            text-align: center;
-            padding: 2rem 1rem 2.5rem;
+            text-align: center; padding: 2rem 1rem 2.5rem;
             background: linear-gradient(135deg, var(--emerald-950), var(--emerald-800));
-            border-radius: var(--radius-xl);
-            color: var(--white);
-            margin-bottom: 2rem;
+            border-radius: var(--radius-xl); color: var(--white); margin-bottom: 2rem;
             position: relative; overflow: hidden;
         }
         .results-hero::before {
@@ -879,129 +779,83 @@
         .results-hero > * { position: relative; }
         .results-hero-icon {
             width: 64px; height: 64px; border-radius: 50%;
-            background: rgba(251,191,36,.18);
-            color: var(--amber-300);
+            background: rgba(251,191,36,.18); color: var(--amber-300);
             display: flex; align-items: center; justify-content: center;
-            margin: 0 auto 1rem;
-            font-size: 1.6rem;
-            border: 1px solid rgba(251,191,36,.35);
+            margin: 0 auto 1rem; font-size: 1.6rem; border: 1px solid rgba(251,191,36,.35);
         }
-        .results-hero h2 {
-            font-family: var(--font-sans);
-            font-size: clamp(1.5rem, 3.5vw, 2rem);
-            font-weight: 800; margin-bottom: .5rem;
-            letter-spacing: -.02em;
-        }
+        .results-hero h2 { font-family: var(--font-sans); font-size: clamp(1.5rem, 3.5vw, 2rem); font-weight: 800; margin-bottom: .5rem; letter-spacing: -.02em; }
         .results-hero p { color: rgba(236,253,245,.75); font-size: .9rem; }
 
         .result-position {
             background: var(--white); border: 1px solid var(--slate-200);
-            border-radius: var(--radius-lg);
-            padding: 1.5rem; margin-bottom: 1.25rem;
-            box-shadow: var(--shadow-sm);
+            border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.25rem; box-shadow: var(--shadow-sm);
         }
         @media (max-width: 640px) { .result-position { padding: 1.1rem; } }
         .result-position-head {
             display: flex; align-items: center; justify-content: space-between;
-            gap: .75rem; margin-bottom: 1.25rem;
-            flex-wrap: wrap;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--slate-100);
+            gap: .75rem; margin-bottom: 1.25rem; flex-wrap: wrap;
+            padding-bottom: 1rem; border-bottom: 1px solid var(--slate-100);
         }
-        .result-position-head h3 {
-            font-family: var(--font-sans);
-            font-size: 1.15rem; font-weight: 800;
-            color: var(--slate-900);
-        }
+        .result-position-head h3 { font-family: var(--font-sans); font-size: 1.15rem; font-weight: 800; color: var(--slate-900); }
         .result-position-total {
-            font-family: var(--font-mono);
-            font-size: .72rem; font-weight: 700;
-            color: var(--slate-500);
-            padding: .3rem .8rem;
-            background: var(--slate-100);
-            border-radius: 999px;
+            font-family: var(--font-mono); font-size: .72rem; font-weight: 700;
+            color: var(--slate-500); padding: .3rem .8rem; background: var(--slate-100); border-radius: 999px;
         }
         .result-row { margin-bottom: 1rem; }
         .result-row:last-child { margin-bottom: 0; }
-        .result-row-head {
-            display: flex; align-items: center; justify-content: space-between;
-            gap: .75rem; margin-bottom: .5rem;
-        }
+        .result-row-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .5rem; }
         .result-row-left { display: flex; align-items: center; gap: .7rem; min-width: 0; }
         .result-trophy {
             width: 36px; height: 36px; border-radius: 10px;
             background: linear-gradient(135deg, var(--amber-300), var(--amber-500));
-            color: var(--emerald-950);
-            display: flex; align-items: center; justify-content: center;
-            font-size: .85rem; flex-shrink: 0;
-            box-shadow: 0 4px 10px rgba(213,168,59,.4);
+            color: var(--emerald-950); display: flex; align-items: center; justify-content: center;
+            font-size: .85rem; flex-shrink: 0; box-shadow: 0 4px 10px rgba(213,168,59,.4);
         }
         .result-avatar {
             width: 36px; height: 36px; border-radius: 50%;
             background: var(--slate-100); color: var(--slate-600);
             display: flex; align-items: center; justify-content: center;
-            font-family: var(--font-sans);
-            font-weight: 800; font-size: .78rem;
-            flex-shrink: 0;
+            font-family: var(--font-sans); font-weight: 800; font-size: .78rem; flex-shrink: 0;
         }
         .result-row-left > div:last-child { min-width: 0; }
         .result-row-left strong {
-            font-size: .875rem; font-weight: 700;
-            color: var(--slate-900); display: block;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            font-size: .875rem; font-weight: 700; color: var(--slate-900);
+            display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .result-row-left span { font-size: .7rem; color: var(--slate-500); font-family: var(--font-mono); }
         .result-row-right { text-align: right; flex-shrink: 0; }
-        .result-row-right strong {
-            font-family: var(--font-sans);
-            font-size: 1.15rem; font-weight: 800;
-            color: var(--slate-900); display: block; line-height: 1;
-        }
+        .result-row-right strong { font-family: var(--font-sans); font-size: 1.15rem; font-weight: 800; color: var(--slate-900); display: block; line-height: 1; }
         .result-row.is-leader .result-row-right strong { color: var(--amber-600); }
         .result-row-right span { font-size: .68rem; color: var(--slate-500); font-family: var(--font-mono); }
-        .result-bar {
-            height: 8px; background: var(--slate-100);
-            border-radius: 999px; overflow: hidden;
-            position: relative;
-        }
+        .result-bar { height: 8px; background: var(--slate-100); border-radius: 999px; overflow: hidden; }
         .result-bar-fill {
             height: 100%; border-radius: 999px;
             background: linear-gradient(90deg, var(--slate-300), var(--slate-400));
-            width: 0;
-            transition: width 1.2s var(--ease-out);
+            width: 0; transition: width 1.2s var(--ease-out);
         }
         .result-row.is-leader .result-bar-fill {
             background: linear-gradient(90deg, var(--amber-400), var(--amber-500));
             box-shadow: 0 0 12px rgba(213,168,59,.4);
         }
 
-        /* MODALS — fixed scroll */
+        /* MODALS */
         .modal-backdrop {
             position: fixed; inset: 0; z-index: 2000;
-            background: rgba(2,44,34,.7);
-            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            background: rgba(2,44,34,.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
             display: flex; align-items: center; justify-content: center;
-            padding: 1rem;
-            padding-top: max(1rem, env(safe-area-inset-top));
+            padding: 1rem; padding-top: max(1rem, env(safe-area-inset-top));
             padding-bottom: max(1rem, env(safe-area-inset-bottom));
-            opacity: 0;
-            animation: modalFadeIn .25s ease-out forwards;
+            opacity: 0; animation: modalFadeIn .25s ease-out forwards;
         }
         @keyframes modalFadeIn { to { opacity: 1; } }
 
         .modal {
-            background: var(--white);
-            border-radius: var(--radius-xl);
-            max-width: 520px;
-            width: 100%;
-            height: calc(100vh - 2rem);
-            height: calc(100dvh - 2rem);
-            max-height: calc(100vh - 2rem);
-            max-height: calc(100dvh - 2rem);
-            overflow: hidden;
-            display: flex; flex-direction: column;
-            box-shadow: var(--shadow-xl);
-            animation: modalSlideUp .35s var(--ease-out);
+            background: var(--white); border-radius: var(--radius-xl);
+            max-width: 520px; width: 100%;
+            height: calc(100vh - 2rem); height: calc(100dvh - 2rem);
+            max-height: calc(100vh - 2rem); max-height: calc(100dvh - 2rem);
+            overflow: hidden; display: flex; flex-direction: column;
+            box-shadow: var(--shadow-xl); animation: modalSlideUp .35s var(--ease-out);
         }
         .modal-sm { max-width: 460px; }
         @keyframes modalSlideUp {
@@ -1011,60 +865,32 @@
         .modal-lg { max-width: 720px; }
         .modal-head {
             background: linear-gradient(160deg, var(--emerald-900), var(--emerald-950));
-            color: var(--white);
-            padding: 1.75rem 1.5rem 1.35rem;
-            position: relative;
-            flex-shrink: 0;
+            color: var(--white); padding: 1.75rem 1.5rem 1.35rem;
+            position: relative; flex-shrink: 0;
         }
         .modal-head::before {
-            content: ''; position: absolute;
-            top: -50%; right: -20%;
-            width: 300px; height: 300px;
-            border-radius: 50%;
+            content: ''; position: absolute; top: -50%; right: -20%;
+            width: 300px; height: 300px; border-radius: 50%;
             background: radial-gradient(circle, rgba(251,191,36,.2), transparent 70%);
         }
         .modal-close {
-            position: absolute;
-            top: .75rem; right: .75rem;
-            width: 38px; height: 38px;
-            border-radius: 50%;
-            background: rgba(255,255,255,.1);
-            color: var(--white); border: none;
+            position: absolute; top: .75rem; right: .75rem;
+            width: 38px; height: 38px; border-radius: 50%;
+            background: rgba(255,255,255,.1); color: var(--white); border: none;
             display: flex; align-items: center; justify-content: center;
-            z-index: 5; font-size: .95rem;
-            transition: background var(--dur-fast) var(--ease);
+            z-index: 5; font-size: .95rem; transition: background var(--dur-fast) var(--ease);
         }
         .modal-close:hover { background: rgba(255,255,255,.22); }
-        .modal-title {
-            font-family: var(--font-sans);
-            font-size: 1.3rem; font-weight: 800;
-            margin-bottom: .3rem;
-            position: relative;
-            letter-spacing: -.02em;
-        }
-        .modal-sub {
-            font-size: .82rem;
-            color: rgba(236,253,245,.75);
-            position: relative;
-            line-height: 1.5;
-        }
+        .modal-title { font-family: var(--font-sans); font-size: 1.3rem; font-weight: 800; margin-bottom: .3rem; position: relative; letter-spacing: -.02em; }
+        .modal-sub { font-size: .82rem; color: rgba(236,253,245,.75); position: relative; line-height: 1.5; }
         .modal-body {
-            padding: 1.5rem;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-            overscroll-behavior: contain;
-            flex: 1 1 auto;
-            min-height: 0;
+            padding: 1.5rem; overflow-y: auto; -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain; flex: 1 1 auto; min-height: 0;
         }
         .modal-foot {
-            padding: 1rem 1.5rem;
-            border-top: 1px solid var(--slate-200);
-            display: flex;
-            gap: .65rem;
-            justify-content: flex-end;
-            flex-wrap: wrap;
-            flex-shrink: 0;
-            background: var(--slate-50);
+            padding: 1rem 1.5rem; border-top: 1px solid var(--slate-200);
+            display: flex; gap: .65rem; justify-content: flex-end; flex-wrap: wrap;
+            flex-shrink: 0; background: var(--slate-50);
         }
         @media (max-width: 540px) {
             .modal-body { padding: 1.15rem; }
@@ -1074,243 +900,128 @@
 
         /* CANDIDATE MODAL */
         .candidate-modal-avatar {
-            width: 88px; height: 88px;
-            border-radius: 50%;
+            width: 88px; height: 88px; border-radius: 50%;
             background: linear-gradient(135deg, var(--amber-400), var(--amber-600));
-            color: var(--emerald-950);
-            display: flex; align-items: center; justify-content: center;
-            font-family: var(--font-sans);
-            font-size: 1.9rem; font-weight: 800;
-            margin: 0 auto 1rem;
-            position: relative;
-            border: 4px solid var(--emerald-800);
+            color: var(--emerald-950); display: flex; align-items: center; justify-content: center;
+            font-family: var(--font-sans); font-size: 1.9rem; font-weight: 800;
+            margin: 0 auto 1rem; position: relative; border: 4px solid var(--emerald-800);
             box-shadow: 0 8px 22px rgba(0,0,0,.3);
         }
         .candidate-modal-tag {
-            display: inline-block;
-            padding: .25rem .75rem;
-            background: var(--amber-400);
-            color: var(--emerald-950);
-            border-radius: 999px;
-            font-family: var(--font-mono);
-            font-size: .6rem; font-weight: 800;
-            letter-spacing: .1em;
-            text-transform: uppercase;
-            margin-bottom: .55rem;
-            position: relative;
+            display: inline-block; padding: .25rem .75rem;
+            background: var(--amber-400); color: var(--emerald-950); border-radius: 999px;
+            font-family: var(--font-mono); font-size: .6rem; font-weight: 800;
+            letter-spacing: .1em; text-transform: uppercase; margin-bottom: .55rem; position: relative;
         }
-        .candidate-modal-head-name {
-            font-family: var(--font-sans);
-            font-size: 1.4rem; font-weight: 800;
-            margin-bottom: .3rem;
-            position: relative;
-            letter-spacing: -.02em;
-        }
-        .candidate-modal-head-meta {
-            color: rgba(236,253,245,.7);
-            font-size: .78rem;
-            font-family: var(--font-mono);
-            position: relative;
-        }
-        .candidate-modal-body h4 {
-            font-family: var(--font-sans);
-            font-size: 1rem; font-weight: 800;
-            color: var(--slate-900);
-            margin-bottom: .65rem;
-            margin-top: 1rem;
-        }
+        .candidate-modal-head-name { font-family: var(--font-sans); font-size: 1.4rem; font-weight: 800; margin-bottom: .3rem; position: relative; letter-spacing: -.02em; }
+        .candidate-modal-head-meta { color: rgba(236,253,245,.7); font-size: .78rem; font-family: var(--font-mono); position: relative; }
+        .candidate-modal-body h4 { font-family: var(--font-sans); font-size: 1rem; font-weight: 800; color: var(--slate-900); margin-bottom: .65rem; margin-top: 1rem; }
         .candidate-modal-body h4:first-child { margin-top: 0; }
         .candidate-modal-body p { font-size: .875rem; color: var(--slate-600); line-height: 1.65; }
         .candidate-modal-body .quote {
-            padding: 1.1rem 1.15rem;
-            background: var(--slate-50);
-            border-left: 3px solid var(--amber-400);
-            border-radius: var(--radius-sm);
-            font-style: italic;
-            color: var(--slate-700);
-            font-size: .875rem; line-height: 1.6;
+            padding: 1.1rem 1.15rem; background: var(--slate-50);
+            border-left: 3px solid var(--amber-400); border-radius: var(--radius-sm);
+            font-style: italic; color: var(--slate-700); font-size: .875rem; line-height: 1.6;
         }
 
         /* NOMINATION MODAL */
         .nom-step-head {
             display: flex; align-items: center; gap: .6rem;
-            font-family: var(--font-mono);
-            font-size: .68rem; font-weight: 700;
-            letter-spacing: .1em; text-transform: uppercase;
-            color: var(--emerald-700);
-            margin-bottom: .85rem;
+            font-family: var(--font-mono); font-size: .68rem; font-weight: 700;
+            letter-spacing: .1em; text-transform: uppercase; color: var(--emerald-700); margin-bottom: .85rem;
         }
         .nom-step-head span {
-            width: 24px; height: 24px;
-            border-radius: 50%;
-            background: var(--emerald-700);
-            color: var(--white);
-            display: inline-flex; align-items: center; justify-content: center;
+            width: 24px; height: 24px; border-radius: 50%; background: var(--emerald-700);
+            color: var(--white); display: inline-flex; align-items: center; justify-content: center;
             font-size: .7rem; flex-shrink: 0;
         }
         .nominee-card {
-            background: var(--slate-50);
-            border: 1px solid var(--slate-200);
-            border-radius: var(--radius);
-            padding: 1rem; margin-bottom: .85rem;
-            position: relative;
+            background: var(--slate-50); border: 1px solid var(--slate-200);
+            border-radius: var(--radius); padding: 1rem; margin-bottom: .85rem;
         }
-        .nominee-card-head {
-            display: flex; align-items: center; justify-content: space-between;
-            gap: .5rem; margin-bottom: .75rem;
-        }
+        .nominee-card-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .75rem; }
         .nominee-card-title {
-            font-family: var(--font-mono);
-            font-size: .7rem; font-weight: 700;
-            letter-spacing: .08em;
-            text-transform: uppercase;
-            color: var(--slate-500);
+            font-family: var(--font-mono); font-size: .7rem; font-weight: 700;
+            letter-spacing: .08em; text-transform: uppercase; color: var(--slate-500);
         }
         .nominee-remove-btn {
-            background: transparent; border: none;
-            color: var(--danger);
-            font-size: .8rem; font-weight: 600;
-            padding: .2rem .5rem; border-radius: 6px;
+            background: transparent; border: none; color: var(--danger);
+            font-size: .8rem; font-weight: 600; padding: .2rem .5rem; border-radius: 6px;
             transition: background var(--dur-fast) var(--ease);
         }
         .nominee-remove-btn:hover { background: #fef2f2; }
         .nominee-card .field { margin-bottom: .85rem; }
         .nominee-card .field:last-child { margin-bottom: 0; }
-        .nominee-card .field input,
-        .nominee-card .field select,
-        .nominee-card .field textarea {
-            min-height: 44px; font-size: .82rem;
-            padding-top: .7rem; padding-bottom: .7rem;
+        .nominee-card .field input, .nominee-card .field select, .nominee-card .field textarea {
+            min-height: 44px; font-size: .82rem; padding-top: .7rem; padding-bottom: .7rem;
         }
         .nominee-card .field textarea { min-height: 68px; }
 
         .add-nominee-btn {
-            display: flex; align-items: center; justify-content: center;
-            gap: .5rem;
-            width: 100%;
-            padding: .85rem 1rem;
-            background: transparent;
-            border: 2px dashed var(--slate-300);
-            border-radius: var(--radius);
-            color: var(--emerald-700);
-            font-weight: 700; font-size: .85rem;
-            cursor: pointer;
-            transition: all var(--dur-fast) var(--ease);
-            margin-bottom: 1.25rem;
+            display: flex; align-items: center; justify-content: center; gap: .5rem;
+            width: 100%; padding: .85rem 1rem; background: transparent;
+            border: 2px dashed var(--slate-300); border-radius: var(--radius);
+            color: var(--emerald-700); font-weight: 700; font-size: .85rem;
+            cursor: pointer; transition: all var(--dur-fast) var(--ease); margin-bottom: 1.25rem;
         }
-        .add-nominee-btn:hover {
-            border-color: var(--emerald-500);
-            background: var(--emerald-50);
-        }
-        .add-nominee-btn i { font-size: .8rem; }
-
+        .add-nominee-btn:hover { border-color: var(--emerald-500); background: var(--emerald-50); }
         .divider { height: 1px; background: var(--slate-200); margin: 1.5rem 0; }
 
-        /* READ-ONLY IDENTITY CARD (inside nomination modal) */
         .identity-card {
-            display: flex; align-items: center; gap: .9rem;
-            padding: .95rem 1.1rem;
+            display: flex; align-items: center; gap: .9rem; padding: .95rem 1.1rem;
             background: linear-gradient(135deg, var(--emerald-50), var(--white));
-            border: 1px solid var(--emerald-200);
-            border-radius: var(--radius);
-            margin-bottom: 1.1rem;
+            border: 1px solid var(--emerald-200); border-radius: var(--radius); margin-bottom: 1.1rem;
         }
         .identity-avatar {
             width: 46px; height: 46px; border-radius: 50%;
             background: linear-gradient(135deg, var(--emerald-700), var(--emerald-950));
-            color: var(--amber-300);
-            display: flex; align-items: center; justify-content: center;
-            font-family: var(--font-sans);
-            font-weight: 800; font-size: 1rem;
-            flex-shrink: 0;
+            color: var(--amber-300); display: flex; align-items: center; justify-content: center;
+            font-family: var(--font-sans); font-weight: 800; font-size: 1rem; flex-shrink: 0;
         }
         .identity-body { min-width: 0; }
-        .identity-body strong {
-            display: block; font-size: .9rem; font-weight: 800;
-            color: var(--slate-900);
-        }
-        .identity-body span {
-            font-family: var(--font-mono); font-size: .7rem;
-            color: var(--slate-500);
-        }
+        .identity-body strong { display: block; font-size: .9rem; font-weight: 800; color: var(--slate-900); }
+        .identity-body span { font-family: var(--font-mono); font-size: .7rem; color: var(--slate-500); }
 
         /* STATE BOX */
         .state-box {
-            text-align: center;
-            padding: 3rem 1.5rem;
-            background: var(--white);
-            border: 1px solid var(--slate-200);
-            border-radius: var(--radius-lg);
+            text-align: center; padding: 3rem 1.5rem;
+            background: var(--white); border: 1px solid var(--slate-200); border-radius: var(--radius-lg);
         }
         @media (max-width: 640px) { .state-box { padding: 2rem 1rem; } }
         .state-box-icon {
-            width: 72px; height: 72px;
-            border-radius: 50%;
-            background: var(--slate-100);
-            color: var(--slate-400);
+            width: 72px; height: 72px; border-radius: 50%;
+            background: var(--slate-100); color: var(--slate-400);
             display: flex; align-items: center; justify-content: center;
-            margin: 0 auto 1.1rem;
-            font-size: 1.65rem;
+            margin: 0 auto 1.1rem; font-size: 1.65rem;
         }
-        .state-box h3 {
-            font-family: var(--font-sans);
-            font-size: 1.25rem; font-weight: 800;
-            color: var(--slate-900);
-            margin-bottom: .45rem;
-        }
-        .state-box p {
-            font-size: .875rem;
-            color: var(--slate-500);
-            max-width: 32rem;
-            margin: 0 auto 1.25rem;
-            line-height: 1.6;
-        }
+        .state-box h3 { font-family: var(--font-sans); font-size: 1.25rem; font-weight: 800; color: var(--slate-900); margin-bottom: .45rem; }
+        .state-box p { font-size: .875rem; color: var(--slate-500); max-width: 32rem; margin: 0 auto 1.25rem; line-height: 1.6; }
 
         .loading-box { text-align: center; padding: 3rem 1rem; }
         .spinner {
-            width: 44px; height: 44px;
-            border: 3px solid var(--slate-200);
-            border-top-color: var(--emerald-600);
-            border-radius: 50%;
-            animation: spin .8s linear infinite;
-            margin: 0 auto 1rem;
+            width: 44px; height: 44px; border: 3px solid var(--slate-200);
+            border-top-color: var(--emerald-600); border-radius: 50%;
+            animation: spin .8s linear infinite; margin: 0 auto 1rem;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
         .vote-success {
-            text-align: center;
-            padding: 2.5rem 1.5rem;
-            background: var(--white);
-            border: 1px solid var(--slate-200);
-            border-radius: var(--radius-lg);
+            text-align: center; padding: 2.5rem 1.5rem;
+            background: var(--white); border: 1px solid var(--slate-200); border-radius: var(--radius-lg);
         }
         .vote-success-icon {
-            width: 88px; height: 88px;
-            border-radius: 50%;
+            width: 88px; height: 88px; border-radius: 50%;
             background: linear-gradient(135deg, var(--emerald-500), var(--emerald-700));
-            color: var(--white);
-            display: flex; align-items: center; justify-content: center;
-            margin: 0 auto 1.5rem;
-            font-size: 2.25rem;
-            box-shadow: 0 16px 34px rgba(4,120,87,.35);
+            color: var(--white); display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 1.5rem; font-size: 2.25rem; box-shadow: 0 16px 34px rgba(4,120,87,.35);
         }
-        .vote-success h3 {
-            font-family: var(--font-sans);
-            font-size: 1.4rem; font-weight: 800;
-            color: var(--slate-900);
-            margin-bottom: .5rem;
-        }
-        .vote-success p {
-            font-size: .9rem; color: var(--slate-500);
-            max-width: 34rem; margin: 0 auto;
-            line-height: 1.6;
-        }
+        .vote-success h3 { font-family: var(--font-sans); font-size: 1.4rem; font-weight: 800; color: var(--slate-900); margin-bottom: .5rem; }
+        .vote-success p { font-size: .9rem; color: var(--slate-500); max-width: 34rem; margin: 0 auto; line-height: 1.6; }
 
         /* FOOTER */
         .footer {
             background: linear-gradient(160deg, var(--slate-900), #020617);
-            color: var(--slate-300);
-            padding: 3.5rem 0 1.5rem;
+            color: var(--slate-300); padding: 3.5rem 0 1.5rem;
             padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
             border-top: 3px solid var(--emerald-600);
         }
@@ -1319,33 +1030,16 @@
         .footer-grid { display: grid; grid-template-columns: 1fr; gap: 2.5rem; margin-bottom: 2.5rem; }
         @media (min-width: 640px) { .footer-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (min-width: 1024px) { .footer-grid { grid-template-columns: 1.4fr 1fr 1fr 1.2fr; gap: 3rem; } }
-        .footer-section h3 {
-            font-family: var(--font-sans);
-            font-size: 1.35rem; font-weight: 800;
-            color: var(--white); margin-bottom: 1rem;
-            letter-spacing: -.02em;
-        }
+        .footer-section h3 { font-family: var(--font-sans); font-size: 1.35rem; font-weight: 800; color: var(--white); margin-bottom: 1rem; letter-spacing: -.02em; }
         .footer-section h3 span { color: var(--amber-400); }
-        .footer-section h4 {
-            font-family: var(--font-mono);
-            font-size: .7rem; font-weight: 800;
-            text-transform: uppercase;
-            color: var(--emerald-400);
-            letter-spacing: .14em; margin-bottom: 1.1rem;
-        }
-        .footer-text {
-            font-size: .85rem; color: var(--slate-400);
-            line-height: 1.6; margin-bottom: 1.15rem;
-        }
+        .footer-section h4 { font-family: var(--font-mono); font-size: .7rem; font-weight: 800; text-transform: uppercase; color: var(--emerald-400); letter-spacing: .14em; margin-bottom: 1.1rem; }
+        .footer-text { font-size: .85rem; color: var(--slate-400); line-height: 1.6; margin-bottom: 1.15rem; }
         .social-icons { display: flex; gap: .6rem; flex-wrap: wrap; }
         .social-icons a {
-            width: 40px; height: 40px;
-            border-radius: 10px;
-            background: rgba(255,255,255,.04);
-            border: 1px solid rgba(255,255,255,.08);
+            width: 40px; height: 40px; border-radius: 10px;
+            background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
             display: inline-flex; align-items: center; justify-content: center;
-            color: var(--slate-400);
-            transition: all var(--dur-fast) var(--ease);
+            color: var(--slate-400); transition: all var(--dur-fast) var(--ease);
         }
         .social-icons a:hover { color: var(--amber-400); border-color: var(--amber-400); background: rgba(251,191,36,.08); }
         .footer-links { list-style: none; }
@@ -1355,11 +1049,8 @@
         .footer-contact-item { display: flex; align-items: flex-start; gap: .7rem; margin-bottom: .85rem; font-size: .82rem; }
         .footer-contact-icon { color: var(--emerald-400); flex-shrink: 0; margin-top: .15rem; }
         .footer-bottom {
-            border-top: 1px solid rgba(255,255,255,.08);
-            padding-top: 1.5rem;
-            display: flex; flex-direction: column;
-            align-items: center; gap: .85rem;
-            text-align: center;
+            border-top: 1px solid rgba(255,255,255,.08); padding-top: 1.5rem;
+            display: flex; flex-direction: column; align-items: center; gap: .85rem; text-align: center;
         }
         @media (min-width: 640px) { .footer-bottom { flex-direction: row; justify-content: space-between; text-align: left; } }
         .footer-bottom p { font-family: var(--font-mono); font-size: .72rem; color: var(--slate-500); }
@@ -1398,51 +1089,26 @@
     </style>
 </head>
 <body>
-    <nav class="navbar" id="navbar">
+    <nav class="navbar" id="navbar" aria-label="Primary navigation">
         <div class="nav-container">
             <div class="nav-flex">
-                <a href="/" class="logo-link" aria-label="NUESA BIU Home">
+                <a href="index.html" class="logo-link" aria-label="NUESA BIU Home">
                     <span class="logo-main">N.U.E.S.A</span>
                     <span class="logo-highlight">BIU</span>
                 </a>
                 <div class="nav-menu">
-                    <ul class="nav-links">
-                        <li><a href="index.html">HOME</a></li>
-                        <li><a href="about.html">ABOUT</a></li>
-                        <li><a href="members.html">MEMBERS</a></li>
-                        <li><a href="events.html">EVENTS</a></li>
-                        <li><a href="resources.html">RESOURCES</a></li>
-                        <li><a href="timetables.html">TIME TABLES</a></li>
-                        <li><a href="admission.html">ADMISSION</a></li>
-                        <li><a href="courseReps.html">COURSE REPS</a></li>
-                        <li><a href="news.html">NEWS</a></li>
-                        <li><a href="contacts.html">CONTACT</a></li>
-                        <li><a href="elections.html" class="active">ELECTIONS</a></li>
-                        <li><a href="awards.html">AWARDS</a></li>
-                        <li><a href="gallery.html">GALLERY</a></li>
-                    </ul>
+                    <ul class="nav-links" id="desktopNavLinks"></ul>
                 </div>
-                <button class="hamburger" id="hamburger" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobileNav">
+                <button class="hamburger" id="hamburger" type="button"
+                    aria-label="Toggle navigation menu"
+                    aria-expanded="false"
+                    aria-controls="mobileNav">
                     <span></span><span></span><span></span>
                 </button>
             </div>
         </div>
-        <div class="mobile-nav" id="mobileNav" aria-hidden="true">
-            <ul>
-                <li><a href="index.html">HOME</a></li>
-                <li><a href="about.html">ABOUT</a></li>
-                <li><a href="members.html">MEMBERS</a></li>
-                <li><a href="events.html">EVENTS</a></li>
-                <li><a href="resources.html">RESOURCES</a></li>
-                <li><a href="timetables.html">TIME TABLES</a></li>
-                <li><a href="admission.html">ADMISSION</a></li>
-                <li><a href="courseReps.html">COURSE REPS</a></li>
-                <li><a href="news.html">NEWS</a></li>
-                <li><a href="contacts.html">CONTACT</a></li>
-                <li><a href="elections.html" class="active">ELECTIONS</a></li>
-                <li><a href="awards.html">AWARDS</a></li>
-                <li><a href="gallery.html">GALLERY</a></li>
-            </ul>
+        <div class="mobile-nav" id="mobileNav" aria-hidden="true" inert>
+            <ul id="mobileNavLinks"></ul>
         </div>
     </nav>
 
@@ -1695,10 +1361,27 @@
 
 <script>
     /* ============================================================
-       CONFIG
+       CONFIG & CONSTANTS
        ============================================================ */
     const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
     const STORAGE_KEY = 'nuesa_voter_session';
+    const NOMINATION_OPEN_PHASES = new Set(['preparation', 'pending', 'nomination']);
+
+    const NAV_ITEMS = [
+        { label: 'HOME', href: 'index.html' },
+        { label: 'ABOUT', href: 'about.html' },
+        { label: 'MEMBERS', href: 'members.html' },
+        { label: 'EVENTS', href: 'events.html' },
+        { label: 'RESOURCES', href: 'resources.html' },
+        { label: 'TIME TABLES', href: 'timetables.html' },
+        { label: 'ADMISSION', href: 'admission.html' },
+        { label: 'COURSE REPS', href: 'courseReps.html' },
+        { label: 'NEWS', href: 'news.html' },
+        { label: 'CONTACT', href: 'contacts.html' },
+        { label: 'ELECTIONS', href: 'elections.html' },
+        { label: 'AWARDS', href: 'awards.html' },
+        { label: 'GALLERY', href: 'gallery.html' }
+    ];
 
     const DEFAULT_DEPARTMENTS = [
         'Electrical/Electronics Engineering',
@@ -1717,25 +1400,22 @@
     let election = null;
     let electionPhase = 'closed';
     let resultsPublished = false;
-    let electionLoaded = false;
     let tallies = {};
     let hasVoted = false;
     let votes = {};
-
     let verifiedVoter = loadVoterSession();
 
     const statusTitle = document.getElementById('statusTitle');
     const statusPhase = document.getElementById('statusPhase');
     const statusPositions = document.getElementById('statusPositions');
     const statusCandidates = document.getElementById('statusCandidates');
-
     const infoGrid = document.getElementById('infoGrid');
     const candidatesContent = document.getElementById('candidatesContent');
     const voteContent = document.getElementById('voteContent');
     const resultsContent = document.getElementById('resultsContent');
-    const regBanner = document.getElementById('regBanner');
     const regBannerBody = document.getElementById('regBannerBody');
     const openRegisterBtn = document.getElementById('openRegisterBtn');
+    const openNominateBtn = document.getElementById('openNominateBtn');
 
     /* ============================================================
        SESSION STORAGE
@@ -1754,7 +1434,7 @@
     }
 
     /* ============================================================
-       BODY SCROLL LOCK (stack-aware)
+       BODY SCROLL LOCK
        ============================================================ */
     let scrollLockCount = 0;
     let scrollLockY = 0;
@@ -1785,7 +1465,6 @@
             .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
-    // Uses first + last initial. Never returns 'U' for the word "Unknown".
     function initials(name) {
         if (!name || typeof name !== 'string') return '?';
         const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -1796,12 +1475,14 @@
 
     function phaseLabel(phase) {
         return ({
-            'pending':    'Opens Soon',
-            'nomination': 'Nominations Open',
-            'voting':     'Voting Open',
-            'closed':     'Voting Closed'
+            'preparation': 'Preparation',
+            'pending':     'Opens Soon',
+            'nomination':  'Nominations Open',
+            'voting':      'Voting Open',
+            'closed':      'Voting Closed'
         })[phase] || 'Not Started';
     }
+
     function formatDate(iso) {
         if (!iso) return '—';
         try {
@@ -1813,34 +1494,30 @@
             });
         } catch { return '—'; }
     }
+
     function candidatesFor(positionId) {
         return CANDIDATES.filter(c => String(c.positionId) === String(positionId));
     }
+
     function positionsWithCandidates() {
         return POSITIONS.filter(p => candidatesFor(p.id).length > 0);
     }
+
     function normalizeMatric(m) {
         return String(m || '').trim().toUpperCase();
     }
+
     function validatePhone(p) {
         return /^[0-9+\-\s()]{7,20}$/.test(String(p || '').trim());
     }
 
-    /**
-     * Defensive candidate normalizer. Accepts every common API key shape
-     * so a field-name mismatch can never blank out a candidate.
-     */
     function normalizeCandidate(c, positionId) {
         if (!c || typeof c !== 'object') return null;
 
         let name =
-            c.name ||
-            c.full_name ||
-            c.fullName ||
-            c.candidate_name ||
-            c.candidateName ||
-            c.student_name ||
-            c.studentName;
+            c.name || c.full_name || c.fullName ||
+            c.candidate_name || c.candidateName ||
+            c.student_name || c.studentName;
 
         if (!name) {
             const first = c.first_name || c.firstName || '';
@@ -1848,26 +1525,9 @@
             name = [first, last].filter(Boolean).join(' ').trim();
         }
 
-        const department =
-            c.department ||
-            c.department_name ||
-            c.departmentName ||
-            c.dept ||
-            '';
-
-        const level =
-            c.level ||
-            c.academic_level ||
-            c.academicLevel ||
-            c.class_level ||
-            '';
-
-        const manifesto =
-            c.manifesto ||
-            c.manifest ||
-            c.statement ||
-            c.bio ||
-            '';
+        const department = c.department || c.department_name || c.departmentName || c.dept || '';
+        const level = c.level || c.academic_level || c.academicLevel || c.class_level || '';
+        const manifesto = c.manifesto || c.manifest || c.statement || c.bio || '';
 
         return {
             id:         c.id ?? c.candidate_id ?? c.candidateId ?? null,
@@ -1882,14 +1542,14 @@
     function normalizeVoterRecord(v) {
         if (!v) return null;
         return {
-            voterId:       v.voterId      ?? v.voter_id      ?? '',
-            fullName:      v.fullName     ?? v.full_name     ?? '',
-            matricNumber:  v.matricNumber ?? v.matric_no     ?? '',
-            phone:         v.phone        ?? '',
-            department:    v.department   ?? '',
-            level:         v.level        ?? '',
-            hasVoted:      !!(v.hasVoted  ?? v.has_voted),
-            eligibleToVote:(v.eligibleToVote ?? v.eligible_to_vote) !== false
+            voterId:        v.voterId      ?? v.voter_id      ?? '',
+            fullName:       v.fullName     ?? v.full_name     ?? '',
+            matricNumber:   v.matricNumber ?? v.matric_no     ?? '',
+            phone:          v.phone        ?? '',
+            department:     v.department   ?? '',
+            level:          v.level        ?? '',
+            hasVoted:       !!(v.hasVoted  ?? v.has_voted),
+            eligibleToVote: (v.eligibleToVote ?? v.eligible_to_vote) !== false
         };
     }
 
@@ -1900,36 +1560,66 @@
         const navbar = document.getElementById('navbar');
         const hamburger = document.getElementById('hamburger');
         const mobileNav = document.getElementById('mobileNav');
-        const mobileLinks = document.querySelectorAll('.mobile-nav ul li a');
-        const desktopLinks = document.querySelectorAll('.nav-links li a');
+        const desktopList = document.getElementById('desktopNavLinks');
+        const mobileList = document.getElementById('mobileNavLinks');
+        if (!navbar || !hamburger || !mobileNav || !desktopList || !mobileList) return;
 
-        let path = window.location.pathname.replace(/\.html$/, '');
-        if (path === '/index') path = '/';
-        [...desktopLinks, ...mobileLinks].forEach(link => {
-            const href = (link.getAttribute('href') || '').replace('.html', '');
-            const isActive = href === path || (href === 'elections' && path.includes('election'));
-            link.classList.toggle('active', isActive);
-        });
+        const currentPage = (window.location.pathname.split('/').pop() || 'elections.html').toLowerCase();
+
+        const renderList = (container) => {
+            container.innerHTML = NAV_ITEMS.map(({ label, href }) => {
+                const target = href.toLowerCase();
+                const isActive =
+                    target === currentPage ||
+                    (currentPage === '' && target === 'index.html') ||
+                    (target === 'elections.html' && currentPage.includes('election'));
+
+                return `<li><a href="${href}" class="${isActive ? 'active' : ''}"${isActive ? ' aria-current="page"' : ''}>${label}</a></li>`;
+            }).join('');
+        };
+
+        renderList(desktopList);
+        renderList(mobileList);
 
         const onScroll = () => navbar.classList.toggle('scrolled', window.scrollY > 20);
         window.addEventListener('scroll', onScroll, { passive: true });
         onScroll();
 
-        function toggleMenu(open) {
+        function setMenuState(open) {
             hamburger.classList.toggle('active', open);
             hamburger.setAttribute('aria-expanded', String(open));
+            hamburger.setAttribute('aria-label', open ? 'Close navigation menu' : 'Toggle navigation menu');
+
             mobileNav.classList.toggle('active', open);
             mobileNav.setAttribute('aria-hidden', String(!open));
+            if ('inert' in mobileNav) mobileNav.inert = !open;
             document.body.classList.toggle('menu-open', open);
         }
+
+        setMenuState(false);
+
         hamburger.addEventListener('click', (e) => {
-            e.preventDefault(); e.stopPropagation();
-            toggleMenu(!hamburger.classList.contains('active'));
+            e.preventDefault();
+            e.stopPropagation();
+            setMenuState(!mobileNav.classList.contains('active'));
         });
-        mobileLinks.forEach(l => l.addEventListener('click', () => toggleMenu(false)));
+
+        mobileList.addEventListener('click', (e) => {
+            if (e.target.closest('a')) setMenuState(false);
+        });
+
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && mobileNav.classList.contains('active')) toggleMenu(false);
+            if (e.key === 'Escape' && mobileNav.classList.contains('active')) {
+                setMenuState(false);
+                hamburger.focus();
+            }
         });
+
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 1240 && mobileNav.classList.contains('active')) {
+                setMenuState(false);
+            }
+        }, { passive: true });
     })();
 
     /* ============================================================
@@ -1946,8 +1636,6 @@
     }
 
     async function fetchTallies() {
-        // Only meaningful once results are published — but never short-circuit
-        // on phase, because a closed election may still have unpublished results.
         if (!resultsPublished) return {};
         try {
             const res = await fetch(`${API_BASE_URL}/api/elections/tallies`, {
@@ -1961,7 +1649,6 @@
 
     function mapElectionData(raw) {
         raw = raw || {};
-
         POSITIONS = (raw.positions || []).map(p => ({
             id: p.id, title: p.title || 'Untitled Position', description: p.description || ''
         }));
@@ -1978,25 +1665,40 @@
         const derivedLevels = [...new Set(CANDIDATES.map(c => c.level).filter(Boolean))]
             .sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
 
-        DEPARTMENTS = (
-            (Array.isArray(raw.departments) && raw.departments.length) ? raw.departments :
-            derivedDepartments.length ? derivedDepartments :
-            DEFAULT_DEPARTMENTS.slice()
-        );
-        LEVELS = (
-            (Array.isArray(raw.levels) && raw.levels.length) ? raw.levels :
-            derivedLevels.length ? derivedLevels :
-            DEFAULT_LEVELS.slice()
-        );
+        DEPARTMENTS = (Array.isArray(raw.departments) && raw.departments.length)
+            ? raw.departments
+            : derivedDepartments.length ? derivedDepartments : DEFAULT_DEPARTMENTS.slice();
+
+        LEVELS = (Array.isArray(raw.levels) && raw.levels.length)
+            ? raw.levels
+            : derivedLevels.length ? derivedLevels : DEFAULT_LEVELS.slice();
 
         electionPhase = raw.phase || 'closed';
         resultsPublished = !!raw.results_published;
-        electionLoaded = true;
+    }
+
+    function syncNominationAvailability() {
+        if (!openNominateBtn) return;
+        const isOpen = NOMINATION_OPEN_PHASES.has(electionPhase);
+        openNominateBtn.disabled = !isOpen;
+        openNominateBtn.innerHTML = isOpen
+            ? '<i class="fas fa-pen-to-square"></i> Access Nomination'
+            : '<i class="fas fa-lock"></i> Nominations closed';
     }
 
     /* ============================================================
        REGISTRATION STATUS BANNER
        ============================================================ */
+    function handleEndSession() {
+        clearVoterSession();
+        verifiedVoter = null;
+        hasVoted = false;
+        votes = {};
+        renderRegBanner();
+        renderVote();
+        showFloatingToast('Session ended. You can register again with your matric number.', 'info');
+    }
+
     function renderRegBanner() {
         if (!verifiedVoter) {
             regBannerBody.innerHTML = `
@@ -2004,38 +1706,40 @@
                 <p>Register as a voter to nominate and vote. You only need to do this once for this election.</p>`;
             openRegisterBtn.innerHTML = '<i class="fas fa-user-plus"></i> Register as a Voter';
             openRegisterBtn.disabled = false;
-            openRegisterBtn.onclick = null;
+            openRegisterBtn.onclick = openRegisterModal;
         } else {
             regBannerBody.innerHTML = `
                 <h4>You're registered as ${esc(verifiedVoter.fullName || 'Voter')}</h4>
                 <p>Matric: <strong>${esc(verifiedVoter.matricNumber || '—')}</strong> · You can now nominate and vote.</p>`;
             openRegisterBtn.innerHTML = '<i class="fas fa-right-from-bracket"></i> End Session';
             openRegisterBtn.disabled = false;
-            openRegisterBtn.onclick = () => {
-                clearVoterSession();
-                verifiedVoter = null;
-                hasVoted = false;
-                votes = {};
-                renderRegBanner();
-                renderVote();
-                showFloatingToast('Session ended. You can register again with your matric number.', 'info');
-            };
+            openRegisterBtn.onclick = handleEndSession;
         }
     }
 
     /* ============================================================
-       REGISTER MODAL
+       MODALS: REGISTER / MATRIC PROMPT / CANDIDATE / NOMINATE
        ============================================================ */
-    function openRegisterModal() {
-        if (!DEPARTMENTS.length) DEPARTMENTS = DEFAULT_DEPARTMENTS.slice();
-        if (!LEVELS.length) LEVELS = DEFAULT_LEVELS.slice();
+    function bindModalDismiss(modal, onClose) {
+        const close = () => {
+            document.removeEventListener('keydown', onKeyDown);
+            modal.remove();
+            unlockBodyScroll();
+            if (typeof onClose === 'function') onClose();
+        };
+        function onKeyDown(e) {
+            if (e.key === 'Escape') close();
+        }
+        modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+        const closeBtn = modal.querySelector('.modal-close');
+        if (closeBtn) closeBtn.addEventListener('click', close);
+        document.addEventListener('keydown', onKeyDown);
+        return close;
+    }
 
-        const deptOptions = DEPARTMENTS.map(d =>
-            `<option value="${esc(d)}">${esc(d)}</option>`
-        ).join('');
-        const levelOptions = LEVELS.map(l =>
-            `<option value="${esc(l)}">${esc(l)}</option>`
-        ).join('');
+    function openRegisterModal() {
+        const deptOptions = DEPARTMENTS.map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join('');
+        const levelOptions = LEVELS.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('');
 
         const modal = document.createElement('div');
         modal.className = 'modal-backdrop';
@@ -2044,18 +1748,17 @@
         modal.innerHTML = `
             <div class="modal modal-sm">
                 <div class="modal-head">
-                    <button class="modal-close" aria-label="Close">&times;</button>
+                    <button class="modal-close" type="button" aria-label="Close">&times;</button>
                     <h3 class="modal-title">Register as a Voter</h3>
                     <p class="modal-sub">Complete your details to register for the election. You only need to do this once.</p>
                 </div>
                 <div class="modal-body">
-                    <div class="alert alert-error" id="regError">
+                    <div class="alert alert-error" id="regError" role="alert">
                         <i class="fas fa-exclamation-circle"></i>
                         <span id="regErrorText"></span>
                     </div>
-
                     <div class="field">
-                        <label>Full name</label>
+                        <label for="regName">Full name</label>
                         <div class="field-input-wrap">
                             <i class="fas fa-user"></i>
                             <input type="text" id="regName" placeholder="e.g. John Doe" required autocomplete="name">
@@ -2063,7 +1766,7 @@
                         <div class="field-error">Enter your full name.</div>
                     </div>
                     <div class="field">
-                        <label>Matriculation number</label>
+                        <label for="regMatric">Matriculation number</label>
                         <div class="field-input-wrap">
                             <i class="fas fa-hashtag"></i>
                             <input type="text" id="regMatric" placeholder="e.g. ENG/2021/001" required style="text-transform:uppercase;" autocomplete="off">
@@ -2071,7 +1774,7 @@
                         <div class="field-error">Enter your matriculation number.</div>
                     </div>
                     <div class="field">
-                        <label>Phone number</label>
+                        <label for="regPhone">Phone number</label>
                         <div class="field-input-wrap">
                             <i class="fas fa-phone"></i>
                             <input type="tel" id="regPhone" placeholder="e.g. 08012345678" required autocomplete="tel">
@@ -2079,7 +1782,7 @@
                         <div class="field-error">Enter a valid phone number.</div>
                     </div>
                     <div class="field">
-                        <label>Department</label>
+                        <label for="regDept">Department</label>
                         <div class="field-input-wrap">
                             <i class="fas fa-building"></i>
                             <select id="regDept" required>
@@ -2090,7 +1793,7 @@
                         <div class="field-error">Select your department.</div>
                     </div>
                     <div class="field">
-                        <label>Level</label>
+                        <label for="regLevel">Level</label>
                         <div class="field-input-wrap">
                             <i class="fas fa-graduation-cap"></i>
                             <select id="regLevel" required>
@@ -2111,11 +1814,9 @@
 
         document.body.appendChild(modal);
         lockBodyScroll();
-
-        const close = () => { modal.remove(); unlockBodyScroll(); };
-        modal.addEventListener('click', e => { if (e.target === modal) close(); });
-        modal.querySelector('.modal-close').addEventListener('click', close);
+        const close = bindModalDismiss(modal);
         document.getElementById('cancelRegBtn').addEventListener('click', close);
+        document.getElementById('regName').focus();
 
         document.getElementById('submitRegBtn').addEventListener('click', async function () {
             const errorBox = document.getElementById('regError');
@@ -2137,6 +1838,7 @@
                 { key: 'department', el: document.getElementById('regDept') },
                 { key: 'level', el: document.getElementById('regLevel') }
             ];
+
             let ok = true;
             fields.forEach(f => {
                 const wrap = f.el.closest('.field');
@@ -2146,15 +1848,18 @@
 
             if (!payload.fullName || payload.fullName.length < 3) {
                 errorText.textContent = 'Please enter your full name.';
-                errorBox.classList.add('show'); return;
+                errorBox.classList.add('show');
+                return;
             }
             if (!validatePhone(payload.phone)) {
                 errorText.textContent = 'Please enter a valid phone number.';
-                errorBox.classList.add('show'); return;
+                errorBox.classList.add('show');
+                return;
             }
             if (!ok) {
                 errorText.textContent = 'Please complete all fields before registering.';
-                errorBox.classList.add('show'); return;
+                errorBox.classList.add('show');
+                return;
             }
 
             this.disabled = true;
@@ -2170,12 +1875,13 @@
 
                 if (!res.ok || data.status !== 'success' || !data.data) {
                     let msg = data.message || `Registration failed (${res.status})`;
-                    if (data.code)   msg += ` [${data.code}]`;
+                    if (data.code) msg += ` [${data.code}]`;
                     if (data.detail) msg += `: ${data.detail}`;
                     throw new Error(msg);
                 }
 
                 verifiedVoter = normalizeVoterRecord(data.data);
+                hasVoted = verifiedVoter.hasVoted;
                 saveVoterSession(verifiedVoter);
 
                 close();
@@ -2196,24 +1902,14 @@
         });
     }
 
-    // Single handler on the banner button — no conflicting addEventListener.
-    openRegisterBtn.addEventListener('click', () => {
-        if (verifiedVoter) return;   // End Session handler is set via .onclick
-        openRegisterModal();
-    });
     document.getElementById('heroRegisterBtn').addEventListener('click', (e) => {
         e.preventDefault();
         if (!verifiedVoter) openRegisterModal();
         else document.getElementById('vote').scrollIntoView({ behavior: 'smooth' });
     });
 
-    /* ============================================================
-       MATRIC PROMPT
-       ============================================================ */
-    function openMatricPrompt(opts) {
-        const { mode, onVerified } = opts;
-
-        const titles = {
+    function openMatricPrompt({ mode, onVerified }) {
+        const copies = {
             nominate: {
                 title: 'Access Nomination',
                 sub: 'Enter your registered matriculation number to continue.',
@@ -2227,7 +1923,7 @@
                 icon: 'fa-vote-yea'
             }
         };
-        const t = titles[mode];
+        const t = copies[mode];
 
         const modal = document.createElement('div');
         modal.className = 'modal-backdrop';
@@ -2236,17 +1932,17 @@
         modal.innerHTML = `
             <div class="modal modal-sm">
                 <div class="modal-head">
-                    <button class="modal-close" aria-label="Close">&times;</button>
+                    <button class="modal-close" type="button" aria-label="Close">&times;</button>
                     <h3 class="modal-title">${esc(t.title)}</h3>
                     <p class="modal-sub">${esc(t.sub)}</p>
                 </div>
                 <div class="modal-body">
-                    <div class="alert alert-error" id="promptError">
+                    <div class="alert alert-error" id="promptError" role="alert">
                         <i class="fas fa-exclamation-circle"></i>
                         <span id="promptErrorText"></span>
                     </div>
                     <div class="field">
-                        <label>Matriculation number</label>
+                        <label for="promptMatric">Matriculation number</label>
                         <div class="field-input-wrap">
                             <i class="fas fa-hashtag"></i>
                             <input type="text" id="promptMatric"
@@ -2267,10 +1963,7 @@
 
         document.body.appendChild(modal);
         lockBodyScroll();
-
-        const close = () => { modal.remove(); unlockBodyScroll(); };
-        modal.addEventListener('click', e => { if (e.target === modal) close(); });
-        modal.querySelector('.modal-close').addEventListener('click', close);
+        const close = bindModalDismiss(modal);
         document.getElementById('promptCancel').addEventListener('click', close);
 
         const input = document.getElementById('promptMatric');
@@ -2284,7 +1977,8 @@
             const matric = normalizeMatric(input.value);
             if (!matric) {
                 errorText.textContent = 'Please enter your matric number.';
-                errorBox.classList.add('show'); return;
+                errorBox.classList.add('show');
+                return;
             }
 
             this.disabled = true;
@@ -2292,7 +1986,6 @@
 
             try {
                 const voter = await verifyVoterByMatric(matric);
-
                 if (!voter) {
                     throw new Error(
                         mode === 'nominate'
@@ -2308,6 +2001,7 @@
                 }
 
                 verifiedVoter = normalizeVoterRecord(voter);
+                hasVoted = verifiedVoter.hasVoted;
                 saveVoterSession(verifiedVoter);
 
                 close();
@@ -2322,21 +2016,15 @@
         });
     }
 
-    /* ============================================================
-       VERIFY VOTER BY MATRIC
-       ============================================================ */
     async function verifyVoterByMatric(matric) {
         const res = await fetch(`${API_BASE_URL}/api/elections/voter/${encodeURIComponent(matric)}`, {
             headers: { 'Accept': 'application/json' }
         });
-
         if (res.status === 404) return null;
-
         const data = await res.json().catch(() => ({}));
         if (!res.ok || data.status !== 'success' || !data.data) {
             throw new Error(data?.message || 'Could not verify your matric number.');
         }
-
         return normalizeVoterRecord(data.data);
     }
 
@@ -2349,6 +2037,7 @@
             statusPhase.textContent = '—';
             statusPositions.textContent = '0';
             statusCandidates.textContent = '0';
+            statusPhase.classList.remove('badge-live');
             return;
         }
         statusTitle.textContent = election.title || 'Election';
@@ -2412,10 +2101,16 @@
 
         candidatesContent.innerHTML = html;
         candidatesContent.querySelectorAll('.candidate-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const id = card.dataset.candidateId;
-                const c = CANDIDATES.find(x => String(x.id) === String(id));
+            const openDetail = () => {
+                const c = CANDIDATES.find(x => String(x.id) === String(card.dataset.candidateId));
                 if (c) openCandidateModal(c);
+            };
+            card.addEventListener('click', openDetail);
+            card.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openDetail();
+                }
             });
         });
     }
@@ -2423,9 +2118,8 @@
     function candidateCardHtml(c, positionName) {
         const displayName = (c.name && c.name.trim()) || 'Unnamed Candidate';
         const metaParts = [];
-        if (c.level && c.level.trim()) metaParts.push(c.level.trim());
-        if (c.department && c.department.trim()) metaParts.push(c.department.trim().split(' ')[0]);
-        const meta = metaParts.join(' · ');
+        if (c.level) metaParts.push(c.level);
+        if (c.department) metaParts.push(c.department.split(' ')[0]);
 
         return `
             <div class="candidate-card" data-candidate-id="${esc(c.id)}" role="button" tabindex="0" aria-label="View ${esc(displayName)} profile">
@@ -2433,7 +2127,7 @@
                 <div class="candidate-body">
                     <span class="candidate-position-tag">${esc(positionName)}</span>
                     <div class="candidate-name">${esc(displayName)}</div>
-                    <div class="candidate-meta">${esc(meta)}</div>
+                    <div class="candidate-meta">${esc(metaParts.join(' · '))}</div>
                     <div class="candidate-cta">View Manifesto <i class="fas fa-arrow-right"></i></div>
                 </div>
             </div>`;
@@ -2442,10 +2136,7 @@
     function openCandidateModal(c) {
         const pos = POSITIONS.find(p => String(p.id) === String(c.positionId));
         const displayName = (c.name && c.name.trim()) || 'Unnamed Candidate';
-        const metaParts = [];
-        if (c.level && c.level.trim()) metaParts.push(c.level.trim());
-        if (c.department && c.department.trim()) metaParts.push(c.department.trim());
-        const meta = metaParts.join(' · ');
+        const metaParts = [c.level, c.department].filter(Boolean);
 
         const modal = document.createElement('div');
         modal.className = 'modal-backdrop';
@@ -2454,11 +2145,11 @@
         modal.innerHTML = `
             <div class="modal">
                 <div class="modal-head" style="text-align:center;">
-                    <button class="modal-close" aria-label="Close">&times;</button>
+                    <button class="modal-close" type="button" aria-label="Close">&times;</button>
                     <div class="candidate-modal-avatar">${esc(initials(displayName))}</div>
                     <span class="candidate-modal-tag">${esc(pos ? pos.title : 'Candidate')}</span>
                     <h3 class="candidate-modal-head-name">${esc(displayName)}</h3>
-                    <p class="candidate-modal-head-meta">${esc(meta)}</p>
+                    <p class="candidate-modal-head-meta">${esc(metaParts.join(' · '))}</p>
                 </div>
                 <div class="modal-body candidate-modal-body">
                     <h4>Manifesto</h4>
@@ -2467,14 +2158,10 @@
                         : `<p>${esc(displayName.split(' ')[0])} has not submitted a written manifesto yet.</p>`}
                 </div>
             </div>`;
+
         document.body.appendChild(modal);
         lockBodyScroll();
-        const close = () => { modal.remove(); unlockBodyScroll(); };
-        modal.addEventListener('click', e => { if (e.target === modal) close(); });
-        modal.querySelector('.modal-close').addEventListener('click', close);
-        document.addEventListener('keydown', function escHandler(e) {
-            if (e.key === 'Escape') { close(); document.removeEventListener('keydown', escHandler); }
-        });
+        bindModalDismiss(modal);
     }
 
     /* ============================================================
@@ -2483,15 +2170,10 @@
     let nomineeCount = 0;
 
     function nomineeCardHtml(index) {
-        const positionOptions = POSITIONS.map(p =>
-            `<option value="${esc(p.id)}">${esc(p.title)}</option>`
-        ).join('');
-        const deptOptions = DEPARTMENTS.map(d =>
-            `<option value="${esc(d)}">${esc(d)}</option>`
-        ).join('');
-        const levelOptions = LEVELS.map(l =>
-            `<option value="${esc(l)}">${esc(l)}</option>`
-        ).join('');
+        const positionOptions = POSITIONS.map(p => `<option value="${esc(p.id)}">${esc(p.title)}</option>`).join('');
+        const deptOptions = DEPARTMENTS.map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join('');
+        const levelOptions = LEVELS.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('');
+
         return `
             <div class="nominee-card" data-nominee-index="${index}">
                 <div class="nominee-card-head">
@@ -2560,8 +2242,12 @@
     }
 
     function openNominateModal() {
+        if (!NOMINATION_OPEN_PHASES.has(electionPhase)) {
+            showFloatingToast('Nominations are currently closed for this election.', 'error');
+            return;
+        }
         if (!POSITIONS.length) {
-            alert('Nominations are not open yet — no positions have been configured.');
+            showFloatingToast('Nominations are not open yet — no positions have been configured.', 'info');
             return;
         }
         if (!verifiedVoter) {
@@ -2577,16 +2263,15 @@
         modal.innerHTML = `
             <div class="modal modal-lg">
                 <div class="modal-head">
-                    <button class="modal-close" aria-label="Close">&times;</button>
+                    <button class="modal-close" type="button" aria-label="Close">&times;</button>
                     <h3 class="modal-title">Nominate candidates</h3>
                     <p class="modal-sub">All nominations are submitted together for the electoral committee to review.</p>
                 </div>
                 <div class="modal-body" id="nominateModalBody">
-                    <div class="alert alert-error" id="nominateError">
+                    <div class="alert alert-error" id="nominateError" role="alert">
                         <i class="fas fa-exclamation-circle"></i>
                         <span id="nominateErrorText"></span>
                     </div>
-
                     <div class="nom-step-head"><span>1</span> Nominator</div>
                     <div class="identity-card">
                         <div class="identity-avatar">${esc(initials(verifiedVoter.fullName))}</div>
@@ -2595,9 +2280,7 @@
                             <span>${esc(verifiedVoter.matricNumber || '—')} · Verified voter</span>
                         </div>
                     </div>
-
                     <div class="divider"></div>
-
                     <div class="nom-step-head"><span>2</span> People you want to nominate</div>
                     <div id="nomineeList"></div>
                     <button type="button" class="add-nominee-btn" id="addNomineeBtn">
@@ -2614,20 +2297,8 @@
 
         document.body.appendChild(modal);
         lockBodyScroll();
-
-        const close = () => { modal.remove(); unlockBodyScroll(); };
-        modal.addEventListener('click', e => { if (e.target === modal) close(); });
-        modal.querySelector('.modal-close').addEventListener('click', close);
+        const close = bindModalDismiss(modal);
         document.getElementById('cancelNominateBtn').addEventListener('click', close);
-
-        function addNominee() {
-            const list = document.getElementById('nomineeList');
-            const card = document.createElement('div');
-            card.innerHTML = nomineeCardHtml(nomineeCount);
-            list.appendChild(card.firstElementChild);
-            nomineeCount++;
-            refreshRemoveButtons();
-        }
 
         function refreshRemoveButtons() {
             const cards = document.querySelectorAll('#nomineeList .nominee-card');
@@ -2646,10 +2317,19 @@
             });
         }
 
+        function addNominee() {
+            const list = document.getElementById('nomineeList');
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = nomineeCardHtml(nomineeCount);
+            list.appendChild(wrapper.firstElementChild);
+            nomineeCount++;
+            refreshRemoveButtons();
+        }
+
         addNominee();
         document.getElementById('addNomineeBtn').addEventListener('click', addNominee);
 
-        document.getElementById('submitNominateBtn').addEventListener('click', async () => {
+        document.getElementById('submitNominateBtn').addEventListener('click', async function () {
             const errorBox = document.getElementById('nominateError');
             const errorText = document.getElementById('nominateErrorText');
             errorBox.classList.remove('show');
@@ -2661,10 +2341,7 @@
 
             nomineeCards.forEach(card => {
                 const idx = card.dataset.nomineeIndex;
-                const get = name => {
-                    const el = card.querySelector(`[name="${name}"]`);
-                    return el ? el.value.trim() : '';
-                };
+                const get = name => card.querySelector(`[name="${name}"]`)?.value.trim() || '';
                 const nominee = {
                     positionId: get(`nominee_position_${idx}`),
                     name: get(`nominee_name_${idx}`),
@@ -2673,44 +2350,42 @@
                     level: get(`nominee_level_${idx}`),
                     reason: get(`nominee_reason_${idx}`)
                 };
-                if (!nominee.positionId || !nominee.name || !nominee.matric || !nominee.department || !nominee.level) {
-                    valid = false;
-                    card.querySelectorAll('.field').forEach(f => {
-                        const input = f.querySelector('input, select');
-                        if (input && !input.value.trim()) f.classList.add('has-error');
-                        else f.classList.remove('has-error');
-                    });
-                } else {
-                    card.querySelectorAll('.field').forEach(f => f.classList.remove('has-error'));
-                }
+
+                card.querySelectorAll('.field').forEach(f => {
+                    const input = f.querySelector('input, select');
+                    if (input && !input.value.trim()) {
+                        f.classList.add('has-error');
+                        valid = false;
+                    } else {
+                        f.classList.remove('has-error');
+                    }
+                });
                 nominees.push(nominee);
             });
 
             if (!valid) {
-                errorText.textContent = "Please complete every nominee's details.";
+                errorText.textContent = "Please complete every nominee's required details.";
                 errorBox.classList.add('show');
                 return;
             }
 
-            const submitBtn = document.getElementById('submitNominateBtn');
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting…';
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting…';
 
             try {
-                const payload = {
-                    nominator: {
-                        fullName: verifiedVoter.fullName,
-                        matricNumber: verifiedVoter.matricNumber,
-                        phone: verifiedVoter.phone || '',
-                        department: verifiedVoter.department || '',
-                        level: verifiedVoter.level || ''
-                    },
-                    nominees
-                };
                 const res = await fetch(`${API_BASE_URL}/api/elections/nominations/bulk`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({
+                        nominator: {
+                            fullName: verifiedVoter.fullName,
+                            matricNumber: verifiedVoter.matricNumber,
+                            phone: verifiedVoter.phone || '',
+                            department: verifiedVoter.department || '',
+                            level: verifiedVoter.level || ''
+                        },
+                        nominees
+                    })
                 });
                 const data = await res.json().catch(() => ({}));
 
@@ -2718,11 +2393,7 @@
                     let msg = data?.message || `Submission failed (${res.status})`;
                     const skipped = data?.details?.skipped;
                     if (Array.isArray(skipped) && skipped.length) {
-                        const lines = skipped.map(s => {
-                            const who = s.matric ? `${s.matric}: ` : '';
-                            return `• ${who}${s.reason || 'skipped'}`;
-                        }).join('\n');
-                        msg += `\n\nReasons:\n${lines}`;
+                        msg += `\n\nReasons:\n${skipped.map(s => `• ${s.matric ? `${s.matric}: ` : ''}${s.reason || 'skipped'}`).join('\n')}`;
                     }
                     throw new Error(msg);
                 }
@@ -2731,49 +2402,32 @@
                 const skippedList = data?.data?.skipped || [];
 
                 if (created === 0) {
-                    let msg = data?.message || 'No new valid nominations to submit';
+                    let msg = data?.message || 'No new valid nominations to submit.';
                     if (skippedList.length) {
-                        const lines = skippedList.map(s => {
-                            const who = s.matric ? `${s.matric}: ` : '';
-                            return `• ${who}${s.reason || 'skipped'}`;
-                        }).join('\n');
-                        msg += `\n\nReasons:\n${lines}`;
+                        msg += `\n\nReasons:\n${skippedList.map(s => `• ${s.matric ? `${s.matric}: ` : ''}${s.reason || 'skipped'}`).join('\n')}`;
                     }
                     throw new Error(msg);
                 }
 
                 close();
-
                 if (skippedList.length) {
-                    const brief = skippedList.map(s => {
-                        const who = s.matric ? s.matric : 'one nominee';
-                        return `${who} — ${s.reason || 'skipped'}`;
-                    }).join('; ');
-                    showFloatingToast(
-                        `${created} nomination${created === 1 ? '' : 's'} submitted. ${skippedList.length} skipped: ${brief}`,
-                        'info'
-                    );
+                    const brief = skippedList.map(s => `${s.matric || 'one nominee'} — ${s.reason || 'skipped'}`).join('; ');
+                    showFloatingToast(`${created} nomination${created === 1 ? '' : 's'} submitted. ${skippedList.length} skipped: ${brief}`, 'info');
                 } else {
-                    showFloatingToast(
-                        `Thanks! ${created} nomination${created === 1 ? '' : 's'} submitted for review.`,
-                        'success'
-                    );
+                    showFloatingToast(`Thanks! ${created} nomination${created === 1 ? '' : 's'} submitted for review.`, 'success');
                 }
             } catch (err) {
                 errorText.textContent = err.message || 'Could not submit nominations. Please try again.';
                 errorBox.classList.add('show');
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit all nominations';
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-paper-plane"></i> Submit all nominations';
             }
         });
     }
 
-    document.getElementById('openNominateBtn').addEventListener('click', () => {
+    openNominateBtn.addEventListener('click', () => {
         if (!verifiedVoter) {
-            openMatricPrompt({
-                mode: 'nominate',
-                onVerified: () => openNominateModal()
-            });
+            openMatricPrompt({ mode: 'nominate', onVerified: openNominateModal });
             return;
         }
         openNominateModal();
@@ -2806,12 +2460,12 @@
                         <h3>Access the ballot</h3>
                         <p>Enter your registered matric number to access the ballot. You must have registered as a voter first.</p>
                     </div>
-                    <div class="alert alert-error" id="verifyError">
+                    <div class="alert alert-error" id="verifyError" role="alert">
                         <i class="fas fa-exclamation-circle"></i>
                         <span id="verifyErrorText"></span>
                     </div>
                     <div class="field">
-                        <label>Matric number</label>
+                        <label for="verifyMatric">Matric number</label>
                         <div class="field-input-wrap">
                             <i class="fas fa-hashtag"></i>
                             <input type="text" id="verifyMatric" placeholder="e.g. ENG/2021/001" required style="text-transform:uppercase;" autocomplete="off">
@@ -2831,38 +2485,37 @@
                 openRegisterModal();
             });
 
-            document.getElementById('verifyBtn').addEventListener('click', async () => {
+            document.getElementById('verifyBtn').addEventListener('click', async function () {
                 const matric = normalizeMatric(document.getElementById('verifyMatric').value);
                 const errorBox = document.getElementById('verifyError');
                 const errorText = document.getElementById('verifyErrorText');
-                const btn = document.getElementById('verifyBtn');
                 errorBox.classList.remove('show');
 
                 if (!matric) {
                     errorText.textContent = 'Please enter your matric number.';
-                    errorBox.classList.add('show'); return;
+                    errorBox.classList.add('show');
+                    return;
                 }
 
-                btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying…';
+                this.disabled = true;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying…';
 
                 try {
                     const voter = await verifyVoterByMatric(matric);
-
                     if (!voter) throw new Error('Please register as a voter before voting.');
                     if (voter.hasVoted) throw new Error('You have already cast your vote.');
                     if (voter.eligibleToVote === false) throw new Error('You are not eligible to vote in this election.');
 
                     verifiedVoter = normalizeVoterRecord(voter);
-                    hasVoted = voter.hasVoted;
+                    hasVoted = verifiedVoter.hasVoted;
                     saveVoterSession(verifiedVoter);
                     renderRegBanner();
                     renderVote();
                 } catch (err) {
                     errorText.textContent = err.message || 'Verification failed. Please check your details.';
                     errorBox.classList.add('show');
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-unlock"></i> Continue to Voting';
+                    this.disabled = false;
+                    this.innerHTML = '<i class="fas fa-unlock"></i> Continue to Voting';
                 }
             });
             return;
@@ -2879,17 +2532,11 @@
             return;
         }
 
-        let html = `
-            <div class="vote-banner">
-                <div class="vote-banner-icon"><i class="fas fa-shield-halved"></i></div>
-                <p>Voting as <strong>${esc(verifiedVoter.fullName || 'Voter')}</strong> · <span style="font-family: var(--font-mono); font-size: .75rem;">${esc(verifiedVoter.matricNumber || '—')}</span><br>Select one candidate per position.</p>
-            </div>`;
-
-        positions.forEach(position => {
+        const renderBallotGroup = (position) => {
             const list = candidatesFor(position.id);
             const selectedId = votes[position.id];
-            html += `
-                <div class="ballot-group">
+            return `
+                <div class="ballot-group" data-group-position="${esc(position.id)}">
                     <div class="ballot-group-head">
                         <h4>${esc(position.title)}</h4>
                         <span class="ballot-group-progress">${selectedId ? '✓ Selected' : 'Not selected'}</span>
@@ -2897,32 +2544,41 @@
                     <div class="ballot-list">
                         ${list.map(c => {
                             const displayName = (c.name && c.name.trim()) || 'Unnamed Candidate';
-                            const metaParts = [];
-                            if (c.level && c.level.trim()) metaParts.push(c.level.trim());
-                            if (c.department && c.department.trim()) metaParts.push(c.department.trim());
+                            const meta = [c.level, c.department].filter(Boolean).join(' · ');
+                            const isSelected = String(selectedId) === String(c.id);
                             return `
-                                <button type="button" class="ballot-option ${String(selectedId) === String(c.id) ? 'selected' : ''}" data-position="${esc(position.id)}" data-candidate="${esc(c.id)}">
+                                <button type="button" class="ballot-option ${isSelected ? 'selected' : ''}" data-position="${esc(position.id)}" data-candidate="${esc(c.id)}">
                                     <div class="ballot-radio"><i class="fas fa-check ballot-radio-check"></i></div>
                                     <div class="ballot-avatar">${esc(initials(displayName))}</div>
                                     <div class="ballot-body">
                                         <strong>${esc(displayName)}</strong>
-                                        <span>${esc(metaParts.join(' · '))}</span>
+                                        <span>${esc(meta)}</span>
                                     </div>
                                 </button>`;
                         }).join('')}
                     </div>
                 </div>`;
-        });
+        };
 
-        html += `
+        voteContent.innerHTML = `
+            <div class="vote-banner">
+                <div class="vote-banner-icon"><i class="fas fa-shield-halved"></i></div>
+                <p>Voting as <strong>${esc(verifiedVoter.fullName || 'Voter')}</strong> · <span style="font-family: var(--font-mono); font-size: .75rem;">${esc(verifiedVoter.matricNumber || '—')}</span><br>Select one candidate per position.</p>
+            </div>
+            ${positions.map(renderBallotGroup).join('')}
             <div class="cast-bar">
-                <div class="vote-error" id="voteError"></div>
-                <button class="btn btn-gold btn-block" id="castVoteBtn" style="min-height: 56px; font-size: 1rem;">
+                <div class="vote-error" id="voteError" role="alert"></div>
+                <button class="btn btn-gold btn-block" id="castVoteBtn" type="button" style="min-height: 56px; font-size: 1rem;">
                     <i class="fas fa-vote-yea"></i> Cast Your Vote (${Object.keys(votes).length}/${positions.length} selected)
                 </button>
             </div>`;
 
-        voteContent.innerHTML = html;
+        const updateCastButtonLabel = () => {
+            const castBtn = document.getElementById('castVoteBtn');
+            if (castBtn && !castBtn.disabled) {
+                castBtn.innerHTML = `<i class="fas fa-vote-yea"></i> Cast Your Vote (${Object.keys(votes).length}/${positions.length} selected)`;
+            }
+        };
 
         voteContent.querySelectorAll('.ballot-option').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -2930,7 +2586,18 @@
                 const cid = btn.dataset.candidate;
                 if (String(votes[pid]) === String(cid)) delete votes[pid];
                 else votes[pid] = cid;
-                renderVote();
+
+                const posObj = positions.find(p => String(p.id) === String(pid));
+                const groupEl = voteContent.querySelector(`[data-group-position="${CSS.escape(String(pid))}"]`);
+                if (posObj && groupEl) {
+                    const tmp = document.createElement('div');
+                    tmp.innerHTML = renderBallotGroup(posObj);
+                    groupEl.replaceWith(tmp.firstElementChild);
+                    renderVote();
+                } else {
+                    renderVote();
+                }
+                updateCastButtonLabel();
             });
         });
 
@@ -2971,7 +2638,7 @@
                 errorBox.textContent = err.message || 'Vote submission failed. Please try again.';
                 errorBox.classList.add('show');
                 this.disabled = false;
-                this.innerHTML = `<i class="fas fa-vote-yea"></i> Cast Your Vote (${Object.keys(votes).length}/${positions.length} selected)`;
+                updateCastButtonLabel();
             }
         });
     }
@@ -3013,6 +2680,7 @@
             const posTotal = list.reduce((s, c) => s + (tallies[c.id]?.votes || 0), 0);
             const sorted = [...list].sort((a, b) => (tallies[b.id]?.votes || 0) - (tallies[a.id]?.votes || 0));
             const leader = sorted[0];
+
             html += `
                 <div class="result-position">
                     <div class="result-position-head">
@@ -3024,6 +2692,9 @@
                         const count = tallies[c.id]?.votes || 0;
                         const pct = posTotal > 0 ? ((count / posTotal) * 100) : 0;
                         const isLeader = leader && String(c.id) === String(leader.id) && count > 0;
+                        const deptShort = c.department ? c.department.split(' ')[0] : '';
+                        const subMeta = [deptShort, c.level].filter(Boolean).join(' · ');
+
                         return `
                             <div class="result-row ${isLeader ? 'is-leader' : ''}">
                                 <div class="result-row-head">
@@ -3033,7 +2704,7 @@
                                             : `<div class="result-avatar">${esc(initials(displayName))}</div>`}
                                         <div>
                                             <strong>${esc(displayName)}</strong>
-                                            <span>${esc(c.department ? c.department.split(' ')[0] : '')}${c.level ? ' · ' + esc(c.level) : ''}</span>
+                                            <span>${esc(subMeta)}</span>
                                         </div>
                                     </div>
                                     <div class="result-row-right">
@@ -3048,10 +2719,11 @@
                     }).join('')}
                 </div>`;
         });
+
         resultsContent.innerHTML = html;
         requestAnimationFrame(() => {
             resultsContent.querySelectorAll('.result-bar-fill').forEach(el => {
-                el.style.width = (parseFloat(el.dataset.width) || 0) + '%';
+                el.style.width = `${parseFloat(el.dataset.width) || 0}%`;
             });
         });
     }
@@ -3059,8 +2731,11 @@
     /* ============================================================
        TOAST
        ============================================================ */
+    let toastTimer = null;
     function showFloatingToast(message, type = 'info') {
         document.querySelectorAll('.floating-toast').forEach(t => t.remove());
+        if (toastTimer) clearTimeout(toastTimer);
+
         const colors = {
             success: { bg: '#ecfdf5', border: '#6ee7b7', color: '#047857', icon: 'fa-check-circle' },
             error:   { bg: '#fef2f2', border: '#fecaca', color: '#991b1b', icon: 'fa-exclamation-circle' },
@@ -3069,6 +2744,7 @@
         const c = colors[type] || colors.info;
         const toast = document.createElement('div');
         toast.className = 'floating-toast';
+        toast.setAttribute('role', 'status');
         toast.style.cssText = `
             position: fixed; top: 1rem; right: 1rem;
             background: ${c.bg}; border: 1px solid ${c.border}; color: ${c.color};
@@ -3082,11 +2758,12 @@
         `;
         toast.innerHTML = `<i class="fas ${c.icon}" style="font-size:1.1rem;"></i><span>${esc(message)}</span>`;
         document.body.appendChild(toast);
+
         requestAnimationFrame(() => {
             toast.style.transform = 'translateY(0)';
             toast.style.opacity = '1';
         });
-        setTimeout(() => {
+        toastTimer = setTimeout(() => {
             toast.style.transform = 'translateY(-20px)';
             toast.style.opacity = '0';
             setTimeout(() => toast.remove(), 400);
@@ -3097,6 +2774,7 @@
        INIT
        ============================================================ */
     (async function initElectionPage() {
+        renderRegBanner();
         try {
             const { election: rawElection, message } = await fetchElection();
 
@@ -3107,13 +2785,14 @@
                         <div class="state-box-icon"><i class="fas fa-vote-yea"></i></div>
                         <h3>No election live right now</h3>
                         <p>${esc(message || 'There is no active election at the moment. Please check back soon.')}</p>
-                        <button class="btn btn-primary" onclick="location.reload()">
+                        <button class="btn btn-primary" type="button" onclick="location.reload()">
                             <i class="fas fa-sync-alt"></i> Refresh
                         </button>
                     </div>`;
                 voteContent.innerHTML = '';
                 resultsContent.innerHTML = '';
                 renderStatus();
+                syncNominationAvailability();
                 return;
             }
 
@@ -3124,29 +2803,18 @@
             renderStatus();
             renderInfo();
             renderCandidates();
-            renderRegBanner();
             renderVote();
             renderResults();
+            syncNominationAvailability();
 
-            if (!['preparation', 'pending', 'nomination'].includes(electionPhase)) {
-                const ctaButton = document.getElementById('openNominateBtn');
-                if (ctaButton) {
-                    ctaButton.disabled = true;
-                    ctaButton.innerHTML = '<i class="fas fa-lock"></i> Nominations closed';
-                    ctaButton.style.opacity = '.55';
-                    ctaButton.style.cursor = 'not-allowed';
-                }
-            }
-
-            // Refresh the session voter record (handles backend-side changes
-            // like hasVoted flipping, department correction, etc.)
             if (verifiedVoter && verifiedVoter.matricNumber) {
                 try {
                     const fresh = await verifyVoterByMatric(verifiedVoter.matricNumber);
                     if (fresh) {
                         verifiedVoter = normalizeVoterRecord(fresh);
-                        hasVoted = fresh.hasVoted;
+                        hasVoted = verifiedVoter.hasVoted;
                         saveVoterSession(verifiedVoter);
+                        renderRegBanner();
                         renderVote();
                     }
                 } catch {}
@@ -3161,7 +2829,7 @@
                     </div>
                     <h3>Couldn't load election data</h3>
                     <p>${esc(err.message || 'Please check your connection and try again.')}</p>
-                    <button class="btn btn-primary" onclick="location.reload()">
+                    <button class="btn btn-primary" type="button" onclick="location.reload()">
                         <i class="fas fa-sync-alt"></i> Retry
                     </button>
                 </div>`;

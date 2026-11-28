@@ -12,14 +12,15 @@
             --emerald-300: #6ee7b7;  --emerald-400: #34d399;  --emerald-500: #10b981;
             --emerald-600: #059669;  --emerald-700: #047857;  --emerald-800: #065f46;
             --emerald-900: #064e3b;  --teal-400: #2dd4bf;    --teal-500: #14b8a6;
-            --amber-300: #fcd34d;    --amber-400: #fbbf24;    --amber-500: #f59e0b;
-            --slate-50: #f8fafc;     --slate-100: #f1f5f9;    --slate-200: #e2e8f0;
-            --slate-300: #cbd5e1;     --slate-400: #94a3b8;    --slate-500: #64748b;
-            --slate-600: #475569;     --slate-700: #334155;    --slate-800: #1e293b;
-            --slate-900: #0f172a;     --white: #ffffff;        --gray-100: #f5f5f7;
-            --gray-200: #e5e5e7;      --gray-300: #d1d5db;     --gray-400: #9ca3af;
-            --gray-500: #6b7280;      --gray-600: #4b5563;     --gray-700: #374151;
-            --gray-800: #1f2933;      --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
+            --teal-700: #0f766e;    --amber-300: #fcd34d;    --amber-400: #fbbf24;
+            --amber-500: #f59e0b;    --slate-50: #f8fafc;     --slate-100: #f1f5f9;
+            --slate-200: #e2e8f0;    --slate-300: #cbd5e1;    --slate-400: #94a3b8;
+            --slate-500: #64748b;    --slate-600: #475569;    --slate-700: #334155;
+            --slate-800: #1e293b;    --slate-900: #0f172a;    --white: #ffffff;
+            --gray-100: #f5f5f7;     --gray-200: #e5e5e7;     --gray-300: #d1d5db;
+            --gray-400: #9ca3af;     --gray-500: #6b7280;     --gray-600: #4b5563;
+            --gray-700: #374151;     --gray-800: #1f2933;
+            --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
             --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
             --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
             --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
@@ -34,7 +35,10 @@
             line-height: 1.5;
             overflow-x: hidden;
             background-color: var(--gray-100);
-            padding-top: 80px;
+            padding-top: 72px;
+        }
+        @media (min-width: 1181px) {
+            body { padding-top: 76px; }
         }
         body.menu-open { overflow: hidden; }
 
@@ -153,87 +157,207 @@
         .hover\:underline:hover { text-decoration: underline; }
         .decoration-dashed { text-decoration-style: dashed; }
 
-        /* NAVBAR */
+        /* ===== RESPONSIVE SHARED NAVBAR ===== */
         .navbar {
-            position: fixed; top: 0; left: 0; right: 0; width: 100%;
-            z-index: 1000; transition: all 0.3s ease;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: 1000;
+            transition: background-color 0.3s ease, padding 0.3s ease, box-shadow 0.3s ease;
             background-color: rgba(6, 78, 59, 0.95);
-            padding: 1rem 0; backdrop-filter: blur(8px);
+            padding: 0.9rem 0;
+            backdrop-filter: blur(8px);
         }
         .navbar.scrolled {
             background-color: rgba(6, 78, 59, 0.98);
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(12px);
             box-shadow: var(--shadow-lg);
-            padding: 0.5rem 0;
+            padding: 0.55rem 0;
         }
-        .nav-container { max-width: 80rem; margin: 0 auto; padding: 0 2rem; }
-        .nav-flex { display: flex; justify-content: space-between; align-items: center; }
-
+        .nav-container {
+            max-width: 85rem;
+            margin: 0 auto;
+            padding: 0 1.25rem;
+        }
+        @media (min-width: 640px) {
+            .nav-container { padding: 0 2rem; }
+        }
+        .nav-flex {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            min-height: 2.5rem;
+        }
         .logo-link {
-            display: flex; align-items: center; gap: 0.25rem;
-            text-decoration: none; transition: transform 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            text-decoration: none;
+            flex-shrink: 0;
+            transition: transform 0.25s ease;
         }
-        .logo-link:hover { transform: scale(1.05); }
-        .logo-main { font-size: 1.5rem; font-weight: 900; color: var(--white); letter-spacing: -0.05em; }
-        .logo-highlight { font-size: 1.5rem; font-weight: 900; color: var(--amber-400); letter-spacing: -0.05em; }
+        .logo-link:hover { transform: scale(1.04); }
+        .logo-main,
+        .logo-highlight {
+            font-size: 1.35rem;
+            font-weight: 900;
+            letter-spacing: -0.05em;
+            line-height: 1;
+        }
+        @media (min-width: 640px) {
+            .logo-main,
+            .logo-highlight { font-size: 1.5rem; }
+        }
+        .logo-main { color: var(--white); }
+        .logo-highlight { color: var(--amber-400); }
 
-        .nav-menu { display: flex; align-items: center; }
-        .nav-links { display: flex; align-items: center; gap: 1.5rem; list-style: none; flex-wrap: wrap; }
+        .nav-menu {
+            display: flex;
+            align-items: center;
+            min-width: 0;
+        }
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            list-style: none;
+            flex-wrap: nowrap;
+        }
+        @media (min-width: 1280px) {
+            .nav-links { gap: 1.2rem; }
+        }
         .nav-links li a {
             font-family: 'Roboto Mono', monospace;
-            font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em;
-            text-decoration: none; color: rgba(255, 255, 255, 0.9);
-            transition: color 0.2s; position: relative; padding: 0.5rem 0; white-space: nowrap;
+            font-size: 0.65rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-decoration: none;
+            color: rgba(255, 255, 255, 0.9);
+            transition: color 0.2s ease;
+            position: relative;
+            padding: 0.45rem 0;
+            white-space: nowrap;
+            display: inline-block;
+        }
+        @media (min-width: 1280px) {
+            .nav-links li a {
+                font-size: 0.7rem;
+                letter-spacing: 0.07em;
+            }
         }
         .nav-links li a::after {
-            content: ''; position: absolute; bottom: 0; left: 0;
-            width: 0; height: 2px; background-color: var(--amber-400); transition: width 0.3s;
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background-color: var(--amber-400);
+            transition: width 0.25s ease;
         }
-        .nav-links li a:hover { color: var(--amber-400); }
-        .nav-links li a:hover::after { width: 100%; }
+        .nav-links li a:hover,
         .nav-links li a.active { color: var(--amber-400); }
+        .nav-links li a:hover::after,
         .nav-links li a.active::after { width: 100%; }
 
         .hamburger {
-            display: none; cursor: pointer; z-index: 1001;
-            background: none; border: none; padding: 0.5rem;
+            display: none;
+            cursor: pointer;
+            z-index: 1001;
+            background: none;
+            border: none;
+            padding: 0.5rem;
+            flex-shrink: 0;
+            touch-action: manipulation;
         }
         .hamburger span {
-            display: block; width: 25px; height: 3px;
-            background-color: var(--white); margin: 5px 0;
-            transition: all 0.3s ease; border-radius: 3px;
+            display: block;
+            width: 24px;
+            height: 2.5px;
+            background-color: var(--white);
+            margin: 5px 0;
+            transition: transform 0.3s ease, opacity 0.25s ease, background-color 0.25s ease;
+            border-radius: 3px;
         }
-        .hamburger.active span:nth-child(1) { transform: rotate(45deg) translate(5px, 6px); background-color: var(--amber-400); }
+        .hamburger.active span:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5.5px);
+            background-color: var(--amber-400);
+        }
         .hamburger.active span:nth-child(2) { opacity: 0; }
-        .hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(5px, -6px); background-color: var(--amber-400); }
+        .hamburger.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(5px, -5.5px);
+            background-color: var(--amber-400);
+        }
+
+        @media screen and (max-width: 1180px) {
+            .nav-links { display: none; }
+            .hamburger {
+                display: inline-flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+            }
+        }
 
         .mobile-nav {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100dvh;
             background: linear-gradient(135deg, var(--emerald-900), var(--emerald-800));
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            z-index: 999; opacity: 0; visibility: hidden;
-            transition: all 0.4s ease; padding: 2rem; overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            padding: 5rem 1.5rem 2.5rem;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
-        .mobile-nav.active { opacity: 1; visibility: visible; }
-        .mobile-nav ul { list-style: none; text-align: center; }
+        .mobile-nav.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .mobile-nav ul {
+            list-style: none;
+            text-align: center;
+            width: 100%;
+            max-width: 24rem;
+            margin: auto 0;
+        }
         .mobile-nav ul li {
-            margin: 0.9rem 0; opacity: 0; transform: translateY(20px);
-            transition: all 0.4s ease;
+            margin: 0.45rem 0;
+            opacity: 0;
+            transform: translateY(12px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
         }
-        .mobile-nav.active ul li { opacity: 1; transform: translateY(0); }
+        .mobile-nav.active ul li {
+            opacity: 1;
+            transform: translateY(0);
+        }
         .mobile-nav ul li a {
             font-family: 'Roboto Mono', monospace;
-            font-size: 1.25rem; font-weight: 600; letter-spacing: 0.08em;
-            text-decoration: none; color: var(--white);
-            transition: color 0.3s; display: inline-block; padding: 0.5rem 1rem;
+            font-size: 1.05rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-decoration: none;
+            color: var(--white);
+            transition: color 0.2s ease, background-color 0.2s ease;
+            display: inline-block;
+            padding: 0.45rem 1rem;
+            border-radius: 0.375rem;
         }
-        .mobile-nav ul li a:hover { color: var(--amber-400); transform: translateX(10px); }
-        .mobile-nav ul li a.active { color: var(--amber-400); border-left: 4px solid var(--amber-400); }
-
-        @media screen and (max-width: 1200px) {
-            .nav-links { display: none; }
-            .hamburger { display: block; }
+        @media (min-width: 480px) {
+            .mobile-nav ul li a { font-size: 1.2rem; }
         }
+        .mobile-nav ul li a:hover,
+        .mobile-nav ul li a.active { color: var(--amber-400); }
+        .mobile-nav ul li a.active { border-left: 3px solid var(--amber-400); }
 
         /* FOOTER */
         .footer {
@@ -276,402 +400,6 @@
 
         /* RESOURCES PAGE */
         .resources-header {
-            border-bottom: 2px dashed var(--gray-300);
-            padding: 4rem 0; background-color: var(--white);
-        }
-        .resources-title { font-family: 'Inter', sans-serif; font-size: 2.5rem; font-weight: 900; color: var(--gray-800); margin-bottom: 1rem; }
-        .resources-description { font-family: 'Roboto Mono', monospace; font-size: 0.875rem; color: var(--gray-600); max-width: 42rem; margin: 0 auto; }
-
-        .section-title { font-family: 'Inter', sans-serif; font-size: 1.5rem; font-weight: 700; color: var(--gray-800); margin-bottom: 1.5rem; display: flex; align-items: center; }
-        .section-title i { margin-right: 0.75rem; font-size: 1.5rem; }
-
-        .tabs-navigation {
-            display: flex; border-bottom: 2px solid var(--gray-300);
-            margin-bottom: 2rem; overflow-x: auto;
-        }
-        .tab-button {
-            padding: 1rem 1.5rem; font-family: 'Roboto Mono', monospace;
-            font-size: 0.875rem; font-weight: 600; color: var(--gray-600);
-            background: none; border: none; cursor: pointer;
-            transition: all 0.3s; white-space: nowrap;
-            border-bottom: 2px solid transparent;
-        }
-        .tab-button:hover { color: var(--gray-800); }
-        .tab-button.active { color: var(--emerald-600); border-bottom: 2px solid var(--emerald-600); }
-
-        .downloads-container { background-color: var(--white); border: 1px solid var(--gray-300); }
-        .download-item {
-            padding: 1rem; display: flex; align-items: center;
-            justify-content: space-between; transition: background-color 0.3s;
-        }
-        .download-item:hover { background-color: var(--gray-100); }
-        .download-info { display: flex; align-items: center; }
-        .download-icon { color: var(--gray-300); margin-right: 1rem; font-size: 1.25rem; transition: color 0.3s; }
-        .download-item:hover .download-icon { color: var(--gray-800); }
-        .download-details h3 { font-family: 'Inter', sans-serif; font-weight: 700; color: var(--gray-800); font-size: 0.875rem; margin-bottom: 0.25rem; }
-        @media (min-width: 768px) { .download-details h3 { font-size: 1rem; } }
-        .download-meta { font-family: 'Roboto Mono', monospace; font-size: 0.75rem; color: var(--gray-300); }
-        .download-button {
-            padding: 0.5rem; border: 1px solid var(--gray-300);
-            border-radius: 0.25rem; background-color: transparent;
-            color: var(--gray-800); cursor: pointer; transition: all 0.3s;
-        }
-        .download-button:hover { background-color: var(--gray-800); color: var(--white); border-color: var(--gray-800); }
-
-        .search-section {
-            background-color: var(--white); padding: 1.5rem;
-            border-radius: 0.5rem; border: 1px solid var(--gray-300); margin-bottom: 2rem;
-        }
-        .search-container { display: flex; flex-direction: column; gap: 1rem; }
-        @media (min-width: 768px) { .search-container { flex-direction: row; } }
-        .search-box { flex: 1; position: relative; }
-        .search-icon {
-            position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%);
-            color: var(--gray-400); font-size: 1rem;
-        }
-        .search-input {
-            width: 100%; padding: 0.75rem 0.75rem 0.75rem 2.5rem;
-            border: 1px solid var(--gray-300); border-radius: 0.25rem;
-            font-family: 'Inter', sans-serif; font-size: 1rem;
-        }
-        .search-input:focus { outline: none; border-color: var(--emerald-500); box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.1); }
-        .filter-container { display: flex; align-items: center; gap: 0.5rem; }
-        .filter-select {
-            padding: 0.75rem; border: 1px solid var(--gray-300);
-            border-radius: 0.25rem; font-family: 'Inter', sans-serif;
-            font-size: 1rem; background-color: var(--white); min-width: 150px;
-        }
-
-        .results-list { display: flex; flex-direction: column; gap: 1rem; }
-        .question-card {
-            background-color: var(--white); border: 1px solid var(--gray-300);
-            border-radius: 0.5rem; padding: 1.5rem; transition: all 0.3s;
-        }
-        .question-card:hover { border-color: var(--emerald-400); transform: translateY(-2px); box-shadow: var(--shadow-md); }
-        .question-content { display: flex; flex-direction: column; gap: 1rem; }
-        @media (min-width: 768px) { .question-content { flex-direction: row; align-items: center; justify-content: space-between; } }
-        .question-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
-        .question-code { font-family: 'Inter', sans-serif; font-weight: 700; color: var(--gray-800); font-size: 1.125rem; }
-        .question-badge { padding: 0.25rem 0.5rem; background-color: var(--gray-100); color: var(--gray-600); font-size: 0.75rem; border-radius: 0.25rem; }
-        .question-title { font-family: 'Inter', sans-serif; color: var(--gray-700); font-weight: 500; }
-        .question-meta { font-family: 'Roboto Mono', monospace; font-size: 0.75rem; color: var(--gray-500); }
-
-        .tools-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
-        .tool-card {
-            background-color: var(--white); padding: 1.5rem;
-            border: 2px dashed var(--gray-300);
-            transition: border-color 0.3s; cursor: pointer;
-        }
-        .tool-card:hover { border-color: var(--gray-800); }
-        .tool-icon { color: var(--gray-800); font-size: 2rem; margin-bottom: 1rem; }
-        .tool-title { font-family: 'Inter', sans-serif; font-size: 1.25rem; font-weight: 700; color: var(--gray-800); margin-bottom: 0.5rem; }
-        .tool-description { font-family: 'Roboto Mono', monospace; font-size: 0.75rem; color: var(--gray-600); margin-bottom: 1rem; }
-        .tool-link { font-size: 0.875rem; font-weight: 700; text-decoration: underline; text-decoration-style: dashed; color: var(--gray-800); }
-
-        .links-container { background-color: var(--white); border: 1px solid var(--gray-300); padding: 1.5rem; }
-        .links-list { list-style: none; }
-        .links-list li { display: flex; align-items: center; color: var(--gray-600); transition: color 0.3s; margin-bottom: 1rem; }
-        .links-list li:last-child { margin-bottom: 0; }
-        .links-list li:hover { color: var(--gray-800); }
-        .link-icon { margin-right: 0.5rem; font-size: 0.75rem; }
-        .link-text { font-family: 'Roboto Mono', monospace; font-size: 0.875rem; }
-        .link-text a { color: inherit; text-decoration: none; transition: text-decoration 0.3s; }
-        .link-text a:hover { text-decoration: underline; text-decoration-style: dashed; }
-
-        .no-results {
-            text-align: center; padding: 3rem;
-            background-color: var(--white); border: 1px dashed var(--gray-300);
-            border-radius: 0.5rem;
-        }
-        .no-results-text { font-family: 'Inter', sans-serif; color: var(--gray-600); font-size: 1rem; }
-        .clear-filters {
-            margin-top: 1rem; color: var(--emerald-600);
-            background: none; border: none; cursor: pointer;
-            font-family: 'Roboto Mono', monospace; font-weight: 600;
-        }
-        .clear-filters:hover { text-decoration: underline; }
-
-        /* MODAL */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0, 0, 0, 0.5); display: flex;
-            align-items: center; justify-content: center; z-index: 10000;
-            padding: 1rem; backdrop-filter: blur(4px); animation: fadeIn 0.3s ease;
-        }
-        .modal-container {
-            background: white; border-radius: 0.75rem; max-width: 1200px;
-            width: 100%; max-height: 90vh; overflow-y: auto;
-            box-shadow: var(--shadow-xl); border: 2px solid var(--emerald-200);
-            animation: slideUp 0.3s ease;
-        }
-        .modal-header {
-            background: linear-gradient(to right, var(--emerald-600), var(--emerald-700));
-            padding: 1rem 1.5rem; display: flex; align-items: center;
-            justify-content: space-between; color: white;
-            position: sticky; top: 0; z-index: 10;
-        }
-        .modal-header-left { display: flex; align-items: center; gap: 0.75rem; }
-        .modal-header-left i { font-size: 1.5rem; }
-        .modal-header-left h2 { font-weight: 700; font-size: 1.25rem; }
-        .modal-header-left p { color: var(--emerald-100); font-size: 0.875rem; }
-        .modal-close {
-            background: none; border: none; color: white; font-size: 1.5rem;
-            cursor: pointer; padding: 0.5rem; border-radius: 0.5rem;
-            transition: background-color 0.3s;
-        }
-        .modal-close:hover { background-color: rgba(255, 255, 255, 0.1); }
-        .modal-body { padding: 1.5rem; }
-
-        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: -2rem; margin-bottom: 2rem; }
-        .stat-card {
-            background-color: var(--emerald-600); border-radius: 0.75rem;
-            padding: 1rem; text-align: center; color: white; box-shadow: var(--shadow-lg);
-        }
-        .stat-number { font-size: 1.5rem; font-weight: 900; }
-        @media (min-width: 768px) { .stat-number { font-size: 1.875rem; } }
-        .stat-label { color: var(--emerald-100); font-size: 0.75rem; }
-
-        .main-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; margin-top: 2.5rem; }
-        @media (min-width: 1024px) { .main-grid { grid-template-columns: 3fr 2fr; } }
-
-        .card {
-            background-color: white; border-radius: 0.75rem;
-            box-shadow: var(--shadow-sm); border: 1px solid var(--slate-100);
-            overflow: hidden; margin-bottom: 1.5rem;
-        }
-        .card:last-child { margin-bottom: 0; }
-        .card-header {
-            background-color: var(--emerald-600); padding: 1rem 1.5rem;
-            display: flex; align-items: center; gap: 0.75rem;
-        }
-        .card-header i { color: white; width: 1.25rem; height: 1.25rem; }
-        .card-header h2 { color: white; font-weight: 700; font-size: 1.125rem; }
-        .card-header p { color: var(--emerald-100); font-size: 0.875rem; }
-        .card-body { padding: 1.5rem; }
-
-        .guide-item { display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
-        .guide-number {
-            width: 2rem; height: 2rem; border-radius: 50%;
-            background-color: var(--emerald-100); color: var(--emerald-700);
-            font-weight: 700; display: flex; align-items: center;
-            justify-content: center; flex-shrink: 0;
-        }
-        .guide-content h3 { font-weight: 600; color: var(--slate-900); display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; font-size: 1rem; }
-        .guide-content p { color: var(--slate-600); font-size: 0.875rem; }
-
-        .form-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; }
-        @media (min-width: 768px) { .form-grid { grid-template-columns: repeat(2, 1fr); } }
-        .form-group { margin-bottom: 0; }
-        .form-label { display: block; font-size: 0.875rem; font-weight: 500; color: var(--slate-700); margin-bottom: 0.25rem; }
-        .form-input, .form-select {
-            width: 100%; padding: 0.5rem 1rem;
-            border: 1px solid var(--slate-200); border-radius: 0.5rem;
-            font-family: 'Inter', sans-serif; font-size: 0.875rem; transition: all 0.2s;
-        }
-        .form-input:focus, .form-select:focus { outline: none; box-shadow: 0 0 0 2px var(--emerald-500); border-color: transparent; }
-
-        .course-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-        .course-header-left { display: flex; align-items: center; gap: 0.5rem; }
-        .semester-controls { display: flex; align-items: center; gap: 0.5rem; }
-        .semester-select {
-            padding: 0.375rem 0.75rem; background-color: rgba(255,255,255,0.2);
-            color: white; border-radius: 0.5rem; font-size: 0.875rem;
-            font-weight: 500; border: none; cursor: pointer;
-        }
-        .semester-select option { color: var(--slate-900); }
-        .add-course-btn {
-            display: flex; align-items: center; gap: 0.25rem;
-            padding: 0.5rem 1rem; background-color: var(--emerald-600);
-            color: white; font-size: 0.875rem; font-weight: 600;
-            border-radius: 0.5rem; border: none; cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        .add-course-btn:hover { background-color: var(--emerald-700); }
-
-        .courses-container { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem; }
-        .course-row { display: grid; grid-template-columns: repeat(12, 1fr); gap: 0.5rem; align-items: center; }
-        .course-code { grid-column: span 2; }
-        .course-title { grid-column: span 4; }
-        .course-units { grid-column: span 2; }
-        .course-grade { grid-column: span 3; }
-        .course-remove { grid-column: span 1; display: flex; justify-content: center; }
-        .remove-btn {
-            padding: 0.5rem; color: #ef4444; background: none;
-            border: none; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s;
-        }
-        .remove-btn:hover { background-color: #fef2f2; }
-        .remove-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        .current-gpa-row {
-            display: flex; justify-content: space-between; align-items: center;
-            padding-top: 1rem; border-top: 1px solid var(--slate-100); margin-bottom: 1rem;
-        }
-        .current-gpa-label { color: var(--slate-600); }
-        .current-gpa-value { font-size: 1.5rem; font-weight: 900; color: var(--emerald-600); }
-
-        .save-semester-btn {
-            width: 100%; padding: 0.75rem; background-color: var(--emerald-600);
-            color: white; font-weight: 700; border: none; border-radius: 0.5rem;
-            cursor: pointer; transition: all 0.2s;
-            display: flex; align-items: center; justify-content: center; gap: 0.5rem;
-        }
-        .save-semester-btn:hover { background-color: var(--emerald-700); }
-
-        .saved-semester-item {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 1rem; background-color: var(--slate-50);
-            border-radius: 0.5rem; margin-bottom: 0.5rem;
-        }
-        .saved-semester-info h4 { font-weight: 600; color: var(--slate-900); }
-        .saved-semester-info p { font-size: 0.875rem; color: var(--slate-600); }
-        .saved-semester-actions { display: flex; align-items: center; gap: 1rem; }
-        .saved-semester-gpa { font-size: 1.25rem; font-weight: 700; color: var(--emerald-600); }
-        .delete-semester-btn {
-            padding: 0.5rem; color: #ef4444; background: none;
-            border: none; border-radius: 0.5rem; cursor: pointer;
-        }
-        .delete-semester-btn:hover { background-color: #fef2f2; }
-
-        .sidebar { display: flex; flex-direction: column; gap: 1.5rem; }
-        @media (min-width: 1024px) { .sidebar { position: sticky; top: 6rem; align-self: start; } }
-
-        .gradient-header {
-            background: linear-gradient(to right, var(--emerald-600), var(--teal-500));
-            padding: 1rem 1.5rem; display: flex; align-items: center; gap: 0.75rem;
-        }
-        .gradient-header i { color: white; }
-        .gradient-header h2 { color: white; font-weight: 700; }
-        .gradient-header p { color: var(--emerald-100); font-size: 0.875rem; }
-
-        .current-status { text-align: center; padding: 1.5rem; }
-        .cgpa-display { font-size: 3rem; font-weight: 900; }
-        .cgpa-display.emerald-600 { color: var(--emerald-600); }
-        .cgpa-display.blue-600 { color: #2563eb; }
-        .cgpa-display.amber-600 { color: #d97706; }
-        .cgpa-display.orange-600 { color: #ea580c; }
-        .cgpa-display.red-600 { color: #dc2626; }
-        .cgpa-display.gray-300 { color: var(--slate-300); }
-
-        .classification-box {
-            margin-top: 1rem; padding: 0.75rem 1rem;
-            background-color: var(--slate-50); border-radius: 0.5rem;
-        }
-        .classification-text { font-weight: 700; }
-        .classification-text.emerald-600 { color: var(--emerald-600); }
-        .classification-text.blue-600 { color: #2563eb; }
-        .classification-text.amber-600 { color: #d97706; }
-        .classification-text.orange-600 { color: #ea580c; }
-        .classification-text.red-600 { color: #dc2626; }
-        .classification-text.gray-400 { color: var(--slate-400); }
-
-        .stats-mini-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-top: 1rem; }
-        .stat-mini-box { padding: 0.75rem; background-color: var(--slate-50); border-radius: 0.5rem; text-align: center; }
-        .stat-mini-number { font-size: 1.5rem; font-weight: 700; color: var(--slate-900); }
-        .stat-mini-label { color: var(--slate-600); font-size: 0.875rem; }
-
-        .projection-input {
-            width: 100%; padding: 0.5rem 1rem;
-            border: 1px solid var(--slate-200); border-radius: 0.5rem;
-            margin-bottom: 1rem;
-        }
-        .projection-btn {
-            width: 100%; padding: 0.75rem; background-color: var(--emerald-600);
-            color: white; font-weight: 700; border: none; border-radius: 0.5rem;
-            cursor: pointer; transition: background-color 0.2s;
-            display: flex; align-items: center; justify-content: center; gap: 0.5rem;
-        }
-        .projection-btn:hover { background-color: var(--emerald-700); }
-        .projection-result {
-            margin-top: 1rem; padding: 1rem;
-            background-color: var(--emerald-50); border-radius: 0.5rem;
-            color: var(--emerald-800); font-size: 0.875rem;
-        }
-
-        .data-management-btn {
-            width: 100%; padding: 0.625rem; border: 2px solid;
-            border-radius: 0.5rem; font-weight: 600; background: none;
-            cursor: pointer; transition: all 0.2s;
-            display: flex; align-items: center; justify-content: center;
-            gap: 0.5rem; margin-bottom: 0.75rem;
-        }
-        .data-management-btn:last-child { margin-bottom: 0; }
-        .download-btn { border-color: var(--emerald-600); color: var(--emerald-600); }
-        .download-btn:hover { background-color: var(--emerald-50); }
-        .clear-btn { border-color: #ef4444; color: #ef4444; }
-        .clear-btn:hover { background-color: #fef2f2; }
-        .data-note { text-align: center; font-size: 0.75rem; color: var(--slate-500); margin-top: 0.5rem; }
-
-        .hidden { display: none !important; }
-        .text-sm { font-size: 0.875rem; }
-        .text-xs { font-size: 0.75rem; }
-        .font-bold { font-weight: 700; }
-        .font-black { font-weight: 900; }
-
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        @media (min-width: 768px) {
-            .md\:flex { display: flex; }
-            .md\:hidden { display: none; }
-            .md\:grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
-            .md\:text-5xl { font-size: 3rem; }
-            .md\:flex-row { flex-direction: row; }
-            .footer-grid { grid-template-columns: repeat(4, 1fr); }
-            .footer-bottom { flex-direction: row; }
-            .footer-bottom p { margin-bottom: 0; }
-            .tools-grid { grid-template-columns: repeat(2, 1fr); }
-            .resources-title { font-size: 3rem; }
-        }
-
-        .tab-pane { display: none; }
-        .tab-pane.active { display: block; animation: paneIn 0.35s ease both; }
-
-        @keyframes paneIn {
-            from { opacity: 0; transform: translateY(12px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes shimmer {
-            0% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
-        }
-        @keyframes cardIn {
-            from { opacity: 0; transform: translateY(16px) scale(0.98); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        @keyframes softPulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.55; }
-        }
-        @keyframes heroFloat {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-
-        .skeleton {
-            background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
-            background-size: 200% 100%;
-            animation: shimmer 1.4s ease-in-out infinite;
-            border-radius: 0.375rem;
-        }
-        .skeleton-row {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 1.1rem 1rem; border-bottom: 1px dashed var(--gray-200);
-            gap: 1rem;
-        }
-        .skeleton-row:last-child { border-bottom: none; }
-        .skeleton-icon { width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; flex-shrink: 0; }
-        .skeleton-lines { flex: 1; display: flex; flex-direction: column; gap: 0.45rem; }
-        .skeleton-line { height: 0.7rem; border-radius: 999px; }
-        .skeleton-line.w60 { width: 60%; }
-        .skeleton-line.w40 { width: 40%; }
-        .skeleton-line.w80 { width: 80%; }
-        .skeleton-line.w30 { width: 30%; }
-        .skeleton-btn { width: 2.25rem; height: 2.25rem; border-radius: 0.375rem; flex-shrink: 0; }
-
-        .resources-header {
             position: relative; overflow: hidden;
             background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 50%, #f0fdf4 100%);
             border-bottom: none;
@@ -697,11 +425,14 @@
         }
         .resources-title {
             position: relative; z-index: 1;
-            animation: slideUp 0.6s ease both;
-            letter-spacing: -0.03em;
+            font-family: 'Inter', sans-serif; font-size: 2.5rem; font-weight: 900;
+            color: var(--gray-800); margin-bottom: 1rem;
+            animation: slideUp 0.6s ease both; letter-spacing: -0.03em;
         }
         .resources-description {
             position: relative; z-index: 1;
+            font-family: 'Roboto Mono', monospace; font-size: 0.875rem;
+            color: var(--gray-600); max-width: 42rem; margin: 0 auto;
             animation: slideUp 0.6s ease 0.12s both;
         }
         .hero-stats {
@@ -721,33 +452,37 @@
         .hero-stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
         .hero-stat strong { color: var(--emerald-700); }
 
+        .section-title { font-family: 'Inter', sans-serif; font-size: 1.5rem; font-weight: 700; color: var(--gray-800); margin-bottom: 1.5rem; display: flex; align-items: center; }
+        .section-title i { margin-right: 0.75rem; font-size: 1.5rem; }
+
         .tabs-navigation {
+            display: flex;
             background: white; border-radius: 0.75rem;
             border: 1px solid var(--gray-200); padding: 0.35rem;
-            border-bottom: none; margin-bottom: 1.75rem;
-            box-shadow: var(--shadow-sm);
-            gap: 0.25rem;
+            margin-bottom: 1.75rem; overflow-x: auto;
+            box-shadow: var(--shadow-sm); gap: 0.25rem;
         }
         .tab-button {
-            border-radius: 0.5rem; border-bottom: none !important;
-            flex: 1; min-width: max-content;
-            padding: 0.75rem 1rem;
+            padding: 0.75rem 1rem; font-family: 'Roboto Mono', monospace;
+            font-size: 0.875rem; font-weight: 600; color: var(--gray-600);
+            background: none; border: none; cursor: pointer;
+            transition: all 0.3s; white-space: nowrap;
+            border-radius: 0.5rem; flex: 1; min-width: max-content;
             position: relative;
         }
+        .tab-button:hover:not(.active) { background: var(--emerald-50); color: var(--emerald-700); }
         .tab-button.active {
             background: var(--emerald-600); color: white !important;
             box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3);
         }
-        .tab-button:hover:not(.active) {
-            background: var(--emerald-50); color: var(--emerald-700);
-        }
 
         .downloads-container {
-            border-radius: 0.75rem; overflow: hidden;
-            border: 1px solid var(--gray-200);
-            box-shadow: var(--shadow-sm);
+            background-color: var(--white); border: 1px solid var(--gray-200);
+            border-radius: 0.75rem; overflow: hidden; box-shadow: var(--shadow-sm);
         }
         .download-item {
+            padding: 1rem; display: flex; align-items: center;
+            justify-content: space-between;
             animation: cardIn 0.4s ease both;
             transition: background-color 0.25s ease, transform 0.25s ease;
         }
@@ -755,7 +490,16 @@
             background: linear-gradient(90deg, #ecfdf5, #ffffff);
             transform: translateX(4px);
         }
+        .download-info { display: flex; align-items: center; }
+        .download-icon { color: var(--gray-300); margin-right: 1rem; font-size: 1.25rem; transition: color 0.3s; }
+        .download-item:hover .download-icon { color: var(--gray-800); }
+        .download-details h3 { font-family: 'Inter', sans-serif; font-weight: 700; color: var(--gray-800); font-size: 0.875rem; margin-bottom: 0.25rem; }
+        @media (min-width: 768px) { .download-details h3 { font-size: 1rem; } }
+        .download-meta { font-family: 'Roboto Mono', monospace; font-size: 0.75rem; color: var(--gray-400); }
         .download-button {
+            padding: 0.5rem; border: 1px solid var(--gray-300);
+            border-radius: 0.25rem; background-color: transparent;
+            color: var(--gray-800); cursor: pointer;
             transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
         .download-button:hover {
@@ -766,7 +510,38 @@
         }
         .download-button:active { transform: scale(0.95); }
 
+        .search-section {
+            background-color: var(--white); padding: 1.5rem;
+            border-radius: 0.75rem; border: 1px solid var(--gray-200); margin-bottom: 2rem;
+            box-shadow: var(--shadow-sm); animation: cardIn 0.35s ease both;
+        }
+        .search-container { display: flex; flex-direction: column; gap: 1rem; }
+        @media (min-width: 768px) { .search-container { flex-direction: row; } }
+        .search-box { flex: 1; position: relative; }
+        .search-icon {
+            position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%);
+            color: var(--gray-400); font-size: 1rem;
+        }
+        .search-input {
+            width: 100%; padding: 0.75rem 0.75rem 0.75rem 2.5rem;
+            border: 1px solid var(--gray-300); border-radius: 0.25rem;
+            font-family: 'Inter', sans-serif; font-size: 1rem;
+            transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+        }
+        .search-input:focus { outline: none; border-color: var(--emerald-500); box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.1); transform: translateY(-1px); }
+        .filter-container { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+        .filter-select {
+            padding: 0.75rem; border: 1px solid var(--gray-300);
+            border-radius: 0.25rem; font-family: 'Inter', sans-serif;
+            font-size: 1rem; background-color: var(--white); min-width: 150px;
+            transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+        }
+        .filter-select:focus { transform: translateY(-1px); }
+
+        .results-list { display: flex; flex-direction: column; gap: 1rem; }
         .question-card {
+            background-color: var(--white); border: 1px solid var(--gray-300);
+            border-radius: 0.5rem; padding: 1.5rem;
             animation: cardIn 0.45s ease both;
             transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
         }
@@ -775,50 +550,132 @@
             transform: translateY(-4px);
             box-shadow: 0 12px 28px rgba(16, 43, 39, 0.08);
         }
+        .question-content { display: flex; flex-direction: column; gap: 1rem; }
+        @media (min-width: 768px) { .question-content { flex-direction: row; align-items: center; justify-content: space-between; } }
+        .question-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
+        .question-code { font-family: 'Inter', sans-serif; font-weight: 700; color: var(--gray-800); font-size: 1.125rem; }
+        .question-badge { padding: 0.25rem 0.5rem; background-color: var(--gray-100); color: var(--gray-600); font-size: 0.75rem; border-radius: 0.25rem; }
+        .question-title { font-family: 'Inter', sans-serif; color: var(--gray-700); font-weight: 500; }
+        .question-meta { font-family: 'Roboto Mono', monospace; font-size: 0.75rem; color: var(--gray-500); }
 
+        .tools-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
         .tool-card {
-            border-radius: 0.75rem;
+            padding: 1.5rem; border: 1px solid var(--gray-200); border-radius: 0.75rem;
+            background: linear-gradient(180deg, #ffffff, #f9fafb);
             animation: cardIn 0.45s ease both;
             transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-            border-style: solid;
-            border-color: var(--gray-200);
-            background: linear-gradient(180deg, #ffffff, #f9fafb);
+            cursor: pointer;
         }
         .tool-card:hover {
             border-color: var(--emerald-400);
             transform: translateY(-6px);
             box-shadow: 0 16px 32px rgba(5, 150, 105, 0.12);
         }
-        .tool-icon {
-            transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-            color: var(--emerald-600);
-        }
+        .tool-icon { color: var(--emerald-600); font-size: 2rem; margin-bottom: 1rem; transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
         .tool-card:hover .tool-icon { transform: scale(1.15) rotate(-6deg); }
+        .tool-title { font-family: 'Inter', sans-serif; font-size: 1.25rem; font-weight: 700; color: var(--gray-800); margin-bottom: 0.5rem; }
+        .tool-description { font-family: 'Roboto Mono', monospace; font-size: 0.75rem; color: var(--gray-600); margin-bottom: 1rem; }
+        .tool-link { font-size: 0.875rem; font-weight: 700; text-decoration: underline; text-decoration-style: dashed; color: var(--gray-800); }
 
         .links-container {
-            border-radius: 0.75rem;
-            border: 1px solid var(--gray-200);
-            box-shadow: var(--shadow-sm);
+            background-color: var(--white); border: 1px solid var(--gray-200);
+            padding: 1.5rem; border-radius: 0.75rem; box-shadow: var(--shadow-sm);
             animation: cardIn 0.4s ease both;
         }
+        .links-list { list-style: none; }
         .links-list li {
+            display: flex; align-items: center; color: var(--gray-600);
             transition: transform 0.2s ease, color 0.2s ease;
-            border-radius: 0.375rem; padding: 0.35rem 0.25rem;
+            margin-bottom: 1rem; border-radius: 0.375rem; padding: 0.35rem 0.25rem;
         }
+        .links-list li:last-child { margin-bottom: 0; }
         .links-list li:hover { transform: translateX(6px); color: var(--emerald-700); }
+        .link-icon { margin-right: 0.5rem; font-size: 0.75rem; }
+        .link-text { font-family: 'Roboto Mono', monospace; font-size: 0.875rem; }
+        .link-text a { color: inherit; text-decoration: none; transition: text-decoration 0.3s; }
+        .link-text a:hover { text-decoration: underline; text-decoration-style: dashed; }
 
-        .search-section {
-            border-radius: 0.75rem;
-            box-shadow: var(--shadow-sm);
-            border: 1px solid var(--gray-200);
-            animation: cardIn 0.35s ease both;
+        .no-results {
+            text-align: center; padding: 3rem;
+            background-color: var(--white); border: 1px dashed var(--gray-300);
+            border-radius: 0.5rem;
         }
-        .search-input, .filter-select {
-            transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+        .no-results-text { font-family: 'Inter', sans-serif; color: var(--gray-600); font-size: 1rem; }
+        .clear-filters {
+            margin-top: 1rem; color: var(--emerald-600);
+            background: none; border: none; cursor: pointer;
+            font-family: 'Roboto Mono', monospace; font-weight: 600;
         }
-        .search-input:focus, .filter-select:focus {
-            transform: translateY(-1px);
+        .clear-filters:hover { text-decoration: underline; }
+
+        .hidden { display: none !important; }
+        .text-sm { font-size: 0.875rem; }
+        .text-xs { font-size: 0.75rem; }
+        .font-bold { font-weight: 700; }
+        .font-black { font-weight: 900; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
+        @keyframes paneIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        @keyframes cardIn {
+            from { opacity: 0; transform: translateY(16px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes softPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.55; }
+        }
+        @keyframes heroFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @media (min-width: 768px) {
+            .md\:flex { display: flex; }
+            .md\:hidden { display: none; }
+            .md\:grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+            .md\:text-5xl { font-size: 3rem; }
+            .md\:flex-row { flex-direction: row; }
+            .footer-grid { grid-template-columns: repeat(4, 1fr); }
+            .footer-bottom { flex-direction: row; }
+            .footer-bottom p { margin-bottom: 0; }
+            .tools-grid { grid-template-columns: repeat(2, 1fr); }
+            .resources-title { font-size: 3rem; }
+        }
+
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; animation: paneIn 0.35s ease both; }
+
+        .skeleton {
+            background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.4s ease-in-out infinite;
+            border-radius: 0.375rem;
+        }
+        .skeleton-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 1.1rem 1rem; border-bottom: 1px dashed var(--gray-200);
+            gap: 1rem;
+        }
+        .skeleton-row:last-child { border-bottom: none; }
+        .skeleton-icon { width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; flex-shrink: 0; }
+        .skeleton-lines { flex: 1; display: flex; flex-direction: column; gap: 0.45rem; }
+        .skeleton-line { height: 0.7rem; border-radius: 999px; }
+        .skeleton-line.w60 { width: 60%; }
+        .skeleton-line.w40 { width: 40%; }
+        .skeleton-line.w80 { width: 80%; }
+        .skeleton-line.w30 { width: 30%; }
+        .skeleton-btn { width: 2.25rem; height: 2.25rem; border-radius: 0.375rem; flex-shrink: 0; }
 
         .resources-toolbar {
             display: flex; flex-wrap: wrap; gap: 0.75rem;
@@ -872,7 +729,6 @@
         }
 
         /* ===== NUESA ACADEMIC TRACKER ===== */
-
         .paste-import {
             margin-bottom: 1.15rem;
             border: 1px dashed var(--emerald-300);
@@ -1191,6 +1047,7 @@
         .tracker-manage-inner h3 { font-weight: 800; margin-bottom: 0.35rem; }
         .tracker-manage-inner p { font-size: 0.85rem; color: var(--gray-600); margin-bottom: 1rem; }
         .tracker-manage-actions { display: flex; flex-direction: column; gap: 0.5rem; }
+        .data-note { text-align: center; font-size: 0.75rem; color: var(--slate-500); margin-top: 0.5rem; }
         .semester-controls { display: flex; gap: 0.5rem; flex-wrap: wrap; }
         .semester-select {
             padding: 0.55rem 0.75rem; border-radius: 0.5rem;
@@ -1218,21 +1075,20 @@
         }
         .add-course-btn { background: white; color: var(--emerald-700); border: 1px solid var(--emerald-200); }
         .add-course-btn:hover { background: var(--emerald-50); }
-
     </style>
 </head>
 <body>
-    <!-- NAVBAR -->
-    <nav class="navbar" id="navbar">
+    <!-- RESPONSIVE NAVBAR -->
+    <nav class="navbar" id="navbar" aria-label="Main navigation">
         <div class="nav-container">
             <div class="nav-flex">
-                <a href="/" class="logo-link">
+                <a href="index.html" class="logo-link">
                     <span class="logo-main">N.U.E.S.A</span>
                     <span class="logo-highlight">BIU</span>
                 </a>
                 <div class="nav-menu">
-                    <ul class="nav-links">
-                        <li><a href="index.html" class="active">HOME</a></li>
+                    <ul class="nav-links" id="navLinks">
+                        <li><a href="index.html">HOME</a></li>
                         <li><a href="about.html">ABOUT</a></li>
                         <li><a href="members.html">MEMBERS</a></li>
                         <li><a href="events.html">EVENTS</a></li>
@@ -1247,27 +1103,13 @@
                         <li><a href="gallery.html">GALLERY</a></li>
                     </ul>
                 </div>
-                <button class="hamburger" id="hamburger">
+                <button type="button" class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="mobileNav">
                     <span></span><span></span><span></span>
                 </button>
             </div>
         </div>
-        <div class="mobile-nav" id="mobileNav">
-            <ul>
-                <li><a href="index.html" class="active">HOME</a></li>
-                <li><a href="about.html">ABOUT</a></li>
-                <li><a href="members.html">MEMBERS</a></li>
-                <li><a href="events.html">EVENTS</a></li>
-                <li><a href="resources.html">RESOURCES</a></li>
-                <li><a href="timetables.html">TIME TABLES</a></li>
-                <li><a href="admission.html">ADMISSION</a></li>
-                <li><a href="courseReps.html">COURSE REPS</a></li>
-                <li><a href="news.html">NEWS</a></li>
-                <li><a href="contacts.html">CONTACT</a></li>
-                <li><a href="elections.html">ELECTIONS</a></li>
-                <li><a href="awards.html">AWARDS</a></li>
-                <li><a href="gallery.html">GALLERY</a></li>
-            </ul>
+        <div class="mobile-nav" id="mobileNav" aria-hidden="true">
+            <ul id="mobileLinks"></ul>
         </div>
     </nav>
 
@@ -1289,11 +1131,11 @@
 
         <section class="py-16">
             <div class="container max-w-7xl">
-                <div class="tabs-navigation">
-                    <button class="tab-button active" data-tab="resources">Study Resources</button>
-                    <button class="tab-button" data-tab="past-questions">Past Questions</button>
-                    <button class="tab-button" data-tab="tools">Tools & Utilities</button>
-                    <button class="tab-button" data-tab="links">Helpful Links</button>
+                <div class="tabs-navigation" role="tablist">
+                    <button type="button" class="tab-button active" data-tab="resources">Study Resources</button>
+                    <button type="button" class="tab-button" data-tab="past-questions">Past Questions</button>
+                    <button type="button" class="tab-button" data-tab="tools">Tools & Utilities</button>
+                    <button type="button" class="tab-button" data-tab="links">Helpful Links</button>
                 </div>
 
                 <div id="tab-content">
@@ -1357,7 +1199,7 @@
                         <div id="noResults" class="no-results" style="display: none;">
                             <div class="empty-illus"><i class="fas fa-search"></i></div>
                             <p class="no-results-text">No past questions found matching your search.</p>
-                            <button id="clearFiltersBtn" class="clear-filters">Clear filters</button>
+                            <button type="button" id="clearFiltersBtn" class="clear-filters">Clear filters</button>
                         </div>
                     </div>
 
@@ -1651,10 +1493,10 @@ SECOND	PHY 121	2	GENERAL PHYSICS II	C
                     <h3>N.U.E.S.A <span class="text-emerald-400">BIU</span></h3>
                     <p class="footer-text">Empowering the next generation of engineers through innovation, unity, and excellence.</p>
                     <div class="social-icons">
-                        <a href="#" class="social-icon"><i class="fab fa-facebook-f"></i></a>
-                        <a href="#" class="social-icon"><i class="fab fa-twitter"></i></a>
-                        <a href="#" class="social-icon"><i class="fab fa-instagram"></i></a>
-                        <a href="#" class="social-icon"><i class="fab fa-linkedin-in"></i></a>
+                        <a href="#" class="social-icon" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="social-icon" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="social-icon" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="social-icon" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
                     </div>
                 </div>
                 <div class="footer-section">
@@ -1703,48 +1545,58 @@ SECOND	PHY 121	2	GENERAL PHYSICS II	C
     </footer>
 
     <script>
-        // ==================== NAVBAR SCRIPT ====================
-        (function() {
+        // ==================== RESPONSIVE NAVBAR SCRIPT ====================
+        (function () {
             const navbar = document.getElementById('navbar');
             const hamburger = document.getElementById('hamburger');
             const mobileNav = document.getElementById('mobileNav');
-            const mobileLinks = document.querySelectorAll('.mobile-nav ul li a');
-            const desktopLinks = document.querySelectorAll('.nav-links li a');
+            const desktopUl = document.getElementById('navLinks');
+            const mobileUl = document.getElementById('mobileLinks');
 
-            let currentPath = window.location.pathname;
-            if (currentPath.endsWith('.html')) currentPath = currentPath.replace('.html', '');
-            if (currentPath === '/' || currentPath === '/index') currentPath = '/';
+            if (!navbar || !hamburger || !mobileNav || !desktopUl || !mobileUl) return;
 
-            function updateActiveLinks() {
-                desktopLinks.forEach(link => {
-                    const href = link.getAttribute('href').replace('.html', '');
-                    if (href === currentPath || (currentPath === '/' && href === 'index')) link.classList.add('active');
-                    else link.classList.remove('active');
-                });
-                mobileLinks.forEach(link => {
-                    const href = link.getAttribute('href').replace('.html', '');
-                    if (href === currentPath || (currentPath === '/' && href === 'index')) link.classList.add('active');
-                    else link.classList.remove('active');
-                });
+            mobileUl.innerHTML = desktopUl.innerHTML;
+            const mobileItems = mobileUl.querySelectorAll('li');
+            mobileItems.forEach((li, i) => {
+                li.style.transitionDelay = `${Math.min(0.03 * (i + 1), 0.35)}s`;
+            });
+
+            const allLinks = [
+                ...desktopUl.querySelectorAll('a'),
+                ...mobileUl.querySelectorAll('a')
+            ];
+
+            function normalizePage(href) {
+                const clean = (href || '').split('?')[0].split('#')[0].split('/').pop();
+                if (!clean || clean === 'index.html') return 'index';
+                return clean.replace(/\.html$/i, '').toLowerCase();
             }
+
+            const currentPage = normalizePage(window.location.pathname);
+
+            allLinks.forEach((link) => {
+                const isCurrent = normalizePage(link.getAttribute('href')) === currentPage;
+                link.classList.toggle('active', isCurrent);
+                if (isCurrent) {
+                    link.setAttribute('aria-current', 'page');
+                } else {
+                    link.removeAttribute('aria-current');
+                }
+            });
 
             function handleScroll() {
-                if (window.scrollY > 20) navbar.classList.add('scrolled');
-                else navbar.classList.remove('scrolled');
+                navbar.classList.toggle('scrolled', window.scrollY > 20);
             }
-            window.addEventListener('scroll', handleScroll);
+            window.addEventListener('scroll', handleScroll, { passive: true });
             handleScroll();
 
             function toggleMobileMenu(open) {
-                if (open) {
-                    hamburger.classList.add('active');
-                    mobileNav.classList.add('active');
-                    document.body.classList.add('menu-open');
-                } else {
-                    hamburger.classList.remove('active');
-                    mobileNav.classList.remove('active');
-                    document.body.classList.remove('menu-open');
-                }
+                const isOpen = Boolean(open);
+                hamburger.classList.toggle('active', isOpen);
+                mobileNav.classList.toggle('active', isOpen);
+                document.body.classList.toggle('menu-open', isOpen);
+                hamburger.setAttribute('aria-expanded', String(isOpen));
+                mobileNav.setAttribute('aria-hidden', String(!isOpen));
             }
 
             hamburger.addEventListener('click', (e) => {
@@ -1752,23 +1604,38 @@ SECOND	PHY 121	2	GENERAL PHYSICS II	C
                 e.stopPropagation();
                 toggleMobileMenu(!hamburger.classList.contains('active'));
             });
-            mobileLinks.forEach(link => link.addEventListener('click', () => toggleMobileMenu(false)));
-            document.addEventListener('click', (e) => {
-                if (mobileNav.classList.contains('active') &&
-                    !mobileNav.contains(e.target) &&
-                    !hamburger.contains(e.target)) toggleMobileMenu(false);
-            });
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && mobileNav.classList.contains('active')) toggleMobileMenu(false);
+
+            mobileUl.querySelectorAll('a').forEach((link) => {
+                link.addEventListener('click', () => toggleMobileMenu(false));
             });
 
-            updateActiveLinks();
+            document.addEventListener('click', (e) => {
+                if (
+                    mobileNav.classList.contains('active') &&
+                    !mobileNav.contains(e.target) &&
+                    !hamburger.contains(e.target)
+                ) {
+                    toggleMobileMenu(false);
+                }
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && mobileNav.classList.contains('active')) {
+                    toggleMobileMenu(false);
+                    hamburger.focus();
+                }
+            });
+
+            window.addEventListener('resize', () => {
+                if (window.innerWidth > 1180 && mobileNav.classList.contains('active')) {
+                    toggleMobileMenu(false);
+                }
+            }, { passive: true });
         })();
 
         // ==================== CGPA CALCULATOR ====================
         const GRADE_POINTS = { 'A': 5.0, 'B': 4.0, 'C': 3.0, 'D': 2.0, 'E': 1.0, 'F': 0.0 };
 
-        // ---------- Paste portal results ----------
         function parsePortalResultsText(raw) {
             const lines = String(raw || '')
                 .replace(/\r\n/g, '\n')
@@ -1786,12 +1653,10 @@ SECOND	PHY 121	2	GENERAL PHYSICS II	C
                 if (upper.startsWith('SEMESTER') && upper.includes('CODE')) continue;
                 if (upper.startsWith('CODE') && upper.includes('GRADE')) continue;
 
-                // Split on tabs first, else multiple spaces
                 let parts = line.includes('\t')
                     ? line.split('\t').map(p => p.trim()).filter(Boolean)
                     : line.split(/\s{2,}/).map(p => p.trim()).filter(Boolean);
 
-                // Fallback: SEMESTER CODE LOAD TITLE... GRADE
                 if (parts.length < 4) {
                     const m = line.match(/^(FIRST|SECOND|1ST|2ND|SEM\s*[12]|S[12])\s+([A-Z]{2,5}\s*\d{2,3}[A-Z]?)\s+(\d+(?:\.\d+)?)\s+(.+?)\s+([A-F])\s*$/i);
                     if (m) {
@@ -1803,10 +1668,8 @@ SECOND	PHY 121	2	GENERAL PHYSICS II	C
                 let semesterRaw = parts[0];
                 let code, load, title, grade;
 
-                // Sometimes header omitted and first col is code
                 const looksLikeCode = /^[A-Z]{2,5}\s*\d{2,3}/i.test(semesterRaw);
                 if (looksLikeCode && parts.length >= 4) {
-                    // CODE LOAD TITLE GRADE
                     code = parts[0];
                     load = parts[1];
                     grade = parts[parts.length - 1];
@@ -1864,7 +1727,6 @@ SECOND	PHY 121	2	GENERAL PHYSICS II	C
 
             let saved = 0;
             if (saveAll) {
-                // Save each non-empty semester into history
                 for (const sem of order) {
                     const list = coursesBySem[sem];
                     if (!list.length) continue;
@@ -1874,7 +1736,6 @@ SECOND	PHY 121	2	GENERAL PHYSICS II	C
                         qualityPoints += (GRADE_POINTS[c.grade] || 0) * c.units;
                     });
                     const gpa = totalUnits > 0 ? qualityPoints / totalUnits : 0;
-                    // Remove existing same year+semester to avoid duplicates
                     savedSemesters = savedSemesters.filter(s => !(s.year === y && s.semester === sem));
                     savedSemesters.push({
                         id: Date.now().toString() + '-' + sem,
@@ -1891,7 +1752,6 @@ SECOND	PHY 121	2	GENERAL PHYSICS II	C
                 updateDisplay();
             }
 
-            // Load the first semester into the editor
             const firstSem = order[0];
             currentSemester = firstSem;
             const semSel = document.getElementById('currentSemester');
@@ -1910,8 +1770,6 @@ SECOND	PHY 121	2	GENERAL PHYSICS II	C
             }
             return { imported: totalCourses, saved };
         }
-
-
 
         let studentInfo = { fullName: '', matricNumber: '', department: '', level: '' };
         let currentYear = 1;
@@ -1972,7 +1830,7 @@ SECOND	PHY 121	2	GENERAL PHYSICS II	C
                         <option value="F" ${course.grade === 'F' ? 'selected' : ''}>F (0.0)</option>
                     </select>
                     <div class="course-remove">
-                        <button class="remove-btn" ${courses.length === 1 ? 'disabled' : ''} onclick="removeCourse('${course.id}')">
+                        <button type="button" class="remove-btn" ${courses.length === 1 ? 'disabled' : ''} onclick="removeCourse('${course.id}')">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
@@ -1984,7 +1842,7 @@ SECOND	PHY 121	2	GENERAL PHYSICS II	C
                 row.querySelectorAll('input, select').forEach(input => {
                     input.addEventListener('change', (e) => {
                         const field = e.target.dataset.field;
-                        const value = e.target.type === 'number' ? parseInt(e.target.value) : e.target.value;
+                        const value = e.target.type === 'number' || e.target.dataset.field === 'units' ? parseInt(e.target.value, 10) : e.target.value;
                         updateCourse(id, field, value);
                     });
                 });
@@ -2103,7 +1961,7 @@ SECOND	PHY 121	2	GENERAL PHYSICS II	C
                             </div>
                             <div class="saved-semester-actions">
                                 <span class="saved-semester-gpa">${sem.gpa.toFixed(2)}</span>
-                                <button class="delete-semester-btn" onclick="deleteSemester('${sem.id}')" title="Delete semester">
+                                <button type="button" class="delete-semester-btn" onclick="deleteSemester('${sem.id}')" title="Delete semester">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -2249,23 +2107,19 @@ SECOND	PHY 121	2	GENERAL PHYSICS II	C
         });
 
         document.addEventListener('input', function(e) {
-            if (e.target.id === 'fullName') { studentInfo.fullName = e.target.value; saveToStorage(); }
-            if (e.target.id === 'matricNumber') { studentInfo.matricNumber = e.target.value; saveToStorage(); }
+            if (e.target.id === 'fullName') { studentInfo.fullName = e.target.value; saveToStorage(); updateProfileSummary(); }
+            if (e.target.id === 'matricNumber') { studentInfo.matricNumber = e.target.value; saveToStorage(); updateProfileSummary(); }
         });
         document.addEventListener('change', function(e) {
-            if (e.target.id === 'department') { studentInfo.department = e.target.value; saveToStorage(); }
-            if (e.target.id === 'level') { studentInfo.level = e.target.value; saveToStorage(); }
-        });
-        document.addEventListener('change', function(e) {
+            if (e.target.id === 'department') { studentInfo.department = e.target.value; saveToStorage(); updateProfileSummary(); }
+            if (e.target.id === 'level') { studentInfo.level = e.target.value; saveToStorage(); updateProfileSummary(); }
             if (e.target.id === 'currentYear') {
-                currentYear = parseInt(e.target.value);
-                const semesterLabel = document.getElementById('semesterLabel');
-                if (semesterLabel) semesterLabel.textContent = `Year ${currentYear}, Semester ${currentSemester}`;
+                currentYear = parseInt(e.target.value, 10) || 1;
+                renderCourses();
             }
             if (e.target.id === 'currentSemester') {
-                currentSemester = parseInt(e.target.value);
-                const semesterLabel = document.getElementById('semesterLabel');
-                if (semesterLabel) semesterLabel.textContent = `Year ${currentYear}, Semester ${currentSemester}`;
+                currentSemester = parseInt(e.target.value, 10) || 1;
+                renderCourses();
             }
         });
 
@@ -2280,7 +2134,6 @@ SECOND	PHY 121	2	GENERAL PHYSICS II	C
             renderCourses();
             updateDisplay();
             switchTrackerTab('overview');
-            // sync year/semester selects
             const y = document.getElementById('currentYear');
             const s = document.getElementById('currentSemester');
             if (y) y.value = String(currentYear);
@@ -2292,7 +2145,7 @@ SECOND	PHY 121	2	GENERAL PHYSICS II	C
             if (!modal) return;
             modal.style.display = 'none';
             modal.setAttribute('aria-hidden', 'true');
-            document.body.style.overflow = 'auto';
+            document.body.style.overflow = '';
             const manage = document.getElementById('manageRecordsPanel');
             if (manage) manage.classList.add('hidden');
         }
@@ -2308,9 +2161,6 @@ SECOND	PHY 121	2	GENERAL PHYSICS II	C
                 if (modal && modal.style.display === 'block') closeCGPAModal();
             }
         });
-
-
-        // Tracker UI bindings
 
         document.getElementById('togglePasteImport')?.addEventListener('click', () => {
             const body = document.getElementById('pasteImportBody');
@@ -2335,7 +2185,6 @@ SECOND	PHY 121	2	GENERAL PHYSICS II	C
             importParsedSemesters(parsed, year, { saveAll: false });
         });
 
-
         document.addEventListener('click', function(e) {
             const tabBtn = e.target.closest('.tracker-tab');
             if (tabBtn && tabBtn.dataset.trackerTab) {
@@ -2354,40 +2203,9 @@ SECOND	PHY 121	2	GENERAL PHYSICS II	C
             }
         });
 
-        document.addEventListener('change', function(e) {
-            if (e.target.id === 'currentYear') {
-                currentYear = parseInt(e.target.value, 10) || 1;
-                renderCourses();
-            }
-            if (e.target.id === 'currentSemester') {
-                currentSemester = parseInt(e.target.value, 10) || 1;
-                renderCourses();
-            }
-            if (['fullName','matricNumber','department','level'].includes(e.target.id)) {
-                studentInfo = {
-                    fullName: (document.getElementById('fullName') || {}).value || '',
-                    matricNumber: (document.getElementById('matricNumber') || {}).value || '',
-                    department: (document.getElementById('department') || {}).value || '',
-                    level: (document.getElementById('level') || {}).value || ''
-                };
-                saveToStorage();
-                updateProfileSummary();
-            }
-        });
-
-        document.addEventListener('input', function(e) {
-            if (['fullName','matricNumber'].includes(e.target.id)) {
-                studentInfo[e.target.id === 'fullName' ? 'fullName' : 'matricNumber'] = e.target.value;
-                updateProfileSummary();
-            }
-        });
-
-
         // ==================== RESOURCES PAGE ====================
         const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
 
-        // Convert "/uploads/abc.pdf" → "https://nuesa-biu-pjp0.onrender.com/uploads/abc.pdf"
-        // Also passes through absolute URLs unchanged.
         function resolveFileUrl(rawUrl) {
             if (!rawUrl || rawUrl === '#') return '#';
             if (/^(https?:)?\/\//i.test(rawUrl) || /^(data:|blob:)/i.test(rawUrl)) return rawUrl;
@@ -2399,7 +2217,6 @@ SECOND	PHY 121	2	GENERAL PHYSICS II	C
             resources: [],
             filteredResources: [],
             filters: { search: '', level: 'All', department: 'All', year: 'All' },
-
             loading: false,
             tools: [
                 { name: 'CGPA Calculator', description: 'Calculate your semester and cumulative GPA easily', icon: 'calculator', action: showCGPACalculator },
@@ -2603,7 +2420,7 @@ SECOND	PHY 121	2	GENERAL PHYSICS II	C
                             <div class="empty-illus" style="background:#fef2f2;color:#ef4444;"><i class="fas fa-exclamation-triangle"></i></div>
                             <p style="font-size: 1.1rem; margin-bottom: 1rem;">Failed to load resources</p>
                             <p style="color: var(--gray-500); margin-bottom: 1.5rem;">${escapeHtmlSafe(error.message)}</p>
-                            <button onclick="location.reload()" style="padding: 0.75rem 1.5rem; background: var(--emerald-600); color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 600; transition: transform 0.2s;">
+                            <button type="button" onclick="location.reload()" style="padding: 0.75rem 1.5rem; background: var(--emerald-600); color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 600; transition: transform 0.2s;">
                                 <i class="fas fa-sync-alt mr-2"></i> Refresh Page
                             </button>
                         </div>
@@ -2706,7 +2523,7 @@ SECOND	PHY 121	2	GENERAL PHYSICS II	C
                     <div style="text-align: center; padding: 3rem; color: var(--gray-600);">
                         <div class="empty-illus"><i class="fas fa-search"></i></div>
                         <p style="font-weight:600;">No resources match your filters.</p>
-                        <button class="clear-filters" onclick="resetFilters()">Clear filters</button>
+                        <button type="button" class="clear-filters" onclick="resetFilters()">Clear filters</button>
                     </div>
                 `;
                 return;
@@ -2736,7 +2553,7 @@ SECOND	PHY 121	2	GENERAL PHYSICS II	C
                             </div>
                         </div>
                     </div>
-                    <button class="download-button" data-id="${escapeHtmlSafe(resource.id)}" data-url="${escapeHtmlSafe(resource.file_url)}" title="Download ${escapeHtmlSafe(resource.title)}">
+                    <button type="button" class="download-button" data-id="${escapeHtmlSafe(resource.id)}" data-url="${escapeHtmlSafe(resource.file_url)}" title="Download ${escapeHtmlSafe(resource.title)}">
                         <i class="fas fa-download"></i>
                     </button>
                 </div>`;
@@ -2772,7 +2589,7 @@ SECOND	PHY 121	2	GENERAL PHYSICS II	C
                                 ${resource.download_count ? ` • ${resource.download_count} downloads` : ''}
                             </div>
                         </div>
-                        <button class="download-button" data-id="${escapeHtmlSafe(resource.id)}" data-url="${escapeHtmlSafe(resource.file_url)}">
+                        <button type="button" class="download-button" data-id="${escapeHtmlSafe(resource.id)}" data-url="${escapeHtmlSafe(resource.file_url)}">
                             <i class="fas fa-download"></i> Download
                         </button>
                     </div>
@@ -2835,7 +2652,6 @@ SECOND	PHY 121	2	GENERAL PHYSICS II	C
             url = resolveFileUrl(url);
             window.open(url, '_blank', 'noopener,noreferrer');
 
-            // Fire-and-forget download count
             if (id) {
                 fetch(`${API_BASE_URL}/api/resources/${id}/download`, {
                     method: 'POST',
@@ -2907,7 +2723,6 @@ SECOND	PHY 121	2	GENERAL PHYSICS II	C
             alert('Academic Calendar coming soon!');
         }
 
-        // Expose for inline onclick handlers
         window.showCGPACalculator = showCGPACalculator;
         window.closeCGPAModal = closeCGPAModal;
         window.switchTab = switchTab;
