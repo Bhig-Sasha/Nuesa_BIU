@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* ===== SAME ROOT FROM EVENTS PAGE ===== */
         :root {
             --emerald-50: #ecfdf5;  --emerald-100: #d1fae5;  --emerald-200: #a7f3d0;
             --emerald-300: #6ee7b7;  --emerald-400: #34d399;  --emerald-500: #10b981;
@@ -16,14 +15,15 @@
             --emerald-900: #064e3b;  --teal-400: #2dd4bf;    --teal-500: #14b8a6;
             --amber-300: #fcd34d;    --amber-400: #fbbf24;    --amber-500: #f59e0b;
             --amber-600: #d97706;    --amber-700: #b45309;    --amber-100: #fef3c7;
-            --blue-100: #dbeafe;     --blue-500: #3b82f6;     --purple-500: #8b5cf6;
+            --blue-100: #dbeafe;     --blue-500: #3b82f6;     --blue-700: #1d4ed8;
+            --purple-500: #8b5cf6;
             --slate-50: #f8fafc;     --slate-100: #f1f5f9;    --slate-200: #e2e8f0;
             --slate-300: #cbd5e1;    --slate-400: #94a3b8;    --slate-500: #64748b;
             --slate-600: #475569;    --slate-700: #334155;    --slate-800: #1e293b;
             --slate-900: #0f172a;    --white: #ffffff;        --gray-50: #f9fafb;
             --gray-100: #f3f4f6;     --gray-200: #e5e7eb;    --gray-300: #d1d5db;
-            --gray-400: #9ca3af;     --gray-500: #6b7280;    --gray-600: #4b5563;
-            --gray-700: #374151;     --gray-800: #1f2937;    --gray-900: #111827;
+            --gray-400: #9ca3af;     --gray-500: #6b7280;     --gray-600: #4b5563;
+            --gray-700: #374151;     --gray-800: #1f2937;     --gray-900: #111827;
             --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
             --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
             --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
@@ -42,9 +42,10 @@
             overflow-x: hidden;
             background-color: var(--gray-50);
         }
-        body.menu-open { overflow: hidden; }
+        body.menu-open,
+        body.modal-open { overflow: hidden; }
 
-        /* ===== UPDATED NAVBAR ===== */
+        /* ===== NAVBAR ===== */
         .navbar {
             position: fixed;
             top: 0;
@@ -99,7 +100,12 @@
         .logo-link:focus-visible,
         .nav-links li a:focus-visible,
         .hamburger:focus-visible,
-        .mobile-nav ul li a:focus-visible {
+        .mobile-nav ul li a:focus-visible,
+        .filter-btn:focus-visible,
+        .nominee-btn:focus-visible,
+        .hero-btn:focus-visible,
+        .fame-btn:focus-visible,
+        .modal-close:focus-visible {
             outline: 2px solid var(--amber-400);
             outline-offset: 3px;
             border-radius: 6px;
@@ -281,7 +287,7 @@
             min-height: 100vh;
         }
 
-        /* ===== HERO SECTION (Award-themed) ===== */
+        /* ===== HERO SECTION ===== */
         .hero {
             position: relative;
             background: linear-gradient(135deg, var(--emerald-800), var(--emerald-600), var(--teal-500));
@@ -300,12 +306,14 @@
             width: 12rem; height: 12rem; background-color: rgba(255,255,255,0.1);
             border-radius: 50%; filter: blur(2rem);
             animation: float 8s ease-in-out infinite;
+            pointer-events: none;
         }
         .hero-blob-2 {
             position: absolute; bottom: 2.5rem; right: 5rem;
             width: 16rem; height: 16rem; background-color: rgba(245,158,11,0.2);
             border-radius: 50%; filter: blur(3rem);
             animation: float 12s ease-in-out infinite reverse;
+            pointer-events: none;
         }
         @keyframes float {
             0%, 100% { transform: translateY(0) scale(1); }
@@ -321,7 +329,7 @@
             to { opacity: 1; transform: translateY(0); }
         }
         .hero-tag {
-            display: inline-block;
+            display: inline-flex; align-items: center; gap: 0.5rem;
             padding: 0.5rem 1rem;
             background-color: rgba(255,255,255,0.2);
             border: 1px solid rgba(255,255,255,0.3);
@@ -350,9 +358,7 @@
         @media (min-width: 768px) {
             .hero-title { font-size: 3.5rem; }
         }
-        .hero-title .gold {
-            color: var(--amber-300);
-        }
+        .hero-title .gold { color: var(--amber-300); }
         .hero-subtitle {
             color: rgba(236, 253, 245, 1);
             max-width: 42rem;
@@ -419,10 +425,6 @@
         /* ===== SECTION BASE ===== */
         .section { padding: 4rem 0; }
         .section-alt { background-color: var(--white); }
-        .section-dark {
-            background: linear-gradient(135deg, var(--emerald-900), var(--emerald-800));
-            color: var(--white);
-        }
         .container {
             width: 100%; max-width: 80rem;
             margin: 0 auto; padding: 0 1rem;
@@ -447,10 +449,6 @@
             text-transform: uppercase;
             margin-bottom: 1rem;
         }
-        .section-dark .section-tag {
-            background-color: rgba(245,158,11,0.15);
-            color: var(--amber-300);
-        }
         .section-title {
             font-size: clamp(1.75rem, 4vw, 2.5rem);
             font-weight: 900;
@@ -459,13 +457,11 @@
             letter-spacing: -0.025em;
             margin-bottom: 0.75rem;
         }
-        .section-dark .section-title { color: var(--white); }
         .section-subtitle {
             color: var(--gray-600);
             font-size: 1rem;
             line-height: 1.7;
         }
-        .section-dark .section-subtitle { color: rgba(255,255,255,0.7); }
 
         /* ===== ABOUT SECTION ===== */
         .about-grid {
@@ -545,6 +541,9 @@
             position: relative;
             overflow: hidden;
             cursor: pointer;
+            text-align: left;
+            font-family: inherit;
+            width: 100%;
         }
         .category-card::before {
             content: '';
@@ -639,7 +638,7 @@
             line-height: 1.7;
         }
 
-        /* ===== FILTER TABS (REUSED) ===== */
+        /* ===== FILTER TABS ===== */
         .filter-tabs {
             display: flex;
             flex-wrap: wrap;
@@ -658,6 +657,7 @@
             transition: all 0.3s;
             display: flex; align-items: center; gap: 0.5rem;
             position: relative; overflow: hidden;
+            min-height: 38px;
         }
         .filter-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
         .filter-btn.active {
@@ -669,10 +669,13 @@
             font-size: 0.75rem;
             padding: 0.125rem 0.375rem;
             border-radius: 9999px;
-            background-color: rgba(255,255,255,0.2);
-            color: currentColor;
+            background-color: var(--gray-100);
+            color: var(--gray-700);
         }
-        .filter-btn.active .filter-count { background-color: rgba(255,255,255,0.3); }
+        .filter-btn.active .filter-count {
+            background-color: rgba(255,255,255,0.25);
+            color: white;
+        }
 
         @media (max-width: 640px) {
             .filter-tabs {
@@ -698,6 +701,8 @@
         @media (min-width: 640px) { .nominees-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (min-width: 1024px) { .nominees-grid { grid-template-columns: repeat(3, 1fr); } }
         @media (min-width: 1280px) { .nominees-grid { grid-template-columns: repeat(4, 1fr); } }
+
+        .grid-span-all { grid-column: 1 / -1; }
 
         .nominee-card {
             background: var(--white);
@@ -766,6 +771,7 @@
             transition: all 0.2s;
             border: 1px solid var(--emerald-200);
             cursor: pointer;
+            min-height: 38px;
         }
         .nominee-btn:hover {
             background: var(--emerald-600);
@@ -824,6 +830,15 @@
             margin-bottom: 0.75rem;
             background: var(--amber-100);
             color: var(--amber-700);
+        }
+        .voting-status--open,
+        .voting-status--closed {
+            background: var(--emerald-100);
+            color: var(--emerald-700);
+        }
+        .voting-status--nomination {
+            background: var(--blue-100);
+            color: var(--blue-700);
         }
         .voting-title {
             font-size: 1.75rem;
@@ -1015,6 +1030,7 @@
             font-size: 0.875rem;
             text-decoration: none;
             transition: all 0.2s;
+            min-height: 44px;
         }
         .fame-btn:hover {
             background: var(--emerald-700);
@@ -1041,7 +1057,7 @@
             padding: 2rem 0;
         }
         .sponsor-logo {
-            opacity: 0.4;
+            opacity: 0.55;
             transition: all 0.3s;
             font-size: 1.25rem;
             font-weight: 900;
@@ -1055,7 +1071,7 @@
             transform: scale(1.05);
         }
 
-        /* ===== FOOTER (SAME AS EVENTS) ===== */
+        /* ===== FOOTER ===== */
         .footer {
             background: linear-gradient(135deg, var(--slate-800) 0%, var(--slate-900) 100%);
             border-top: 4px solid var(--emerald-500);
@@ -1096,6 +1112,7 @@
             color: var(--white);
             margin-bottom: 1rem;
         }
+        .footer-section h3 span { color: var(--emerald-400); }
         .footer-section h4 {
             font-family: 'Roboto Mono', monospace;
             font-size: 0.875rem;
@@ -1118,11 +1135,15 @@
             transition: all 0.3s;
             text-decoration: none;
             font-size: 1.25rem;
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 36px;
+            min-height: 36px;
         }
         .social-icon:hover {
             color: var(--emerald-400);
-            transform: translateY(-3px) scale(1.2);
+            transform: translateY(-3px) scale(1.15);
         }
         .footer-links { list-style: none; }
         .footer-links li {
@@ -1175,7 +1196,7 @@
             text-decoration: none;
             transition: all 0.3s;
         }
-        .footer-bottom-links a:hover { color: var(--emerald-400); transform: scale(1.1); }
+        .footer-bottom-links a:hover { color: var(--emerald-400); }
         @media (min-width: 768px) {
             .footer-grid { grid-template-columns: repeat(4, 1fr); }
             .footer-bottom { flex-direction: row; }
@@ -1229,8 +1250,21 @@
         .empty-state p {
             color: var(--gray-500);
         }
+        .empty-reset-btn {
+            margin-top: 1.25rem;
+            padding: 0.55rem 1.15rem;
+            background: var(--emerald-600);
+            color: var(--white);
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            min-height: 40px;
+        }
+        .empty-reset-btn:hover { background: var(--emerald-700); }
 
-        /* ===== MODAL (REUSED FOR NOMINEE PROFILE) ===== */
+        /* ===== MODAL ===== */
         .modal-overlay {
             position: fixed;
             inset: 0;
@@ -1282,6 +1316,8 @@
             padding: 0.25rem 0.5rem;
             border-radius: 0.375rem;
             transition: background-color 0.2s;
+            min-width: 40px;
+            min-height: 40px;
         }
         .modal-close:hover { background-color: rgba(255,255,255,0.15); }
         .modal-body { padding: 1.75rem; text-align: center; }
@@ -1347,7 +1383,7 @@
 </head>
 <body>
 
-    <!-- ===== UPDATED NAVBAR ===== -->
+    <!-- ===== NAVBAR ===== -->
     <nav class="navbar" id="navbar" aria-label="Primary navigation">
         <div class="nav-container">
             <div class="nav-flex">
@@ -1382,7 +1418,7 @@
             <div class="hero-blob-2"></div>
             <div class="hero-content container">
                 <div class="hero-tag">
-                    <i class="fas fa-trophy"></i>
+                    <i class="fas fa-trophy" aria-hidden="true"></i>
                     NUESA BIU Awards
                 </div>
                 <h1 class="hero-title">
@@ -1394,10 +1430,10 @@
                 </p>
                 <div class="hero-actions">
                     <a href="#categories" class="hero-btn hero-btn-primary">
-                        <i class="fas fa-star"></i> Explore Awards
+                        <i class="fas fa-star" aria-hidden="true"></i> Explore Awards
                     </a>
                     <a href="#winners" class="hero-btn hero-btn-outline">
-                        <i class="fas fa-crown"></i> View Winners
+                        <i class="fas fa-crown" aria-hidden="true"></i> View Winners
                     </a>
                 </div>
                 <div class="hero-stats">
@@ -1422,7 +1458,7 @@
             <div class="container">
                 <div class="section-header">
                     <div class="section-tag">
-                        <i class="fas fa-info-circle"></i> About the Awards
+                        <i class="fas fa-info-circle" aria-hidden="true"></i> About the Awards
                     </div>
                     <h2 class="section-title">Where Excellence Meets Recognition</h2>
                     <p class="section-subtitle">
@@ -1444,12 +1480,12 @@
 
                     <div class="about-features">
                         <div class="feature-card">
-                            <div class="feature-icon"><i class="fas fa-medal"></i></div>
+                            <div class="feature-icon"><i class="fas fa-medal" aria-hidden="true"></i></div>
                             <h4>Excellence</h4>
                             <p>Celebrating outstanding achievement across every level and department.</p>
                         </div>
                         <div class="feature-card">
-                            <div class="feature-icon"><i class="fas fa-users"></i></div>
+                            <div class="feature-icon"><i class="fas fa-users" aria-hidden="true"></i></div>
                             <h4>Community</h4>
                             <p>Recognising the people whose impact makes NUESA stronger and more vibrant.</p>
                         </div>
@@ -1463,7 +1499,7 @@
             <div class="container">
                 <div class="section-header">
                     <div class="section-tag">
-                        <i class="fas fa-th-large"></i> Award Categories
+                        <i class="fas fa-th-large" aria-hidden="true"></i> Award Categories
                     </div>
                     <h2 class="section-title">Explore All Award Categories</h2>
                     <p class="section-subtitle">
@@ -1471,8 +1507,8 @@
                     </p>
                 </div>
 
-                <div class="categories-grid" id="categoriesGrid">
-                    <div class="loading-container" style="grid-column: 1 / -1;">
+                <div class="categories-grid" id="categoriesGrid" aria-live="polite">
+                    <div class="loading-container grid-span-all">
                         <div class="loading-spinner"></div>
                         <p class="loading-text">Loading categories...</p>
                     </div>
@@ -1481,19 +1517,19 @@
         </section>
 
         <!-- ===== NOMINATION CTA ===== -->
-        <section class="section">
+        <section class="section" id="nominate">
             <div class="container">
                 <div class="nomination-cta">
                     <div class="nomination-tag">
-                        <i class="fas fa-star"></i> Nominations Open
+                        <i class="fas fa-star" aria-hidden="true"></i> Nominations Open
                     </div>
                     <h2 class="nomination-title">Someone Deserves Recognition.</h2>
                     <p class="nomination-text">
                         Nominate an outstanding student, lecturer or group. Your voice helps us celebrate
                         the people who make NUESA extraordinary.
                     </p>
-                    <a href="#nominate" class="hero-btn hero-btn-primary">
-                        <i class="fas fa-pen"></i> Submit a Nomination
+                    <a href="contacts.html" class="hero-btn hero-btn-primary">
+                        <i class="fas fa-pen" aria-hidden="true"></i> Submit a Nomination
                     </a>
                 </div>
             </div>
@@ -1504,7 +1540,7 @@
             <div class="container">
                 <div class="section-header">
                     <div class="section-tag">
-                        <i class="fas fa-users"></i> Meet the Nominees
+                        <i class="fas fa-users" aria-hidden="true"></i> Meet the Nominees
                     </div>
                     <h2 class="section-title">The Faces of Excellence</h2>
                     <p class="section-subtitle">
@@ -1512,13 +1548,10 @@
                     </p>
                 </div>
 
-                <!-- Filter tabs -->
-                <div class="filter-tabs" id="nomineeFilters">
-                    <!-- Populated by JS -->
-                </div>
+                <div class="filter-tabs" id="nomineeFilters" role="group" aria-label="Filter nominees by award category"></div>
 
-                <div class="nominees-grid" id="nomineesGrid">
-                    <div class="loading-container" style="grid-column: 1 / -1;">
+                <div class="nominees-grid" id="nomineesGrid" aria-live="polite">
+                    <div class="loading-container grid-span-all">
                         <div class="loading-spinner"></div>
                         <p class="loading-text">Loading nominees...</p>
                     </div>
@@ -1531,9 +1564,9 @@
             <div class="container">
                 <div class="voting-panel">
                     <div class="voting-icon">
-                        <i class="fas fa-vote-yea"></i>
+                        <i class="fas fa-vote-yea" aria-hidden="true"></i>
                     </div>
-                    <div class="voting-status" id="votingStatus">Voting Not Open</div>
+                    <div class="voting-status" id="votingStatus" aria-live="polite">Voting Not Open</div>
                     <h2 class="voting-title">Cast Your Vote</h2>
                     <p class="voting-text" id="votingText">
                         Voting will become available when the official schedule opens. Check back soon.
@@ -1547,7 +1580,7 @@
             <div class="container">
                 <div class="section-header">
                     <div class="section-tag">
-                        <i class="fas fa-calendar-alt"></i> Award Ceremony
+                        <i class="fas fa-calendar-alt" aria-hidden="true"></i> Award Ceremony
                     </div>
                     <h2 class="section-title">The Night of Excellence</h2>
                     <p class="section-subtitle">
@@ -1557,7 +1590,7 @@
 
                 <div class="ceremony-grid">
                     <div class="ceremony-visual">
-                        <i class="fas fa-trophy ceremony-visual-icon"></i>
+                        <i class="fas fa-trophy ceremony-visual-icon" aria-hidden="true"></i>
                         <div class="ceremony-visual-content">
                             <div class="ceremony-visual-label">Save the Date</div>
                             <div class="ceremony-visual-title">The Night of Excellence</div>
@@ -1573,16 +1606,16 @@
 
                         <div class="ceremony-info">
                             <div class="ceremony-info-item">
-                                <i class="fas fa-calendar"></i>
+                                <i class="fas fa-calendar" aria-hidden="true"></i>
                                 <span id="ceremonyDate">Date to be announced</span>
                             </div>
                             <div class="ceremony-info-item">
-                                <i class="fas fa-map-marker-alt"></i>
+                                <i class="fas fa-map-marker-alt" aria-hidden="true"></i>
                                 <span id="ceremonyVenue">Venue to be announced</span>
                             </div>
                         </div>
 
-                        <div class="countdown">
+                        <div class="countdown" aria-label="Countdown to award ceremony">
                             <div class="countdown-item">
                                 <div class="countdown-value" id="daysLeft">--</div>
                                 <div class="countdown-label">Days</div>
@@ -1606,7 +1639,7 @@
             <div class="container">
                 <div class="section-header">
                     <div class="section-tag">
-                        <i class="fas fa-crown"></i> Hall of Fame
+                        <i class="fas fa-crown" aria-hidden="true"></i> Hall of Fame
                     </div>
                     <h2 class="section-title">Previous Winners & Editions</h2>
                     <p class="section-subtitle">
@@ -1617,15 +1650,15 @@
                 <div id="hallOfFame">
                     <div class="fame-card">
                         <div class="fame-icon">
-                            <i class="fas fa-trophy"></i>
+                            <i class="fas fa-trophy" aria-hidden="true"></i>
                         </div>
                         <div class="fame-content">
                             <h3>NUESA Awards 2025/2026</h3>
                             <p>Archived edition — explore the previous winners.</p>
                             <div class="fame-edition">2025/2026 · Archived</div>
                         </div>
-                        <a href="#" class="fame-btn">
-                            <i class="fas fa-arrow-right"></i> Explore Previous Winners
+                        <a href="gallery.html" class="fame-btn">
+                            <i class="fas fa-arrow-right" aria-hidden="true"></i> Explore Previous Winners
                         </a>
                     </div>
                 </div>
@@ -1637,7 +1670,7 @@
             <div class="container">
                 <div class="section-header">
                     <div class="section-tag">
-                        <i class="fas fa-handshake"></i> Our Sponsors & Partners
+                        <i class="fas fa-handshake" aria-hidden="true"></i> Our Sponsors & Partners
                     </div>
                     <h2 class="section-title">Powered By Our Community</h2>
                 </div>
@@ -1658,16 +1691,16 @@
         <div class="footer-container">
             <div class="footer-grid">
                 <div class="footer-section">
-                    <h3>N.U.E.S.A <span class="text-emerald-400" style="color: var(--emerald-400);">BIU</span></h3>
+                    <h3>N.U.E.S.A <span>BIU</span></h3>
                     <p class="footer-text">
                         Empowering the next generation of engineers through innovation,
                         unity, and excellence.
                     </p>
                     <div class="social-icons">
-                        <a href="#" class="social-icon"><i class="fab fa-facebook-f"></i></a>
-                        <a href="#" class="social-icon"><i class="fab fa-twitter"></i></a>
-                        <a href="#" class="social-icon"><i class="fab fa-instagram"></i></a>
-                        <a href="#" class="social-icon"><i class="fab fa-linkedin-in"></i></a>
+                        <a href="#" class="social-icon" aria-label="Facebook"><i class="fab fa-facebook-f" aria-hidden="true"></i></a>
+                        <a href="#" class="social-icon" aria-label="Twitter"><i class="fab fa-twitter" aria-hidden="true"></i></a>
+                        <a href="#" class="social-icon" aria-label="Instagram"><i class="fab fa-instagram" aria-hidden="true"></i></a>
+                        <a href="#" class="social-icon" aria-label="LinkedIn"><i class="fab fa-linkedin-in" aria-hidden="true"></i></a>
                     </div>
                 </div>
                 <div class="footer-section">
@@ -1691,15 +1724,15 @@
                     <h4>Contact</h4>
                     <div class="footer-links">
                         <div class="footer-contact-item">
-                            <i class="fas fa-map-marker-alt footer-contact-icon"></i>
+                            <i class="fas fa-map-marker-alt footer-contact-icon" aria-hidden="true"></i>
                             <span>Benson Idahosa University,<br>Benin City, Nigeria</span>
                         </div>
                         <div class="footer-contact-item">
-                            <i class="fas fa-envelope footer-contact-icon"></i>
+                            <i class="fas fa-envelope footer-contact-icon" aria-hidden="true"></i>
                             <a href="mailto:info@nuesabiu.org">info@nuesabiu.org</a>
                         </div>
                         <div class="footer-contact-item">
-                            <i class="fas fa-phone footer-contact-icon"></i>
+                            <i class="fas fa-phone footer-contact-icon" aria-hidden="true"></i>
                             <a href="tel:+2348001234567">+234 800 123 4567</a>
                         </div>
                     </div>
@@ -1720,7 +1753,7 @@
     document.addEventListener('DOMContentLoaded', function() {
         const API_BASE_URL = 'https://nuesa-biu-pjp0.onrender.com';
 
-        // ==================== UPDATED NAVBAR ====================
+        // ==================== NAVBAR ====================
         const NAV_ITEMS = [
             { label: 'HOME', href: 'index.html' },
             { label: 'ABOUT', href: 'about.html' },
@@ -1820,6 +1853,7 @@
         let categories = [];
         let nominees = [];
         let activeCategoryFilter = 'all';
+        let countdownIntervalId = null;
 
         const DEFAULT_CATEGORIES = [
             'Freshest Fresher', 'Most Innovative', 'Best Dressed Male',
@@ -1832,37 +1866,52 @@
         // ==================== HELPERS ====================
         function escapeHtml(str) {
             if (str == null) return '';
-            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
         }
 
         function getInitials(name) {
-            if (!name) return '?';
-            return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+            const clean = String(name || '').trim();
+            if (!clean) return '?';
+            const parts = clean.split(/\s+/).filter(Boolean);
+            if (!parts.length) return '?';
+            if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
         }
 
         function formatDate(dateStr) {
             if (!dateStr) return 'Date to be announced';
             try {
                 const d = new Date(dateStr);
-                if (isNaN(d.getTime())) return dateStr;
+                if (isNaN(d.getTime())) return String(dateStr);
                 return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-            } catch { return dateStr; }
+            } catch {
+                return String(dateStr);
+            }
         }
 
         // ==================== LOAD AWARDS ====================
         async function loadAwards() {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
+
             try {
                 const res = await fetch(`${API_BASE_URL}/api/awards/active`, {
-                    headers: { 'Accept': 'application/json' }
+                    headers: { 'Accept': 'application/json' },
+                    signal: controller.signal
                 });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
                 edition = data?.data || null;
 
                 if (edition) {
-                    categories = edition.categories || [];
+                    categories = Array.isArray(edition.categories) ? edition.categories : [];
                     nominees = categories.flatMap(c =>
-                        (c.nominees || []).map(n => ({
+                        (Array.isArray(c.nominees) ? c.nominees : []).map(n => ({
                             ...n,
                             category_name: c.name,
                             category_id: c.id
@@ -1870,23 +1919,24 @@
                     );
 
                     document.getElementById('heroEdition').textContent = edition.session_name || '2026/2027';
-                    document.getElementById('heroCategories').textContent = categories.length || 13;
-                    document.getElementById('heroNominees').textContent = nominees.length || 0;
+                    document.getElementById('heroCategories').textContent = categories.length || DEFAULT_CATEGORIES.length;
+                    document.getElementById('heroNominees').textContent = nominees.length;
 
+                    if (edition.ceremony_venue) {
+                        document.getElementById('ceremonyVenue').textContent = edition.ceremony_venue;
+                    }
                     if (edition.winner_announcement) {
                         document.getElementById('ceremonyDate').textContent = formatDate(edition.winner_announcement);
                         startCountdown(edition.winner_announcement);
                     }
                 }
-
-                renderCategories();
-                renderNomineeFilters();
-                renderNominees();
-                updateVotingStatus();
-
             } catch (err) {
-                console.error('Failed to load awards:', err);
+                console.warn('Failed to load active awards edition:', err);
                 categories = DEFAULT_CATEGORIES.map((name, i) => ({ id: `default-${i}`, name }));
+                nominees = [];
+                document.getElementById('heroNominees').textContent = '0';
+            } finally {
+                clearTimeout(timeoutId);
                 renderCategories();
                 renderNomineeFilters();
                 renderNominees();
@@ -1900,11 +1950,11 @@
             const list = categories.length ? categories : DEFAULT_CATEGORIES.map((name, i) => ({ id: `default-${i}`, name }));
 
             grid.innerHTML = list.map((cat, i) => `
-                <div class="category-card" data-category-id="${escapeHtml(cat.id)}">
-                    <div class="category-number">${String(i + 1).padStart(2, '0')}</div>
-                    <div class="category-name">${escapeHtml(cat.name)}</div>
-                    <span class="category-link">View category <i class="fas fa-arrow-right"></i></span>
-                </div>
+                <button type="button" class="category-card" data-category-id="${escapeHtml(cat.id)}">
+                    <span class="category-number">${String(i + 1).padStart(2, '0')}</span>
+                    <span class="category-name">${escapeHtml(cat.name)}</span>
+                    <span class="category-link">View nominees <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
+                </button>
             `).join('');
 
             grid.querySelectorAll('.category-card').forEach(card => {
@@ -1912,9 +1962,11 @@
                     const catId = card.dataset.categoryId;
                     if (catId && !catId.startsWith('default-')) {
                         activeCategoryFilter = catId;
-                        renderNomineeFilters();
-                        renderNominees();
+                    } else {
+                        activeCategoryFilter = 'all';
                     }
+                    renderNomineeFilters();
+                    renderNominees();
                     document.getElementById('nominees').scrollIntoView({ behavior: 'smooth' });
                 });
             });
@@ -1926,15 +1978,16 @@
             const list = categories.length ? categories : DEFAULT_CATEGORIES.map((name, i) => ({ id: `default-${i}`, name }));
 
             let html = `
-                <button type="button" class="filter-btn ${activeCategoryFilter === 'all' ? 'active' : ''}" data-filter="all">
+                <button type="button" class="filter-btn ${activeCategoryFilter === 'all' ? 'active' : ''}" data-filter="all" aria-pressed="${activeCategoryFilter === 'all'}">
                     <span class="filter-count">${nominees.length}</span>
                     All Awards
                 </button>
             `;
             list.forEach(cat => {
-                const count = nominees.filter(n => n.category_id === cat.id).length;
+                const count = nominees.filter(n => String(n.category_id) === String(cat.id)).length;
+                const isSelected = String(activeCategoryFilter) === String(cat.id);
                 html += `
-                    <button type="button" class="filter-btn ${activeCategoryFilter === cat.id ? 'active' : ''}" data-filter="${escapeHtml(cat.id)}">
+                    <button type="button" class="filter-btn ${isSelected ? 'active' : ''}" data-filter="${escapeHtml(cat.id)}" aria-pressed="${isSelected}">
                         <span class="filter-count">${count}</span>
                         ${escapeHtml(cat.name)}
                     </button>
@@ -1958,59 +2011,71 @@
 
             let filtered = nominees;
             if (activeCategoryFilter !== 'all') {
-                filtered = nominees.filter(n => n.category_id === activeCategoryFilter);
+                filtered = nominees.filter(n => String(n.category_id) === String(activeCategoryFilter));
             }
 
             if (!filtered.length) {
+                const isFiltered = activeCategoryFilter !== 'all';
                 grid.innerHTML = `
-                    <div class="empty-state" style="grid-column: 1 / -1;">
-                        <i class="fas fa-user-tie"></i>
-                        <h3>No Nominees Yet</h3>
-                        <p>Approved nominees will appear here once the nomination period closes.</p>
+                    <div class="empty-state grid-span-all">
+                        <i class="fas fa-user-tie" aria-hidden="true"></i>
+                        <h3>${isFiltered ? 'No Nominees in This Category Yet' : 'No Nominees Yet'}</h3>
+                        <p>${isFiltered
+                            ? 'Try selecting another award category or view all approved nominees.'
+                            : 'Approved nominees will appear here once the nomination period closes.'}</p>
+                        ${isFiltered ? '<button type="button" class="empty-reset-btn" data-action="reset-filter">Show All Nominees</button>' : ''}
                     </div>
                 `;
+                const resetBtn = grid.querySelector('[data-action="reset-filter"]');
+                if (resetBtn) {
+                    resetBtn.addEventListener('click', () => {
+                        activeCategoryFilter = 'all';
+                        renderNomineeFilters();
+                        renderNominees();
+                    });
+                }
                 return;
             }
 
             grid.innerHTML = filtered.map(n => `
-                <div class="nominee-card">
-                    <div class="nominee-avatar">${escapeHtml(getInitials(n.name))}</div>
+                <article class="nominee-card">
+                    <div class="nominee-avatar" aria-hidden="true">${escapeHtml(getInitials(n.name))}</div>
                     <div class="nominee-content">
-                        <div class="nominee-name">${escapeHtml(n.name)}</div>
+                        <h3 class="nominee-name">${escapeHtml(n.name || 'Unnamed Nominee')}</h3>
                         <div class="nominee-category">${escapeHtml(n.category_name || '')}</div>
                         <div class="nominee-meta">
                             ${escapeHtml(n.department || '')}${n.level ? ' · ' + escapeHtml(n.level) : ''}
                         </div>
                         <button type="button" class="nominee-btn" data-nominee-id="${escapeHtml(n.id)}">
-                            View Profile <i class="fas fa-arrow-right"></i>
+                            View Profile <i class="fas fa-arrow-right" aria-hidden="true"></i>
                         </button>
                     </div>
-                </div>
+                </article>
             `).join('');
 
             grid.querySelectorAll('.nominee-btn').forEach(btn => {
-                btn.addEventListener('click', () => openNomineeModal(btn.dataset.nomineeId));
+                btn.addEventListener('click', () => openNomineeModal(btn.dataset.nomineeId, btn));
             });
         }
 
         // ==================== NOMINEE MODAL ====================
-        function openNomineeModal(id) {
-            const n = nominees.find(x => x.id === id);
+        function openNomineeModal(id, triggerEl) {
+            const n = nominees.find(x => String(x.id) === String(id));
             if (!n) return;
 
             const modal = document.createElement('div');
             modal.className = 'modal-overlay';
             modal.innerHTML = `
-                <div class="modal-container" role="dialog" aria-modal="true" aria-label="Nominee Profile">
+                <div class="modal-container" role="dialog" aria-modal="true" aria-labelledby="nomineeModalTitle">
                     <div class="modal-header">
-                        <h2>Nominee Profile</h2>
+                        <h2 id="nomineeModalTitle">Nominee Profile</h2>
                         <button type="button" class="modal-close" aria-label="Close modal">
-                            <i class="fas fa-times"></i>
+                            <i class="fas fa-times" aria-hidden="true"></i>
                         </button>
                     </div>
                     <div class="modal-body">
-                        <div class="modal-avatar">${escapeHtml(getInitials(n.name))}</div>
-                        <div class="modal-name">${escapeHtml(n.name)}</div>
+                        <div class="modal-avatar" aria-hidden="true">${escapeHtml(getInitials(n.name))}</div>
+                        <div class="modal-name">${escapeHtml(n.name || 'Unnamed Nominee')}</div>
                         <div class="modal-category">${escapeHtml(n.category_name || '')}</div>
                         <div class="modal-details">
                             <strong>Department:</strong> ${escapeHtml(n.department || 'N/A')}<br>
@@ -2024,28 +2089,34 @@
 
             const closeModal = () => {
                 modal.remove();
-                document.body.style.overflow = '';
+                document.body.classList.remove('modal-open');
                 document.removeEventListener('keydown', onEsc);
+                if (triggerEl && typeof triggerEl.focus === 'function') {
+                    triggerEl.focus();
+                }
             };
 
             const onEsc = (e) => {
                 if (e.key === 'Escape') closeModal();
             };
 
-            modal.querySelector('.modal-close').addEventListener('click', closeModal);
+            const closeBtn = modal.querySelector('.modal-close');
+            closeBtn.addEventListener('click', closeModal);
             modal.addEventListener('click', e => {
                 if (e.target === modal) closeModal();
             });
             document.addEventListener('keydown', onEsc);
 
             document.body.appendChild(modal);
-            document.body.style.overflow = 'hidden';
+            document.body.classList.add('modal-open');
+            closeBtn.focus();
         }
 
         // ==================== VOTING STATUS ====================
         function updateVotingStatus() {
             const statusEl = document.getElementById('votingStatus');
             const textEl = document.getElementById('votingText');
+            statusEl.className = 'voting-status';
 
             if (!edition) {
                 statusEl.textContent = 'Voting Not Open';
@@ -2057,18 +2128,15 @@
 
             if (phase === 'voting') {
                 statusEl.textContent = 'Voting Open';
-                statusEl.style.background = 'var(--emerald-100)';
-                statusEl.style.color = 'var(--emerald-700)';
+                statusEl.classList.add('voting-status--open');
                 textEl.textContent = 'Voting is now open. Log in with your voter ID to cast your votes.';
             } else if (phase === 'nomination') {
                 statusEl.textContent = 'Nominations Open';
-                statusEl.style.background = 'var(--blue-100)';
-                statusEl.style.color = 'var(--blue-500)';
+                statusEl.classList.add('voting-status--nomination');
                 textEl.textContent = 'Nominations are open. Nominate someone who deserves recognition.';
             } else if (phase === 'closed') {
                 statusEl.textContent = 'Voting Closed';
-                statusEl.style.background = 'var(--emerald-100)';
-                statusEl.style.color = 'var(--emerald-700)';
+                statusEl.classList.add('voting-status--closed');
                 textEl.textContent = 'Voting has closed. Results will be published soon.';
             } else {
                 statusEl.textContent = 'Voting Not Open';
@@ -2078,6 +2146,11 @@
 
         // ==================== COUNTDOWN ====================
         function startCountdown(targetDate) {
+            if (countdownIntervalId) {
+                clearInterval(countdownIntervalId);
+                countdownIntervalId = null;
+            }
+
             const target = new Date(targetDate).getTime();
             if (isNaN(target)) return;
 
@@ -2087,6 +2160,10 @@
                     document.getElementById('daysLeft').textContent = '00';
                     document.getElementById('hoursLeft').textContent = '00';
                     document.getElementById('minutesLeft').textContent = '00';
+                    if (countdownIntervalId) {
+                        clearInterval(countdownIntervalId);
+                        countdownIntervalId = null;
+                    }
                     return;
                 }
                 const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -2099,7 +2176,7 @@
             }
 
             tick();
-            setInterval(tick, 60000);
+            countdownIntervalId = setInterval(tick, 60000);
         }
 
         // ==================== INIT ====================

@@ -45,7 +45,7 @@
             -webkit-font-smoothing: antialiased;
         }
         body.menu-open { overflow: hidden; }
-        body.modal-open { overflow: hidden; position: fixed; width: 100%; }
+        body.modal-open { overflow: hidden; }
         img, video { max-width: 100%; display: block; }
         button, a { -webkit-tap-highlight-color: transparent; }
         button { font-family: inherit; cursor: pointer; }
@@ -758,6 +758,7 @@
         .ballot-body span { font-size: .72rem; color: var(--slate-500); font-family: var(--font-mono); }
 
         .cast-bar { margin-top: 1.75rem; padding-top: 1.5rem; border-top: 1px solid var(--slate-200); }
+        .cast-btn { min-height: 56px; font-size: 1rem; }
         .vote-error {
             background: #fef2f2; color: #991b1b; border: 1px solid #fecaca;
             padding: .85rem 1rem; border-radius: var(--radius);
@@ -868,6 +869,7 @@
             color: var(--white); padding: 1.75rem 1.5rem 1.35rem;
             position: relative; flex-shrink: 0;
         }
+        .modal-head--centered { text-align: center; }
         .modal-head::before {
             content: ''; position: absolute; top: -50%; right: -20%;
             width: 300px; height: 300px; border-radius: 50%;
@@ -956,6 +958,7 @@
             min-height: 44px; font-size: .82rem; padding-top: .7rem; padding-bottom: .7rem;
         }
         .nominee-card .field textarea { min-height: 68px; }
+        .optional-hint { font-weight: 500; color: var(--slate-400); }
 
         .add-nominee-btn {
             display: flex; align-items: center; justify-content: center; gap: .5rem;
@@ -994,10 +997,13 @@
             display: flex; align-items: center; justify-content: center;
             margin: 0 auto 1.1rem; font-size: 1.65rem;
         }
+        .state-box-icon--danger { background: #fef2f2; color: #991b1b; }
         .state-box h3 { font-family: var(--font-sans); font-size: 1.25rem; font-weight: 800; color: var(--slate-900); margin-bottom: .45rem; }
         .state-box p { font-size: .875rem; color: var(--slate-500); max-width: 32rem; margin: 0 auto 1.25rem; line-height: 1.6; }
 
         .loading-box { text-align: center; padding: 3rem 1rem; }
+        .loading-box--span-all { grid-column: 1 / -1; }
+        .loading-box p { color: var(--slate-500); font-size: .875rem; }
         .spinner {
             width: 44px; height: 44px; border: 3px solid var(--slate-200);
             border-top-color: var(--emerald-600); border-radius: 50%;
@@ -1017,6 +1023,29 @@
         }
         .vote-success h3 { font-family: var(--font-sans); font-size: 1.4rem; font-weight: 800; color: var(--slate-900); margin-bottom: .5rem; }
         .vote-success p { font-size: .9rem; color: var(--slate-500); max-width: 34rem; margin: 0 auto; line-height: 1.6; }
+
+        .verify-submit-btn { margin-top: .5rem; }
+        .verify-register-note { text-align: center; margin-top: 1rem; font-size: .78rem; color: var(--slate-500); }
+        .verify-register-link { color: var(--emerald-700); font-weight: 700; text-decoration: underline; }
+        .vote-matric-code { font-family: var(--font-mono); font-size: .75rem; }
+        .uppercase-input { text-transform: uppercase; }
+
+        /* TOAST */
+        .floating-toast {
+            position: fixed; top: 1rem; right: 1rem;
+            padding: .95rem 1.15rem; border-radius: 14px;
+            display: flex; align-items: center; gap: .7rem;
+            box-shadow: 0 20px 40px rgba(2,44,34,.15);
+            font-weight: 600; font-size: .875rem; z-index: 9999;
+            max-width: calc(100vw - 2rem); transform: translateY(-20px); opacity: 0;
+            transition: transform .35s cubic-bezier(.22,1,.36,1), opacity .35s;
+            white-space: pre-line;
+        }
+        .floating-toast--visible { transform: translateY(0); opacity: 1; }
+        .floating-toast--success { background: #ecfdf5; border: 1px solid #6ee7b7; color: #047857; }
+        .floating-toast--error   { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+        .floating-toast--info    { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+        .floating-toast i { font-size: 1.1rem; flex-shrink: 0; }
 
         /* FOOTER */
         .footer {
@@ -1230,9 +1259,9 @@
                     <p class="section-sub">Everything you need to know before registering, nominating or voting.</p>
                 </div>
                 <div class="info-grid" id="infoGrid">
-                    <div class="loading-box" style="grid-column: 1/-1;">
+                    <div class="loading-box loading-box--span-all">
                         <div class="spinner"></div>
-                        <p style="color: var(--slate-500); font-size: .875rem;">Loading election details…</p>
+                        <p>Loading election details…</p>
                     </div>
                 </div>
             </section>
@@ -1265,7 +1294,7 @@
                 <div id="candidatesContent">
                     <div class="loading-box">
                         <div class="spinner"></div>
-                        <p style="color: var(--slate-500); font-size: .875rem;">Loading candidates…</p>
+                        <p>Loading candidates…</p>
                     </div>
                 </div>
             </section>
@@ -1280,7 +1309,7 @@
                 <div id="voteContent">
                     <div class="loading-box">
                         <div class="spinner"></div>
-                        <p style="color: var(--slate-500); font-size: .875rem;">Loading ballot…</p>
+                        <p>Loading ballot…</p>
                     </div>
                 </div>
             </section>
@@ -1404,6 +1433,9 @@
     let hasVoted = false;
     let votes = {};
     let verifiedVoter = loadVoterSession();
+    if (verifiedVoter) {
+        hasVoted = !!verifiedVoter.hasVoted;
+    }
 
     const statusTitle = document.getElementById('statusTitle');
     const statusPhase = document.getElementById('statusPhase');
@@ -1426,7 +1458,7 @@
     function loadVoterSession() {
         try {
             const raw = sessionStorage.getItem(STORAGE_KEY);
-            return raw ? JSON.parse(raw) : null;
+            return raw ? normalizeVoterRecord(JSON.parse(raw)) : null;
         } catch { return null; }
     }
     function clearVoterSession() {
@@ -1437,11 +1469,8 @@
        BODY SCROLL LOCK
        ============================================================ */
     let scrollLockCount = 0;
-    let scrollLockY = 0;
     function lockBodyScroll() {
         if (scrollLockCount === 0) {
-            scrollLockY = window.scrollY;
-            document.body.style.top = `-${scrollLockY}px`;
             document.body.classList.add('modal-open');
         }
         scrollLockCount++;
@@ -1450,8 +1479,6 @@
         scrollLockCount = Math.max(0, scrollLockCount - 1);
         if (scrollLockCount === 0) {
             document.body.classList.remove('modal-open');
-            document.body.style.top = '';
-            window.scrollTo(0, scrollLockY);
         }
     }
 
@@ -1544,7 +1571,7 @@
         return {
             voterId:        v.voterId      ?? v.voter_id      ?? '',
             fullName:       v.fullName     ?? v.full_name     ?? '',
-            matricNumber:   v.matricNumber ?? v.matric_no     ?? '',
+            matricNumber:   normalizeMatric(v.matricNumber ?? v.matric_no ?? ''),
             phone:          v.phone        ?? '',
             department:     v.department   ?? '',
             level:          v.level        ?? '',
@@ -1706,7 +1733,7 @@
                 <p>Register as a voter to nominate and vote. You only need to do this once for this election.</p>`;
             openRegisterBtn.innerHTML = '<i class="fas fa-user-plus"></i> Register as a Voter';
             openRegisterBtn.disabled = false;
-            openRegisterBtn.onclick = openRegisterModal;
+            openRegisterBtn.onclick = () => openRegisterModal(openRegisterBtn);
         } else {
             regBannerBody.innerHTML = `
                 <h4>You're registered as ${esc(verifiedVoter.fullName || 'Voter')}</h4>
@@ -1720,12 +1747,18 @@
     /* ============================================================
        MODALS: REGISTER / MATRIC PROMPT / CANDIDATE / NOMINATE
        ============================================================ */
-    function bindModalDismiss(modal, onClose) {
+    function bindModalDismiss(modal, { onClose, returnFocusTo } = {}) {
+        let closed = false;
         const close = () => {
+            if (closed) return;
+            closed = true;
             document.removeEventListener('keydown', onKeyDown);
             modal.remove();
             unlockBodyScroll();
             if (typeof onClose === 'function') onClose();
+            if (returnFocusTo && typeof returnFocusTo.focus === 'function') {
+                returnFocusTo.focus();
+            }
         };
         function onKeyDown(e) {
             if (e.key === 'Escape') close();
@@ -1737,7 +1770,7 @@
         return close;
     }
 
-    function openRegisterModal() {
+    function openRegisterModal(triggerEl = null) {
         const deptOptions = DEPARTMENTS.map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join('');
         const levelOptions = LEVELS.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('');
 
@@ -1745,15 +1778,16 @@
         modal.className = 'modal-backdrop';
         modal.setAttribute('role', 'dialog');
         modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-labelledby', 'regModalTitle');
         modal.innerHTML = `
             <div class="modal modal-sm">
                 <div class="modal-head">
                     <button class="modal-close" type="button" aria-label="Close">&times;</button>
-                    <h3 class="modal-title">Register as a Voter</h3>
+                    <h3 class="modal-title" id="regModalTitle">Register as a Voter</h3>
                     <p class="modal-sub">Complete your details to register for the election. You only need to do this once.</p>
                 </div>
                 <div class="modal-body">
-                    <div class="alert alert-error" id="regError" role="alert">
+                    <div class="alert alert-error" id="regError" role="alert" aria-live="polite">
                         <i class="fas fa-exclamation-circle"></i>
                         <span id="regErrorText"></span>
                     </div>
@@ -1769,7 +1803,7 @@
                         <label for="regMatric">Matriculation number</label>
                         <div class="field-input-wrap">
                             <i class="fas fa-hashtag"></i>
-                            <input type="text" id="regMatric" placeholder="e.g. ENG/2021/001" required style="text-transform:uppercase;" autocomplete="off">
+                            <input type="text" id="regMatric" class="uppercase-input" placeholder="e.g. ENG/2021/001" required autocomplete="off">
                         </div>
                         <div class="field-error">Enter your matriculation number.</div>
                     </div>
@@ -1814,7 +1848,7 @@
 
         document.body.appendChild(modal);
         lockBodyScroll();
-        const close = bindModalDismiss(modal);
+        const close = bindModalDismiss(modal, { returnFocusTo: triggerEl });
         document.getElementById('cancelRegBtn').addEventListener('click', close);
         document.getElementById('regName').focus();
 
@@ -1904,11 +1938,11 @@
 
     document.getElementById('heroRegisterBtn').addEventListener('click', (e) => {
         e.preventDefault();
-        if (!verifiedVoter) openRegisterModal();
+        if (!verifiedVoter) openRegisterModal(e.currentTarget);
         else document.getElementById('vote').scrollIntoView({ behavior: 'smooth' });
     });
 
-    function openMatricPrompt({ mode, onVerified }) {
+    function openMatricPrompt({ mode, onVerified, triggerEl = null }) {
         const copies = {
             nominate: {
                 title: 'Access Nomination',
@@ -1929,15 +1963,16 @@
         modal.className = 'modal-backdrop';
         modal.setAttribute('role', 'dialog');
         modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-labelledby', 'promptModalTitle');
         modal.innerHTML = `
             <div class="modal modal-sm">
                 <div class="modal-head">
                     <button class="modal-close" type="button" aria-label="Close">&times;</button>
-                    <h3 class="modal-title">${esc(t.title)}</h3>
+                    <h3 class="modal-title" id="promptModalTitle">${esc(t.title)}</h3>
                     <p class="modal-sub">${esc(t.sub)}</p>
                 </div>
                 <div class="modal-body">
-                    <div class="alert alert-error" id="promptError" role="alert">
+                    <div class="alert alert-error" id="promptError" role="alert" aria-live="polite">
                         <i class="fas fa-exclamation-circle"></i>
                         <span id="promptErrorText"></span>
                     </div>
@@ -1945,9 +1980,9 @@
                         <label for="promptMatric">Matriculation number</label>
                         <div class="field-input-wrap">
                             <i class="fas fa-hashtag"></i>
-                            <input type="text" id="promptMatric"
+                            <input type="text" id="promptMatric" class="uppercase-input"
                                 placeholder="e.g. ENG/2021/001" required
-                                style="text-transform:uppercase;" autocomplete="off"
+                                autocomplete="off"
                                 value="${esc(verifiedVoter?.matricNumber || '')}">
                         </div>
                         <div class="field-error">Enter your matric number.</div>
@@ -1963,7 +1998,7 @@
 
         document.body.appendChild(modal);
         lockBodyScroll();
-        const close = bindModalDismiss(modal);
+        const close = bindModalDismiss(modal, { returnFocusTo: triggerEl });
         document.getElementById('promptCancel').addEventListener('click', close);
 
         const input = document.getElementById('promptMatric');
@@ -2103,7 +2138,7 @@
         candidatesContent.querySelectorAll('.candidate-card').forEach(card => {
             const openDetail = () => {
                 const c = CANDIDATES.find(x => String(x.id) === String(card.dataset.candidateId));
-                if (c) openCandidateModal(c);
+                if (c) openCandidateModal(c, card);
             };
             card.addEventListener('click', openDetail);
             card.addEventListener('keydown', (e) => {
@@ -2133,7 +2168,7 @@
             </div>`;
     }
 
-    function openCandidateModal(c) {
+    function openCandidateModal(c, triggerEl = null) {
         const pos = POSITIONS.find(p => String(p.id) === String(c.positionId));
         const displayName = (c.name && c.name.trim()) || 'Unnamed Candidate';
         const metaParts = [c.level, c.department].filter(Boolean);
@@ -2142,13 +2177,14 @@
         modal.className = 'modal-backdrop';
         modal.setAttribute('role', 'dialog');
         modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-labelledby', 'candidateModalTitle');
         modal.innerHTML = `
             <div class="modal">
-                <div class="modal-head" style="text-align:center;">
+                <div class="modal-head modal-head--centered">
                     <button class="modal-close" type="button" aria-label="Close">&times;</button>
                     <div class="candidate-modal-avatar">${esc(initials(displayName))}</div>
                     <span class="candidate-modal-tag">${esc(pos ? pos.title : 'Candidate')}</span>
-                    <h3 class="candidate-modal-head-name">${esc(displayName)}</h3>
+                    <h3 class="candidate-modal-head-name" id="candidateModalTitle">${esc(displayName)}</h3>
                     <p class="candidate-modal-head-meta">${esc(metaParts.join(' · '))}</p>
                 </div>
                 <div class="modal-body candidate-modal-body">
@@ -2161,7 +2197,7 @@
 
         document.body.appendChild(modal);
         lockBodyScroll();
-        bindModalDismiss(modal);
+        bindModalDismiss(modal, { returnFocusTo: triggerEl });
     }
 
     /* ============================================================
@@ -2205,7 +2241,7 @@
                     <label>Nominee's matric number</label>
                     <div class="field-input-wrap">
                         <i class="fas fa-hashtag"></i>
-                        <input type="text" name="nominee_matric_${index}" placeholder="e.g. ENG/2022/045" required style="text-transform:uppercase;">
+                        <input type="text" name="nominee_matric_${index}" class="uppercase-input" placeholder="e.g. ENG/2022/045" required>
                     </div>
                     <div class="field-error">Enter their matric number.</div>
                 </div>
@@ -2232,7 +2268,7 @@
                     <div class="field-error">Select a level.</div>
                 </div>
                 <div class="field">
-                    <label>Reason for nomination <span style="font-weight:500;color:var(--slate-400);">(optional)</span></label>
+                    <label>Reason for nomination <span class="optional-hint">(optional)</span></label>
                     <div class="field-input-wrap">
                         <i class="fas fa-comment"></i>
                         <textarea name="nominee_reason_${index}" placeholder="Why would this person represent the position well?"></textarea>
@@ -2241,7 +2277,7 @@
             </div>`;
     }
 
-    function openNominateModal() {
+    function openNominateModal(triggerEl = null) {
         if (!NOMINATION_OPEN_PHASES.has(electionPhase)) {
             showFloatingToast('Nominations are currently closed for this election.', 'error');
             return;
@@ -2260,15 +2296,16 @@
         modal.className = 'modal-backdrop';
         modal.setAttribute('role', 'dialog');
         modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-labelledby', 'nominateModalTitle');
         modal.innerHTML = `
             <div class="modal modal-lg">
                 <div class="modal-head">
                     <button class="modal-close" type="button" aria-label="Close">&times;</button>
-                    <h3 class="modal-title">Nominate candidates</h3>
+                    <h3 class="modal-title" id="nominateModalTitle">Nominate candidates</h3>
                     <p class="modal-sub">All nominations are submitted together for the electoral committee to review.</p>
                 </div>
                 <div class="modal-body" id="nominateModalBody">
-                    <div class="alert alert-error" id="nominateError" role="alert">
+                    <div class="alert alert-error" id="nominateError" role="alert" aria-live="polite">
                         <i class="fas fa-exclamation-circle"></i>
                         <span id="nominateErrorText"></span>
                     </div>
@@ -2297,7 +2334,7 @@
 
         document.body.appendChild(modal);
         lockBodyScroll();
-        const close = bindModalDismiss(modal);
+        const close = bindModalDismiss(modal, { returnFocusTo: triggerEl });
         document.getElementById('cancelNominateBtn').addEventListener('click', close);
 
         function refreshRemoveButtons() {
@@ -2337,7 +2374,9 @@
 
             const nomineeCards = document.querySelectorAll('#nomineeList .nominee-card');
             const nominees = [];
+            const seenPairs = new Set();
             let valid = true;
+            let hasDuplicate = false;
 
             nomineeCards.forEach(card => {
                 const idx = card.dataset.nomineeIndex;
@@ -2360,11 +2399,23 @@
                         f.classList.remove('has-error');
                     }
                 });
+
+                if (nominee.positionId && nominee.matric) {
+                    const pairKey = `${nominee.positionId}::${nominee.matric}`;
+                    if (seenPairs.has(pairKey)) hasDuplicate = true;
+                    seenPairs.add(pairKey);
+                }
+
                 nominees.push(nominee);
             });
 
             if (!valid) {
                 errorText.textContent = "Please complete every nominee's required details.";
+                errorBox.classList.add('show');
+                return;
+            }
+            if (hasDuplicate) {
+                errorText.textContent = 'You listed the same matric number more than once for the same position.';
                 errorBox.classList.add('show');
                 return;
             }
@@ -2425,12 +2476,17 @@
         });
     }
 
-    openNominateBtn.addEventListener('click', () => {
+    openNominateBtn.addEventListener('click', (e) => {
+        const trigger = e.currentTarget;
         if (!verifiedVoter) {
-            openMatricPrompt({ mode: 'nominate', onVerified: openNominateModal });
+            openMatricPrompt({
+                mode: 'nominate',
+                triggerEl: trigger,
+                onVerified: () => openNominateModal(trigger)
+            });
             return;
         }
-        openNominateModal();
+        openNominateModal(trigger);
     });
 
     document.getElementById('heroCandidatesBtn').addEventListener('click', (e) => {
@@ -2442,12 +2498,27 @@
        VOTE
        ============================================================ */
     function renderVote() {
+        if (!election) {
+            voteContent.innerHTML = '';
+            return;
+        }
+
         if (hasVoted) {
             voteContent.innerHTML = `
                 <div class="vote-success">
                     <div class="vote-success-icon"><i class="fas fa-check"></i></div>
                     <h3>Vote recorded!</h3>
                     <p>Thank you for voting. Your ballot is anonymous and cannot be changed.</p>
+                </div>`;
+            return;
+        }
+
+        if (electionPhase !== 'voting') {
+            voteContent.innerHTML = `
+                <div class="state-box">
+                    <div class="state-box-icon"><i class="fas fa-clock"></i></div>
+                    <h3>Voting is not open right now</h3>
+                    <p>Current election phase: <strong>${esc(phaseLabel(electionPhase))}</strong>. Please check back when the voting window opens.</p>
                 </div>`;
             return;
         }
@@ -2460,7 +2531,7 @@
                         <h3>Access the ballot</h3>
                         <p>Enter your registered matric number to access the ballot. You must have registered as a voter first.</p>
                     </div>
-                    <div class="alert alert-error" id="verifyError" role="alert">
+                    <div class="alert alert-error" id="verifyError" role="alert" aria-live="polite">
                         <i class="fas fa-exclamation-circle"></i>
                         <span id="verifyErrorText"></span>
                     </div>
@@ -2468,21 +2539,21 @@
                         <label for="verifyMatric">Matric number</label>
                         <div class="field-input-wrap">
                             <i class="fas fa-hashtag"></i>
-                            <input type="text" id="verifyMatric" placeholder="e.g. ENG/2021/001" required style="text-transform:uppercase;" autocomplete="off">
+                            <input type="text" id="verifyMatric" class="uppercase-input" placeholder="e.g. ENG/2021/001" required autocomplete="off">
                         </div>
                     </div>
-                    <button class="btn btn-gold btn-block" id="verifyBtn" type="button" style="margin-top:.5rem;">
+                    <button class="btn btn-gold btn-block verify-submit-btn" id="verifyBtn" type="button">
                         <i class="fas fa-unlock"></i> Continue to Voting
                     </button>
-                    <p style="text-align:center;margin-top:1rem;font-size:.78rem;color:var(--slate-500);">
+                    <p class="verify-register-note">
                         Not registered yet?
-                        <a href="#" id="verifyRegLink" style="color:var(--emerald-700);font-weight:700;text-decoration:underline;">Register as a voter</a>
+                        <a href="#" id="verifyRegLink" class="verify-register-link">Register as a voter</a>
                     </p>
                 </div>`;
 
             document.getElementById('verifyRegLink').addEventListener('click', (e) => {
                 e.preventDefault();
-                openRegisterModal();
+                openRegisterModal(e.currentTarget);
             });
 
             document.getElementById('verifyBtn').addEventListener('click', async function () {
@@ -2547,7 +2618,7 @@
                             const meta = [c.level, c.department].filter(Boolean).join(' · ');
                             const isSelected = String(selectedId) === String(c.id);
                             return `
-                                <button type="button" class="ballot-option ${isSelected ? 'selected' : ''}" data-position="${esc(position.id)}" data-candidate="${esc(c.id)}">
+                                <button type="button" class="ballot-option ${isSelected ? 'selected' : ''}" aria-pressed="${isSelected ? 'true' : 'false'}" data-position="${esc(position.id)}" data-candidate="${esc(c.id)}">
                                     <div class="ballot-radio"><i class="fas fa-check ballot-radio-check"></i></div>
                                     <div class="ballot-avatar">${esc(initials(displayName))}</div>
                                     <div class="ballot-body">
@@ -2563,12 +2634,12 @@
         voteContent.innerHTML = `
             <div class="vote-banner">
                 <div class="vote-banner-icon"><i class="fas fa-shield-halved"></i></div>
-                <p>Voting as <strong>${esc(verifiedVoter.fullName || 'Voter')}</strong> · <span style="font-family: var(--font-mono); font-size: .75rem;">${esc(verifiedVoter.matricNumber || '—')}</span><br>Select one candidate per position.</p>
+                <p>Voting as <strong>${esc(verifiedVoter.fullName || 'Voter')}</strong> · <span class="vote-matric-code">${esc(verifiedVoter.matricNumber || '—')}</span><br>Select one candidate per position.</p>
             </div>
             ${positions.map(renderBallotGroup).join('')}
             <div class="cast-bar">
-                <div class="vote-error" id="voteError" role="alert"></div>
-                <button class="btn btn-gold btn-block" id="castVoteBtn" type="button" style="min-height: 56px; font-size: 1rem;">
+                <div class="vote-error" id="voteError" role="alert" aria-live="polite"></div>
+                <button class="btn btn-gold btn-block cast-btn" id="castVoteBtn" type="button">
                     <i class="fas fa-vote-yea"></i> Cast Your Vote (${Object.keys(votes).length}/${positions.length} selected)
                 </button>
             </div>`;
@@ -2580,26 +2651,28 @@
             }
         };
 
-        voteContent.querySelectorAll('.ballot-option').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const pid = btn.dataset.position;
-                const cid = btn.dataset.candidate;
-                if (String(votes[pid]) === String(cid)) delete votes[pid];
-                else votes[pid] = cid;
+        const bindBallotClicks = () => {
+            voteContent.querySelectorAll('.ballot-option').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const pid = btn.dataset.position;
+                    const cid = btn.dataset.candidate;
+                    if (String(votes[pid]) === String(cid)) delete votes[pid];
+                    else votes[pid] = cid;
 
-                const posObj = positions.find(p => String(p.id) === String(pid));
-                const groupEl = voteContent.querySelector(`[data-group-position="${CSS.escape(String(pid))}"]`);
-                if (posObj && groupEl) {
-                    const tmp = document.createElement('div');
-                    tmp.innerHTML = renderBallotGroup(posObj);
-                    groupEl.replaceWith(tmp.firstElementChild);
-                    renderVote();
-                } else {
-                    renderVote();
-                }
-                updateCastButtonLabel();
+                    const posObj = positions.find(p => String(p.id) === String(pid));
+                    const groupEl = voteContent.querySelector(`[data-group-position="${CSS.escape(String(pid))}"]`);
+                    if (posObj && groupEl) {
+                        const tmp = document.createElement('div');
+                        tmp.innerHTML = renderBallotGroup(posObj);
+                        groupEl.replaceWith(tmp.firstElementChild);
+                        bindBallotClicks();
+                    }
+                    updateCastButtonLabel();
+                });
             });
-        });
+        };
+
+        bindBallotClicks();
 
         document.getElementById('castVoteBtn').addEventListener('click', async function () {
             const errorBox = document.getElementById('voteError');
@@ -2736,36 +2809,26 @@
         document.querySelectorAll('.floating-toast').forEach(t => t.remove());
         if (toastTimer) clearTimeout(toastTimer);
 
-        const colors = {
-            success: { bg: '#ecfdf5', border: '#6ee7b7', color: '#047857', icon: 'fa-check-circle' },
-            error:   { bg: '#fef2f2', border: '#fecaca', color: '#991b1b', icon: 'fa-exclamation-circle' },
-            info:    { bg: '#eff6ff', border: '#bfdbfe', color: '#1e40af', icon: 'fa-info-circle' }
+        const validTypes = new Set(['success', 'error', 'info']);
+        const safeType = validTypes.has(type) ? type : 'info';
+        const icons = {
+            success: 'fa-check-circle',
+            error: 'fa-exclamation-circle',
+            info: 'fa-info-circle'
         };
-        const c = colors[type] || colors.info;
+
         const toast = document.createElement('div');
-        toast.className = 'floating-toast';
+        toast.className = `floating-toast floating-toast--${safeType}`;
         toast.setAttribute('role', 'status');
-        toast.style.cssText = `
-            position: fixed; top: 1rem; right: 1rem;
-            background: ${c.bg}; border: 1px solid ${c.border}; color: ${c.color};
-            padding: .95rem 1.15rem; border-radius: 14px;
-            display: flex; align-items: center; gap: .7rem;
-            box-shadow: 0 20px 40px rgba(2,44,34,.15);
-            font-weight: 600; font-size: .875rem; z-index: 9999;
-            max-width: calc(100vw - 2rem); transform: translateY(-20px); opacity: 0;
-            transition: transform .35s cubic-bezier(.22,1,.36,1), opacity .35s;
-            white-space: pre-line;
-        `;
-        toast.innerHTML = `<i class="fas ${c.icon}" style="font-size:1.1rem;"></i><span>${esc(message)}</span>`;
+        toast.setAttribute('aria-live', 'polite');
+        toast.innerHTML = `<i class="fas ${icons[safeType]}"></i><span>${esc(message)}</span>`;
         document.body.appendChild(toast);
 
         requestAnimationFrame(() => {
-            toast.style.transform = 'translateY(0)';
-            toast.style.opacity = '1';
+            toast.classList.add('floating-toast--visible');
         });
         toastTimer = setTimeout(() => {
-            toast.style.transform = 'translateY(-20px)';
-            toast.style.opacity = '0';
+            toast.classList.remove('floating-toast--visible');
             setTimeout(() => toast.remove(), 400);
         }, 5000);
     }
@@ -2824,7 +2887,7 @@
             infoGrid.innerHTML = '';
             candidatesContent.innerHTML = `
                 <div class="state-box">
-                    <div class="state-box-icon" style="background:#fef2f2;color:#991b1b;">
+                    <div class="state-box-icon state-box-icon--danger">
                         <i class="fas fa-exclamation-triangle"></i>
                     </div>
                     <h3>Couldn't load election data</h3>
